@@ -1,0 +1,1695 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام إدارة وحساب الشغلانات المرن الاحترافي</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0b0f19; --card-dark: #131b2e; --card-hover: #1a243f; --border-color: #22304f;
+            --text-main: #f8fafc; --text-muted: #94a3b8; --primary: #4f46e5; --primary-hover: #4338ca;
+            --success: #059669; --danger: #e11d48; --warning: #d97706; --accent: #0ea5e9;
+        }
+        html { font-size: 15px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-main); padding: 16px; min-height: 100vh; }
+        .container { max-width: 1600px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; background: var(--card-dark); padding: 20px 25px; border-radius: 14px; border: 1px solid var(--border-color); margin-bottom: 20px; flex-wrap: wrap; gap: 15px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); }
+        h1 { font-size: 1.35rem; color: #38bdf8; display: flex; align-items: center; gap: 10px; font-weight: 700; }
+        .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .stats-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 12px; margin-bottom: 20px; }
+        @media(max-width: 1300px) { .stats-grid { grid-template-columns: repeat(4, 1fr); } }
+        @media(max-width: 700px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+        .stat-card { background: var(--card-dark); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 10px; text-align: center; transition: all 0.25s ease; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); }
+        .stat-card span { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; }
+        .stat-card strong { font-size: 1.25rem; color: var(--text-main); font-weight: 700; }
+        .stat-card.accent strong { color: #38bdf8; }
+        .stat-card.success strong { color: #34d399; }
+        .stat-card.warning strong { color: #fbbf24; }
+        .card { background: var(--card-dark); border: 1px solid var(--border-color); border-radius: 14px; padding: 18px; margin-bottom: 16px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); }
+        .card h2 { font-size: 1.1rem; margin-bottom: 18px; color: #38bdf8; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; font-weight: 700; }
+        .form-group { margin-bottom: 14px; position: relative; }
+        label { display: block; margin-bottom: 6px; font-size: 0.82rem; color: var(--text-muted); font-weight: 600; }
+        input, select, textarea { width: 100%; background: #11141d; border: 1px solid var(--border-color); color: var(--text-main); padding: 10px 14px; border-radius: 8px; font-size: 0.88rem; transition: all 0.2s; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2); }
+        textarea { resize: vertical; min-height: 65px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        button { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        button:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        button.secondary { background: #1e293b; color: var(--text-main); border: 1px solid var(--border-color); }
+        button.secondary:hover { background: #334155; }
+        button.danger { background: var(--danger); }
+        button.danger:hover { background: #be123c; }
+        button.success { background: var(--success); }
+        button.success:hover { background: #047857; }
+        button.warning { background: var(--warning); color: #fff; }
+        button.warning:hover { background: #b45309; }
+        .tech-card { background: #131b2e; border: 1px solid var(--border-color); border-radius: 12px; padding: 18px; margin-bottom: 15px; position: relative; }
+        .filters-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+        .filters-bar input, .filters-bar select { flex: 1; min-width: 140px; }
+        .table-responsive { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border-color); }
+        table { width: 100%; border-collapse: collapse; text-align: right; background: var(--card-dark); white-space: nowrap; }
+        html[dir="ltr"] table { text-align: left; }
+        th, td { padding: 13px 15px; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; }
+        th { background: #080d1a; color: var(--text-muted); font-weight: 700; letter-spacing: 0.3px; }
+        tr:hover td { background: var(--card-hover); }
+        tr.has-debt td:first-child { border-right: 4px solid var(--danger); }
+        html[dir="ltr"] tr.has-debt td:first-child { border-right: none; border-left: 4px solid var(--danger); }
+        .debt-alert-badge { background: rgba(225, 29, 72, 0.15); color: #f87171; border: 1px solid rgba(225, 29, 72, 0.4); padding: 2px 6px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; margin-top: 4px; }
+        .badge { padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; display: inline-block; }
+        .badge.active { background: rgba(217, 119, 6, 0.2); color: #fbbf24; border: 1px solid rgba(217, 119, 6, 0.4); }
+        .badge.completed { background: rgba(5, 150, 105, 0.2); color: #34d399; border: 1px solid rgba(5, 150, 105, 0.4); }
+        .icon-svg { width: 16px; height: 16px; fill: currentColor; display: inline-block; vertical-align: middle; }
+        .autocomplete-items { position: absolute; border: 1px solid var(--border-color); border-top: none; z-index: 99; top: 100%; left: 0; right: 0; background: #11141d; border-radius: 0 0 8px 8px; max-height: 180px; overflow-y: auto; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
+        .autocomplete-items div { padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-main); }
+        .autocomplete-items div:hover { background: var(--card-hover); color: #38bdf8; }
+        @media print {
+            body { background: white !important; color: black !important; padding: 0 !important; }
+            .no-print, header, .stats-grid, .card:not(#selectedStatsCard):not(#jobsTableCard) { display: none !important; }
+            #selectedStatsCard { display: block !important; border: 1px solid #000 !important; background: #fff !important; color: #000 !important; box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="pdfContentArea">
+    <header>
+        <h1><span>💵</span><span data-i18n="appTitle"></span></h1>
+        <div class="header-actions">
+            <button class="secondary" onclick="toggleLanguage()" id="langToggleBtn">English 🌐</button>
+            <button class="secondary" onclick="openTechGuideModal()" data-i18n="guideBtn"></button>
+            <button class="secondary" onclick="openExpenseReportModal()" data-i18n="expenseReportBtn"></button>
+            <button class="success" onclick="exportBackupJSON()" style="background:#0f766e;" data-i18n="exportBackupBtn"></button>
+            <button class="secondary" onclick="document.getElementById('importBackupInput').click()" style="border-color:#0f766e; color:#2dd4bf;" data-i18n="importBackupBtn"></button>
+            <input type="file" id="importBackupInput" accept=".json" style="display:none;" onchange="importBackupJSON(event)">
+            <button class="success" onclick="exportData()" data-i18n="exportCsvBtn"></button>
+            <button style="background: #e11d48;" onclick="exportPDF()" data-i18n="exportPdfBtn"></button>
+            <button class="secondary" style="background: #0284c7; color: white;" onclick="printSelectedJobs()" data-i18n="printBtn"></button>
+            <button class="warning" id="undoDeleteBtn" onclick="undoLastDelete()" style="display: none;">
+                <span data-i18n="undoPrefix"></span> (<span id="undoCount">0</span>)
+            </button>
+            <button class="danger" onclick="deleteSelectedJobsReport()">
+                <svg class="icon-svg" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                <span data-i18n="deleteSelectedBtn"></span>
+            </button>
+        </div>
+    </header>
+
+    <div class="no-print" style="display:flex; gap:10px; margin-bottom:16px;">
+        <button id="tabEntryBtn" onclick="switchScreen('entry')" class="secondary" data-i18n="tabEntryLabel" style="flex:1; padding:12px;"></button>
+        <button id="tabLogBtn" onclick="switchScreen('log')" class="secondary" data-i18n="tabLogLabel" style="flex:1; padding:12px;"></button>
+    </div>
+
+    <div id="screenLog">
+    <div id="debtReminderBanner" class="no-print" style="display:none; background:rgba(225,29,72,0.12); border:1px solid var(--danger); border-radius:12px; padding:14px 18px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:1.4rem;">🔔</span>
+            <span id="debtReminderText" style="font-weight:700; color:#fca5a5;"></span>
+        </div>
+        <div style="display:flex; gap:8px;">
+            <button class="warning" onclick="toggleDebtFilter(); dismissDebtReminderBanner();" data-i18n="reminderShowBtn"></button>
+            <button class="secondary" onclick="dismissDebtReminderBanner();" data-i18n="reminderDismissBtn"></button>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card"><span data-i18n="statTotalJobs"></span><strong id="statTotalJobs">0.0</strong></div>
+        <div class="stat-card"><span data-i18n="statTotalMat"></span><strong id="statTotalMat" style="color: #f87171;">0.0</strong></div>
+        <div class="stat-card"><span data-i18n="statTotalTech"></span><strong id="statTotalTech">0.0</strong></div>
+        <div class="stat-card accent"><span data-i18n="statTotalNet"></span><strong id="statTotalNet">0.0</strong></div>
+        <div class="stat-card success"><span>S (40%)</span><strong id="statShareS">0.0</strong></div>
+        <div class="stat-card success"><span>M (40%)</span><strong id="statShareM">0.0</strong></div>
+        <div class="stat-card warning"><span data-i18n="statShareCompany"></span><strong id="statShareCompany">0.0</strong></div>
+        <div class="stat-card"><span data-i18n="statExtraExp"></span><strong id="statExtraExp" style="color: #f87171;">0.0</strong></div>
+    </div>
+
+    <div class="card" id="selectedStatsCard" style="background: #0f172a; border: 1px dashed var(--accent); margin-bottom: 20px; display: none;">
+        <h2 style="color: #38bdf8; font-size: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 12px;">
+            📊 <span data-i18n="selectedTitle"></span> (<span id="selectedCount">0</span> <span data-i18n="selectedTitleSuffix"></span>)
+        </h2>
+        <div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; text-align: center;">
+            <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="statTotalJobs"></span><strong id="selTotalJobs" style="display:block; font-size:1.1rem; color:#f8fafc;">0.0</strong></div>
+            <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="statTotalMat"></span><strong id="selTotalMat" style="display:block; font-size:1.1rem; color:#f87171;">0.0</strong></div>
+            <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="statTotalTech"></span><strong id="selTotalTech" style="display:block; font-size:1.1rem; color:#fbbf24;">0.0</strong></div>
+            <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="statTotalNet"></span><strong id="selTotalNet" style="display:block; font-size:1.1rem; color:#34d399;">0.0</strong></div>
+            <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);">S (40%)</span><strong id="selShareS" style="display:block; font-size:1.1rem; color:#38bdf8;">0.0</strong></div>
+            <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);">M (40%)</span><strong id="selShareM" style="display:block; font-size:1.1rem; color:#38bdf8;">0.0</strong></div>
+            <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="statShareCompany"></span><strong id="selShareCompany" style="display:block; font-size:1.1rem; color:#fbbf24;">0.0</strong></div>
+            <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="statExtraExp"></span><strong id="selExtraExp" style="display:block; font-size:1.1rem; color:#f87171;">0.0</strong></div>
+        </div>
+    </div>
+
+        <div>
+            <div class="card" id="jobsTableCard">
+                <h2 data-i18n="jobsCardTitle"></h2>
+                <div class="filters-bar no-print">
+                    <input type="text" id="searchInput" data-i18n-ph="searchPlaceholder" oninput="filterJobs()">
+                    <select id="filterTech" onchange="filterJobs()"><option value="" data-i18n="allTechs"></option></select>
+                    <select id="filterStatus" onchange="filterJobs()">
+                        <option value="" data-i18n="allStatuses"></option>
+                        <option value="شغال" data-i18n="statusActiveShort"></option>
+                        <option value="خلص" data-i18n="statusDoneShort"></option>
+                    </select>
+                    <button class="warning" id="filterDebtBtn" onclick="toggleDebtFilter()" style="padding: 8px 12px; font-size: 0.78rem;" data-i18n="debtFilterOff"></button>
+                    <button class="secondary" onclick="toggleSelectAll(true)" style="padding: 8px 12px; font-size: 0.78rem;" data-i18n="selectAllBtn"></button>
+                    <button class="secondary" onclick="toggleSelectAll(false)" style="padding: 8px 12px; font-size: 0.78rem;" data-i18n="deselectAllBtn"></button>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 30px; text-align: center;"><input type="checkbox" id="selectAllMaster" onchange="toggleSelectAllMaster(this)"></th>
+                                <th data-i18n="thClient"></th>
+                                <th data-i18n="thDateStatus"></th>
+                                <th data-i18n="thAmounts"></th>
+                                <th data-i18n="thMaterials"></th>
+                                <th data-i18n="thExpenses"></th>
+                                <th data-i18n="thTechPay"></th>
+                                <th data-i18n="thNet"></th>
+                                <th>S (40%)</th>
+                                <th>M (40%)</th>
+                                <th data-i18n="thCompany"></th>
+                                <th class="no-print" data-i18n="thActions"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="jobsTableBody">
+                            <tr><td colspan="12" style="text-align: center; color: var(--text-muted); padding: 25px;" data-i18n="loadingJobs"></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="screenEntry" class="no-print" style="display:none; max-width:700px; margin:0 auto;">
+            <div class="card">
+                <h2 id="formTitle"></h2>
+                <div id="jobFormBody" style="padding-top:0;">
+                <input type="hidden" id="editingJobId" value="">
+
+                <div id="crmClientInfoBox" style="display: none; background: rgba(14, 165, 233, 0.1); border: 1px solid var(--accent); border-radius: 10px; padding: 12px; margin-bottom: 14px; font-size: 0.85rem;">
+                    <div style="color: #38bdf8; font-weight: 700; margin-bottom: 4px;">🔍 <span data-i18n="crmBoxTitle"></span></div>
+                    <div id="crmClientInfoContent" style="display: flex; gap: 15px; flex-wrap: wrap; color: var(--text-main);"></div>
+                </div>
+
+                <div class="form-group" style="position: relative;">
+                    <label data-i18n="lblClientName"></label>
+                    <input type="text" id="clientName" data-i18n-ph="phClientName" oninput="onClientNameInput(); checkCrmCustomerData();" autocomplete="off">
+                    <div id="clientAutocompleteList" class="autocomplete-items" style="display: none;"></div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label data-i18n="lblPhone"></label>
+                        <div style="display:flex; gap:6px;">
+                            <select id="clientCountryCode" style="flex:0 0 100px;"></select>
+                            <input type="text" id="clientPhone" placeholder="(555) 123-4567" oninput="checkCrmCustomerData()" style="flex:1;">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="lblStatus"></label>
+                        <select id="jobStatus">
+                            <option value="شغال" data-i18n="statusInProgress"></option>
+                            <option value="خلص" data-i18n="statusCompleted"></option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="position: relative;">
+                    <label data-i18n="lblAddress"></label>
+                    <input type="text" id="clientAddress" data-i18n-ph="phAddress" oninput="onAddressInput()" autocomplete="off">
+                    <div id="addressAutocompleteList" class="autocomplete-items" style="display: none;"></div>
+                </div>
+                <div class="form-group"><label data-i18n="lblDescription"></label><textarea id="clientDescription" data-i18n-ph="phDescription"></textarea></div>
+
+                <div class="grid-2">
+                    <div class="form-group"><label data-i18n="lblStartDate"></label><input type="date" id="startDate"></div>
+                    <div class="form-group"><label data-i18n="lblEndDate"></label><input type="date" id="endDate"></div>
+                </div>
+
+                <div class="grid-3">
+                    <div class="form-group"><label data-i18n="lblTotalRevenue"></label><input type="text" id="totalRevenue" value="0" onfocus="this.select()" oninput="calculateRemaining(); calculate();"></div>
+                    <div class="form-group"><label data-i18n="lblAmountReceived"></label><input type="text" id="amountReceived" value="0" onfocus="this.select()" oninput="calculateRemaining()"></div>
+                    <div class="form-group"><label data-i18n="lblAmountRemaining"></label><input type="text" id="amountRemaining" value="0" readonly style="background: #1e293b; color: #f87171; font-weight: 700;"></div>
+                </div>
+                <div class="form-group"><label data-i18n="lblFollowUpDate"></label><input type="date" id="followUpDate"></div>
+
+                <div class="form-group"><label data-i18n="lblMaterialCost"></label><input type="text" id="materialCost" value="0" onfocus="this.select()" oninput="calculate()"></div>
+
+                <div class="card" style="background: #080d1a; padding: 16px; margin-top: 15px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="color: #f39c12; font-weight: bold; font-size: 1rem;" data-i18n="techSectionTitle"></span>
+                        <button type="button" onclick="addTechnician()" style="background: #0ea5e9; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem;">
+                            <span data-i18n="addTechBtn"></span>
+                        </button>
+                    </div>
+                    <div id="techniciansContainer"></div>
+                </div>
+
+                <div class="card" style="background: #080d1a; padding: 16px; margin-top: 15px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="color: #f39c12; font-weight: bold; font-size: 1rem;" data-i18n="expenseSectionTitle"></span>
+                        <button type="button" onclick="addExpenseItem()" style="background: #0ea5e9; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem;">
+                            <span data-i18n="addExpenseBtn"></span>
+                        </button>
+                    </div>
+                    <div id="expenseItemsContainer"></div>
+                    <div style="margin-top: 12px; text-align: end; font-weight: 700; color: #fbbf24; font-size: 0.95rem;">
+                        <span data-i18n="expenseTotalLabel"></span> <span id="expenseTotalDisplay">$0.00</span>
+                    </div>
+                    <input type="hidden" id="extraExpenses" value="0">
+                </div>
+
+                <div style="display: flex; gap: 8px;">
+                    <button class="success" onclick="saveJob()" id="saveBtn" style="flex: 2; padding: 12px; margin-top: 5px;"></button>
+                    <button class="secondary" onclick="resetForm()" id="cancelEditBtn" style="flex: 1; padding: 12px; margin-top: 5px; display: none;" data-i18n="cancelEditBtn"></button>
+                </div>
+                </div>
+            </div>
+        </div>
+</div>
+
+<div id="techGuideModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:90%; max-width:850px; max-height:85vh; overflow-y:auto; padding:25px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.2rem;">👨‍🔧 <span data-i18n="guideModalTitle"></span></h2>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="success" onclick="sendWhatsAppShareSM()" style="padding:6px 12px; font-size:0.8rem; background:#059669;" data-i18n="guideSendShareBtn"></button>
+                <button class="success" onclick="openAddTechnicianModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideAddTechBtn"></button>
+                <button class="danger" onclick="closeTechGuideModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+            </div>
+        </div>
+        <div id="addTechFormContainer" style="display:none; background:#080d1a; border:1px solid var(--accent); padding:15px; border-radius:10px; margin-bottom:15px;">
+            <h3 style="color:#38bdf8; font-size:0.95rem; margin-bottom:10px;" id="addTechFormTitle" data-i18n="addTechFormTitle"></h3>
+            <input type="hidden" id="editingTechName" value="">
+            <div class="grid-2" style="margin-bottom:10px;">
+                <input type="text" id="newTechName" data-i18n-ph="phTechName">
+                <div style="display:flex; gap:6px;">
+                    <select id="newTechCountryCode" style="flex:0 0 100px;"></select>
+                    <input type="text" id="newTechPhone" data-i18n-ph="phTechPhone" style="flex:1;">
+                </div>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button class="success" onclick="saveNewTechnician()" style="padding:8px 16px;" id="saveTechBtnLabel" data-i18n="saveTechBtn"></button>
+                <button class="secondary" onclick="closeAddTechnicianModal()" style="padding:8px 16px;" data-i18n="cancelBtn"></button>
+            </div>
+        </div>
+        <div id="techGuideContent" style="font-size:0.9rem; line-height:1.7; color:var(--text-main);"></div>
+    </div>
+</div>
+
+<div id="expenseReportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:90%; max-width:650px; max-height:85vh; overflow-y:auto; padding:25px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.2rem;">📊 <span data-i18n="expenseReportTitle"></span></h2>
+            <button class="danger" onclick="closeExpenseReportModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+        <div id="expenseReportContent" style="font-size:0.9rem; line-height:1.7; color:var(--text-main);"></div>
+    </div>
+</div>
+
+<script>
+    /* ---------------- i18n ---------------- */
+    let currentLang = 'ar';
+    const T = {
+        appTitle: { ar: 'نظام إدارة وحساب الشغلانات المرن الاحترافي', en: 'Flexible Professional Job Costing System' },
+        guideBtn: { ar: 'دليل الفنيين', en: 'Technicians Guide' },
+        expenseReportBtn: { ar: '📊 تحليل المصروفات', en: '📊 Expense Report' },
+        expenseReportTitle: { ar: 'تحليل المصروفات حسب النوع (كل الشغلانات)', en: 'Expenses by Category (All Jobs)' },
+        expenseReportEmpty: { ar: 'لا توجد مصروفات مسجلة حتى الآن.', en: 'No expenses recorded yet.' },
+        expenseReportTotal: { ar: 'الإجمالي', en: 'Total' },
+        companyIncomeLabel: { ar: 'دخل الشركة (20% من الأرباح)', en: 'Company Income (20% of Profit)' },
+        companyOutgoLabel: { ar: 'مصروفات الشركة (الطلع)', en: 'Company Expenses (Outgo)' },
+        companyNetLabel: { ar: 'صافي الشركة', en: 'Company Net' },
+        exportBackupBtn: { ar: '💾 نسخة احتياطية', en: '💾 Backup' },
+        importBackupBtn: { ar: '📂 استيراد نسخة', en: '📂 Import Backup' },
+        alertImportFailed: { ar: 'ملف النسخة الاحتياطية غير صالح أو تالف.', en: 'The backup file is invalid or corrupted.' },
+        alertImportSummaryPrefix: { ar: 'تم الاستيراد:', en: 'Import complete:' },
+        importJobsAdded: { ar: 'شغلانة جديدة اتضافت', en: 'new job(s) added' },
+        importJobsSkipped: { ar: 'شغلانة موجودة اتجاهلت (نفس الرقم)', en: 'existing job(s) skipped (same ID)' },
+        importTechsAdded: { ar: 'فني جديد اتضاف', en: 'new technician(s) added' },
+        exportCsvBtn: { ar: '📁 تصدير Excel (CSV)', en: '📁 Export Excel (CSV)' },
+        exportPdfBtn: { ar: '📄 تصدير PDF', en: '📄 Export PDF' },
+        printBtn: { ar: '🖨️ طباعة المحددة', en: '🖨️ Print Selected' },
+        undoPrefix: { ar: '⮜ تراجع عن آخر مسح', en: '⮜ Undo Last Delete' },
+        deleteSelectedBtn: { ar: 'مسح التقرير المحدد', en: 'Delete Selected Report' },
+        statTotalJobs: { ar: 'إجمالي الشغلانات', en: 'Total Revenue' },
+        statTotalMat: { ar: 'إجمالي الخامات', en: 'Total Materials' },
+        statTotalTech: { ar: 'إجمالي الفنيين', en: 'Total Technicians' },
+        statTotalNet: { ar: 'إجمالي الصافي', en: 'Total Net' },
+        statShareCompany: { ar: 'شركة (20%)', en: 'Company (20%)' },
+        statExtraExp: { ar: 'مصروفات الشركة', en: 'Company Expenses' },
+        selectedTitle: { ar: 'حساب الشغلانات المحددة', en: 'Selected Jobs Calculation' },
+        selectedTitleSuffix: { ar: 'شغلانة مختارة', en: 'selected' },
+        formTitleNew: { ar: '➕ بيانات الشغلانه', en: '➕ Job Details' },
+        tabEntryLabel: { ar: '📝 إدخال شغلانة', en: '📝 Add Job' },
+        tabLogLabel: { ar: '📊 السجل والتقارير', en: '📊 Log & Reports' },
+        formTitleEdit: { ar: '✏️ تعديل بيانات الشغلانه', en: '✏️ Edit Job Details' },
+        crmBoxTitle: { ar: 'بيانات العميل في الذاكرة:', en: 'Customer History:' },
+        crmPrevJobs: { ar: 'عدد الشغلانات السابقة:', en: 'Previous Jobs:' },
+        crmTotalPaid: { ar: 'إجمالي المدفوعات:', en: 'Total Paid:' },
+        crmTotalRemaining: { ar: 'إجمالي المتبقي:', en: 'Total Remaining:' },
+        lblClientName: { ar: 'اسم الشغلانة / العميل:', en: 'Job / Client Name:' },
+        phClientName: { ar: 'أدخل اسم العميل أو المشروع', en: 'Enter client or project name' },
+        lblPhone: { ar: 'رقم الهاتف:', en: 'Phone Number:' },
+        lblStatus: { ar: 'حالة المشروع:', en: 'Project Status:' },
+        statusInProgress: { ar: 'قيد التنفيذ (شغال)', en: 'In Progress' },
+        statusCompleted: { ar: 'تم الانتهاء (خلص)', en: 'Completed' },
+        statusActiveShort: { ar: 'شغال', en: 'Active' },
+        statusDoneShort: { ar: 'خلص', en: 'Done' },
+        lblAddress: { ar: 'عنوان العميل / موقع العمل:', en: 'Client Address / Job Site:' },
+        phAddress: { ar: 'أدخل عنوان العميل أو موقع العمل...', en: 'Enter client address or job site...' },
+        lblDescription: { ar: 'وصف الشغلانة / تفاصيل العمل:', en: 'Job Description / Details:' },
+        phDescription: { ar: 'أدخل تفاصيل وملاحظات الشغلانة هنا...', en: 'Enter job details and notes here...' },
+        lblStartDate: { ar: 'تاريخ البداية:', en: 'Start Date:' },
+        lblEndDate: { ar: 'تاريخ النهاية:', en: 'End Date:' },
+        lblTotalRevenue: { ar: 'المبلغ الإجمالي ($):', en: 'Total Amount ($):' },
+        lblAmountReceived: { ar: 'المبلغ المستلم ($):', en: 'Amount Received ($):' },
+        lblAmountRemaining: { ar: 'المتبقي ($):', en: 'Remaining ($):' },
+        lblFollowUpDate: { ar: 'تاريخ متابعة الدفع (اختياري):', en: 'Payment Follow-up Date (optional):' },
+        reminderShowBtn: { ar: 'وريني التفاصيل', en: 'Show Details' },
+        reminderDismissBtn: { ar: 'إغلاق', en: 'Dismiss' },
+        reminderJobsWord: { ar: 'شغلانة لسه فيها فلوس، الإجمالي', en: 'job(s) with outstanding balance, totaling' },
+        reminderOverdueWord: { ar: 'منهم', en: 'of which' },
+        reminderOverdueSuffix: { ar: 'محتاجة متابعة دلوقتي (وصل موعدها)', en: 'due for follow-up now' },
+        reminderTitle: { ar: '🔔 تذكير: عندك فلوس متبقية عند عملاء', en: '🔔 Reminder: You have outstanding balances' },
+        notifTitle: { ar: 'تذكير بمتابعة الدفع', en: 'Payment Follow-up Reminder' },
+        lblMaterialCost: { ar: 'تكلفة الخامات ($):', en: 'Material Cost ($):' },
+        techSectionTitle: { ar: 'الفنيين المشاركين في الشغلانة:', en: 'Technicians on this Job:' },
+        addTechBtn: { ar: '+ إضافة فني', en: '+ Add Technician' },
+        lblExtraExpenses: { ar: 'مصروفات إدارية للشركة ($):', en: 'Company Admin Expenses ($):' },
+        expenseSectionTitle: { ar: 'مصروفات إدارية للشركة:', en: 'Company Admin Expenses:' },
+        addExpenseBtn: { ar: '+ إضافة مصروف', en: '+ Add Expense' },
+        expenseTotalLabel: { ar: 'إجمالي المصروفات:', en: 'Total Expenses:' },
+        noExpensesAdded: { ar: 'لا يوجد مصروفات مضافة', en: 'No expenses added' },
+        expenseCategoryLabel: { ar: 'نوع المصروف', en: 'Expense Type' },
+        expenseNoteLabel: { ar: 'التفاصيل', en: 'Details' },
+        expenseAmountLabel: { ar: 'المبلغ ($)', en: 'Amount ($)' },
+        expFuel: { ar: 'بنزين / مواصلات', en: 'Fuel / Transport' },
+        expFood: { ar: 'أكل ومشروبات', en: 'Food & Drinks' },
+        expRent: { ar: 'إيجار موقع/مكتب الشركة', en: 'Office / Shop Rent' },
+        expVehicle: { ar: 'صيانة عربية', en: 'Vehicle Maintenance' },
+        expTools: { ar: 'أدوات ومعدات', en: 'Tools & Equipment' },
+        expPermits: { ar: 'تراخيص ورسوم', en: 'Permits & Fees' },
+        expInsurance: { ar: 'تأمين', en: 'Insurance' },
+        expAds: { ar: 'دعاية وإعلان', en: 'Advertising' },
+        expOther: { ar: 'أخرى', en: 'Other' },
+        thExpenses: { ar: 'المصروفات', en: 'Expenses' },
+        saveBtnNew: { ar: 'حفظ واحتساب المشروع', en: 'Save & Calculate Project' },
+        saveBtnUpdate: { ar: 'تحديث التعديلات', en: 'Update Changes' },
+        cancelEditBtn: { ar: 'إلغاء التعديل', en: 'Cancel Edit' },
+        techSelectPlaceholder: { ar: 'اختر الفني...', en: 'Select Technician...' },
+        lblTechName: { ar: 'اسم الفني', en: 'Technician Name' },
+        lblPaymentMethod: { ar: 'طريقة الحساب', en: 'Payment Method' },
+        typeCustom: { ar: 'نسبة مخصصة', en: 'Custom %' },
+        typeAlone60: { ar: 'فني لوحده (%60)', en: 'Alone (60%)' },
+        typeTogether50: { ar: 'نسبة (50%)', en: 'Together (50%)' },
+        typeFixed: { ar: 'مبلغ ثابت', en: 'Fixed Amount' },
+        typeDaily: { ar: 'باليومية', en: 'Daily Rate' },
+        typeHourly: { ar: 'بالساعة', en: 'Hourly Rate' },
+        lblPercent: { ar: 'النسبة (%)', en: 'Percentage (%)' },
+        lblRateOrLimit: { ar: 'الحد/القيمة', en: 'Limit / Value' },
+        lblRatePrice: { ar: 'المعدل / السعر', en: 'Rate / Price' },
+        lblDaysHours: { ar: 'الأيام / الساعات', en: 'Days / Hours' },
+        lblPaid: { ar: 'المدفوع له ($)', en: 'Paid ($)' },
+        lblDueRemaining: { ar: 'المستحق / الباقي', en: 'Due / Remaining' },
+        duePrefix: { ar: 'المستحق:', en: 'Due:' },
+        remainingPrefix: { ar: 'الباقي:', en: 'Remaining:' },
+        noTechsAdded: { ar: 'لا يوجد فنيين مضافين', en: 'No technicians added' },
+        jobsCardTitle: { ar: '📋 سجل المشروعات التفصيلي', en: '📋 Detailed Project Log' },
+        searchPlaceholder: { ar: 'بحث باسم العميل، الهاتف، العنوان، الفني...', en: 'Search by client, phone, address, technician...' },
+        allTechs: { ar: 'جميع الفنيين', en: 'All Technicians' },
+        allStatuses: { ar: 'كل الحالات', en: 'All Statuses' },
+        debtFilterOff: { ar: '⏳ فلترة المديونيات المعلقة', en: '⏳ Filter Pending Debts' },
+        debtFilterOn: { ar: '⏳ إلغاء فلترة المديونيات', en: '⏳ Clear Debt Filter' },
+        selectAllBtn: { ar: 'تحديد الكل', en: 'Select All' },
+        deselectAllBtn: { ar: 'إلغاء التحديد', en: 'Deselect All' },
+        thClient: { ar: 'العميل والتفاصيل', en: 'Client & Details' },
+        thDateStatus: { ar: 'التاريخ والحالة', en: 'Date & Status' },
+        thAmounts: { ar: 'الإجمالي / المستلم / المتبقي', en: 'Total / Received / Remaining' },
+        thMaterials: { ar: 'الخامات', en: 'Materials' },
+        thTechPay: { ar: 'حساب ودفعات الفنيين', en: 'Technician Pay & Dues' },
+        thNet: { ar: 'الصافي', en: 'Net' },
+        thCompany: { ar: 'شركة (20%)', en: 'Company (20%)' },
+        thActions: { ar: 'إجراءات', en: 'Actions' },
+        emptyJobs: { ar: 'لا توجد شغلانات محفوظة مطابقة للبحث', en: 'No matching saved jobs found' },
+        loadingJobs: { ar: 'جاري التحميل...', en: 'Loading...' },
+        debtBadgePrefix: { ar: '⚠️ متبقي تحصيل:', en: '⚠️ Outstanding:' },
+        techLineDue: { ar: 'مستحق', en: 'Due' },
+        techLinePaid: { ar: 'مدفوع', en: 'Paid' },
+        noTechData: { ar: 'لا توجد بيانات فنيين', en: 'No technician data' },
+        editBtn: { ar: 'تعديل', en: 'Edit' },
+        deleteBtn: { ar: 'حذف', en: 'Delete' },
+        alertClientNameRequired: { ar: 'يرجى ادخال اسم العميل أو المشروع على الأقل.', en: 'Please enter at least a client or project name.' },
+        validationErrorsTitle: { ar: 'فيه أرقام غلط، لازم تتصلح قبل الحفظ:', en: 'Some numbers look wrong — fix these before saving:' },
+        errNegRevenue: { ar: 'المبلغ الإجمالي مينفعش يكون رقم سالب', en: 'Total amount cannot be negative' },
+        errNegReceived: { ar: 'المبلغ المستلم مينفعش يكون رقم سالب', en: 'Amount received cannot be negative' },
+        errNegMaterial: { ar: 'تكلفة الخامات مينفعش تكون رقم سالب', en: 'Material cost cannot be negative' },
+        errNegRate: { ar: 'المعدل/السعر مينفعش يكون سالب', en: 'Rate/price cannot be negative' },
+        errNegDays: { ar: 'الأيام/الساعات مينفعش تكون سالبة', en: 'Days/hours cannot be negative' },
+        errNegPaid: { ar: 'المبلغ المدفوع مينفعش يكون سالب', en: 'Paid amount cannot be negative' },
+        errPercentRange: { ar: 'النسبة لازم تكون بين 0 و 100', en: 'Percentage must be between 0 and 100' },
+        errNegExpense: { ar: 'مبلغ المصروف مينفعش يكون سالب', en: 'Expense amount cannot be negative' },
+        errRowLabel: { ar: 'صف', en: 'Row' },
+        confirmOverpayment: { ar: 'المبلغ المستلم أكبر من المبلغ الإجمالي — ده طبيعي ولا غلطة كتابة؟ دوس "موافق" لو متأكد إنه صح.', en: 'The amount received is more than the total amount — is that intentional or a typo? Press OK if you\'re sure it\'s correct.' },
+        alertSelectOneToDeleteReport: { ar: 'يرجى تحديد شغلانة واحدة على الأقل لمسحها من التقرير.', en: 'Please select at least one job to remove from the report.' },
+        confirmDeleteJob: { ar: 'هل أنت متأكد من حذف هذه الشغلانة؟', en: 'Are you sure you want to delete this job?' },
+        confirmDeleteSelectedPrefix: { ar: 'هل أنت متأكد من مسح', en: 'Are you sure you want to remove' },
+        confirmDeleteSelectedSuffix: { ar: 'شغلانة المحددة من التقرير؟', en: 'selected job(s) from the report?' },
+        alertSelectOneToPrint: { ar: 'يرجى تحديد شغلانة واحدة على الأقل لطباعتها.', en: 'Please select at least one job to print.' },
+        alertPercentConflict: { ar: 'في فني تاني في نفس الشغلانة مختار عليه بالفعل "لوحده 60%" أو "نسبة 50%". اختيار وحيد بس من الاتنين دول لكل شغلانة، عشان النسبة متتكررش. استخدم "نسبة مخصصة" لو عايز تقسيم مختلف.', en: 'Another technician on this job already uses "Alone 60%" or "Together 50%". Only one of these two is allowed per job so the percentage isn\'t double-counted. Use "Custom %" if you need a different split.' },
+        alertTechNameRequired: { ar: 'يرجى كتابة اسم الفني', en: 'Please enter the technician name' },
+        alertTechSaveFailed: { ar: 'حصل خطأ ومقدرش يحفظ الفني. جرب تاني.', en: 'Something went wrong and the technician could not be saved. Please try again.' },
+        alertJobSaveFailed: { ar: 'حصل خطأ ومقدرش يحفظ الشغلانة. جرب تاني قبل ما تسيب الصفحة.', en: 'Something went wrong and the job could not be saved. Please try again before leaving the page.' },
+        alertPhoneUnavailable: { ar: 'رقم الهاتف غير متوفر لهذا الفني.', en: 'Phone number not available for this technician.' },
+        guideModalTitle: { ar: 'دليل الحسابات الشامل للفنيين و S & M', en: 'Complete Technicians & S/M Guide' },
+        guideSendShareBtn: { ar: 'إرسال حصة S & M', en: 'Send S & M Share' },
+        guideAddTechBtn: { ar: '+ إضافة فني جديد', en: '+ Add New Technician' },
+        guideCloseBtn: { ar: '✕ إغلاق', en: '✕ Close' },
+        addTechFormTitle: { ar: 'إضافة بيانات فني جديد', en: 'Add New Technician' },
+        editTechFormTitle: { ar: 'تعديل بيانات الفني', en: 'Edit Technician' },
+        phTechName: { ar: 'اسم الفني', en: 'Technician Name' },
+        phTechPhone: { ar: 'رقم الهاتف (مثال: 555-123-4567)', en: 'Phone (e.g. 555-123-4567)' },
+        saveTechBtn: { ar: 'حفظ الفني', en: 'Save Technician' },
+        cancelBtn: { ar: 'إلغاء', en: 'Cancel' },
+        guideThName: { ar: 'اسم الفني', en: 'Name' },
+        guideThPhone: { ar: 'رقم الهاتف', en: 'Phone' },
+        guideThDues: { ar: 'إجمالي المستحقات', en: 'Total Dues' },
+        guideThActions: { ar: 'الإجراءات', en: 'Actions' },
+        guideNA: { ar: 'غير متوفر', en: 'N/A' },
+        guideWhatsAppBtn: { ar: 'واتساب', en: 'WhatsApp' },
+        guideEmpty: { ar: 'لا توجد بيانات مسجلة للفنيين حالياً.', en: 'No technician data recorded yet.' },
+        techSavedOk: { ar: 'تم حفظ الفني بنجاح.', en: 'Technician saved successfully.' },
+        confirmDeleteTech: { ar: 'هل أنت متأكد من حذف الفني ده من الدليل؟ (شغلاناته القديمة هتفضل موجودة في السجل زي ما هي)', en: 'Delete this technician from the directory? (Their past job records will stay in the log as-is)' },
+    };
+    function t(key) { return (T[key] && T[key][currentLang]) || key; }
+    const TECH_TYPE_KEYS = { 'نسبة مخصصة': 'typeCustom', 'فني لوحده (%60)': 'typeAlone60', 'نسبة (50%)': 'typeTogether50', 'مبلغ ثابت': 'typeFixed', 'باليومية': 'typeDaily', 'بالساعة': 'typeHourly' };
+    function techTypeLabel(type) { return t(TECH_TYPE_KEYS[type] || 'typeCustom'); }
+    function statusLabel(status) { return status === 'خلص' ? t('statusDoneShort') : t('statusActiveShort'); }
+
+    function toggleLanguage() {
+        currentLang = currentLang === 'ar' ? 'en' : 'ar';
+        document.getElementById('langToggleBtn').innerText = currentLang === 'ar' ? 'English 🌐' : 'عربي 🌐';
+        applyLanguage();
+    }
+
+    function applyLanguage() {
+        document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+        document.documentElement.lang = currentLang;
+        document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.getAttribute('data-i18n')); });
+        document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.getAttribute('data-i18n-ph')); });
+
+        const editingId = document.getElementById('editingJobId').value;
+        document.getElementById('formTitle').innerText = editingId ? t('formTitleEdit') : t('formTitleNew');
+        document.getElementById('saveBtn').innerText = editingId ? t('saveBtnUpdate') : t('saveBtnNew');
+
+        const debtBtn = document.getElementById('filterDebtBtn');
+        debtBtn.innerText = onlyShowDebt ? t('debtFilterOn') : t('debtFilterOff');
+
+        safeCall(() => populateCountryCodeSelect('clientCountryCode'));
+        safeCall(() => populateCountryCodeSelect('newTechCountryCode'));
+        const editingTechName = document.getElementById('editingTechName').value;
+        document.getElementById('addTechFormTitle').innerText = editingTechName ? t('editTechFormTitle') : t('addTechFormTitle');
+        document.getElementById('saveTechBtnLabel').innerText = editingTechName ? t('saveBtnUpdate') : t('saveTechBtn');
+
+        safeCall(renderTechnicians);
+        safeCall(renderExpenseItems);
+        safeCall(renderJobsTable);
+        safeCall(updateGlobalStats);
+        safeCall(updateTechDropdownFilter);
+        safeCall(updateSelectedStats);
+        safeCall(refreshDebtReminderBanner);
+        if (document.getElementById('techGuideModal').style.display !== 'none') safeCall(renderTechGuideContent);
+        if (document.getElementById('expenseReportModal').style.display !== 'none') safeCall(renderExpenseReportContent);
+    }
+
+    /* ---------------- persistent storage: Firebase Firestore (shared, real-time) ---------------- */
+    const firebaseConfig = {
+        apiKey: "AIzaSyBeo-87oqjP22Z1Ls_z2O3LF2xfXZssxQ4",
+        authDomain: "cost-jobs.firebaseapp.com",
+        projectId: "cost-jobs",
+        storageBucket: "cost-jobs.firebasestorage.app",
+        messagingSenderId: "386321995597",
+        appId: "1:386321995597:web:48b86cb4ccda0258104904",
+        measurementId: "G-TRYMV9D8S3"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const JOBS_DOC = db.collection('jobCostingApp').doc('savedJobs');
+    const TECHS_DOC = db.collection('jobCostingApp').doc('technicianPhones');
+
+    async function saveSavedJobsData(){ await JOBS_DOC.set({ jobs: savedJobs }); }
+    async function saveTechPhonesData(){ await TECHS_DOC.set({ phones: technicianPhones }); }
+
+    let technicians = [];
+    let expenseItems = [];
+    let savedJobs = [];
+    let technicianPhones = {};
+    let selectedJobIds = new Set();
+    let lastDeletedJobs = [];
+    let onlyShowDebt = false;
+
+    const EXCLUSIVE_PERCENT_TYPES = ['فني لوحده (%60)', 'نسبة (50%)'];
+    const EXPENSE_CATEGORIES = ['بنزين / مواصلات', 'أكل ومشروبات', 'إيجار موقع/مكتب الشركة', 'صيانة عربية', 'أدوات ومعدات', 'تراخيص ورسوم', 'تأمين', 'دعاية وإعلان', 'أخرى'];
+    const EXPENSE_CAT_KEYS = { 'بنزين / مواصلات': 'expFuel', 'أكل ومشروبات': 'expFood', 'إيجار موقع/مكتب الشركة': 'expRent', 'صيانة عربية': 'expVehicle', 'أدوات ومعدات': 'expTools', 'تراخيص ورسوم': 'expPermits', 'تأمين': 'expInsurance', 'دعاية وإعلان': 'expAds', 'أخرى': 'expOther' };
+    function expenseCatLabel(cat) { return t(EXPENSE_CAT_KEYS[cat] || 'expOther'); }
+
+    document.getElementById('startDate').valueAsDate = new Date();
+    document.getElementById('endDate').valueAsDate = new Date();
+
+    let currentScreen = 'log';
+    function switchScreen(name) {
+        currentScreen = name;
+        document.getElementById('screenLog').style.display = name === 'log' ? 'block' : 'none';
+        document.getElementById('screenEntry').style.display = name === 'entry' ? 'block' : 'none';
+        document.getElementById('tabEntryBtn').style.background = name === 'entry' ? 'var(--primary)' : '';
+        document.getElementById('tabLogBtn').style.background = name === 'log' ? 'var(--primary)' : '';
+    }
+
+    // Live-syncs with Firestore: fires immediately with the current data, then again every
+    // time it changes — whether the change came from this browser or a partner's.
+    function setupRealtimeSync() {
+        JOBS_DOC.onSnapshot(doc => {
+            const jobs = (doc.exists && doc.data().jobs) ? doc.data().jobs : [];
+            jobs.forEach(j => { j.id = String(j.id); });
+            savedJobs = jobs;
+            refreshAllViews();
+            safeCall(checkDebtReminders);
+        }, err => console.error('Firestore jobs sync error:', err));
+
+        TECHS_DOC.onSnapshot(doc => {
+            technicianPhones = (doc.exists && doc.data().phones) ? doc.data().phones : {};
+            safeCall(updateTechDropdownFilter);
+            safeCall(renderTechnicians);
+            if (document.getElementById('techGuideModal').style.display !== 'none') safeCall(renderTechGuideContent);
+        }, err => console.error('Firestore technicians sync error:', err));
+    }
+
+    (async function init(){
+        safeCall(applyLanguage);
+        safeCall(updateUndoButtonUI);
+        safeCall(() => switchScreen('log'));
+        setupRealtimeSync();
+    })();
+
+    // Shows a banner (and, if permitted, a browser notification) summarizing outstanding
+    // balances. This only fires while the page is open — a real background alarm that works
+    // with the browser fully closed would need a server to send push notifications, which
+    // this app doesn't have.
+    let debtBannerDismissed = false;
+    function dismissDebtReminderBanner() {
+        debtBannerDismissed = true;
+        document.getElementById('debtReminderBanner').style.display = 'none';
+    }
+
+    function buildDebtReminderMessage() {
+        const today = new Date().toISOString().split('T')[0];
+        const outstanding = savedJobs.filter(job => jobRemaining(job) > 0);
+        if (outstanding.length === 0) return null;
+
+        const totalOwed = outstanding.reduce((sum, job) => sum + jobRemaining(job), 0);
+        const overdue = outstanding.filter(job => job.followUpDate && job.followUpDate <= today);
+
+        let message = `${outstanding.length} ${t('reminderJobsWord')} $${totalOwed.toFixed(2)}`;
+        if (overdue.length > 0) {
+            message += ` (${overdue.length} ${t('reminderOverdueWord')} ${t('reminderOverdueSuffix')})`;
+        }
+        return message;
+    }
+
+    function refreshDebtReminderBanner() {
+        if (debtBannerDismissed) return;
+        const message = buildDebtReminderMessage();
+        const banner = document.getElementById('debtReminderBanner');
+        if (!message) { banner.style.display = 'none'; return; }
+        document.getElementById('debtReminderText').innerText = message;
+        banner.style.display = 'flex';
+    }
+
+    function checkDebtReminders() {
+        refreshDebtReminderBanner();
+        const message = buildDebtReminderMessage();
+        if (!message) return;
+
+        if ('Notification' in window) {
+            const fire = () => new Notification(t('notifTitle'), { body: message });
+            if (Notification.permission === 'granted') fire();
+            else if (Notification.permission === 'default') {
+                Notification.requestPermission().then(perm => { if (perm === 'granted') fire(); });
+            }
+        }
+    }
+
+    function parseVal(val) {
+        if (val === '' || val === null || val === undefined) return 0;
+        const parsed = parseFloat(val);
+        return isNaN(parsed) ? 0 : parsed;
+    }
+
+    let addressAutocompleteTimer = null;
+    let addressRequestId = 0;
+
+    // Turns Nominatim's raw address parts into a clean, short label similar to
+    // "123 Main St, Tampa, FL 33601" instead of its long default display_name.
+    function formatAddressResult(r) {
+        const a = r.address || {};
+        const line1 = [a.house_number, a.road].filter(Boolean).join(' ') || a.road || a.neighbourhood || '';
+        const city = a.city || a.town || a.village || a.hamlet || a.suburb || '';
+        const stateZip = [a.state, a.postcode].filter(Boolean).join(' ');
+        const short = [line1, city, stateZip].filter(Boolean).join(', ');
+        return short || r.display_name;
+    }
+
+    function onAddressInput() {
+        clearTimeout(addressAutocompleteTimer);
+        const query = document.getElementById('clientAddress').value.trim();
+        const listDiv = document.getElementById('addressAutocompleteList');
+        if (query.length < 3) { listDiv.style.display = 'none'; listDiv.innerHTML = ''; return; }
+
+        listDiv.innerHTML = `<div style="color:var(--text-muted); cursor:default; pointer-events:none;">${currentLang === 'ar' ? 'جاري البحث...' : 'Searching...'}</div>`;
+        listDiv.style.display = 'block';
+
+        const myRequestId = ++addressRequestId;
+        addressAutocompleteTimer = setTimeout(async () => {
+            try {
+                const url = `https://nominatim.openstreetmap.org/search?format=json&limit=8&addressdetails=1&countrycodes=us&accept-language=${currentLang}&q=${encodeURIComponent(query)}`;
+                const res = await fetch(url);
+                const results = await res.json();
+                if (myRequestId !== addressRequestId) return; // a newer keystroke already superseded this request
+                listDiv.innerHTML = '';
+                if (!results || results.length === 0) { listDiv.style.display = 'none'; return; }
+                results.forEach(r => {
+                    const label = formatAddressResult(r);
+                    const item = document.createElement('div');
+                    item.innerHTML = `<span style="display:block;">${label}</span>${label !== r.display_name ? `<span style="display:block; font-size:0.7rem; color:var(--text-muted); margin-top:2px;">${r.display_name}</span>` : ''}`;
+                    item.onclick = () => {
+                        document.getElementById('clientAddress').value = label;
+                        listDiv.style.display = 'none';
+                    };
+                    listDiv.appendChild(item);
+                });
+                listDiv.style.display = 'block';
+            } catch (e) { if (myRequestId === addressRequestId) listDiv.style.display = 'none'; }
+        }, 350);
+    }
+
+    function calculateRemaining() {
+        const total = parseVal(document.getElementById('totalRevenue').value);
+        const received = parseVal(document.getElementById('amountReceived').value);
+        document.getElementById('amountRemaining').value = (total - received).toFixed(2);
+    }
+
+    function getUniqueRegisteredTechnicians() {
+        let names = new Set();
+        savedJobs.forEach(job => { (job.technicians || []).forEach(tech => { if (tech.name && tech.name.trim()) names.add(tech.name.trim()); }); });
+        Object.keys(technicianPhones).forEach(name => { if (name && name.trim()) names.add(name.trim()); });
+        return Array.from(names).sort();
+    }
+
+    function onClientNameInput() {
+        const inputVal = document.getElementById('clientName').value.trim().toLowerCase();
+        const listDiv = document.getElementById('clientAutocompleteList');
+        listDiv.innerHTML = '';
+        if (!inputVal) { listDiv.style.display = 'none'; return; }
+
+        let uniqueClientsMap = new Map();
+        savedJobs.forEach(job => {
+            if (job.clientName) {
+                const nameKey = job.clientName.trim();
+                if (nameKey.toLowerCase().includes(inputVal)) uniqueClientsMap.set(nameKey, job);
+            }
+        });
+        if (uniqueClientsMap.size === 0) { listDiv.style.display = 'none'; return; }
+
+        uniqueClientsMap.forEach((job, clientName) => {
+            const item = document.createElement('div');
+            item.innerHTML = `<strong>${clientName}</strong> <span style="font-size:0.75rem; color:var(--text-muted);">(${job.clientPhone || t('guideNA')})</span>`;
+            item.onclick = function() {
+                document.getElementById('clientName').value = job.clientName;
+                document.getElementById('clientPhone').value = job.clientPhone || '';
+                document.getElementById('clientAddress').value = job.clientAddress || '';
+                listDiv.style.display = 'none';
+                checkCrmCustomerData();
+            };
+            listDiv.appendChild(item);
+        });
+        listDiv.style.display = 'block';
+    }
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#clientName') && !e.target.closest('#clientAutocompleteList')) {
+            document.getElementById('clientAutocompleteList').style.display = 'none';
+        }
+        if (!e.target.closest('#clientAddress') && !e.target.closest('#addressAutocompleteList')) {
+            document.getElementById('addressAutocompleteList').style.display = 'none';
+        }
+    });
+
+    function checkCrmCustomerData() {
+        const nameVal = document.getElementById('clientName').value.trim().toLowerCase();
+        const phoneVal = document.getElementById('clientPhone').value.trim();
+        const box = document.getElementById('crmClientInfoBox');
+        const content = document.getElementById('crmClientInfoContent');
+        if (!nameVal && !phoneVal) { box.style.display = 'none'; return; }
+
+        let matchedJobs = savedJobs.filter(job => {
+            const jName = (job.clientName || '').toLowerCase();
+            const jPhone = (job.clientPhone || '');
+            return (nameVal && jName.includes(nameVal)) || (phoneVal && jPhone.includes(phoneVal));
+        });
+        if (matchedJobs.length === 0) { box.style.display = 'none'; return; }
+
+        let totalPayments = 0, totalRemaining = 0;
+        matchedJobs.forEach(job => { totalPayments += parseVal(job.amountReceived); totalRemaining += jobRemaining(job); });
+
+        box.style.display = 'block';
+        content.innerHTML = `
+            <div>${t('crmPrevJobs')} <strong style="color:#38bdf8;">${matchedJobs.length}</strong></div>
+            <div>${t('crmTotalPaid')} <strong style="color:#34d399;">$${totalPayments.toFixed(2)}</strong></div>
+            <div>${t('crmTotalRemaining')} <strong style="color:#f87171;">$${totalRemaining.toFixed(2)}</strong></div>
+        `;
+    }
+
+    function toggleDebtFilter() {
+        onlyShowDebt = !onlyShowDebt;
+        const btn = document.getElementById('filterDebtBtn');
+        if (onlyShowDebt) { btn.style.background = '#e11d48'; btn.style.color = '#fff'; btn.innerText = t('debtFilterOn'); }
+        else { btn.style.background = ''; btn.style.color = ''; btn.innerText = t('debtFilterOff'); }
+        filterJobs();
+    }
+
+    function addTechnician(name = '', days = 1, paid = 0, type = 'نسبة مخصصة', rate = 0, customPercent = 50) {
+        technicians.push({ name, days, paid, type, rate, customPercent });
+        renderTechnicians();
+        calculate();
+    }
+    function removeTechnician(index) { technicians.splice(index, 1); renderTechnicians(); calculate(); }
+
+    function getPercentBase() {
+        const revenue = parseVal(document.getElementById('totalRevenue').value);
+        const material = parseVal(document.getElementById('materialCost').value);
+        return revenue - material;
+    }
+
+    function renderTechnicians() {
+        const container = document.getElementById('techniciansContainer');
+        container.innerHTML = '';
+        if (technicians.length === 0) {
+            container.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 10px;">${t('noTechsAdded')}</div>`;
+            return;
+        }
+        const registeredTechs = getUniqueRegisteredTechnicians();
+
+        technicians.forEach((tech, index) => {
+            if (!tech.type) { tech.type = 'نسبة مخصصة'; if (tech.customPercent === undefined) tech.customPercent = 50; }
+            const dues = calculateTechDues(tech);
+            const remaining = dues - parseVal(tech.paid);
+            const isCustom = tech.type === 'نسبة مخصصة';
+
+            const card = document.createElement('div');
+            card.className = 'tech-card';
+            card.id = `techcard-${index}`;
+
+            let techOptionsHtml = `<option value="" disabled ${!tech.name ? 'selected' : ''}>${t('techSelectPlaceholder')}</option>`;
+            registeredTechs.forEach(tName => { techOptionsHtml += `<option value="${tName}" ${tech.name === tName ? 'selected' : ''}>${tName}</option>`; });
+            if (tech.name && !registeredTechs.includes(tech.name)) techOptionsHtml += `<option value="${tech.name}" selected>${tech.name}</option>`;
+
+            const typeOptionsHtml = ['نسبة مخصصة','فني لوحده (%60)','نسبة (50%)','مبلغ ثابت','باليومية','بالساعة']
+                .map(v => `<option value="${v}" ${tech.type === v ? 'selected' : ''}>${techTypeLabel(v)}</option>`).join('');
+
+            card.innerHTML = `
+                <div style="display: grid; grid-template-columns: 2.2fr ${isCustom ? '1.1fr 1.1fr' : '1.6fr'} 1fr 40px; gap: 10px; align-items: center; margin-bottom: 12px;">
+                    <div>
+                        <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblTechName')}</label>
+                        <select onchange="updateTechData(${index}, 'name', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; min-width: 140px;">${techOptionsHtml}</select>
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblPaymentMethod')}</label>
+                        <select onchange="updateTechData(${index}, 'type', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%;">${typeOptionsHtml}</select>
+                    </div>
+                    ${isCustom ? `<div><label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblPercent')}</label><input type="text" placeholder="50" value="${tech.customPercent !== undefined ? tech.customPercent : 50}" onfocus="this.select()" oninput="updateTechData(${index}, 'customPercent', this.value)" style="background: #11141d; color: #38bdf8; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; text-align: center; font-weight:700;"></div>` : ''}
+                    <div>
+                        <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${isCustom ? t('lblRateOrLimit') : t('lblRatePrice')}</label>
+                        <input type="text" placeholder="0" value="${tech.rate !== undefined ? tech.rate : ''}" onfocus="this.select()" oninput="updateTechData(${index}, 'rate', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; text-align: center;">
+                    </div>
+                    <div style="display: flex; align-items: flex-end; height: 100%;">
+                        <button type="button" onclick="removeTechnician(${index})" style="background: rgba(225, 29, 72, 0.15); color: #e11d48; border: 1px solid rgba(225, 29, 72, 0.4); padding: 9px 0; border-radius: 8px; width: 100%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px;">
+                            <svg class="icon-svg" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 10px; align-items: center;">
+                    <div><label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblDaysHours')}</label><input type="text" placeholder="1" value="${tech.days !== undefined ? tech.days : 1}" onfocus="this.select()" oninput="updateTechData(${index}, 'days', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; text-align: center;"></div>
+                    <div><label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblPaid')}</label><input type="text" placeholder="0" value="${tech.paid !== undefined ? tech.paid : ''}" onfocus="this.select()" oninput="updateTechData(${index}, 'paid', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; text-align: center;"></div>
+                    <div>
+                        <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblDueRemaining')}</label>
+                        <div class="tech-dues-display" style="background: #11141d; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; text-align: center; font-size: 0.85rem; color: #38bdf8; font-weight: 700;">
+                            ${t('duePrefix')} <span style="color:#fbbf24;">$${dues.toFixed(2)}</span> | ${t('remainingPrefix')} <span style="color:${remaining > 0 ? '#f87171' : '#34d399'};">$${remaining.toFixed(2)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function calculateTechDues(tech) {
+        const rate = parseVal(tech.rate);
+        const days = parseVal(tech.days);
+        const base = getPercentBase();
+        const customPercent = tech.customPercent !== undefined ? parseVal(tech.customPercent) : 50;
+
+        if (tech.type === 'فني لوحده (%60)') return base > 0 ? base * 0.6 : 0;
+        if (tech.type === 'نسبة (50%)') return base > 0 ? base * 0.5 : 0;
+        if (tech.type === 'نسبة مخصصة') return base > 0 ? base * (customPercent / 100) : 0;
+        if (tech.type === 'مبلغ ثابت') return rate;
+        return rate * (days === 0 ? 0 : days);
+    }
+
+    function calculateJobTechDues(tech, totalRevenue, materialCost) {
+        const rate = parseVal(tech.rate);
+        const days = parseVal(tech.days);
+        const base = parseVal(totalRevenue) - parseVal(materialCost);
+        const customPercent = tech.customPercent !== undefined ? parseVal(tech.customPercent) : 50;
+
+        if (tech.type === 'فني لوحده (%60)') return base > 0 ? base * 0.6 : 0;
+        if (tech.type === 'نسبة (50%)') return base > 0 ? base * 0.5 : 0;
+        if (tech.type === 'نسبة مخصصة') return base > 0 ? base * (customPercent / 100) : 0;
+        if (tech.type === 'مبلغ ثابت') return rate;
+        return rate * days;
+    }
+
+    function updateTechData(index, field, value) {
+        if (field === 'type' && EXCLUSIVE_PERCENT_TYPES.includes(value)) {
+            const conflict = technicians.some((t, i) => i !== index && EXCLUSIVE_PERCENT_TYPES.includes(t.type));
+            if (conflict) { alert(t('alertPercentConflict')); renderTechnicians(); return; }
+        }
+        technicians[index][field] = value;
+        if (field === 'type' || field === 'name') renderTechnicians();
+        else updateTechCardDues(index);
+    }
+
+    function updateTechCardDues(index) {
+        const tech = technicians[index];
+        if (!tech) return;
+        const dues = calculateTechDues(tech);
+        const remaining = dues - parseVal(tech.paid);
+        const card = document.getElementById(`techcard-${index}`);
+        if (!card) return;
+        const display = card.querySelector('.tech-dues-display');
+        if (display) {
+            display.innerHTML = `${t('duePrefix')} <span style="color:#fbbf24;">$${dues.toFixed(2)}</span> | ${t('remainingPrefix')} <span style="color:${remaining > 0 ? '#f87171' : '#34d399'};">$${remaining.toFixed(2)}</span>`;
+        }
+    }
+
+    function calculate() { technicians.forEach((t, i) => updateTechCardDues(i)); }
+
+    function addExpenseItem(category = 'بنزين / مواصلات', note = '', amount = 0) {
+        expenseItems.push({ category, note, amount });
+        renderExpenseItems();
+    }
+    function removeExpenseItem(index) { expenseItems.splice(index, 1); renderExpenseItems(); }
+
+    function updateExpenseItem(index, field, value) {
+        expenseItems[index][field] = value;
+        if (field === 'category') renderExpenseItems(); // toggles the note field for "Other"
+        else updateExpenseTotal();
+    }
+
+    function updateExpenseTotal() {
+        const total = expenseItems.reduce((sum, it) => sum + parseVal(it.amount), 0);
+        document.getElementById('extraExpenses').value = total.toFixed(2);
+        document.getElementById('expenseTotalDisplay').innerText = '$' + total.toFixed(2);
+        calculate();
+    }
+
+    function renderExpenseItems() {
+        const container = document.getElementById('expenseItemsContainer');
+        container.innerHTML = '';
+        if (expenseItems.length === 0) {
+            container.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 10px;">${t('noExpensesAdded')}</div>`;
+            updateExpenseTotal();
+            return;
+        }
+        expenseItems.forEach((item, index) => {
+            const isOther = item.category === 'أخرى';
+            const catOptionsHtml = EXPENSE_CATEGORIES.map(c => `<option value="${c}" ${item.category === c ? 'selected' : ''}>${expenseCatLabel(c)}</option>`).join('');
+
+            const card = document.createElement('div');
+            card.className = 'tech-card';
+            card.innerHTML = `
+                <div style="display: grid; grid-template-columns: ${isOther ? '1.4fr 1.4fr' : '2fr'} 1fr 40px; gap: 10px; align-items: center;">
+                    <div>
+                        <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('expenseCategoryLabel')}</label>
+                        <select onchange="updateExpenseItem(${index}, 'category', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%;">${catOptionsHtml}</select>
+                    </div>
+                    ${isOther ? `<div><label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('expenseNoteLabel')}</label><input type="text" value="${item.note || ''}" oninput="updateExpenseItem(${index}, 'note', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%;"></div>` : ''}
+                    <div>
+                        <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('expenseAmountLabel')}</label>
+                        <input type="text" value="${item.amount !== undefined ? item.amount : ''}" onfocus="this.select()" oninput="updateExpenseItem(${index}, 'amount', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; text-align: center;">
+                    </div>
+                    <div style="display: flex; align-items: flex-end; height: 100%;">
+                        <button type="button" onclick="removeExpenseItem(${index})" style="background: rgba(225, 29, 72, 0.15); color: #e11d48; border: 1px solid rgba(225, 29, 72, 0.4); padding: 9px 0; border-radius: 8px; width: 100%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px;">
+                            <svg class="icon-svg" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+        updateExpenseTotal();
+    }
+
+    function validateJobBeforeSave(jobData, techs, expenses) {
+        const errors = [];
+        if (parseVal(jobData.totalRevenue) < 0) errors.push(t('errNegRevenue'));
+        if (parseVal(jobData.amountReceived) < 0) errors.push(t('errNegReceived'));
+        if (parseVal(jobData.materialCost) < 0) errors.push(t('errNegMaterial'));
+
+        techs.forEach((tech, i) => {
+            const label = `${t('errRowLabel')} ${i + 1} (${tech.name || t('techSelectPlaceholder')})`;
+            if (parseVal(tech.rate) < 0) errors.push(`${t('errNegRate')} — ${label}`);
+            if (parseVal(tech.days) < 0) errors.push(`${t('errNegDays')} — ${label}`);
+            if (parseVal(tech.paid) < 0) errors.push(`${t('errNegPaid')} — ${label}`);
+            if (tech.type === 'نسبة مخصصة') {
+                const p = parseVal(tech.customPercent);
+                if (p < 0 || p > 100) errors.push(`${t('errPercentRange')} — ${label}`);
+            }
+        });
+
+        expenses.forEach((exp, i) => {
+            if (parseVal(exp.amount) < 0) errors.push(`${t('errNegExpense')} — ${t('errRowLabel')} ${i + 1} (${expenseCatLabel(exp.category)})`);
+        });
+
+        return errors;
+    }
+
+    async function saveJob() {
+        const editingId = document.getElementById('editingJobId').value;
+        const clientName = document.getElementById('clientName').value.trim();
+        if (!clientName) { alert(t('alertClientNameRequired')); return; }
+
+        const jobData = {
+            id: editingId ? editingId : Date.now().toString() + Math.random().toString(36).substr(2, 5),
+            clientName,
+            clientPhone: document.getElementById('clientPhone').value.trim(),
+            jobStatus: document.getElementById('jobStatus').value,
+            clientAddress: document.getElementById('clientAddress').value.trim(),
+            clientDescription: document.getElementById('clientDescription').value.trim(),
+            startDate: document.getElementById('startDate').value,
+            endDate: document.getElementById('endDate').value,
+            totalRevenue: parseVal(document.getElementById('totalRevenue').value),
+            amountReceived: parseVal(document.getElementById('amountReceived').value),
+            amountRemaining: parseVal(document.getElementById('amountRemaining').value),
+            followUpDate: document.getElementById('followUpDate').value,
+            materialCost: parseVal(document.getElementById('materialCost').value),
+            extraExpenses: parseVal(document.getElementById('extraExpenses').value),
+            expenseItems: JSON.parse(JSON.stringify(expenseItems)),
+            technicians: JSON.parse(JSON.stringify(technicians))
+        };
+
+        const validationErrors = validateJobBeforeSave(jobData, technicians, expenseItems);
+        if (validationErrors.length > 0) {
+            alert(t('validationErrorsTitle') + '\n\n' + validationErrors.map(e => '• ' + e).join('\n'));
+            return;
+        }
+        if (parseVal(jobData.amountReceived) > parseVal(jobData.totalRevenue) && parseVal(jobData.totalRevenue) > 0) {
+            if (!confirm(t('confirmOverpayment'))) return;
+        }
+
+        if (editingId) {
+            const index = savedJobs.findIndex(j => j.id === editingId);
+            if (index !== -1) savedJobs[index] = jobData;
+        } else {
+            savedJobs.unshift(jobData);
+        }
+
+        try {
+            await saveSavedJobsData();
+        } catch (err) {
+            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            return;
+        }
+        resetForm();
+        refreshAllViews();
+    }
+
+    function resetForm() {
+        document.getElementById('editingJobId').value = '';
+        document.getElementById('clientName').value = '';
+        document.getElementById('clientPhone').value = '';
+        document.getElementById('jobStatus').value = 'شغال';
+        document.getElementById('clientAddress').value = '';
+        document.getElementById('clientDescription').value = '';
+        document.getElementById('startDate').valueAsDate = new Date();
+        document.getElementById('endDate').valueAsDate = new Date();
+        document.getElementById('totalRevenue').value = 0;
+        document.getElementById('amountReceived').value = 0;
+        document.getElementById('amountRemaining').value = 0;
+        document.getElementById('followUpDate').value = '';
+        document.getElementById('materialCost').value = 0;
+        document.getElementById('extraExpenses').value = 0;
+        document.getElementById('crmClientInfoBox').style.display = 'none';
+        document.getElementById('clientAutocompleteList').style.display = 'none';
+        document.getElementById('addressAutocompleteList').style.display = 'none';
+        technicians = [];
+        renderTechnicians();
+        expenseItems = [];
+        renderExpenseItems();
+        document.getElementById('formTitle').innerText = t('formTitleNew');
+        document.getElementById('saveBtn').innerText = t('saveBtnNew');
+        document.getElementById('cancelEditBtn').style.display = 'none';
+    }
+
+    function jobRemaining(job) { return parseVal(job.totalRevenue) - parseVal(job.amountReceived); }
+
+    // The 40/40/20 split happens on the profit BEFORE company operating expenses (gas, coffee,
+    // rent, etc.) — those are the company's own overhead, so they come out of the company's 20%
+    // share only. S and M's shares are never reduced by the company's spending.
+    function jobNet(job) {
+        let totalTechDues = 0;
+        (job.technicians || []).forEach(tech => { totalTechDues += calculateJobTechDues(tech, job.totalRevenue, job.materialCost); });
+        const netForSplit = parseVal(job.totalRevenue) - parseVal(job.materialCost) - totalTechDues;
+        const shareS = netForSplit * 0.4;
+        const shareM = netForSplit * 0.4;
+        const expensesTotal = parseVal(job.extraExpenses);
+        const companyGross = netForSplit * 0.2;
+        const companyNet = companyGross - expensesTotal;
+        const net = shareS + shareM + companyNet; // overall bottom line (= netForSplit - expensesTotal)
+        return { totalTechDues, net, shareS, shareM, companyGross, companyNet, expensesTotal };
+    }
+
+    function renderJobsTable() {
+        const tbody = document.getElementById('jobsTableBody');
+        tbody.innerHTML = '';
+        if (savedJobs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; color: var(--text-muted); padding: 25px;">${t('emptyJobs')}</td></tr>`;
+            return;
+        }
+
+        savedJobs.forEach(job => {
+            let techDetailsText = '';
+            (job.technicians || []).forEach(tech => {
+                const dues = calculateJobTechDues(tech, job.totalRevenue, job.materialCost);
+                techDetailsText += `• ${tech.name || 'Tech'} (${techTypeLabel(tech.type)}): ${t('techLineDue')} $${dues.toFixed(2)} | ${t('techLinePaid')} $${parseVal(tech.paid)}<br>`;
+            });
+
+            let expenseDetailsText = '';
+            (job.expenseItems || []).forEach(item => {
+                const label = item.category === 'أخرى' && item.note ? `${expenseCatLabel(item.category)} (${item.note})` : expenseCatLabel(item.category);
+                expenseDetailsText += `• ${label}: $${parseVal(item.amount).toFixed(2)}<br>`;
+            });
+
+            const { net: netProfit, shareS, shareM, companyNet } = jobNet(job);
+            const rev = parseVal(job.totalRevenue);
+            const rec = parseVal(job.amountReceived);
+            const rem = jobRemaining(job);
+            const hasDebt = rem > 0;
+            const isOverdue = hasDebt && job.followUpDate && job.followUpDate <= new Date().toISOString().split('T')[0];
+
+            const tr = document.createElement('tr');
+            tr.setAttribute('data-id', job.id);
+            if (hasDebt) tr.className = 'has-debt';
+
+            tr.innerHTML = `
+                <td style="text-align: center;"><input type="checkbox" class="job-checkbox" value="${job.id}" ${selectedJobIds.has(String(job.id)) ? 'checked' : ''} onchange="toggleJobSelection('${job.id}', this)"></td>
+                <td><strong>${job.clientName}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.clientPhone || ''} - ${job.clientAddress || ''}</span>${hasDebt ? '<br><span class="debt-alert-badge">' + t('debtBadgePrefix') + ' $' + rem.toFixed(2) + '</span>' : ''}${isOverdue ? '<br><span class="debt-alert-badge" style="background:rgba(217,119,6,0.2); color:#fbbf24; border-color:rgba(217,119,6,0.4);">🔔 ' + t('reminderOverdueSuffix') + '</span>' : ''}</td>
+                <td><span class="badge ${job.jobStatus === 'خلص' ? 'completed' : 'active'}">${statusLabel(job.jobStatus)}</span><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.startDate || ''}</span></td>
+                <td style="font-size: 0.82rem;">$${rev.toFixed(2)} / <span style="color:#34d399;">$${rec.toFixed(2)}</span> / <span style="color:#f87171; font-weight:700;">$${rem.toFixed(2)}</span></td>
+                <td style="color:#f87171;">$${parseVal(job.materialCost).toFixed(2)}</td>
+                <td style="font-size:0.8rem;">${expenseDetailsText || '$' + parseVal(job.extraExpenses).toFixed(2)}</td>
+                <td style="font-size:0.8rem;">${techDetailsText || t('noTechData')}</td>
+                <td style="color:${netProfit < 0 ? '#f87171' : '#34d399'}; font-weight:700;">$${netProfit.toFixed(2)}</td>
+                <td style="color:#38bdf8;">$${shareS.toFixed(2)}</td>
+                <td style="color:#38bdf8;">$${shareM.toFixed(2)}</td>
+                <td style="color:#fbbf24;">$${companyNet.toFixed(2)}</td>
+                <td class="no-print">
+                    <button class="secondary" onclick="editJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem;">${t('editBtn')}</button>
+                    <button class="danger" onclick="deleteJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem;">${t('deleteBtn')}</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        filterJobs();
+    }
+
+    // Runs a view-refresh function in isolation: if one refresh step throws, it must not
+    // block the others (this was the actual bug — one failing step was silently skipping
+    // every refresh call listed after it, so some cards never updated).
+    function safeCall(fn) { try { fn(); } catch (e) { console.error(e); } }
+    function refreshAllViews() {
+        safeCall(renderJobsTable);
+        safeCall(updateGlobalStats);
+        safeCall(updateTechDropdownFilter);
+        safeCall(updateSelectedStats);
+    }
+
+    function updateGlobalStats() {
+        let totalJobsVal = 0, totalMatVal = 0, totalTechVal = 0, totalNetVal = 0, totalShareS = 0, totalShareM = 0, totalShareCompany = 0, totalExtraExp = 0;
+        savedJobs.forEach(job => {
+            const { totalTechDues, net, shareS, shareM, companyNet } = jobNet(job);
+            totalJobsVal += parseVal(job.totalRevenue); totalMatVal += parseVal(job.materialCost); totalTechVal += totalTechDues;
+            totalNetVal += net; totalExtraExp += parseVal(job.extraExpenses);
+            totalShareS += shareS; totalShareM += shareM; totalShareCompany += companyNet;
+        });
+        document.getElementById('statTotalJobs').innerText = '$' + totalJobsVal.toFixed(2);
+        document.getElementById('statTotalMat').innerText = '$' + totalMatVal.toFixed(2);
+        document.getElementById('statTotalTech').innerText = '$' + totalTechVal.toFixed(2);
+        document.getElementById('statTotalNet').innerText = '$' + totalNetVal.toFixed(2);
+        document.getElementById('statShareS').innerText = '$' + totalShareS.toFixed(2);
+        document.getElementById('statShareM').innerText = '$' + totalShareM.toFixed(2);
+        document.getElementById('statShareCompany').innerText = '$' + totalShareCompany.toFixed(2);
+        document.getElementById('statExtraExp').innerText = '$' + totalExtraExp.toFixed(2);
+    }
+
+    function toggleJobSelection(id, checkbox) {
+        id = String(id);
+        if (checkbox.checked) selectedJobIds.add(id); else selectedJobIds.delete(id);
+        updateSelectedStats();
+    }
+    function toggleSelectAll(select) {
+        document.querySelectorAll('.job-checkbox').forEach(cb => { cb.checked = select; if (select) selectedJobIds.add(cb.value); else selectedJobIds.delete(cb.value); });
+        const master = document.getElementById('selectAllMaster');
+        if (master) master.checked = select;
+        updateSelectedStats();
+    }
+    function toggleSelectAllMaster(master) { toggleSelectAll(master.checked); }
+
+    function updateSelectedStats() {
+        const card = document.getElementById('selectedStatsCard');
+        if (selectedJobIds.size === 0) { card.style.display = 'none'; return; }
+        card.style.display = 'block';
+        document.getElementById('selectedCount').innerText = selectedJobIds.size;
+
+        let selJobs = 0, selMat = 0, selTech = 0, selNet = 0, selS = 0, selM = 0, selComp = 0, selExtra = 0;
+        savedJobs.forEach(job => {
+            if (selectedJobIds.has(String(job.id))) {
+                const { totalTechDues, net, shareS, shareM, companyNet } = jobNet(job);
+                selJobs += parseVal(job.totalRevenue); selMat += parseVal(job.materialCost); selTech += totalTechDues;
+                selNet += net; selExtra += parseVal(job.extraExpenses);
+                selS += shareS; selM += shareM; selComp += companyNet;
+            }
+        });
+        document.getElementById('selTotalJobs').innerText = '$' + selJobs.toFixed(2);
+        document.getElementById('selTotalMat').innerText = '$' + selMat.toFixed(2);
+        document.getElementById('selTotalTech').innerText = '$' + selTech.toFixed(2);
+        document.getElementById('selTotalNet').innerText = '$' + selNet.toFixed(2);
+        document.getElementById('selShareS').innerText = '$' + selS.toFixed(2);
+        document.getElementById('selShareM').innerText = '$' + selM.toFixed(2);
+        document.getElementById('selShareCompany').innerText = '$' + selComp.toFixed(2);
+        document.getElementById('selExtraExp').innerText = '$' + selExtra.toFixed(2);
+    }
+
+    function editJob(id) {
+        id = String(id);
+        const job = savedJobs.find(j => String(j.id) === id);
+        if (!job) return;
+        document.getElementById('editingJobId').value = job.id;
+        document.getElementById('clientName').value = job.clientName || '';
+        document.getElementById('clientPhone').value = job.clientPhone || '';
+        document.getElementById('jobStatus').value = job.jobStatus || 'شغال';
+        document.getElementById('clientAddress').value = job.clientAddress || '';
+        document.getElementById('clientDescription').value = job.clientDescription || '';
+        document.getElementById('startDate').value = job.startDate || '';
+        document.getElementById('endDate').value = job.endDate || '';
+        document.getElementById('totalRevenue').value = job.totalRevenue || 0;
+        document.getElementById('amountReceived').value = job.amountReceived || 0;
+        document.getElementById('amountRemaining').value = job.amountRemaining || 0;
+        document.getElementById('followUpDate').value = job.followUpDate || '';
+        document.getElementById('materialCost').value = job.materialCost || 0;
+
+        technicians = JSON.parse(JSON.stringify(job.technicians || []));
+        renderTechnicians();
+
+        if (job.expenseItems && job.expenseItems.length > 0) {
+            expenseItems = JSON.parse(JSON.stringify(job.expenseItems));
+        } else if (parseVal(job.extraExpenses) > 0) {
+            // Old job saved before itemized expenses existed — keep the amount as a single "Other" item.
+            expenseItems = [{ category: 'أخرى', note: '', amount: job.extraExpenses }];
+        } else {
+            expenseItems = [];
+        }
+        renderExpenseItems();
+        checkCrmCustomerData();
+
+        document.getElementById('formTitle').innerText = t('formTitleEdit');
+        document.getElementById('saveBtn').innerText = t('saveBtnUpdate');
+        document.getElementById('cancelEditBtn').style.display = 'block';
+        switchScreen('entry');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function deleteJob(id) {
+        if (!confirm(t('confirmDeleteJob'))) return;
+        id = String(id);
+        const jobIndex = savedJobs.findIndex(j => String(j.id) === id);
+        if (jobIndex !== -1) { lastDeletedJobs = [savedJobs[jobIndex]]; updateUndoButtonUI(); }
+        savedJobs = savedJobs.filter(j => String(j.id) !== id);
+        selectedJobIds.delete(id);
+        await saveSavedJobsData();
+        refreshAllViews();
+    }
+
+    async function deleteSelectedJobsReport() {
+        if (selectedJobIds.size === 0) { alert(t('alertSelectOneToDeleteReport')); return; }
+        if (!confirm(`${t('confirmDeleteSelectedPrefix')} (${selectedJobIds.size}) ${t('confirmDeleteSelectedSuffix')}`)) return;
+
+        lastDeletedJobs = savedJobs.filter(j => selectedJobIds.has(String(j.id)));
+        updateUndoButtonUI();
+        savedJobs = savedJobs.filter(j => !selectedJobIds.has(String(j.id)));
+        selectedJobIds.clear();
+        await saveSavedJobsData();
+        refreshAllViews();
+        const master = document.getElementById('selectAllMaster');
+        if (master) master.checked = false;
+    }
+
+    async function undoLastDelete() {
+        if (lastDeletedJobs.length === 0) return;
+        savedJobs = [...lastDeletedJobs, ...savedJobs];
+        lastDeletedJobs = [];
+        updateUndoButtonUI();
+        await saveSavedJobsData();
+        refreshAllViews();
+    }
+
+    function updateUndoButtonUI() {
+        const btn = document.getElementById('undoDeleteBtn');
+        const countSpan = document.getElementById('undoCount');
+        if (lastDeletedJobs.length > 0) { btn.style.display = 'inline-flex'; countSpan.innerText = lastDeletedJobs.length; }
+        else { btn.style.display = 'none'; }
+    }
+
+    function printSelectedJobs() {
+        if (selectedJobIds.size === 0) { alert(t('alertSelectOneToPrint')); return; }
+        document.querySelectorAll('#jobsTableBody tr').forEach(row => {
+            const jobId = row.getAttribute('data-id');
+            if (jobId) row.style.display = selectedJobIds.has(jobId) ? '' : 'none';
+        });
+        window.print();
+        filterJobs();
+    }
+
+    function exportBackupJSON() {
+        const backup = { savedJobs, technicianPhones, exportDate: new Date().toISOString(), version: 1 };
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `AHA_BACKUP_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    async function importBackupJSON(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                let addedJobs = 0, skippedJobs = 0, addedTechs = 0;
+
+                if (Array.isArray(data.savedJobs)) {
+                    const existingIds = new Set(savedJobs.map(j => j.id));
+                    data.savedJobs.forEach(job => {
+                        job.id = String(job.id);
+                        if (existingIds.has(job.id)) { skippedJobs++; }
+                        else { savedJobs.push(job); existingIds.add(job.id); addedJobs++; }
+                    });
+                }
+                if (data.technicianPhones && typeof data.technicianPhones === 'object') {
+                    Object.keys(data.technicianPhones).forEach(name => {
+                        if (!(name in technicianPhones)) { technicianPhones[name] = data.technicianPhones[name]; addedTechs++; }
+                    });
+                }
+
+                await saveSavedJobsData();
+                await saveTechPhonesData();
+                refreshAllViews();
+
+                alert(`${t('alertImportSummaryPrefix')}\n${addedJobs} ${t('importJobsAdded')}\n${skippedJobs} ${t('importJobsSkipped')}\n${addedTechs} ${t('importTechsAdded')}`);
+            } catch (err) {
+                alert(t('alertImportFailed'));
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+
+    function csvEscape(val) { return `"${String(val === undefined || val === null ? '' : val).replace(/"/g, '""')}"`; }
+
+    function exportData() {
+        let csvRows = [];
+        csvRows.push(["Jobs #", "Date", "Customer", "Phone", "Address", "Description", "Contract", "Received", "Balance", "Materials", "Technicians", "Expenses Total", "Expenses Breakdown", "Status", "Net Profit", "S Share", "M Share", "Company Share"].join(","));
+        savedJobs.forEach((job, index) => {
+            const { net: netProfit, shareS, shareM, companyNet } = jobNet(job);
+            const techSummary = (job.technicians || []).map(tc => `${tc.name || 'Tech'}: $${calculateJobTechDues(tc, job.totalRevenue, job.materialCost).toFixed(2)}`).join(' | ');
+            const expenseSummary = (job.expenseItems || []).map(it => `${expenseCatLabel(it.category)}${it.note ? ' (' + it.note + ')' : ''}: $${parseVal(it.amount).toFixed(2)}`).join(' | ');
+            const rowData = [
+                csvEscape('#' + (index + 1)), csvEscape(job.startDate || ''), csvEscape(job.clientName || ''),
+                csvEscape(job.clientPhone || ''), csvEscape(job.clientAddress || ''), csvEscape(job.clientDescription || ''),
+                parseVal(job.totalRevenue).toFixed(2), parseVal(job.amountReceived).toFixed(2), jobRemaining(job).toFixed(2),
+                parseVal(job.materialCost).toFixed(2), csvEscape(techSummary), parseVal(job.extraExpenses).toFixed(2), csvEscape(expenseSummary), csvEscape(job.jobStatus || ''),
+                netProfit.toFixed(2), shareS.toFixed(2), shareM.toFixed(2), companyNet.toFixed(2)
+            ];
+            csvRows.push(rowData.join(","));
+        });
+        const blob = new Blob(["\uFEFF" + csvRows.join("\r\n")], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = "AHA_PM_STATEMENT.csv";
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    function containsArabic(text) { return /[\u0600-\u06FF]/.test(text || ''); }
+
+    function textToImage(text) {
+        const scale = 4;
+        const fontPx = 34;
+        const isArabic = containsArabic(text);
+        const probe = document.createElement('canvas').getContext('2d');
+        probe.font = `${fontPx * scale}px Cairo, Tahoma, Arial, sans-serif`;
+        const textWidth = Math.max(probe.measureText(text || '').width, 1);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = textWidth + 20 * scale;
+        canvas.height = (fontPx + 14) * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.font = `${fontPx * scale}px Cairo, Tahoma, Arial, sans-serif`;
+        ctx.fillStyle = '#1a1a1a';
+        ctx.textBaseline = 'middle';
+        if (isArabic) { ctx.direction = 'rtl'; ctx.textAlign = 'right'; ctx.fillText(text || '', canvas.width - 10 * scale, canvas.height / 2); }
+        else { ctx.direction = 'ltr'; ctx.textAlign = 'left'; ctx.fillText(text || '', 10 * scale, canvas.height / 2); }
+
+        return { dataUrl: canvas.toDataURL('image/png'), aspect: canvas.width / canvas.height };
+    }
+
+    const PDF_ARABIC_COLS = [2, 3, 8]; // Customer, Address, Status
+
+    async function exportPDF() {
+        if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch(e) {} }
+        const { jsPDF } = window.jspdf;
+        let doc = new jsPDF('l', 'mm', 'a4');
+        doc.setFont("helvetica", "bold"); doc.setFontSize(16);
+        doc.text("AHA - PM STATEMENT", 14, 15);
+
+        const headers = [["Jobs #", "Date", "Customer", "Address", "Contract", "Received", "Balance", "Materials", "Status", "Net Profit", "S (40%)", "M (40%)", "Company Net"]];
+        const data = savedJobs.map((job, index) => {
+            const { net: netProfit, shareS, shareM, companyNet } = jobNet(job);
+            return [
+                "#" + (index + 1), job.startDate || '', job.clientName || '', job.clientAddress || '',
+                "$" + parseVal(job.totalRevenue).toFixed(2), "$" + parseVal(job.amountReceived).toFixed(2), "$" + jobRemaining(job).toFixed(2),
+                "$" + parseVal(job.materialCost).toFixed(2), statusLabel(job.jobStatus), "$" + netProfit.toFixed(2),
+                "$" + shareS.toFixed(2), "$" + shareM.toFixed(2), "$" + companyNet.toFixed(2)
+            ];
+        });
+
+        doc.autoTable({
+            head: headers, body: data, startY: 22, theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 2, halign: 'center' },
+            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+            didDrawCell: function(cellData) {
+                if (cellData.section !== 'body') return;
+                if (!PDF_ARABIC_COLS.includes(cellData.column.index)) return;
+                const text = String(cellData.cell.raw ?? '');
+                if (!text || !containsArabic(text)) return;
+
+                doc.setFillColor(255, 255, 255);
+                doc.rect(cellData.cell.x, cellData.cell.y, cellData.cell.width, cellData.cell.height, 'F');
+                doc.setDrawColor(200, 200, 200);
+                doc.rect(cellData.cell.x, cellData.cell.y, cellData.cell.width, cellData.cell.height);
+
+                const img = textToImage(text);
+                const padding = 1;
+                let targetH = cellData.cell.height - padding * 2;
+                let targetW = targetH * img.aspect;
+                if (targetW > cellData.cell.width - padding * 2) { targetW = cellData.cell.width - padding * 2; targetH = targetW / img.aspect; }
+                const x = cellData.cell.x + (cellData.cell.width - targetW) / 2;
+                const y = cellData.cell.y + (cellData.cell.height - targetH) / 2;
+                doc.addImage(img.dataUrl, 'PNG', x, y, targetW, targetH);
+            }
+        });
+        doc.save("AHA_PM_STATEMENT.pdf");
+    }
+
+    function openTechGuideModal() { document.getElementById('techGuideModal').style.display = 'flex'; renderTechGuideContent(); }
+    function closeTechGuideModal() { document.getElementById('techGuideModal').style.display = 'none'; }
+
+    function openExpenseReportModal() { document.getElementById('expenseReportModal').style.display = 'flex'; renderExpenseReportContent(); }
+    function closeExpenseReportModal() { document.getElementById('expenseReportModal').style.display = 'none'; }
+
+    function renderExpenseReportContent() {
+        const container = document.getElementById('expenseReportContent');
+        const totals = {};
+        let grandTotal = 0;
+        let companyIncome = 0;
+        savedJobs.forEach(job => {
+            const { companyGross } = jobNet(job);
+            companyIncome += companyGross;
+            (job.expenseItems || []).forEach(item => {
+                const amt = parseVal(item.amount);
+                totals[item.category] = (totals[item.category] || 0) + amt;
+                grandTotal += amt;
+            });
+            // Backward compatibility: old jobs may only have a plain extraExpenses number with no breakdown.
+            if ((!job.expenseItems || job.expenseItems.length === 0) && parseVal(job.extraExpenses) > 0) {
+                totals['أخرى'] = (totals['أخرى'] || 0) + parseVal(job.extraExpenses);
+                grandTotal += parseVal(job.extraExpenses);
+            }
+        });
+        const companyNetTotal = companyIncome - grandTotal;
+
+        let html = `<div class="grid-3" style="margin-bottom:18px;">
+            <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:8px; padding:12px; text-align:center;">
+                <div style="font-size:0.75rem; color:var(--text-muted);">${t('companyIncomeLabel')}</div>
+                <div style="font-size:1.15rem; font-weight:700; color:#34d399;">$${companyIncome.toFixed(2)}</div>
+            </div>
+            <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:8px; padding:12px; text-align:center;">
+                <div style="font-size:0.75rem; color:var(--text-muted);">${t('companyOutgoLabel')}</div>
+                <div style="font-size:1.15rem; font-weight:700; color:#f87171;">$${grandTotal.toFixed(2)}</div>
+            </div>
+            <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:8px; padding:12px; text-align:center;">
+                <div style="font-size:0.75rem; color:var(--text-muted);">${t('companyNetLabel')}</div>
+                <div style="font-size:1.15rem; font-weight:700; color:${companyNetTotal < 0 ? '#f87171' : '#38bdf8'};">$${companyNetTotal.toFixed(2)}</div>
+            </div>
+        </div>`;
+
+        const categories = Object.keys(totals);
+        if (categories.length === 0) { html += `<p style="text-align:center; color:var(--text-muted); padding:20px;">${t('expenseReportEmpty')}</p>`; container.innerHTML = html; return; }
+
+        categories.sort((a, b) => totals[b] - totals[a]);
+        html += '<table style="width:100%; border-collapse:collapse; margin-top:10px;"><thead><tr><th>' + t('expenseCategoryLabel') + '</th><th>' + t('expenseAmountLabel') + '</th></tr></thead><tbody>';
+        categories.forEach(cat => {
+            html += `<tr><td>${expenseCatLabel(cat)}</td><td style="color:#fbbf24; font-weight:700;">$${totals[cat].toFixed(2)}</td></tr>`;
+        });
+        html += `<tr style="border-top:2px solid var(--border-color);"><td style="font-weight:700;">${t('expenseReportTotal')}</td><td style="color:#38bdf8; font-weight:700;">$${grandTotal.toFixed(2)}</td></tr>`;
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+    function getCountryCodes() {
+        return [
+            { code: '1', label: '+1 US/Canada' },
+            { code: '20', label: '+20 Egypt' },
+            { code: '966', label: '+966 Saudi Arabia' },
+            { code: '971', label: '+971 UAE' },
+            { code: '52', label: '+52 Mexico' },
+            { code: '91', label: '+91 India' },
+            { code: '63', label: '+63 Philippines' },
+            { code: '44', label: '+44 UK' },
+            { code: '34', label: '+34 Spain' },
+            { code: '86', label: '+86 China' },
+            { code: 'other', label: currentLang === 'ar' ? 'كود تاني...' : 'Other code...' }
+        ];
+    }
+
+    function populateCountryCodeSelect(selectId, defaultCode) {
+        const sel = document.getElementById(selectId);
+        const keep = defaultCode || sel.value || '1';
+        sel.innerHTML = getCountryCodes().map(c => `<option value="${c.code}">${c.label}</option>`).join('');
+        sel.value = keep;
+    }
+    populateCountryCodeSelect('clientCountryCode', '1');
+    populateCountryCodeSelect('newTechCountryCode', '1');
+
+    // Builds a full international number from a selected country code + whatever the person
+    // typed, instead of guessing the country from the digit count (which always assumed US).
+    function buildFullPhone(countryCode, localNumber) {
+        let digits = String(localNumber).replace(/[^\d]/g, '');
+        digits = digits.replace(/^0+/, ''); // many countries prefix local numbers with a 0 that's dropped internationally
+        if (!digits) return '';
+        if (countryCode === 'other') return digits; // person typed the code as part of the number itself
+        return countryCode + digits;
+    }
+
+    // Best-effort split of a stored full number back into {code, local} for editing —
+    // matches against our known list, longest code first so e.g. 971 isn't misread as 97+1.
+    function splitPhoneForEdit(fullPhone) {
+        const digits = String(fullPhone || '').replace(/[^\d]/g, '');
+        if (!digits) return { code: '1', local: '' };
+        const sorted = getCountryCodes().filter(c => c.code !== 'other').sort((a, b) => b.code.length - a.code.length);
+        for (const c of sorted) {
+            if (digits.startsWith(c.code)) return { code: c.code, local: digits.slice(c.code.length) };
+        }
+        return { code: 'other', local: digits };
+    }
+
+    function openAddTechnicianModal() {
+        document.getElementById('editingTechName').value = '';
+        document.getElementById('addTechFormTitle').innerText = t('addTechFormTitle');
+        document.getElementById('saveTechBtnLabel').innerText = t('saveTechBtn');
+        document.getElementById('newTechName').value = '';
+        populateCountryCodeSelect('newTechCountryCode', '1');
+        document.getElementById('newTechPhone').value = '';
+        document.getElementById('addTechFormContainer').style.display = 'block';
+    }
+
+    function openEditTechnicianModal(name) {
+        document.getElementById('editingTechName').value = name;
+        document.getElementById('addTechFormTitle').innerText = t('editTechFormTitle');
+        document.getElementById('saveTechBtnLabel').innerText = t('saveBtnUpdate');
+        document.getElementById('newTechName').value = name;
+        const { code, local } = splitPhoneForEdit(technicianPhones[name]);
+        populateCountryCodeSelect('newTechCountryCode', code);
+        document.getElementById('newTechPhone').value = local;
+        document.getElementById('addTechFormContainer').style.display = 'block';
+        document.getElementById('addTechFormContainer').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function closeAddTechnicianModal() {
+        document.getElementById('addTechFormContainer').style.display = 'none';
+        document.getElementById('editingTechName').value = '';
+        document.getElementById('newTechName').value = '';
+        document.getElementById('newTechPhone').value = '';
+    }
+
+    async function saveNewTechnician() {
+        const name = document.getElementById('newTechName').value.trim();
+        const code = document.getElementById('newTechCountryCode').value;
+        const localNumber = document.getElementById('newTechPhone').value.trim();
+        const phone = buildFullPhone(code, localNumber);
+        const editingName = document.getElementById('editingTechName').value;
+        if (!name) { alert(t('alertTechNameRequired')); return; }
+        try {
+            if (editingName && editingName !== name) delete technicianPhones[editingName]; // renamed
+            technicianPhones[name] = phone;
+            await saveTechPhonesData();
+            closeAddTechnicianModal();
+            renderTechGuideContent();
+            updateTechDropdownFilter();
+            renderTechnicians();
+            alert(t('techSavedOk'));
+        } catch (err) {
+            alert(t('alertTechSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+        }
+    }
+
+    async function deleteTechnicianFromDirectory(name) {
+        if (!confirm(t('confirmDeleteTech'))) return;
+        try {
+            delete technicianPhones[name];
+            await saveTechPhonesData();
+            renderTechGuideContent();
+            updateTechDropdownFilter();
+            renderTechnicians();
+        } catch (err) {
+            alert(t('alertTechSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+        }
+    }
+
+    function escJs(str) { return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+
+    function renderTechGuideContent() {
+        const container = document.getElementById('techGuideContent');
+        let html = `<table style="width:100%; border-collapse:collapse; margin-top:10px;"><thead><tr><th>${t('guideThName')}</th><th>${t('guideThPhone')}</th><th>${t('guideThActions')}</th></tr></thead><tbody>`;
+
+        let techMap = {};
+        savedJobs.forEach(job => {
+            (job.technicians || []).forEach(tech => {
+                if (!tech.name) return;
+                techMap[tech.name] = (techMap[tech.name] || 0) + calculateJobTechDues(tech, job.totalRevenue, job.materialCost);
+            });
+        });
+
+        const allNames = new Set([...Object.keys(techMap), ...Object.keys(technicianPhones)]);
+        if (allNames.size === 0) { container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:20px;">${t('guideEmpty')}</p>`; return; }
+
+        allNames.forEach(name => {
+            const dues = techMap[name] || 0;
+            const rawPhone = technicianPhones[name] || '';
+            const phoneDisplay = rawPhone ? (() => { const { code, local } = splitPhoneForEdit(rawPhone); return code === 'other' ? rawPhone : `+${code} ${local}`; })() : t('guideNA');
+            html += `<tr><td><strong>${name}</strong></td><td>${phoneDisplay}</td>
+                <td style="white-space:nowrap;">
+                    <button class="secondary" onclick="sendWhatsAppTech('${escJs(name)}', '${escJs(rawPhone)}', ${dues})" style="padding:4px 8px; font-size:0.75rem; background:#059669;">${t('guideWhatsAppBtn')}</button>
+                    <button class="secondary" onclick="openEditTechnicianModal('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#0284c7;">${t('editBtn')}</button>
+                    <button class="danger" onclick="deleteTechnicianFromDirectory('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem;">${t('deleteBtn')}</button>
+                </td></tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    function updateTechDropdownFilter() {
+        const select = document.getElementById('filterTech');
+        select.innerHTML = `<option value="">${t('allTechs')}</option>`;
+        getUniqueRegisteredTechnicians().forEach(name => {
+            const opt = document.createElement('option'); opt.value = name; opt.innerText = name; select.appendChild(opt);
+        });
+    }
+
+    function filterJobs() {
+        const searchVal = document.getElementById('searchInput').value.toLowerCase();
+        const statusVal = document.getElementById('filterStatus').value;
+        const actualTechVal = document.getElementById('filterTech').value;
+
+        document.querySelectorAll('#jobsTableBody tr').forEach(row => {
+            const jobId = row.getAttribute('data-id');
+            if (!jobId) return;
+            const job = savedJobs.find(j => j.id === jobId);
+            if (!job) return;
+
+            const matchSearch = (job.clientName && job.clientName.toLowerCase().includes(searchVal)) ||
+                                (job.clientPhone && job.clientPhone.toLowerCase().includes(searchVal)) ||
+                                (job.clientAddress && job.clientAddress.toLowerCase().includes(searchVal));
+            const matchTech = !actualTechVal || (job.technicians || []).some(tech => tech.name === actualTechVal);
+            const matchStatus = !statusVal || job.jobStatus === statusVal;
+            const rem = jobRemaining(job);
+            const matchDebt = !onlyShowDebt || rem > 0;
+
+            row.style.display = (matchSearch && matchTech && matchStatus && matchDebt) ? '' : 'none';
+        });
+    }
+
+    // Numbers are now assembled with an explicit country code when entered (buildFullPhone),
+    // so this just cleans stray formatting characters — it no longer guesses a country.
+    function normalizePhone(phone) {
+        if (!phone) return '';
+        return String(phone).replace(/[^\d]/g, '');
+    }
+
+    function sendWhatsAppTech(name, phone, dues) {
+        const normalized = normalizePhone(phone);
+        if (!normalized) { alert(t('alertPhoneUnavailable')); return; }
+        const msg = currentLang === 'ar'
+            ? `مرحباً بك يا ${name}، إجمالي المستحقات الخاصة بك حتى الآن هو: $${dues.toFixed(2)}`
+            : `Hi ${name}, your total dues so far are: $${dues.toFixed(2)}`;
+        window.open(`https://wa.me/${normalized}?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    function sendWhatsAppShareSM() {
+        let totalShareS = 0, totalShareM = 0;
+        savedJobs.forEach(job => { const { shareS, shareM } = jobNet(job); totalShareS += shareS; totalShareM += shareM; });
+        const msg = currentLang === 'ar'
+            ? `تقرير حصص الأرباح:\nحصة S (40%): $${totalShareS.toFixed(2)}\nحصة M (40%): $${totalShareM.toFixed(2)}`
+            : `Profit Share Report:\nS Share (40%): $${totalShareS.toFixed(2)}\nM Share (40%): $${totalShareM.toFixed(2)}`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+</script>
+</body>
+</html>
