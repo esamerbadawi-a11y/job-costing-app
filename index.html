@@ -9,6 +9,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <style>
         :root {
             --bg-dark: #0b0f19; --card-dark: #131b2e; --card-hover: #1a243f; --border-color: #22304f;
@@ -78,13 +79,32 @@
 </head>
 <body>
 
-<div class="container" id="pdfContentArea">
+<div id="loginScreen" style="display:none; min-height:100vh; align-items:center; justify-content:center;">
+    <div style="max-width:380px; margin:15vh auto; background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; padding:28px; box-shadow:0 10px 30px rgba(0,0,0,0.4);">
+        <h2 style="color:#38bdf8; font-size:1.2rem; margin-bottom:18px; text-align:center;">🔒 <span data-i18n="loginTitle"></span></h2>
+        <div class="form-group">
+            <label data-i18n="loginEmailLabel"></label>
+            <input type="email" id="loginEmail" autocomplete="username">
+        </div>
+        <div class="form-group">
+            <label data-i18n="loginPasswordLabel"></label>
+            <input type="password" id="loginPassword" autocomplete="current-password" onkeydown="if(event.key==='Enter') doLogin();">
+        </div>
+        <div id="loginError" style="display:none; color:#f87171; font-size:0.82rem; margin-bottom:10px;"></div>
+        <button class="success" style="width:100%; padding:11px;" onclick="doLogin()" id="loginBtn" data-i18n="loginBtn"></button>
+    </div>
+</div>
+
+<div class="container" id="pdfContentArea" style="display:none;">
     <header>
         <h1><span>💵</span><span data-i18n="appTitle"></span></h1>
         <div class="header-actions">
+            <span id="currentUserBadge" style="align-self:center; font-size:0.78rem; color:var(--text-muted);"></span>
+            <button class="danger" onclick="doLogout()" data-i18n="logoutBtn"></button>
             <button class="secondary" onclick="toggleLanguage()" id="langToggleBtn">English 🌐</button>
             <button class="secondary" onclick="openTechGuideModal()" data-i18n="guideBtn"></button>
             <button class="secondary" onclick="openExpenseReportModal()" data-i18n="expenseReportBtn"></button>
+            <button class="secondary" onclick="openActivityLogModal()" data-i18n="activityLogBtn"></button>
             <button class="success" onclick="exportBackupJSON()" style="background:#0f766e;" data-i18n="exportBackupBtn"></button>
             <button class="secondary" onclick="document.getElementById('importBackupInput').click()" style="border-color:#0f766e; color:#2dd4bf;" data-i18n="importBackupBtn"></button>
             <input type="file" id="importBackupInput" accept=".json" style="display:none;" onchange="importBackupJSON(event)">
@@ -314,12 +334,37 @@
     </div>
 </div>
 
+<div id="activityLogModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:90%; max-width:650px; max-height:85vh; overflow-y:auto; padding:25px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.2rem;">🕒 <span data-i18n="activityLogTitle"></span></h2>
+            <button class="danger" onclick="closeActivityLogModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+        <div id="activityLogContent" style="font-size:0.85rem; line-height:1.7; color:var(--text-main);"></div>
+    </div>
+</div>
+
 <script>
     /* ---------------- i18n ---------------- */
     let currentLang = 'ar';
     const T = {
         appTitle: { ar: 'نظام إدارة وحساب الشغلانات المرن الاحترافي', en: 'Flexible Professional Job Costing System' },
         guideBtn: { ar: 'دليل الفنيين', en: 'Technicians Guide' },
+        loginTitle: { ar: 'تسجيل الدخول', en: 'Sign In' },
+        loginEmailLabel: { ar: 'الإيميل:', en: 'Email:' },
+        loginPasswordLabel: { ar: 'كلمة المرور:', en: 'Password:' },
+        loginBtn: { ar: 'دخول', en: 'Sign In' },
+        logoutBtn: { ar: 'خروج', en: 'Logout' },
+        activityLogBtn: { ar: '🕒 سجل النشاط', en: '🕒 Activity Log' },
+        activityLogTitle: { ar: 'سجل النشاط — مين عمل إيه', en: 'Activity Log — Who Did What' },
+        activityLogEmpty: { ar: 'لسه مفيش أي نشاط مسجل.', en: 'No activity recorded yet.' },
+        activityLogError: { ar: 'حصل خطأ في تحميل السجل.', en: 'Error loading the log.' },
+        activityWhen: { ar: 'الوقت', en: 'When' },
+        activityWho: { ar: 'مين', en: 'Who' },
+        activityWhat: { ar: 'إيه', en: 'What' },
+        activityAdded: { ar: 'أضاف', en: 'Added' },
+        activityEdited: { ar: 'عدّل', en: 'Edited' },
+        activityDeleted: { ar: 'مسح', en: 'Deleted' },
         expenseReportBtn: { ar: '📊 تحليل المصروفات', en: '📊 Expense Report' },
         expenseReportTitle: { ar: 'تحليل المصروفات حسب النوع (كل الشغلانات)', en: 'Expenses by Category (All Jobs)' },
         expenseReportEmpty: { ar: 'لا توجد مصروفات مسجلة حتى الآن.', en: 'No expenses recorded yet.' },
@@ -541,11 +586,54 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const auth = firebase.auth();
     const JOBS_DOC = db.collection('jobCostingApp').doc('savedJobs');
     const TECHS_DOC = db.collection('jobCostingApp').doc('technicianPhones');
+    const ACTIVITY_LOG = db.collection('jobCostingApp').doc('activityLog');
 
     async function saveSavedJobsData(){ await JOBS_DOC.set({ jobs: savedJobs }); }
     async function saveTechPhonesData(){ await TECHS_DOC.set({ phones: technicianPhones }); }
+
+    let currentUserEmail = null;
+    let activityLogEntries = [];
+
+    // Appends one entry to a shared activity log so everyone can see who added,
+    // edited, or deleted what, and when.
+    async function logActivity(action, clientName) {
+        try {
+            const entry = { action, clientName, by: currentUserEmail || '?', at: new Date().toISOString() };
+            const doc = await ACTIVITY_LOG.get();
+            const entries = (doc.exists && doc.data().entries) ? doc.data().entries : [];
+            entries.unshift(entry);
+            await ACTIVITY_LOG.set({ entries: entries.slice(0, 200) }); // keep the log from growing forever
+        } catch (e) { console.error('Activity log error:', e); }
+    }
+
+    function doLogin() {
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        const errBox = document.getElementById('loginError');
+        errBox.style.display = 'none';
+        auth.signInWithEmailAndPassword(email, password).catch(err => {
+            errBox.textContent = currentLang === 'ar' ? 'الإيميل أو الباسورد غلط.' : 'Wrong email or password.';
+            errBox.style.display = 'block';
+        });
+    }
+    function doLogout() { auth.signOut(); }
+
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            currentUserEmail = user.email;
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('pdfContentArea').style.display = 'block';
+            document.getElementById('currentUserBadge').textContent = user.email;
+            setupRealtimeSync();
+        } else {
+            currentUserEmail = null;
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('pdfContentArea').style.display = 'none';
+        }
+    });
 
     let technicians = [];
     let expenseItems = [];
@@ -574,7 +662,11 @@
 
     // Live-syncs with Firestore: fires immediately with the current data, then again every
     // time it changes — whether the change came from this browser or a partner's.
+    let realtimeSyncStarted = false;
     function setupRealtimeSync() {
+        if (realtimeSyncStarted) return; // avoid attaching duplicate listeners on repeated logins
+        realtimeSyncStarted = true;
+
         JOBS_DOC.onSnapshot(doc => {
             const jobs = (doc.exists && doc.data().jobs) ? doc.data().jobs : [];
             jobs.forEach(j => { j.id = String(j.id); });
@@ -589,14 +681,13 @@
             safeCall(renderTechnicians);
             if (document.getElementById('techGuideModal').style.display !== 'none') safeCall(renderTechGuideContent);
         }, err => console.error('Firestore technicians sync error:', err));
-    }
 
-    (async function init(){
-        safeCall(applyLanguage);
         safeCall(updateUndoButtonUI);
         safeCall(() => switchScreen('log'));
-        setupRealtimeSync();
-    })();
+    }
+
+    // Translate the login screen (and everything else) right away, before any login happens.
+    safeCall(applyLanguage);
 
     // Shows a banner (and, if permitted, a browser notification) summarizing outstanding
     // balances. This only fires while the page is open — a real background alarm that works
@@ -1011,7 +1102,9 @@
             materialCost: parseVal(document.getElementById('materialCost').value),
             extraExpenses: parseVal(document.getElementById('extraExpenses').value),
             expenseItems: JSON.parse(JSON.stringify(expenseItems)),
-            technicians: JSON.parse(JSON.stringify(technicians))
+            technicians: JSON.parse(JSON.stringify(technicians)),
+            createdBy: currentUserEmail,
+            lastEditedBy: currentUserEmail
         };
 
         const validationErrors = validateJobBeforeSave(jobData, technicians, expenseItems);
@@ -1025,13 +1118,14 @@
 
         if (editingId) {
             const index = savedJobs.findIndex(j => j.id === editingId);
-            if (index !== -1) savedJobs[index] = jobData;
+            if (index !== -1) { jobData.createdBy = savedJobs[index].createdBy || currentUserEmail; savedJobs[index] = jobData; }
         } else {
             savedJobs.unshift(jobData);
         }
 
         try {
             await saveSavedJobsData();
+            logActivity(editingId ? 'edit' : 'add', clientName);
         } catch (err) {
             alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
             return;
@@ -1250,9 +1344,11 @@
         id = String(id);
         const jobIndex = savedJobs.findIndex(j => String(j.id) === id);
         if (jobIndex !== -1) { lastDeletedJobs = [savedJobs[jobIndex]]; updateUndoButtonUI(); }
+        const deletedClientName = jobIndex !== -1 ? savedJobs[jobIndex].clientName : '';
         savedJobs = savedJobs.filter(j => String(j.id) !== id);
         selectedJobIds.delete(id);
         await saveSavedJobsData();
+        logActivity('delete', deletedClientName);
         refreshAllViews();
     }
 
@@ -1262,9 +1358,11 @@
 
         lastDeletedJobs = savedJobs.filter(j => selectedJobIds.has(String(j.id)));
         updateUndoButtonUI();
+        const deletedNames = lastDeletedJobs.map(j => j.clientName).join(', ');
         savedJobs = savedJobs.filter(j => !selectedJobIds.has(String(j.id)));
         selectedJobIds.clear();
         await saveSavedJobsData();
+        logActivity('delete', deletedNames);
         refreshAllViews();
         const master = document.getElementById('selectAllMaster');
         if (master) master.checked = false;
@@ -1444,6 +1542,39 @@
 
     function openExpenseReportModal() { document.getElementById('expenseReportModal').style.display = 'flex'; renderExpenseReportContent(); }
     function closeExpenseReportModal() { document.getElementById('expenseReportModal').style.display = 'none'; }
+
+    function openActivityLogModal() { document.getElementById('activityLogModal').style.display = 'flex'; renderActivityLogContent(); }
+    function closeActivityLogModal() { document.getElementById('activityLogModal').style.display = 'none'; }
+
+    const ACTIVITY_ACTION_KEYS = { add: 'activityAdded', edit: 'activityEdited', delete: 'activityDeleted' };
+    async function renderActivityLogContent() {
+        const container = document.getElementById('activityLogContent');
+        container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:15px;">${currentLang === 'ar' ? 'جاري التحميل...' : 'Loading...'}</p>`;
+        try {
+            const doc = await ACTIVITY_LOG.get();
+            const entries = (doc.exists && doc.data().entries) ? doc.data().entries : [];
+            if (entries.length === 0) { container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:20px;">${t('activityLogEmpty')}</p>`; return; }
+
+            let html = '<table style="width:100%; border-collapse:collapse;"><thead><tr>' +
+                `<th style="text-align:${currentLang === 'ar' ? 'right' : 'left'}; padding:6px; color:var(--text-muted); font-size:0.78rem;">${t('activityWhen')}</th>` +
+                `<th style="text-align:${currentLang === 'ar' ? 'right' : 'left'}; padding:6px; color:var(--text-muted); font-size:0.78rem;">${t('activityWho')}</th>` +
+                `<th style="text-align:${currentLang === 'ar' ? 'right' : 'left'}; padding:6px; color:var(--text-muted); font-size:0.78rem;">${t('activityWhat')}</th>` +
+                '</tr></thead><tbody>';
+            entries.forEach(e => {
+                const when = new Date(e.at).toLocaleString(currentLang === 'ar' ? 'ar-EG' : 'en-US');
+                const actionColor = e.action === 'delete' ? '#f87171' : (e.action === 'add' ? '#34d399' : '#fbbf24');
+                html += `<tr style="border-top:1px solid var(--border-color);">
+                    <td style="padding:8px 6px; font-size:0.78rem; color:var(--text-muted); white-space:nowrap;">${when}</td>
+                    <td style="padding:8px 6px; font-size:0.8rem;">${e.by || '?'}</td>
+                    <td style="padding:8px 6px;"><span style="color:${actionColor}; font-weight:700;">${t(ACTIVITY_ACTION_KEYS[e.action] || e.action)}</span> — ${e.clientName || ''}</td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        } catch (e) {
+            container.innerHTML = `<p style="text-align:center; color:var(--danger); padding:20px;">${t('activityLogError')}</p>`;
+        }
+    }
 
     function renderExpenseReportContent() {
         const container = document.getElementById('expenseReportContent');
