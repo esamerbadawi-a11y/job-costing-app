@@ -446,6 +446,39 @@
     </div>
 </div>
 
+<div id="quickScheduleModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:90%; max-width:550px; max-height:85vh; overflow-y:auto; padding:25px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.15rem;">🗓️ <span data-i18n="quickScheduleTitle"></span></h2>
+            <button class="danger" onclick="closeQuickScheduleModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+
+        <div id="quickScheduleDayLabel" style="color:#38bdf8; font-weight:700; margin-bottom:12px;"></div>
+
+        <div style="display:flex; gap:8px; margin-bottom:14px;">
+            <button class="secondary" id="qsModeNewBtn" onclick="setQuickScheduleMode('new')" style="flex:1;" data-i18n="qsNewJobTab"></button>
+            <button class="secondary" id="qsModeExistingBtn" onclick="setQuickScheduleMode('existing')" style="flex:1;" data-i18n="qsExistingJobTab"></button>
+        </div>
+
+        <div id="qsNewJobFields">
+            <div class="form-group"><label data-i18n="lblClientName"></label><input type="text" id="qsClientName" data-i18n-ph="phClientName"></div>
+            <div class="form-group"><label data-i18n="lblAddress"></label><input type="text" id="qsClientAddress" data-i18n-ph="phAddress"></div>
+        </div>
+        <div id="qsExistingJobFields" style="display:none;">
+            <div class="form-group"><label data-i18n="qsPickExisting"></label><select id="qsExistingJobSelect"></select></div>
+        </div>
+
+        <div class="form-group"><label data-i18n="lblScheduledTime"></label><input type="time" id="qsTime"></div>
+
+        <div class="form-group">
+            <label data-i18n="qsTeamLabel"></label>
+            <div id="qsTeamCheckboxes" style="display:flex; flex-wrap:wrap; gap:8px; background:#080d1a; border:1px solid var(--border-color); border-radius:8px; padding:10px;"></div>
+        </div>
+
+        <button class="success" style="width:100%; padding:11px;" onclick="saveQuickSchedule()" data-i18n="qsSaveBtn"></button>
+    </div>
+</div>
+
 <script>
     /* ---------------- i18n ---------------- */
     let currentLang = 'en';
@@ -521,6 +554,13 @@
         showAllPendingBtn: { ar: '📋 كل الشغل اللي لسه', en: '📋 All Unfinished Jobs' },
         allPendingSubtitle: { ar: 'كل الشغلانات اللي لسه مخلصتش، من كل التواريخ.', en: 'All unfinished jobs, across every date.' },
         overdueLabel: { ar: 'متأخرة', en: 'Overdue' },
+        quickScheduleTitle: { ar: 'جدولة سريعة', en: 'Quick Schedule' },
+        qsNewJobTab: { ar: 'شغلانة جديدة', en: 'New Job' },
+        qsExistingJobTab: { ar: 'شغلانة موجودة', en: 'Existing Job' },
+        qsPickExisting: { ar: 'اختار الشغلانة:', en: 'Pick the Job:' },
+        qsTeamLabel: { ar: 'مين هيروح (تقدر تختار أكتر من واحد):', en: 'Who\'s going (pick one or more):' },
+        qsSaveBtn: { ar: 'حفظ في الجدول', en: 'Save to Schedule' },
+        qsAddBtn: { ar: 'إضافة', en: 'Add' },
         tabAppointmentsLabel: { ar: '📆 المواعيد', en: '📆 Appointments' },
         appointmentsTitle: { ar: '📆 مواعيد وطلبات العملاء', en: '📆 Customer Appointments & Requests' },
         addAppointmentTitle: { ar: 'إضافة طلب ميعاد جديد', en: 'Add New Appointment Request' },
@@ -1299,7 +1339,12 @@
 
         if (editingId) {
             const index = savedJobs.findIndex(j => j.id === editingId);
-            if (index !== -1) { jobData.createdBy = savedJobs[index].createdBy || currentUserEmail; savedJobs[index] = jobData; }
+            if (index !== -1) {
+                jobData.createdBy = savedJobs[index].createdBy || currentUserEmail;
+                if (savedJobs[index].assignedTeam !== undefined) jobData.assignedTeam = savedJobs[index].assignedTeam;
+                if (savedJobs[index].dayOrder !== undefined) jobData.dayOrder = savedJobs[index].dayOrder;
+                savedJobs[index] = jobData;
+            }
         } else {
             savedJobs.unshift(jobData);
         }
@@ -2112,6 +2157,94 @@
 
     function escJs(str) { return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
 
+    /* ---------------- Quick Schedule (Weekly Board) ---------------- */
+    let quickScheduleDay = '';
+    let quickScheduleMode = 'new';
+
+    function openQuickScheduleModal(dateStr) {
+        quickScheduleDay = dateStr;
+        quickScheduleMode = 'new';
+        document.getElementById('quickScheduleDayLabel').textContent = dateStr;
+        document.getElementById('qsClientName').value = '';
+        document.getElementById('qsClientAddress').value = '';
+        document.getElementById('qsTime').value = '';
+
+        // Existing-job dropdown: any job not yet marked "done".
+        const sel = document.getElementById('qsExistingJobSelect');
+        const activeJobs = savedJobs.filter(j => j.jobStatus !== 'خلص');
+        sel.innerHTML = activeJobs.map(j => `<option value="${j.id}">${j.clientName || ''} (${j.startDate || t('noDateSet')})</option>`).join('')
+            || `<option value="">${t('noJobsThisDay')}</option>`;
+
+        // Team checkboxes: the two partners first, then every registered technician.
+        const names = ['SAMER', 'MOHAMED', ...getUniqueRegisteredTechnicians()];
+        const uniqueNames = [...new Set(names)];
+        document.getElementById('qsTeamCheckboxes').innerHTML = uniqueNames.map(name => `
+            <label style="display:flex; align-items:center; gap:5px; font-size:0.82rem; cursor:pointer;">
+                <input type="checkbox" class="qs-team-check" value="${name}"> ${name}
+            </label>`).join('');
+
+        setQuickScheduleMode('new');
+        document.getElementById('quickScheduleModal').style.display = 'flex';
+    }
+
+    function closeQuickScheduleModal() { document.getElementById('quickScheduleModal').style.display = 'none'; }
+
+    function setQuickScheduleMode(mode) {
+        quickScheduleMode = mode;
+        document.getElementById('qsNewJobFields').style.display = mode === 'new' ? 'block' : 'none';
+        document.getElementById('qsExistingJobFields').style.display = mode === 'existing' ? 'block' : 'none';
+        document.getElementById('qsModeNewBtn').style.background = mode === 'new' ? 'var(--primary)' : '';
+        document.getElementById('qsModeExistingBtn').style.background = mode === 'existing' ? 'var(--primary)' : '';
+    }
+
+    async function saveQuickSchedule() {
+        const time = document.getElementById('qsTime').value;
+        const team = Array.from(document.querySelectorAll('.qs-team-check:checked')).map(cb => cb.value);
+
+        if (quickScheduleMode === 'new') {
+            const clientName = document.getElementById('qsClientName').value.trim();
+            if (!clientName) { alert(t('alertClientNameRequired')); return; }
+            const newJob = {
+                id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+                clientName,
+                clientPhone: '',
+                jobStatus: 'شغال',
+                clientAddress: document.getElementById('qsClientAddress').value.trim(),
+                clientDescription: '',
+                startDate: quickScheduleDay,
+                endDate: quickScheduleDay,
+                scheduledTime: time,
+                totalRevenue: 0, amountReceived: 0, amountRemaining: 0,
+                followUpDate: '', materialCost: 0, extraExpenses: 0,
+                expenseItems: [], technicians: [],
+                assignedTeam: team,
+                createdBy: currentUserEmail, lastEditedBy: currentUserEmail
+            };
+            savedJobs.unshift(newJob);
+            try {
+                await saveSavedJobsData();
+                logActivity('add', clientName);
+            } catch (err) { alert(t('alertJobSaveFailed')); return; }
+        } else {
+            const jobId = document.getElementById('qsExistingJobSelect').value;
+            if (!jobId) { return; }
+            const idx = savedJobs.findIndex(j => j.id === jobId);
+            if (idx === -1) return;
+            savedJobs[idx].startDate = quickScheduleDay;
+            savedJobs[idx].scheduledTime = time;
+            savedJobs[idx].assignedTeam = team;
+            savedJobs[idx].lastEditedBy = currentUserEmail;
+            try {
+                await saveSavedJobsData();
+                logActivity('edit', savedJobs[idx].clientName);
+            } catch (err) { alert(t('alertJobSaveFailed')); return; }
+        }
+
+        closeQuickScheduleModal();
+        refreshAllViews();
+        renderWeeklyBoard();
+    }
+
     /* ---------------- Appointments / Scheduling ---------------- */
     async function saveAppointment() {
         const clientName = document.getElementById('apptClientName').value.trim();
@@ -2240,7 +2373,9 @@
     }
 
     function renderJobCard(job, isOverdue) {
-        const techNames = (job.technicians || []).map(tc => tc.name).filter(Boolean).join(', ') || t('noTechsAdded');
+        const teamNames = (job.assignedTeam && job.assignedTeam.length > 0)
+            ? job.assignedTeam.join(', ')
+            : ((job.technicians || []).map(tc => tc.name).filter(Boolean).join(', ') || t('noTechsAdded'));
         const timeLabel = job.scheduledTime ? `<span style="color:#fbbf24; font-weight:700;">${job.scheduledTime}</span> — ` : '';
         return `<div class="tech-card" draggable="true" data-job-id="${job.id}"
                 ondragstart="dragJobId='${job.id}'; event.dataTransfer.effectAllowed='move';"
@@ -2251,7 +2386,7 @@
                 <div>
                     <div>${timeLabel}<strong>${job.clientName || ''}</strong>${isOverdue ? ` <span style="color:#f87171; font-size:0.72rem; font-weight:700;">⚠️ ${t('overdueLabel')}</span>` : ''}</div>
                     <div style="font-size:0.78rem; color:var(--text-muted);">${job.clientAddress || ''}${showAllPendingMode ? ' — ' + (job.startDate || t('noDateSet')) : ''}</div>
-                    <div style="font-size:0.78rem; color:#38bdf8;">${t('weeklyTechsLabel')} ${techNames}</div>
+                    <div style="font-size:0.78rem; color:#38bdf8;">${t('weeklyTechsLabel')} ${teamNames}</div>
                 </div>
                 <button class="secondary" onclick="editJob('${job.id}')" style="padding:4px 10px; font-size:0.75rem; align-self:center;">${t('editBtn')}</button>
             </div>
@@ -2312,9 +2447,12 @@
             const dayJobs = sortDayJobs(activeJobs.filter(j => (j.startDate || '') === dateStr));
             const isToday = dateStr === todayStr;
             html += `<div style="margin-bottom:14px; border:1px solid var(--border-color); border-radius:10px; overflow:hidden;">
-                <div style="background:${isToday ? 'rgba(14,165,233,0.15)' : '#080d1a'}; padding:8px 14px; font-weight:700; color:${isToday ? '#38bdf8' : 'var(--text-muted)'}; display:flex; justify-content:space-between;">
+                <div style="background:${isToday ? 'rgba(14,165,233,0.15)' : '#080d1a'}; padding:8px 14px; font-weight:700; color:${isToday ? '#38bdf8' : 'var(--text-muted)'}; display:flex; justify-content:space-between; align-items:center;">
                     <span>${dayNames[d.getDay() === 0 ? 6 : d.getDay() - 1]} — ${dateStr}</span>
-                    <span style="font-weight:400; font-size:0.78rem;">${dayJobs.length} ${t('jobsWord')}</span>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-weight:400; font-size:0.78rem;">${dayJobs.length} ${t('jobsWord')}</span>
+                        <button class="success" onclick="openQuickScheduleModal('${dateStr}')" style="padding:3px 10px; font-size:0.72rem;">+ ${t('qsAddBtn')}</button>
+                    </div>
                 </div>
                 <div style="padding:10px 14px 4px;" ondragover="event.preventDefault();" ondrop="handleJobDrop(event, '${dateStr}', '${dayJobs[0] ? dayJobs[0].id : ''}')">`;
             if (dayJobs.length === 0) {
