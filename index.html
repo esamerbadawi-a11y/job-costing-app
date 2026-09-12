@@ -23,11 +23,13 @@
             --bg-dark: #0b0f19; --card-dark: #131b2e; --card-hover: #1a243f; --border-color: #22304f;
             --text-main: #f8fafc; --text-muted: #94a3b8; --primary: #4f46e5; --primary-hover: #4338ca;
             --success: #059669; --danger: #e11d48; --warning: #d97706; --accent: #0ea5e9;
+            --secondary-bg: #1e293b; --secondary-hover-bg: #334155;
         }
         body.light-theme {
             --bg-dark: #f1f5f9; --card-dark: #ffffff; --card-hover: #eef2f7; --border-color: #d6dde6;
             --text-main: #0f172a; --text-muted: #5b6b82; --primary: #4f46e5; --primary-hover: #4338ca;
             --success: #059669; --danger: #e11d48; --warning: #d97706; --accent: #0ea5e9;
+            --secondary-bg: #e2e8f0; --secondary-hover-bg: #cbd5e1;
         }
         body.light-theme input, body.light-theme select, body.light-theme textarea { background: #f8fafc; color: #0f172a; }
         body.light-theme table { background: var(--card-dark); }
@@ -60,8 +62,8 @@
         .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
         button { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         button:hover { background: var(--primary-hover); transform: translateY(-1px); }
-        button.secondary { background: #1e293b; color: var(--text-main); border: 1px solid var(--border-color); }
-        button.secondary:hover { background: #334155; }
+        button.secondary { background: var(--secondary-bg); color: var(--text-main); border: 1px solid var(--border-color); }
+        button.secondary:hover { background: var(--secondary-hover-bg); }
         button.danger { background: var(--danger); }
         button.danger:hover { background: #be123c; }
         button.success { background: var(--success); }
