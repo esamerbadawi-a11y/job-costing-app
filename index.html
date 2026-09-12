@@ -157,7 +157,10 @@
                     <input type="text" id="apptClientName" data-i18n-ph="apptNamePh">
                     <input type="text" id="apptClientPhone" placeholder="(555) 123-4567">
                 </div>
-                <input type="text" id="apptClientAddress" data-i18n-ph="apptAddressPh" style="margin-bottom:10px;">
+                <div class="form-group" style="position: relative;">
+                    <input type="text" id="apptClientAddress" data-i18n-ph="apptAddressPh" oninput="onAddressInput('apptClientAddress','apptAddressAutocompleteList')" autocomplete="off">
+                    <div id="apptAddressAutocompleteList" class="autocomplete-items" style="display: none;"></div>
+                </div>
                 <div class="grid-2" style="margin-bottom:10px;">
                     <input type="date" id="apptDate">
                     <input type="time" id="apptTime">
@@ -295,7 +298,7 @@
 
                 <div class="form-group" style="position: relative;">
                     <label data-i18n="lblAddress"></label>
-                    <input type="text" id="clientAddress" data-i18n-ph="phAddress" oninput="onAddressInput()" autocomplete="off">
+                    <input type="text" id="clientAddress" data-i18n-ph="phAddress" oninput="onAddressInput('clientAddress','addressAutocompleteList')" autocomplete="off">
                     <div id="addressAutocompleteList" class="autocomplete-items" style="display: none;"></div>
                 </div>
                 <div class="form-group"><label data-i18n="lblDescription"></label><textarea id="clientDescription" data-i18n-ph="phDescription"></textarea></div>
@@ -923,10 +926,10 @@
         return short || r.display_name;
     }
 
-    function onAddressInput() {
+    function onAddressInput(inputId, listId) {
         clearTimeout(addressAutocompleteTimer);
-        const query = document.getElementById('clientAddress').value.trim();
-        const listDiv = document.getElementById('addressAutocompleteList');
+        const query = document.getElementById(inputId).value.trim();
+        const listDiv = document.getElementById(listId);
         if (query.length < 3) { listDiv.style.display = 'none'; listDiv.innerHTML = ''; return; }
 
         listDiv.innerHTML = `<div style="color:var(--text-muted); cursor:default; pointer-events:none;">${currentLang === 'ar' ? 'جاري البحث...' : 'Searching...'}</div>`;
@@ -946,7 +949,7 @@
                     const item = document.createElement('div');
                     item.innerHTML = `<span style="display:block;">${label}</span>${label !== r.display_name ? `<span style="display:block; font-size:0.7rem; color:var(--text-muted); margin-top:2px;">${r.display_name}</span>` : ''}`;
                     item.onclick = () => {
-                        document.getElementById('clientAddress').value = label;
+                        document.getElementById(inputId).value = label;
                         listDiv.style.display = 'none';
                     };
                     listDiv.appendChild(item);
@@ -1005,6 +1008,9 @@
         }
         if (!e.target.closest('#clientAddress') && !e.target.closest('#addressAutocompleteList')) {
             document.getElementById('addressAutocompleteList').style.display = 'none';
+        }
+        if (!e.target.closest('#apptClientAddress') && !e.target.closest('#apptAddressAutocompleteList')) {
+            document.getElementById('apptAddressAutocompleteList').style.display = 'none';
         }
     });
 
