@@ -24,6 +24,15 @@
             --text-main: #f8fafc; --text-muted: #94a3b8; --primary: #4f46e5; --primary-hover: #4338ca;
             --success: #059669; --danger: #e11d48; --warning: #d97706; --accent: #0ea5e9;
         }
+        body.light-theme {
+            --bg-dark: #f1f5f9; --card-dark: #ffffff; --card-hover: #eef2f7; --border-color: #d6dde6;
+            --text-main: #0f172a; --text-muted: #5b6b82; --primary: #4f46e5; --primary-hover: #4338ca;
+            --success: #059669; --danger: #e11d48; --warning: #d97706; --accent: #0ea5e9;
+        }
+        body.light-theme input, body.light-theme select, body.light-theme textarea { background: #f8fafc; color: #0f172a; }
+        body.light-theme table { background: var(--card-dark); }
+        body.light-theme th { background: #eef2f7; color: var(--text-muted); }
+        body.light-theme .tech-card { background: #f8fafc; }
         html { font-size: 15px; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
         body { background-color: var(--bg-dark); color: var(--text-main); padding: 16px; min-height: 100vh; }
@@ -108,9 +117,16 @@
     <header>
         <h1><span>💵</span><span data-i18n="appTitle"></span></h1>
         <div class="header-actions">
-            <span id="currentUserBadge" style="align-self:center; font-size:0.78rem; color:var(--text-muted);"></span>
-            <button class="danger" onclick="doLogout()" data-i18n="logoutBtn"></button>
-            <button class="secondary" onclick="toggleLanguage()" id="langToggleBtn">عربي 🌐</button>
+            <div style="position:relative; align-self:center;">
+                <button class="secondary" onclick="toggleUserMenu()" id="userMenuTrigger" style="display:flex; align-items:center; gap:6px;">
+                    👤 <span id="currentUserBadge"></span> ▾
+                </button>
+                <div id="userMenuDropdown" style="display:none; position:absolute; top:110%; inset-inline-start:0; background:var(--card-dark); border:1px solid var(--border-color); border-radius:10px; box-shadow:0 10px 25px rgba(0,0,0,0.4); min-width:180px; z-index:1000; overflow:hidden;">
+                    <button class="secondary" onclick="toggleLanguage()" id="langToggleBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;">عربي 🌐</button>
+                    <button class="secondary" onclick="toggleTheme()" id="themeToggleBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
+                    <button class="danger" onclick="doLogout()" data-i18n="logoutBtn" style="width:100%; border-radius:0; text-align:start; padding:10px 14px;"></button>
+                </div>
+            </div>
             <button class="secondary" onclick="openTechGuideModal()" data-i18n="guideBtn"></button>
             <button class="secondary" onclick="openExpenseReportModal()" data-i18n="expenseReportBtn"></button>
             <button class="secondary" id="activityLogBtnEl" style="display:none;" onclick="openActivityLogModal()" data-i18n="activityLogBtn"></button>
@@ -160,7 +176,7 @@
         <div class="card">
             <h2 style="margin:0 0 15px; border:none; padding:0;" data-i18n="appointmentsTitle"></h2>
             <div style="background:#080d1a; border:1px solid var(--border-color); padding:15px; border-radius:10px; margin-bottom:18px;">
-                <h3 style="color:#38bdf8; font-size:0.95rem; margin-bottom:10px;" data-i18n="addAppointmentTitle"></h3>
+                <h3 style="color:#38bdf8; font-size:0.95rem; margin-bottom:10px;" id="addAppointmentTitle" data-i18n="addAppointmentTitle"></h3>
                 <div class="grid-2" style="margin-bottom:10px;">
                     <input type="text" id="apptClientName" data-i18n-ph="apptNamePh">
                     <input type="text" id="apptClientPhone" placeholder="(555) 123-4567">
@@ -174,7 +190,10 @@
                     <input type="time" id="apptTime">
                 </div>
                 <input type="text" id="apptNote" data-i18n-ph="apptNotePh" style="margin-bottom:10px;">
-                <button class="success" onclick="saveAppointment()" data-i18n="saveAppointmentBtn"></button>
+                <div style="display:flex; gap:8px;">
+                    <button class="success" onclick="saveAppointment()"><span id="saveAppointmentBtnLabel" data-i18n="saveAppointmentBtn"></span></button>
+                    <button class="secondary" onclick="resetAppointmentForm()" data-i18n="cancelBtn"></button>
+                </div>
             </div>
             <div id="appointmentsContent"></div>
         </div>
@@ -494,6 +513,8 @@
         loginPasswordLabel: { ar: 'كلمة المرور:', en: 'Password:' },
         loginBtn: { ar: 'دخول', en: 'Sign In' },
         logoutBtn: { ar: 'خروج', en: 'Logout' },
+        darkModeBtn: { ar: '🌙 الوضع الغامق', en: '🌙 Dark Mode' },
+        lightModeBtn: { ar: '☀️ الوضع الفاتح', en: '☀️ Light Mode' },
         activityLogBtn: { ar: '🕒 سجل النشاط', en: '🕒 Activity Log' },
         activityLogTitle: { ar: 'سجل النشاط — مين عمل إيه', en: 'Activity Log — Who Did What' },
         activityLogEmpty: { ar: 'لسه مفيش أي نشاط مسجل.', en: 'No activity recorded yet.' },
@@ -568,6 +589,8 @@
         tabAppointmentsLabel: { ar: '📆 المواعيد', en: '📆 Appointments' },
         appointmentsTitle: { ar: '📆 مواعيد وطلبات العملاء', en: '📆 Customer Appointments & Requests' },
         addAppointmentTitle: { ar: 'إضافة طلب ميعاد جديد', en: 'Add New Appointment Request' },
+        editAppointmentTitle: { ar: 'تعديل الميعاد', en: 'Edit Appointment' },
+        updateAppointmentBtn: { ar: 'حفظ التعديلات', en: 'Update Appointment' },
         apptNamePh: { ar: 'اسم العميل', en: 'Client Name' },
         apptAddressPh: { ar: 'العنوان', en: 'Address' },
         apptNotePh: { ar: 'ملاحظة (تفاصيل الطلب، اختياري)', en: 'Note (request details, optional)' },
@@ -734,6 +757,32 @@
         applyLanguage();
     }
 
+    function toggleUserMenu() {
+        const menu = document.getElementById('userMenuDropdown');
+        menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    }
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#userMenuTrigger') && !e.target.closest('#userMenuDropdown')) {
+            document.getElementById('userMenuDropdown').style.display = 'none';
+        }
+    });
+
+    function updateThemeToggleLabel() {
+        const isLight = document.body.classList.contains('light-theme');
+        document.getElementById('themeToggleBtn').innerText = isLight ? t('darkModeBtn') : t('lightModeBtn');
+    }
+    function toggleTheme() {
+        document.body.classList.toggle('light-theme');
+        const isLight = document.body.classList.contains('light-theme');
+        try { localStorage.setItem('jobCostingTheme', isLight ? 'light' : 'dark'); } catch (e) {}
+        updateThemeToggleLabel();
+    }
+    (function initTheme() {
+        try {
+            if (localStorage.getItem('jobCostingTheme') === 'light') document.body.classList.add('light-theme');
+        } catch (e) {}
+    })();
+
     function applyLanguage() {
         document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
         document.documentElement.lang = currentLang;
@@ -752,6 +801,8 @@
         const editingTechName = document.getElementById('editingTechName').value;
         document.getElementById('addTechFormTitle').innerText = editingTechName ? t('editTechFormTitle') : t('addTechFormTitle');
         document.getElementById('saveTechBtnLabel').innerText = editingTechName ? t('saveBtnUpdate') : t('saveTechBtn');
+        document.getElementById('addAppointmentTitle').innerText = editingApptId ? t('editAppointmentTitle') : t('addAppointmentTitle');
+        document.getElementById('saveAppointmentBtnLabel').innerText = editingApptId ? t('updateAppointmentBtn') : t('saveAppointmentBtn');
 
         safeCall(renderTechnicians);
         safeCall(renderExpenseItems);
@@ -760,6 +811,7 @@
         safeCall(updateTechDropdownFilter);
         safeCall(updateSelectedStats);
         safeCall(refreshDebtReminderBanner);
+        safeCall(updateThemeToggleLabel);
         if (document.getElementById('techGuideModal').style.display !== 'none') safeCall(renderTechGuideContent);
         if (document.getElementById('expenseReportModal').style.display !== 'none') safeCall(renderExpenseReportContent);
         if (document.getElementById('partnerAccountModal').style.display !== 'none') safeCall(renderPartnerAccountContent);
@@ -790,6 +842,7 @@
     async function saveTechPhonesData(){ await TECHS_DOC.set({ phones: technicianPhones }); }
 
     let currentUserEmail = null;
+    let editingApptId = '';
     let activityLogEntries = [];
 
     // Appends one entry to a shared activity log so everyone can see who added,
@@ -2254,12 +2307,39 @@
     }
 
     /* ---------------- Appointments / Scheduling ---------------- */
+
+    function editAppointment(id) {
+        const appt = appointments.find(a => a.id === id);
+        if (!appt) return;
+        editingApptId = id;
+        document.getElementById('apptClientName').value = appt.clientName || '';
+        document.getElementById('apptClientPhone').value = appt.clientPhone || '';
+        document.getElementById('apptClientAddress').value = appt.clientAddress || '';
+        document.getElementById('apptDate').value = appt.requestedDate || '';
+        document.getElementById('apptTime').value = appt.requestedTime || '';
+        document.getElementById('apptNote').value = appt.note || '';
+        document.getElementById('addAppointmentTitle').innerText = t('editAppointmentTitle');
+        document.getElementById('saveAppointmentBtnLabel').innerText = t('updateAppointmentBtn');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetAppointmentForm() {
+        editingApptId = '';
+        document.getElementById('apptClientName').value = '';
+        document.getElementById('apptClientPhone').value = '';
+        document.getElementById('apptClientAddress').value = '';
+        document.getElementById('apptDate').value = '';
+        document.getElementById('apptTime').value = '';
+        document.getElementById('apptNote').value = '';
+        document.getElementById('addAppointmentTitle').innerText = t('addAppointmentTitle');
+        document.getElementById('saveAppointmentBtnLabel').innerText = t('saveAppointmentBtn');
+    }
+
     async function saveAppointment() {
         const clientName = document.getElementById('apptClientName').value.trim();
         if (!clientName) { alert(t('alertClientNameRequired')); return; }
 
-        const entry = {
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+        const fields = {
             clientName,
             clientPhone: document.getElementById('apptClientPhone').value.trim(),
             clientAddress: document.getElementById('apptClientAddress').value.trim(),
@@ -2268,15 +2348,16 @@
             note: document.getElementById('apptNote').value.trim(),
             by: currentUserEmail || '?'
         };
+
         try {
-            appointments.unshift(entry);
+            if (editingApptId) {
+                const idx = appointments.findIndex(a => a.id === editingApptId);
+                if (idx !== -1) appointments[idx] = { ...appointments[idx], ...fields };
+            } else {
+                appointments.unshift({ id: Date.now().toString() + Math.random().toString(36).substr(2, 5), ...fields });
+            }
             await APPOINTMENTS_DOC.set({ entries: appointments });
-            document.getElementById('apptClientName').value = '';
-            document.getElementById('apptClientPhone').value = '';
-            document.getElementById('apptClientAddress').value = '';
-            document.getElementById('apptDate').value = '';
-            document.getElementById('apptTime').value = '';
-            document.getElementById('apptNote').value = '';
+            resetAppointmentForm();
             renderAppointments();
         } catch (err) {
             alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
@@ -2326,6 +2407,7 @@
                     </div>
                     <div style="display:flex; gap:6px; align-self:center;">
                         <button class="success" onclick="convertAppointmentToJob('${appt.id}')" style="padding:6px 12px; font-size:0.78rem;">${t('convertToJobBtn')}</button>
+                        <button class="secondary" onclick="editAppointment('${appt.id}')" style="padding:6px 10px; font-size:0.78rem; background:#0284c7;">${t('editBtn')}</button>
                         <button class="danger" onclick="deleteAppointment('${appt.id}')" style="padding:6px 10px; font-size:0.78rem;">${t('deleteBtn')}</button>
                     </div>
                 </div>
