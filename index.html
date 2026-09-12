@@ -52,6 +52,7 @@
         button.warning { background: var(--warning); color: #fff; }
         button.warning:hover { background: #b45309; }
         .tech-card { background: #131b2e; border: 1px solid var(--border-color); border-radius: 12px; padding: 18px; margin-bottom: 15px; position: relative; }
+        .note-box { background: rgba(14,165,233,0.08); border: 1px dashed var(--accent); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 0.78rem; }
         .filters-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
         .filters-bar input, .filters-bar select { flex: 1; min-width: 140px; }
         .table-responsive { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border-color); }
@@ -330,6 +331,19 @@
                 <button class="secondary" onclick="closeAddTechnicianModal()" style="padding:8px 16px;" data-i18n="cancelBtn"></button>
             </div>
         </div>
+        <div style="background:#080d1a; border:1px solid var(--border-color); padding:12px; border-radius:10px; margin-bottom:15px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <div style="display:flex; align-items:center; gap:6px;">
+                <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="filterDateFromLabel"></label>
+                <input type="date" id="guideDateFrom" onchange="renderTechGuideContent()" style="min-width:130px;">
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+                <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="filterDateToLabel"></label>
+                <input type="date" id="guideDateTo" onchange="renderTechGuideContent()" style="min-width:130px;">
+            </div>
+            <button class="secondary" onclick="setGuideDateRange('today')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetTodayBtn"></button>
+            <button class="secondary" onclick="setGuideDateRange('week')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetWeekBtn"></button>
+            <button class="secondary" onclick="setGuideDateRange('clear')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
+        </div>
         <div id="techGuideContent" style="font-size:0.9rem; line-height:1.7; color:var(--text-main);"></div>
     </div>
 </div>
@@ -576,6 +590,10 @@
         cancelBtn: { ar: 'إلغاء', en: 'Cancel' },
         guideThName: { ar: 'اسم الفني', en: 'Name' },
         guideThPhone: { ar: 'رقم الهاتف', en: 'Phone' },
+        guideThDuesInPeriod: { ar: 'المستحق في الفترة دي', en: 'Dues in Period' },
+        guidePeriodNote: { ar: 'الأرقام دي محسوبة بس على الشغلانات في الفترة المحددة فوق.', en: 'These figures only cover jobs within the selected date range above.' },
+        presetTodayBtn: { ar: 'اليوم', en: 'Today' },
+        presetWeekBtn: { ar: 'الأسبوع ده', en: 'This Week' },
         guideThDues: { ar: 'إجمالي المستحقات', en: 'Total Dues' },
         guideThActions: { ar: 'الإجراءات', en: 'Actions' },
         guideNA: { ar: 'غير متوفر', en: 'N/A' },
@@ -1504,9 +1522,15 @@
         const nameH = 7, nameW = nameH * nameImg.aspect;
         doc.addImage(nameImg.dataUrl, 'PNG', 62, 10, nameW, nameH);
 
+        const dateFrom = document.getElementById('guideDateFrom').value;
+        const dateTo = document.getElementById('guideDateTo').value;
+
         const rows = [];
         let totalDues = 0, totalPaid = 0;
         savedJobs.forEach(job => {
+            const jobDate = job.startDate || '';
+            const inRange = (!dateFrom || (jobDate && jobDate >= dateFrom)) && (!dateTo || (jobDate && jobDate <= dateTo));
+            if (!inRange) return;
             (job.technicians || []).forEach(techEntry => {
                 if (techEntry.name !== techName) return;
                 const dues = calculateJobTechDues(techEntry, job.totalRevenue, job.materialCost);
@@ -1516,7 +1540,7 @@
             });
         });
 
-        if (rows.length === 0) { alert(currentLang === 'ar' ? 'الفني ده لسه مالوش شغلانات مسجلة.' : 'This technician has no recorded jobs yet.'); return; }
+        if (rows.length === 0) { alert(currentLang === 'ar' ? 'الفني ده لسه مالوش شغلانات مسجلة في الفترة دي.' : 'This technician has no recorded jobs in this period.'); return; }
 
         const headers = [["Date", "Client", "Pay Type", "Dues", "Paid", "Remaining"]];
         const data = rows.map(r => [r.date, r.client, r.type, "$" + r.dues.toFixed(2), "$" + r.paid.toFixed(2), "$" + r.remaining.toFixed(2)]);
@@ -1985,12 +2009,35 @@
 
     function escJs(str) { return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
 
+    function setGuideDateRange(preset) {
+        const fromEl = document.getElementById('guideDateFrom');
+        const toEl = document.getElementById('guideDateTo');
+        const today = new Date();
+        const iso = d => d.toISOString().split('T')[0];
+        if (preset === 'today') {
+            fromEl.value = iso(today); toEl.value = iso(today);
+        } else if (preset === 'week') {
+            const day = today.getDay(); // 0=Sunday
+            const start = new Date(today); start.setDate(today.getDate() - day);
+            fromEl.value = iso(start); toEl.value = iso(today);
+        } else {
+            fromEl.value = ''; toEl.value = '';
+        }
+        renderTechGuideContent();
+    }
+
     function renderTechGuideContent() {
         const container = document.getElementById('techGuideContent');
-        let html = `<table style="width:100%; border-collapse:collapse; margin-top:10px;"><thead><tr><th>${t('guideThName')}</th><th>${t('guideThPhone')}</th><th>${t('guideThActions')}</th></tr></thead><tbody>`;
+        const dateFrom = document.getElementById('guideDateFrom').value;
+        const dateTo = document.getElementById('guideDateTo').value;
+        const hasDateFilter = !!(dateFrom || dateTo);
+        const periodLabel = hasDateFilter ? `<div class="note-box" style="margin-bottom:10px;">${t('guidePeriodNote')}</div>` : '';
 
         let techMap = {};
         savedJobs.forEach(job => {
+            const jobDate = job.startDate || '';
+            const inRange = (!dateFrom || (jobDate && jobDate >= dateFrom)) && (!dateTo || (jobDate && jobDate <= dateTo));
+            if (!inRange) return;
             (job.technicians || []).forEach(tech => {
                 if (!tech.name) return;
                 techMap[tech.name] = (techMap[tech.name] || 0) + calculateJobTechDues(tech, job.totalRevenue, job.materialCost);
@@ -1998,13 +2045,14 @@
         });
 
         const allNames = new Set([...Object.keys(techMap), ...Object.keys(technicianPhones)]);
-        if (allNames.size === 0) { container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:20px;">${t('guideEmpty')}</p>`; return; }
+        if (allNames.size === 0) { container.innerHTML = periodLabel + `<p style="text-align:center; color:var(--text-muted); padding:20px;">${t('guideEmpty')}</p>`; return; }
 
+        let html = periodLabel + `<table style="width:100%; border-collapse:collapse; margin-top:10px;"><thead><tr><th>${t('guideThName')}</th><th>${t('guideThPhone')}</th><th>${t('guideThDuesInPeriod')}</th><th>${t('guideThActions')}</th></tr></thead><tbody>`;
         allNames.forEach(name => {
             const dues = techMap[name] || 0;
             const rawPhone = technicianPhones[name] || '';
             const phoneDisplay = rawPhone ? (() => { const { code, local } = splitPhoneForEdit(rawPhone); return code === 'other' ? rawPhone : `+${code} ${local}`; })() : t('guideNA');
-            html += `<tr><td><strong>${name}</strong></td><td>${phoneDisplay}</td>
+            html += `<tr><td><strong>${name}</strong></td><td>${phoneDisplay}</td><td style="color:#fbbf24; font-weight:700;">$${dues.toFixed(2)}</td>
                 <td style="white-space:nowrap;">
                     <button class="secondary" onclick="sendWhatsAppTech('${escJs(name)}', '${escJs(rawPhone)}', ${dues})" style="padding:4px 8px; font-size:0.75rem; background:#059669;">${t('guideWhatsAppBtn')}</button>
                     <button class="secondary" onclick="printTechnicianReport('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#0ea5e9;">${t('printReportBtn')}</button>
