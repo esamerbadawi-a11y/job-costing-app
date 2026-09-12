@@ -176,6 +176,15 @@
                         <option value="شغال" data-i18n="statusActiveShort"></option>
                         <option value="خلص" data-i18n="statusDoneShort"></option>
                     </select>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="filterDateFromLabel"></label>
+                        <input type="date" id="filterDateFrom" onchange="filterJobs()" style="min-width:130px;">
+                    </div>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="filterDateToLabel"></label>
+                        <input type="date" id="filterDateTo" onchange="filterJobs()" style="min-width:130px;">
+                    </div>
+                    <button class="secondary" onclick="clearDateFilter()" style="padding: 8px 12px; font-size: 0.78rem;" data-i18n="clearDateFilterBtn"></button>
                     <button class="warning" id="filterDebtBtn" onclick="toggleDebtFilter()" style="padding: 8px 12px; font-size: 0.78rem;" data-i18n="debtFilterOff"></button>
                     <button class="secondary" onclick="toggleSelectAll(true)" style="padding: 8px 12px; font-size: 0.78rem;" data-i18n="selectAllBtn"></button>
                     <button class="secondary" onclick="toggleSelectAll(false)" style="padding: 8px 12px; font-size: 0.78rem;" data-i18n="deselectAllBtn"></button>
@@ -471,6 +480,9 @@
         searchPlaceholder: { ar: 'بحث باسم العميل، الهاتف، العنوان، الفني...', en: 'Search by client, phone, address, technician...' },
         allTechs: { ar: 'جميع الفنيين', en: 'All Technicians' },
         allStatuses: { ar: 'كل الحالات', en: 'All Statuses' },
+        filterDateFromLabel: { ar: 'من:', en: 'From:' },
+        filterDateToLabel: { ar: 'إلى:', en: 'To:' },
+        clearDateFilterBtn: { ar: '✕ مسح التاريخ', en: '✕ Clear Dates' },
         debtFilterOff: { ar: '⏳ فلترة المديونيات المعلقة', en: '⏳ Filter Pending Debts' },
         debtFilterOn: { ar: '⏳ إلغاء فلترة المديونيات', en: '⏳ Clear Debt Filter' },
         selectAllBtn: { ar: 'تحديد الكل', en: 'Select All' },
@@ -1384,14 +1396,12 @@
         else { btn.style.display = 'none'; }
     }
 
-    function printSelectedJobs() {
+    async function printSelectedJobs() {
         if (selectedJobIds.size === 0) { alert(t('alertSelectOneToPrint')); return; }
-        document.querySelectorAll('#jobsTableBody tr').forEach(row => {
-            const jobId = row.getAttribute('data-id');
-            if (jobId) row.style.display = selectedJobIds.has(jobId) ? '' : 'none';
-        });
-        window.print();
-        filterJobs();
+        const selectedJobs = savedJobs.filter(j => selectedJobIds.has(String(j.id)));
+        const doc = await buildJobsPdfDoc(selectedJobs);
+        doc.autoPrint();
+        window.open(doc.output('bloburl'), '_blank');
     }
 
     function exportBackupJSON() {
@@ -1491,7 +1501,7 @@
 
     const PDF_ARABIC_COLS = [2, 3, 8]; // Customer, Address, Status
 
-    async function exportPDF() {
+    async function buildJobsPdfDoc(jobsList) {
         if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch(e) {} }
         const { jsPDF } = window.jspdf;
         let doc = new jsPDF('l', 'mm', 'a4');
@@ -1499,7 +1509,7 @@
         doc.text("AHA - PM STATEMENT", 14, 15);
 
         const headers = [["Jobs #", "Date", "Customer", "Address", "Contract", "Received", "Balance", "Materials", "Status", "Net Profit", "S (40%)", "M (40%)", "Company Net"]];
-        const data = savedJobs.map((job, index) => {
+        const data = jobsList.map((job, index) => {
             const { net: netProfit, shareS, shareM, companyNet } = jobNet(job);
             return [
                 "#" + (index + 1), job.startDate || '', job.clientName || '', job.clientAddress || '',
@@ -1534,6 +1544,11 @@
                 doc.addImage(img.dataUrl, 'PNG', x, y, targetW, targetH);
             }
         });
+        return doc;
+    }
+
+    async function exportPDF() {
+        const doc = await buildJobsPdfDoc(savedJobs);
         doc.save("AHA_PM_STATEMENT.pdf");
     }
 
@@ -1774,10 +1789,18 @@
         });
     }
 
+    function clearDateFilter() {
+        document.getElementById('filterDateFrom').value = '';
+        document.getElementById('filterDateTo').value = '';
+        filterJobs();
+    }
+
     function filterJobs() {
         const searchVal = document.getElementById('searchInput').value.toLowerCase();
         const statusVal = document.getElementById('filterStatus').value;
         const actualTechVal = document.getElementById('filterTech').value;
+        const dateFrom = document.getElementById('filterDateFrom').value;
+        const dateTo = document.getElementById('filterDateTo').value;
 
         document.querySelectorAll('#jobsTableBody tr').forEach(row => {
             const jobId = row.getAttribute('data-id');
@@ -1792,8 +1815,12 @@
             const matchStatus = !statusVal || job.jobStatus === statusVal;
             const rem = jobRemaining(job);
             const matchDebt = !onlyShowDebt || rem > 0;
+            // A job matches the date range if its start date falls within [from, to] (either side optional).
+            const jobDate = job.startDate || '';
+            const matchDateFrom = !dateFrom || (jobDate && jobDate >= dateFrom);
+            const matchDateTo = !dateTo || (jobDate && jobDate <= dateTo);
 
-            row.style.display = (matchSearch && matchTech && matchStatus && matchDebt) ? '' : 'none';
+            row.style.display = (matchSearch && matchTech && matchStatus && matchDebt && matchDateFrom && matchDateTo) ? '' : 'none';
         });
     }
 
