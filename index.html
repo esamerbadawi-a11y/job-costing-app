@@ -104,7 +104,8 @@
             <button class="secondary" onclick="toggleLanguage()" id="langToggleBtn">English 🌐</button>
             <button class="secondary" onclick="openTechGuideModal()" data-i18n="guideBtn"></button>
             <button class="secondary" onclick="openExpenseReportModal()" data-i18n="expenseReportBtn"></button>
-            <button class="secondary" onclick="openActivityLogModal()" data-i18n="activityLogBtn"></button>
+            <button class="secondary" id="activityLogBtnEl" style="display:none;" onclick="openActivityLogModal()" data-i18n="activityLogBtn"></button>
+            <button class="secondary" onclick="openPartnerAccountModal()" data-i18n="partnerAccountBtn"></button>
             <button class="success" onclick="exportBackupJSON()" style="background:#0f766e;" data-i18n="exportBackupBtn"></button>
             <button class="secondary" onclick="document.getElementById('importBackupInput').click()" style="border-color:#0f766e; color:#2dd4bf;" data-i18n="importBackupBtn"></button>
             <input type="file" id="importBackupInput" accept=".json" style="display:none;" onchange="importBackupJSON(event)">
@@ -353,6 +354,31 @@
     </div>
 </div>
 
+<div id="partnerAccountModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:90%; max-width:700px; max-height:85vh; overflow-y:auto; padding:25px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.2rem;">💰 <span data-i18n="partnerAccountTitle"></span></h2>
+            <button class="danger" onclick="closePartnerAccountModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+
+        <div style="background:#080d1a; border:1px solid var(--border-color); padding:15px; border-radius:10px; margin-bottom:18px;">
+            <h3 style="color:#38bdf8; font-size:0.95rem; margin-bottom:10px;" data-i18n="addWithdrawalTitle"></h3>
+            <div class="grid-3" style="margin-bottom:10px;">
+                <select id="withdrawalPartner">
+                    <option value="S">S</option>
+                    <option value="M">M</option>
+                </select>
+                <input type="text" id="withdrawalAmount" placeholder="0" onfocus="this.select()">
+                <input type="date" id="withdrawalDate">
+            </div>
+            <input type="text" id="withdrawalNote" data-i18n-ph="withdrawalNotePh" style="margin-bottom:10px;">
+            <button class="success" onclick="saveWithdrawal()" data-i18n="saveWithdrawalBtn"></button>
+        </div>
+
+        <div id="partnerAccountContent" style="font-size:0.85rem; line-height:1.7; color:var(--text-main);"></div>
+    </div>
+</div>
+
 <script>
     /* ---------------- i18n ---------------- */
     let currentLang = 'ar';
@@ -371,6 +397,18 @@
         activityWhen: { ar: 'الوقت', en: 'When' },
         activityWho: { ar: 'مين', en: 'Who' },
         activityWhat: { ar: 'إيه', en: 'What' },
+        partnerAccountBtn: { ar: '💰 حساب S و M', en: '💰 S & M Account' },
+        partnerAccountTitle: { ar: 'حساب S و M — المستحق والمسحوب', en: 'S & M Account — Earned vs Withdrawn' },
+        addWithdrawalTitle: { ar: 'تسجيل مبلغ اتصرف', en: 'Record a Withdrawal' },
+        withdrawalNotePh: { ar: 'ملاحظة (اختياري)', en: 'Note (optional)' },
+        saveWithdrawalBtn: { ar: 'حفظ', en: 'Save' },
+        alertWithdrawalAmountRequired: { ar: 'اكتب مبلغ أكبر من صفر.', en: 'Enter an amount greater than zero.' },
+        confirmDeleteWithdrawal: { ar: 'متأكد من حذف المبلغ ده من السجل؟', en: 'Delete this entry from the record?' },
+        totalEarnedLabel: { ar: 'المستحق له إجمالي:', en: 'Total Earned:' },
+        totalWithdrawnLabel: { ar: 'اتصرف له فعلاً:', en: 'Total Withdrawn:' },
+        remainingBalanceLabel: { ar: 'الباقي له لسه:', en: 'Remaining Balance:' },
+        noWithdrawalsYet: { ar: 'لسه مفيش أي مبلغ اتسجل إنه اتصرف.', en: 'No withdrawals recorded yet.' },
+        withdrawalHistoryTitle: { ar: 'سجل المبالغ اللي اتصرفت', en: 'Withdrawal History' },
         activityAdded: { ar: 'أضاف', en: 'Added' },
         activityEdited: { ar: 'عدّل', en: 'Edited' },
         activityDeleted: { ar: 'مسح', en: 'Deleted' },
@@ -502,6 +540,7 @@
         techLinePaid: { ar: 'مدفوع', en: 'Paid' },
         noTechData: { ar: 'لا توجد بيانات فنيين', en: 'No technician data' },
         editBtn: { ar: 'تعديل', en: 'Edit' },
+        duplicateBtn: { ar: '🔁 تكرار', en: '🔁 Duplicate' },
         deleteBtn: { ar: 'حذف', en: 'Delete' },
         alertClientNameRequired: { ar: 'يرجى ادخال اسم العميل أو المشروع على الأقل.', en: 'Please enter at least a client or project name.' },
         validationErrorsTitle: { ar: 'فيه أرقام غلط، لازم تتصلح قبل الحفظ:', en: 'Some numbers look wrong — fix these before saving:' },
@@ -541,6 +580,7 @@
         guideThActions: { ar: 'الإجراءات', en: 'Actions' },
         guideNA: { ar: 'غير متوفر', en: 'N/A' },
         guideWhatsAppBtn: { ar: 'واتساب', en: 'WhatsApp' },
+        printReportBtn: { ar: '🖨️ تقرير', en: '🖨️ Report' },
         guideEmpty: { ar: 'لا توجد بيانات مسجلة للفنيين حالياً.', en: 'No technician data recorded yet.' },
         techSavedOk: { ar: 'تم حفظ الفني بنجاح.', en: 'Technician saved successfully.' },
         confirmDeleteTech: { ar: 'هل أنت متأكد من حذف الفني ده من الدليل؟ (شغلاناته القديمة هتفضل موجودة في السجل زي ما هي)', en: 'Delete this technician from the directory? (Their past job records will stay in the log as-is)' },
@@ -584,6 +624,7 @@
         safeCall(refreshDebtReminderBanner);
         if (document.getElementById('techGuideModal').style.display !== 'none') safeCall(renderTechGuideContent);
         if (document.getElementById('expenseReportModal').style.display !== 'none') safeCall(renderExpenseReportContent);
+        if (document.getElementById('partnerAccountModal').style.display !== 'none') safeCall(renderPartnerAccountContent);
     }
 
     /* ---------------- persistent storage: Firebase Firestore (shared, real-time) ---------------- */
@@ -602,6 +643,7 @@
     const JOBS_DOC = db.collection('jobCostingApp').doc('savedJobs');
     const TECHS_DOC = db.collection('jobCostingApp').doc('technicianPhones');
     const ACTIVITY_LOG = db.collection('jobCostingApp').doc('activityLog');
+    const WITHDRAWALS_DOC = db.collection('jobCostingApp').doc('partnerWithdrawals');
 
     async function saveSavedJobsData(){ await JOBS_DOC.set({ jobs: savedJobs }); }
     async function saveTechPhonesData(){ await TECHS_DOC.set({ phones: technicianPhones }); }
@@ -633,12 +675,15 @@
     }
     function doLogout() { auth.signOut(); }
 
+    const ADMIN_EMAIL = 'e.samerbadawi@gmail.com';
+
     auth.onAuthStateChanged(user => {
         if (user) {
             currentUserEmail = user.email;
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('pdfContentArea').style.display = 'block';
             document.getElementById('currentUserBadge').textContent = user.email;
+            document.getElementById('activityLogBtnEl').style.display = (user.email === ADMIN_EMAIL) ? '' : 'none';
             setupRealtimeSync();
         } else {
             currentUserEmail = null;
@@ -653,6 +698,7 @@
     let technicianPhones = {};
     let selectedJobIds = new Set();
     let lastDeletedJobs = [];
+    let partnerWithdrawals = [];
     let onlyShowDebt = false;
 
     const EXCLUSIVE_PERCENT_TYPES = ['فني لوحده (%60)', 'نسبة (50%)'];
@@ -693,6 +739,11 @@
             safeCall(renderTechnicians);
             if (document.getElementById('techGuideModal').style.display !== 'none') safeCall(renderTechGuideContent);
         }, err => console.error('Firestore technicians sync error:', err));
+
+        WITHDRAWALS_DOC.onSnapshot(doc => {
+            partnerWithdrawals = (doc.exists && doc.data().entries) ? doc.data().entries : [];
+            if (document.getElementById('partnerAccountModal').style.display !== 'none') safeCall(renderPartnerAccountContent);
+        }, err => console.error('Firestore withdrawals sync error:', err));
 
         safeCall(updateUndoButtonUI);
         safeCall(() => switchScreen('log'));
@@ -1237,6 +1288,7 @@
                 <td style="color:#fbbf24;">$${companyNet.toFixed(2)}</td>
                 <td class="no-print">
                     <button class="secondary" onclick="editJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem;">${t('editBtn')}</button>
+                    <button class="secondary" onclick="duplicateJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#0284c7;">${t('duplicateBtn')}</button>
                     <button class="danger" onclick="deleteJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem;">${t('deleteBtn')}</button>
                 </td>
             `;
@@ -1310,6 +1362,42 @@
         document.getElementById('selShareM').innerText = '$' + selM.toFixed(2);
         document.getElementById('selShareCompany').innerText = '$' + selComp.toFixed(2);
         document.getElementById('selExtraExp').innerText = '$' + selExtra.toFixed(2);
+    }
+
+    function duplicateJob(id) {
+        id = String(id);
+        const job = savedJobs.find(j => String(j.id) === id);
+        if (!job) return;
+        resetForm(); // ensure we start clean (editingJobId stays empty -> saves as a NEW job)
+
+        document.getElementById('clientName').value = job.clientName || '';
+        document.getElementById('clientPhone').value = job.clientPhone || '';
+        document.getElementById('jobStatus').value = 'شغال'; // a duplicated job starts fresh, not already "done"
+        document.getElementById('clientAddress').value = job.clientAddress || '';
+        document.getElementById('clientDescription').value = job.clientDescription || '';
+        // Dates default to today (already set by resetForm); totals carry over but payment resets to 0.
+        document.getElementById('totalRevenue').value = job.totalRevenue || 0;
+        document.getElementById('amountReceived').value = 0;
+        calculateRemaining();
+        document.getElementById('materialCost').value = job.materialCost || 0;
+
+        technicians = JSON.parse(JSON.stringify(job.technicians || []));
+        // Any prior "paid" amounts don't apply to the new job.
+        technicians.forEach(tech => { tech.paid = 0; });
+        renderTechnicians();
+
+        if (job.expenseItems && job.expenseItems.length > 0) {
+            expenseItems = JSON.parse(JSON.stringify(job.expenseItems));
+        } else {
+            expenseItems = [];
+        }
+        renderExpenseItems();
+        checkCrmCustomerData();
+
+        document.getElementById('formTitle').innerText = t('formTitleNew');
+        document.getElementById('saveBtn').innerText = t('saveBtnNew');
+        switchScreen('entry');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function editJob(id) {
@@ -1400,6 +1488,71 @@
         if (selectedJobIds.size === 0) { alert(t('alertSelectOneToPrint')); return; }
         const selectedJobs = savedJobs.filter(j => selectedJobIds.has(String(j.id)));
         const doc = await buildJobsPdfDoc(selectedJobs);
+        doc.autoPrint();
+        window.open(doc.output('bloburl'), '_blank');
+    }
+
+    // Builds and opens a print-ready report for a single technician: every job they
+    // worked on, what they earned, what they were paid, and their running balance.
+    async function printTechnicianReport(techName) {
+        if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch(e) {} }
+        const { jsPDF } = window.jspdf;
+        let doc = new jsPDF('p', 'mm', 'a4');
+        doc.setFont("helvetica", "bold"); doc.setFontSize(15);
+        doc.text("Technician Report:", 14, 15);
+        const nameImg = textToImage(techName);
+        const nameH = 7, nameW = nameH * nameImg.aspect;
+        doc.addImage(nameImg.dataUrl, 'PNG', 62, 10, nameW, nameH);
+
+        const rows = [];
+        let totalDues = 0, totalPaid = 0;
+        savedJobs.forEach(job => {
+            (job.technicians || []).forEach(techEntry => {
+                if (techEntry.name !== techName) return;
+                const dues = calculateJobTechDues(techEntry, job.totalRevenue, job.materialCost);
+                const paid = parseVal(techEntry.paid);
+                totalDues += dues; totalPaid += paid;
+                rows.push({ date: job.startDate || '', client: job.clientName || '', type: techTypeLabel(techEntry.type), dues, paid, remaining: dues - paid });
+            });
+        });
+
+        if (rows.length === 0) { alert(currentLang === 'ar' ? 'الفني ده لسه مالوش شغلانات مسجلة.' : 'This technician has no recorded jobs yet.'); return; }
+
+        const headers = [["Date", "Client", "Pay Type", "Dues", "Paid", "Remaining"]];
+        const data = rows.map(r => [r.date, r.client, r.type, "$" + r.dues.toFixed(2), "$" + r.paid.toFixed(2), "$" + r.remaining.toFixed(2)]);
+        const TECH_REPORT_ARABIC_COLS = [1, 2]; // Client, Pay Type
+
+        doc.autoTable({
+            head: headers, body: data, startY: 24, theme: 'grid',
+            styles: { fontSize: 9, cellPadding: 2, halign: 'center' },
+            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+            didDrawCell: function(cellData) {
+                if (cellData.section !== 'body') return;
+                if (!TECH_REPORT_ARABIC_COLS.includes(cellData.column.index)) return;
+                const text = String(cellData.cell.raw ?? '');
+                if (!text || !containsArabic(text)) return;
+                doc.setFillColor(255, 255, 255);
+                doc.rect(cellData.cell.x, cellData.cell.y, cellData.cell.width, cellData.cell.height, 'F');
+                doc.setDrawColor(200, 200, 200);
+                doc.rect(cellData.cell.x, cellData.cell.y, cellData.cell.width, cellData.cell.height);
+                const img = textToImage(text);
+                const padding = 1;
+                let targetH = cellData.cell.height - padding * 2;
+                let targetW = targetH * img.aspect;
+                if (targetW > cellData.cell.width - padding * 2) { targetW = cellData.cell.width - padding * 2; targetH = targetW / img.aspect; }
+                const x = cellData.cell.x + (cellData.cell.width - targetW) / 2;
+                const y = cellData.cell.y + (cellData.cell.height - targetH) / 2;
+                doc.addImage(img.dataUrl, 'PNG', x, y, targetW, targetH);
+            }
+        });
+
+        const finalY = doc.lastAutoTable.finalY + 10;
+        doc.setFont("helvetica", "normal"); doc.setFontSize(11); doc.setTextColor(0, 0, 0);
+        doc.text(`Total Dues: $${totalDues.toFixed(2)}`, 14, finalY);
+        doc.text(`Total Paid: $${totalPaid.toFixed(2)}`, 14, finalY + 7);
+        doc.setFont("helvetica", "bold");
+        doc.text(`Remaining Balance: $${(totalDues - totalPaid).toFixed(2)}`, 14, finalY + 14);
+
         doc.autoPrint();
         window.open(doc.output('bloburl'), '_blank');
     }
@@ -1591,6 +1744,87 @@
         }
     }
 
+    function openPartnerAccountModal() {
+        document.getElementById('partnerAccountModal').style.display = 'flex';
+        document.getElementById('withdrawalDate').valueAsDate = new Date();
+        renderPartnerAccountContent();
+    }
+    function closePartnerAccountModal() { document.getElementById('partnerAccountModal').style.display = 'none'; }
+
+    async function saveWithdrawal() {
+        const partner = document.getElementById('withdrawalPartner').value;
+        const amount = parseVal(document.getElementById('withdrawalAmount').value);
+        const date = document.getElementById('withdrawalDate').value;
+        const note = document.getElementById('withdrawalNote').value.trim();
+        if (amount <= 0) { alert(t('alertWithdrawalAmountRequired')); return; }
+
+        const entry = { partner, amount, date, note, by: currentUserEmail || '?', at: new Date().toISOString() };
+        try {
+            partnerWithdrawals.unshift(entry);
+            await WITHDRAWALS_DOC.set({ entries: partnerWithdrawals });
+            document.getElementById('withdrawalAmount').value = '';
+            document.getElementById('withdrawalNote').value = '';
+            renderPartnerAccountContent();
+        } catch (err) {
+            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+        }
+    }
+
+    async function deleteWithdrawal(index) {
+        if (!confirm(t('confirmDeleteWithdrawal'))) return;
+        partnerWithdrawals.splice(index, 1);
+        try {
+            await WITHDRAWALS_DOC.set({ entries: partnerWithdrawals });
+            renderPartnerAccountContent();
+        } catch (err) {
+            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+        }
+    }
+
+    function renderPartnerAccountContent() {
+        const container = document.getElementById('partnerAccountContent');
+
+        let earnedS = 0, earnedM = 0;
+        savedJobs.forEach(job => { const { shareS, shareM } = jobNet(job); earnedS += shareS; earnedM += shareM; });
+        let withdrawnS = 0, withdrawnM = 0;
+        partnerWithdrawals.forEach(w => { if (w.partner === 'S') withdrawnS += parseVal(w.amount); else withdrawnM += parseVal(w.amount); });
+        const remainingS = earnedS - withdrawnS;
+        const remainingM = earnedM - withdrawnM;
+
+        let html = `<div class="grid-2" style="margin-bottom:18px; gap:12px;">
+            <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:8px; padding:14px;">
+                <div style="color:#38bdf8; font-weight:700; margin-bottom:8px;">S</div>
+                <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalEarnedLabel')} <b style="color:#34d399;">$${earnedS.toFixed(2)}</b></div>
+                <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalWithdrawnLabel')} <b style="color:#f87171;">$${withdrawnS.toFixed(2)}</b></div>
+                <div style="font-size:0.9rem; margin-top:6px; border-top:1px solid var(--border-color); padding-top:6px;">${t('remainingBalanceLabel')} <b style="color:${remainingS < 0 ? '#f87171' : '#fbbf24'};">$${remainingS.toFixed(2)}</b></div>
+            </div>
+            <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:8px; padding:14px;">
+                <div style="color:#38bdf8; font-weight:700; margin-bottom:8px;">M</div>
+                <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalEarnedLabel')} <b style="color:#34d399;">$${earnedM.toFixed(2)}</b></div>
+                <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalWithdrawnLabel')} <b style="color:#f87171;">$${withdrawnM.toFixed(2)}</b></div>
+                <div style="font-size:0.9rem; margin-top:6px; border-top:1px solid var(--border-color); padding-top:6px;">${t('remainingBalanceLabel')} <b style="color:${remainingM < 0 ? '#f87171' : '#fbbf24'};">$${remainingM.toFixed(2)}</b></div>
+            </div>
+        </div>`;
+
+        if (partnerWithdrawals.length === 0) {
+            html += `<p style="text-align:center; color:var(--text-muted); padding:15px;">${t('noWithdrawalsYet')}</p>`;
+        } else {
+            html += `<h4 style="color:var(--text-muted); font-size:0.85rem; margin-bottom:8px;">${t('withdrawalHistoryTitle')}</h4>`;
+            html += '<table style="width:100%; border-collapse:collapse;"><tbody>';
+            partnerWithdrawals.forEach((w, index) => {
+                html += `<tr style="border-top:1px solid var(--border-color);">
+                    <td style="padding:6px; font-size:0.78rem; color:var(--text-muted); white-space:nowrap;">${w.date || ''}</td>
+                    <td style="padding:6px; font-weight:700; color:#38bdf8;">${w.partner}</td>
+                    <td style="padding:6px; color:#f87171; font-weight:700;">$${parseVal(w.amount).toFixed(2)}</td>
+                    <td style="padding:6px; font-size:0.78rem; color:var(--text-muted);">${w.note || ''}</td>
+                    <td style="padding:6px;"><button class="danger" onclick="deleteWithdrawal(${index})" style="padding:3px 8px; font-size:0.72rem;">${t('deleteBtn')}</button></td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+        }
+        container.innerHTML = html;
+    }
+
     function renderExpenseReportContent() {
         const container = document.getElementById('expenseReportContent');
         const totals = {};
@@ -1773,6 +2007,7 @@
             html += `<tr><td><strong>${name}</strong></td><td>${phoneDisplay}</td>
                 <td style="white-space:nowrap;">
                     <button class="secondary" onclick="sendWhatsAppTech('${escJs(name)}', '${escJs(rawPhone)}', ${dues})" style="padding:4px 8px; font-size:0.75rem; background:#059669;">${t('guideWhatsAppBtn')}</button>
+                    <button class="secondary" onclick="printTechnicianReport('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#0ea5e9;">${t('printReportBtn')}</button>
                     <button class="secondary" onclick="openEditTechnicianModal('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#0284c7;">${t('editBtn')}</button>
                     <button class="danger" onclick="deleteTechnicianFromDirectory('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem;">${t('deleteBtn')}</button>
                 </td></tr>`;
