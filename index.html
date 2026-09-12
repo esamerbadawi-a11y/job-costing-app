@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -102,7 +102,7 @@
         <div class="header-actions">
             <span id="currentUserBadge" style="align-self:center; font-size:0.78rem; color:var(--text-muted);"></span>
             <button class="danger" onclick="doLogout()" data-i18n="logoutBtn"></button>
-            <button class="secondary" onclick="toggleLanguage()" id="langToggleBtn">English 🌐</button>
+            <button class="secondary" onclick="toggleLanguage()" id="langToggleBtn">عربي 🌐</button>
             <button class="secondary" onclick="openTechGuideModal()" data-i18n="guideBtn"></button>
             <button class="secondary" onclick="openExpenseReportModal()" data-i18n="expenseReportBtn"></button>
             <button class="secondary" id="activityLogBtnEl" style="display:none;" onclick="openActivityLogModal()" data-i18n="activityLogBtn"></button>
@@ -125,7 +125,47 @@
 
     <div class="no-print" style="display:flex; gap:10px; margin-bottom:16px;">
         <button id="tabEntryBtn" onclick="switchScreen('entry')" class="secondary" data-i18n="tabEntryLabel" style="flex:1; padding:12px;"></button>
+        <button id="tabWeeklyBtn" onclick="switchScreen('weekly')" class="secondary" data-i18n="tabWeeklyLabel" style="flex:1; padding:12px;"></button>
+        <button id="tabAppointmentsBtn" onclick="switchScreen('appointments')" class="secondary" data-i18n="tabAppointmentsLabel" style="flex:1; padding:12px;"></button>
         <button id="tabLogBtn" onclick="switchScreen('log')" class="secondary" data-i18n="tabLogLabel" style="flex:1; padding:12px;"></button>
+    </div>
+
+    <div id="screenWeekly" class="no-print" style="display:none;">
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px;">
+                <h2 style="margin:0; border:none; padding:0;" data-i18n="weeklyBoardTitle"></h2>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="secondary" onclick="shiftWeek(-1)">◀</button>
+                    <button class="secondary" onclick="shiftWeek(0)" data-i18n="thisWeekBtn"></button>
+                    <button class="secondary" onclick="shiftWeek(1)">▶</button>
+                    <button class="success" onclick="switchScreen('entry')" data-i18n="addJobQuickBtn"></button>
+                    <button class="secondary" style="background:#059669;" onclick="sendWeeklyScheduleWhatsApp()" data-i18n="sendScheduleBtn"></button>
+                </div>
+            </div>
+            <div id="weeklyRangeLabel" style="color:var(--text-muted); font-size:0.85rem; margin-bottom:15px;"></div>
+            <div id="weeklyBoardContent"></div>
+        </div>
+    </div>
+
+    <div id="screenAppointments" class="no-print" style="display:none; max-width:750px; margin:0 auto;">
+        <div class="card">
+            <h2 style="margin:0 0 15px; border:none; padding:0;" data-i18n="appointmentsTitle"></h2>
+            <div style="background:#080d1a; border:1px solid var(--border-color); padding:15px; border-radius:10px; margin-bottom:18px;">
+                <h3 style="color:#38bdf8; font-size:0.95rem; margin-bottom:10px;" data-i18n="addAppointmentTitle"></h3>
+                <div class="grid-2" style="margin-bottom:10px;">
+                    <input type="text" id="apptClientName" data-i18n-ph="apptNamePh">
+                    <input type="text" id="apptClientPhone" placeholder="(555) 123-4567">
+                </div>
+                <input type="text" id="apptClientAddress" data-i18n-ph="apptAddressPh" style="margin-bottom:10px;">
+                <div class="grid-2" style="margin-bottom:10px;">
+                    <input type="date" id="apptDate">
+                    <input type="time" id="apptTime">
+                </div>
+                <input type="text" id="apptNote" data-i18n-ph="apptNotePh" style="margin-bottom:10px;">
+                <button class="success" onclick="saveAppointment()" data-i18n="saveAppointmentBtn"></button>
+            </div>
+            <div id="appointmentsContent"></div>
+        </div>
     </div>
 
     <div id="screenLog">
@@ -395,7 +435,7 @@
 
 <script>
     /* ---------------- i18n ---------------- */
-    let currentLang = 'ar';
+    let currentLang = 'en';
     const T = {
         appTitle: { ar: 'نظام إدارة وحساب الشغلانات المرن الاحترافي', en: 'Flexible Professional Job Costing System' },
         guideBtn: { ar: 'دليل الفنيين', en: 'Technicians Guide' },
@@ -456,6 +496,25 @@
         formTitleNew: { ar: '➕ بيانات الشغلانه', en: '➕ Job Details' },
         tabEntryLabel: { ar: '📝 إدخال شغلانة', en: '📝 Add Job' },
         tabLogLabel: { ar: '📊 السجل والتقارير', en: '📊 Log & Reports' },
+        tabWeeklyLabel: { ar: '📅 شغل الأسبوع', en: '📅 Weekly Board' },
+        weeklyBoardTitle: { ar: '📅 لوحة شغل الأسبوع', en: '📅 Weekly Work Board' },
+        thisWeekBtn: { ar: 'الأسبوع ده', en: 'This Week' },
+        addJobQuickBtn: { ar: '+ شغلانة جديدة', en: '+ New Job' },
+        sendScheduleBtn: { ar: '📤 ابعت الجدول', en: '📤 Send Schedule' },
+        jobsWord: { ar: 'شغلانة', en: 'job(s)' },
+        noJobsThisDay: { ar: 'مفيش شغل مسجل في اليوم ده.', en: 'No jobs scheduled this day.' },
+        weeklyTechsLabel: { ar: 'الفنيين:', en: 'Techs:' },
+        tabAppointmentsLabel: { ar: '📆 المواعيد', en: '📆 Appointments' },
+        appointmentsTitle: { ar: '📆 مواعيد وطلبات العملاء', en: '📆 Customer Appointments & Requests' },
+        addAppointmentTitle: { ar: 'إضافة طلب ميعاد جديد', en: 'Add New Appointment Request' },
+        apptNamePh: { ar: 'اسم العميل', en: 'Client Name' },
+        apptAddressPh: { ar: 'العنوان', en: 'Address' },
+        apptNotePh: { ar: 'ملاحظة (تفاصيل الطلب، اختياري)', en: 'Note (request details, optional)' },
+        saveAppointmentBtn: { ar: 'حفظ الموعد', en: 'Save Appointment' },
+        noAppointmentsYet: { ar: 'لسه مفيش أي مواعيد مسجلة.', en: 'No appointments recorded yet.' },
+        noDateSet: { ar: 'من غير تاريخ محدد', en: 'No date set' },
+        convertToJobBtn: { ar: '🔁 حوّلها لشغلانة', en: '🔁 Convert to Job' },
+        confirmDeleteAppointment: { ar: 'متأكد من حذف الموعد ده؟', en: 'Delete this appointment?' },
         formTitleEdit: { ar: '✏️ تعديل بيانات الشغلانه', en: '✏️ Edit Job Details' },
         crmBoxTitle: { ar: 'بيانات العميل في الذاكرة:', en: 'Customer History:' },
         crmPrevJobs: { ar: 'عدد الشغلانات السابقة:', en: 'Previous Jobs:' },
@@ -643,6 +702,8 @@
         if (document.getElementById('techGuideModal').style.display !== 'none') safeCall(renderTechGuideContent);
         if (document.getElementById('expenseReportModal').style.display !== 'none') safeCall(renderExpenseReportContent);
         if (document.getElementById('partnerAccountModal').style.display !== 'none') safeCall(renderPartnerAccountContent);
+        if (document.getElementById('screenWeekly').style.display !== 'none') safeCall(renderWeeklyBoard);
+        if (document.getElementById('screenAppointments').style.display !== 'none') safeCall(renderAppointments);
     }
 
     /* ---------------- persistent storage: Firebase Firestore (shared, real-time) ---------------- */
@@ -662,6 +723,7 @@
     const TECHS_DOC = db.collection('jobCostingApp').doc('technicianPhones');
     const ACTIVITY_LOG = db.collection('jobCostingApp').doc('activityLog');
     const WITHDRAWALS_DOC = db.collection('jobCostingApp').doc('partnerWithdrawals');
+    const APPOINTMENTS_DOC = db.collection('jobCostingApp').doc('appointments');
 
     async function saveSavedJobsData(){ await JOBS_DOC.set({ jobs: savedJobs }); }
     async function saveTechPhonesData(){ await TECHS_DOC.set({ phones: technicianPhones }); }
@@ -694,13 +756,18 @@
     function doLogout() { auth.signOut(); }
 
     const ADMIN_EMAIL = 'e.samerbadawi@gmail.com';
+    const USER_DISPLAY_NAMES = {
+        'e.samerbadawi@gmail.com': 'SAMER',
+        'affordablehandymanapproach@gmail.com': 'MOHAMED'
+    };
+    function displayNameFor(email) { return USER_DISPLAY_NAMES[email] || email; }
 
     auth.onAuthStateChanged(user => {
         if (user) {
             currentUserEmail = user.email;
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('pdfContentArea').style.display = 'block';
-            document.getElementById('currentUserBadge').textContent = user.email;
+            document.getElementById('currentUserBadge').textContent = displayNameFor(user.email);
             document.getElementById('activityLogBtnEl').style.display = (user.email === ADMIN_EMAIL) ? '' : 'none';
             setupRealtimeSync();
         } else {
@@ -717,6 +784,7 @@
     let selectedJobIds = new Set();
     let lastDeletedJobs = [];
     let partnerWithdrawals = [];
+    let appointments = [];
     let onlyShowDebt = false;
 
     const EXCLUSIVE_PERCENT_TYPES = ['فني لوحده (%60)', 'نسبة (50%)'];
@@ -732,8 +800,14 @@
         currentScreen = name;
         document.getElementById('screenLog').style.display = name === 'log' ? 'block' : 'none';
         document.getElementById('screenEntry').style.display = name === 'entry' ? 'block' : 'none';
+        document.getElementById('screenWeekly').style.display = name === 'weekly' ? 'block' : 'none';
+        document.getElementById('screenAppointments').style.display = name === 'appointments' ? 'block' : 'none';
         document.getElementById('tabEntryBtn').style.background = name === 'entry' ? 'var(--primary)' : '';
         document.getElementById('tabLogBtn').style.background = name === 'log' ? 'var(--primary)' : '';
+        document.getElementById('tabWeeklyBtn').style.background = name === 'weekly' ? 'var(--primary)' : '';
+        document.getElementById('tabAppointmentsBtn').style.background = name === 'appointments' ? 'var(--primary)' : '';
+        if (name === 'weekly') safeCall(renderWeeklyBoard);
+        if (name === 'appointments') safeCall(renderAppointments);
     }
 
     // Live-syncs with Firestore: fires immediately with the current data, then again every
@@ -762,6 +836,11 @@
             partnerWithdrawals = (doc.exists && doc.data().entries) ? doc.data().entries : [];
             if (document.getElementById('partnerAccountModal').style.display !== 'none') safeCall(renderPartnerAccountContent);
         }, err => console.error('Firestore withdrawals sync error:', err));
+
+        APPOINTMENTS_DOC.onSnapshot(doc => {
+            appointments = (doc.exists && doc.data().entries) ? doc.data().entries : [];
+            if (document.getElementById('screenAppointments').style.display !== 'none') safeCall(renderAppointments);
+        }, err => console.error('Firestore appointments sync error:', err));
 
         safeCall(updateUndoButtonUI);
         safeCall(() => switchScreen('log'));
@@ -1324,6 +1403,7 @@
         safeCall(updateGlobalStats);
         safeCall(updateTechDropdownFilter);
         safeCall(updateSelectedStats);
+        if (document.getElementById('screenWeekly').style.display !== 'none') safeCall(renderWeeklyBoard);
     }
 
     function updateGlobalStats() {
@@ -1757,7 +1837,7 @@
                 const actionColor = e.action === 'delete' ? '#f87171' : (e.action === 'add' ? '#34d399' : '#fbbf24');
                 html += `<tr style="border-top:1px solid var(--border-color);">
                     <td style="padding:8px 6px; font-size:0.78rem; color:var(--text-muted); white-space:nowrap;">${when}</td>
-                    <td style="padding:8px 6px; font-size:0.8rem;">${e.by || '?'}</td>
+                    <td style="padding:8px 6px; font-size:0.8rem;">${displayNameFor(e.by) || '?'}</td>
                     <td style="padding:8px 6px;"><span style="color:${actionColor}; font-weight:700;">${t(ACTIVITY_ACTION_KEYS[e.action] || e.action)}</span> — ${e.clientName || ''}</td>
                 </tr>`;
             });
@@ -2008,6 +2088,173 @@
     }
 
     function escJs(str) { return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+
+    /* ---------------- Appointments / Scheduling ---------------- */
+    async function saveAppointment() {
+        const clientName = document.getElementById('apptClientName').value.trim();
+        if (!clientName) { alert(t('alertClientNameRequired')); return; }
+
+        const entry = {
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+            clientName,
+            clientPhone: document.getElementById('apptClientPhone').value.trim(),
+            clientAddress: document.getElementById('apptClientAddress').value.trim(),
+            requestedDate: document.getElementById('apptDate').value,
+            requestedTime: document.getElementById('apptTime').value,
+            note: document.getElementById('apptNote').value.trim(),
+            by: currentUserEmail || '?'
+        };
+        try {
+            appointments.unshift(entry);
+            await APPOINTMENTS_DOC.set({ entries: appointments });
+            document.getElementById('apptClientName').value = '';
+            document.getElementById('apptClientPhone').value = '';
+            document.getElementById('apptClientAddress').value = '';
+            document.getElementById('apptDate').value = '';
+            document.getElementById('apptTime').value = '';
+            document.getElementById('apptNote').value = '';
+            renderAppointments();
+        } catch (err) {
+            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+        }
+    }
+
+    async function deleteAppointment(id) {
+        if (!confirm(t('confirmDeleteAppointment'))) return;
+        appointments = appointments.filter(a => a.id !== id);
+        try { await APPOINTMENTS_DOC.set({ entries: appointments }); renderAppointments(); }
+        catch (err) { alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')'); }
+    }
+
+    // Pulls an appointment's details straight into a fresh job entry form, then removes
+    // it from the pending list — no retyping the client's name/phone/address.
+    async function convertAppointmentToJob(id) {
+        const appt = appointments.find(a => a.id === id);
+        if (!appt) return;
+        resetForm();
+        document.getElementById('clientName').value = appt.clientName || '';
+        document.getElementById('clientPhone').value = appt.clientPhone || '';
+        document.getElementById('clientAddress').value = appt.clientAddress || '';
+        if (appt.requestedDate) { document.getElementById('startDate').value = appt.requestedDate; document.getElementById('endDate').value = appt.requestedDate; }
+        checkCrmCustomerData();
+
+        appointments = appointments.filter(a => a.id !== id);
+        try { await APPOINTMENTS_DOC.set({ entries: appointments }); } catch (e) { console.error(e); }
+        switchScreen('entry');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function renderAppointments() {
+        const container = document.getElementById('appointmentsContent');
+        if (appointments.length === 0) { container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:15px;">${t('noAppointmentsYet')}</p>`; return; }
+
+        const sorted = [...appointments].sort((a, b) => (a.requestedDate || '9999').localeCompare(b.requestedDate || '9999'));
+        let html = '';
+        sorted.forEach(appt => {
+            html += `<div class="tech-card">
+                <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <strong>${appt.clientName}</strong><br>
+                        <span style="font-size:0.78rem; color:var(--text-muted);">${appt.clientPhone || ''} ${appt.clientAddress ? '— ' + appt.clientAddress : ''}</span><br>
+                        <span style="font-size:0.78rem; color:#38bdf8;">${appt.requestedDate || t('noDateSet')} ${appt.requestedTime || ''}</span>
+                        ${appt.note ? `<div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">${appt.note}</div>` : ''}
+                    </div>
+                    <div style="display:flex; gap:6px; align-self:center;">
+                        <button class="success" onclick="convertAppointmentToJob('${appt.id}')" style="padding:6px 12px; font-size:0.78rem;">${t('convertToJobBtn')}</button>
+                        <button class="danger" onclick="deleteAppointment('${appt.id}')" style="padding:6px 10px; font-size:0.78rem;">${t('deleteBtn')}</button>
+                    </div>
+                </div>
+            </div>`;
+        });
+        container.innerHTML = html;
+    }
+
+    /* ---------------- Weekly Work Board ---------------- */
+    let weeklyBoardOffset = 0; // 0 = this week, -1 = previous week, +1 = next week
+
+    function getWeekRange(offset) {
+        const today = new Date();
+        const start = new Date(today);
+        start.setDate(today.getDate() - today.getDay() + (offset * 7)); // Sunday of the target week
+        const days = [];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(start);
+            d.setDate(start.getDate() + i);
+            days.push(d);
+        }
+        return days;
+    }
+
+    function shiftWeek(direction) {
+        weeklyBoardOffset = (direction === 0) ? 0 : weeklyBoardOffset + direction;
+        renderWeeklyBoard();
+    }
+
+    function isoDate(d) { return d.toISOString().split('T')[0]; }
+
+    function renderWeeklyBoard() {
+        const days = getWeekRange(weeklyBoardOffset);
+        const dayNamesAr = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+        const dayNamesEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayNames = currentLang === 'ar' ? dayNamesAr : dayNamesEn;
+
+        document.getElementById('weeklyRangeLabel').textContent =
+            `${isoDate(days[0])} → ${isoDate(days[6])}`;
+
+        // Only jobs that are not yet finished ("خلص") land on the board.
+        const activeJobs = savedJobs.filter(j => j.jobStatus !== 'خلص');
+
+        let html = '';
+        days.forEach(d => {
+            const dateStr = isoDate(d);
+            const dayJobs = activeJobs.filter(j => (j.startDate || '') === dateStr);
+            const isToday = dateStr === isoDate(new Date());
+            html += `<div style="margin-bottom:14px; border:1px solid var(--border-color); border-radius:10px; overflow:hidden;">
+                <div style="background:${isToday ? 'rgba(14,165,233,0.15)' : '#080d1a'}; padding:8px 14px; font-weight:700; color:${isToday ? '#38bdf8' : 'var(--text-muted)'}; display:flex; justify-content:space-between;">
+                    <span>${dayNames[d.getDay()]} — ${dateStr}</span>
+                    <span style="font-weight:400; font-size:0.78rem;">${dayJobs.length} ${t('jobsWord')}</span>
+                </div>`;
+            if (dayJobs.length === 0) {
+                html += `<div style="padding:12px 14px; color:var(--text-muted); font-size:0.82rem;">${t('noJobsThisDay')}</div>`;
+            } else {
+                dayJobs.forEach(job => {
+                    const techNames = (job.technicians || []).map(tc => tc.name).filter(Boolean).join(', ') || t('noTechsAdded');
+                    html += `<div style="padding:10px 14px; border-top:1px solid var(--border-color); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                        <div>
+                            <strong>${job.clientName || ''}</strong>
+                            <div style="font-size:0.78rem; color:var(--text-muted);">${job.clientAddress || ''}</div>
+                            <div style="font-size:0.78rem; color:#38bdf8;">${t('weeklyTechsLabel')} ${techNames}</div>
+                        </div>
+                        <button class="secondary" onclick="editJob('${job.id}')" style="padding:4px 10px; font-size:0.75rem; align-self:center;">${t('editBtn')}</button>
+                    </div>`;
+                });
+            }
+            html += '</div>';
+        });
+        document.getElementById('weeklyBoardContent').innerHTML = html;
+    }
+
+    function sendWeeklyScheduleWhatsApp() {
+        const days = getWeekRange(weeklyBoardOffset);
+        const dayNamesAr = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+        const dayNamesEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayNames = currentLang === 'ar' ? dayNamesAr : dayNamesEn;
+        const activeJobs = savedJobs.filter(j => j.jobStatus !== 'خلص');
+
+        let msg = (currentLang === 'ar' ? '📅 جدول شغل الأسبوع:\n\n' : "📅 This Week's Work Schedule:\n\n");
+        days.forEach(d => {
+            const dateStr = isoDate(d);
+            const dayJobs = activeJobs.filter(j => (j.startDate || '') === dateStr);
+            if (dayJobs.length === 0) return;
+            msg += `*${dayNames[d.getDay()]} (${dateStr})*\n`;
+            dayJobs.forEach(job => {
+                const techNames = (job.technicians || []).map(tc => tc.name).filter(Boolean).join(', ');
+                msg += `- ${job.clientName || ''}${job.clientAddress ? ' | ' + job.clientAddress : ''}${techNames ? ' | ' + techNames : ''}\n`;
+            });
+            msg += '\n';
+        });
+        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    }
 
     function setGuideDateRange(preset) {
         const fromEl = document.getElementById('guideDateFrom');
