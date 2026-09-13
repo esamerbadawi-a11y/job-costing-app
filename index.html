@@ -12,6 +12,9 @@
     <meta name="apple-mobile-web-app-title" content="Job Costing">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#0b0f19">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
@@ -191,6 +194,14 @@
                 <div class="grid-2" style="margin-bottom:10px;">
                     <input type="date" id="apptDate">
                     <input type="time" id="apptTime">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="apptServicesLabel"></label>
+                    <div id="apptServiceCheckboxes" style="display:flex; flex-wrap:wrap; gap:8px; background:var(--panel-bg); border:1px solid var(--border-color); border-radius:8px; padding:10px; margin-bottom:8px;"></div>
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" id="apptNewServiceInput" data-i18n-ph="apptNewServicePh" style="flex:1;">
+                        <button class="secondary" onclick="addNewServiceType()" data-i18n="apptAddServiceBtn"></button>
+                    </div>
                 </div>
                 <input type="text" id="apptNote" data-i18n-ph="apptNotePh" style="margin-bottom:10px;">
                 <div style="display:flex; gap:8px;">
@@ -464,6 +475,23 @@
             <button class="success" onclick="saveWithdrawal()" data-i18n="saveWithdrawalBtn"></button>
         </div>
 
+        <div style="background:var(--panel-bg); border:1px solid var(--border-color); padding:12px; border-radius:10px; margin-bottom:15px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <select id="wdFilterPartner" onchange="renderPartnerAccountContent()">
+                <option value="" data-i18n="wdFilterAll"></option>
+                <option value="S">S</option>
+                <option value="M">M</option>
+            </select>
+            <div style="display:flex; align-items:center; gap:6px;">
+                <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="filterDateFromLabel"></label>
+                <input type="date" id="wdFilterFrom" onchange="renderPartnerAccountContent()" style="min-width:130px;">
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+                <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="filterDateToLabel"></label>
+                <input type="date" id="wdFilterTo" onchange="renderPartnerAccountContent()" style="min-width:130px;">
+            </div>
+            <button class="secondary" onclick="document.getElementById('wdFilterPartner').value=''; document.getElementById('wdFilterFrom').value=''; document.getElementById('wdFilterTo').value=''; renderPartnerAccountContent();" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
+        </div>
+
         <div id="partnerAccountContent" style="font-size:0.85rem; line-height:1.7; color:var(--text-main);"></div>
     </div>
 </div>
@@ -537,6 +565,8 @@
         remainingBalanceLabel: { ar: 'الباقي له لسه:', en: 'Remaining Balance:' },
         noWithdrawalsYet: { ar: 'لسه مفيش أي مبلغ اتسجل إنه اتصرف.', en: 'No withdrawals recorded yet.' },
         withdrawalHistoryTitle: { ar: 'سجل المبالغ اللي اتصرفت', en: 'Withdrawal History' },
+        wdFilterAll: { ar: 'الكل (S و M)', en: 'All (S & M)' },
+        noWithdrawalsMatchFilter: { ar: 'مفيش نتايج مطابقة للفلتر ده.', en: 'No entries match this filter.' },
         activityAdded: { ar: 'أضاف', en: 'Added' },
         activityEdited: { ar: 'عدّل', en: 'Edited' },
         activityDeleted: { ar: 'مسح', en: 'Deleted' },
@@ -597,6 +627,9 @@
         apptNamePh: { ar: 'اسم العميل', en: 'Client Name' },
         apptAddressPh: { ar: 'العنوان', en: 'Address' },
         apptNotePh: { ar: 'ملاحظة (تفاصيل الطلب، اختياري)', en: 'Note (request details, optional)' },
+        apptServicesLabel: { ar: 'الخدمات المطلوبة:', en: 'Services Needed:' },
+        apptNewServicePh: { ar: 'ضيف خدمة جديدة...', en: 'Add a new service...' },
+        apptAddServiceBtn: { ar: '+ إضافة', en: '+ Add' },
         saveAppointmentBtn: { ar: 'حفظ الموعد', en: 'Save Appointment' },
         noAppointmentsYet: { ar: 'لسه مفيش أي مواعيد مسجلة.', en: 'No appointments recorded yet.' },
         noDateSet: { ar: 'من غير تاريخ محدد', en: 'No date set' },
@@ -840,6 +873,7 @@
     const ACTIVITY_LOG = db.collection('jobCostingApp').doc('activityLog');
     const WITHDRAWALS_DOC = db.collection('jobCostingApp').doc('partnerWithdrawals');
     const APPOINTMENTS_DOC = db.collection('jobCostingApp').doc('appointments');
+    const SERVICE_TYPES_DOC = db.collection('jobCostingApp').doc('serviceTypes');
 
     async function saveSavedJobsData(){ await JOBS_DOC.set({ jobs: savedJobs }); }
     async function saveTechPhonesData(){ await TECHS_DOC.set({ phones: technicianPhones }); }
@@ -902,6 +936,7 @@
     let lastDeletedJobs = [];
     let partnerWithdrawals = [];
     let appointments = [];
+    let serviceTypesList = ['Estimate', 'Drywall', 'Plumbing', 'Flooring', 'Electrical', 'Painting', 'HVAC', 'Roofing'];
     let onlyShowDebt = false;
 
     const EXCLUSIVE_PERCENT_TYPES = ['فني لوحده (%60)', 'نسبة (50%)'];
@@ -924,7 +959,11 @@
         document.getElementById('tabWeeklyBtn').style.background = name === 'weekly' ? 'var(--primary)' : '';
         document.getElementById('tabAppointmentsBtn').style.background = name === 'appointments' ? 'var(--primary)' : '';
         if (name === 'weekly') safeCall(renderWeeklyBoard);
-        if (name === 'appointments') safeCall(renderAppointments);
+        if (name === 'appointments') {
+            safeCall(renderAppointments);
+            const editingAppt = editingApptId ? appointments.find(a => a.id === editingApptId) : null;
+            safeCall(() => renderApptServiceCheckboxes(editingAppt ? editingAppt.services : []));
+        }
     }
 
     // Live-syncs with Firestore: fires immediately with the current data, then again every
@@ -958,6 +997,11 @@
             appointments = (doc.exists && doc.data().entries) ? doc.data().entries : [];
             if (document.getElementById('screenAppointments').style.display !== 'none') safeCall(renderAppointments);
         }, err => console.error('Firestore appointments sync error:', err));
+
+        SERVICE_TYPES_DOC.onSnapshot(doc => {
+            if (doc.exists && doc.data().entries && doc.data().entries.length > 0) serviceTypesList = doc.data().entries;
+            if (document.getElementById('screenAppointments').style.display !== 'none') safeCall(renderApptServiceCheckboxes);
+        }, err => console.error('Firestore service types sync error:', err));
 
         safeCall(updateUndoButtonUI);
         safeCall(() => switchScreen('log'));
@@ -2044,18 +2088,34 @@
         if (partnerWithdrawals.length === 0) {
             html += `<p style="text-align:center; color:var(--text-muted); padding:15px;">${t('noWithdrawalsYet')}</p>`;
         } else {
-            html += `<h4 style="color:var(--text-muted); font-size:0.85rem; margin-bottom:8px;">${t('withdrawalHistoryTitle')}</h4>`;
-            html += '<table style="width:100%; border-collapse:collapse;"><tbody>';
-            partnerWithdrawals.forEach((w, index) => {
-                html += `<tr style="border-top:1px solid var(--border-color);">
-                    <td style="padding:6px; font-size:0.78rem; color:var(--text-muted); white-space:nowrap;">${w.date || ''}</td>
-                    <td style="padding:6px; font-weight:700; color:#38bdf8;">${w.partner}</td>
-                    <td style="padding:6px; color:#f87171; font-weight:700;">$${parseVal(w.amount).toFixed(2)}</td>
-                    <td style="padding:6px; font-size:0.78rem; color:var(--text-muted);">${w.note || ''}</td>
-                    <td style="padding:6px;"><button class="danger" onclick="deleteWithdrawal(${index})" style="padding:3px 8px; font-size:0.72rem;">${t('deleteBtn')}</button></td>
-                </tr>`;
-            });
-            html += '</tbody></table>';
+            const partnerFilter = document.getElementById('wdFilterPartner').value;
+            const dateFrom = document.getElementById('wdFilterFrom').value;
+            const dateTo = document.getElementById('wdFilterTo').value;
+            const filtered = partnerWithdrawals
+                .map((w, i) => ({ ...w, _origIndex: i }))
+                .filter(w => {
+                    const matchPartner = !partnerFilter || w.partner === partnerFilter;
+                    const matchFrom = !dateFrom || (w.date && w.date >= dateFrom);
+                    const matchTo = !dateTo || (w.date && w.date <= dateTo);
+                    return matchPartner && matchFrom && matchTo;
+                });
+
+            html += `<h4 style="color:var(--text-muted); font-size:0.85rem; margin-bottom:8px;">${t('withdrawalHistoryTitle')} (${filtered.length})</h4>`;
+            if (filtered.length === 0) {
+                html += `<p style="text-align:center; color:var(--text-muted); padding:15px;">${t('noWithdrawalsMatchFilter')}</p>`;
+            } else {
+                html += '<table style="width:100%; border-collapse:collapse;"><tbody>';
+                filtered.forEach(w => {
+                    html += `<tr style="border-top:1px solid var(--border-color);">
+                        <td style="padding:6px; font-size:0.78rem; color:var(--text-muted); white-space:nowrap;">${w.date || ''}</td>
+                        <td style="padding:6px; font-weight:700; color:#38bdf8;">${w.partner}</td>
+                        <td style="padding:6px; color:#f87171; font-weight:700;">$${parseVal(w.amount).toFixed(2)}</td>
+                        <td style="padding:6px; font-size:0.78rem; color:var(--text-muted);">${w.note || ''}</td>
+                        <td style="padding:6px;"><button class="danger" onclick="deleteWithdrawal(${w._origIndex})" style="padding:3px 8px; font-size:0.72rem;">${t('deleteBtn')}</button></td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+            }
         }
         container.innerHTML = html;
     }
@@ -2311,6 +2371,31 @@
 
     /* ---------------- Appointments / Scheduling ---------------- */
 
+    function renderApptServiceCheckboxes(checkedServices) {
+        checkedServices = checkedServices || [];
+        const container = document.getElementById('apptServiceCheckboxes');
+        container.innerHTML = serviceTypesList.map(svc => `
+            <label style="display:flex; align-items:center; gap:5px; font-size:0.82rem; cursor:pointer;">
+                <input type="checkbox" class="appt-service-check" value="${svc}" ${checkedServices.includes(svc) ? 'checked' : ''}> ${svc}
+            </label>`).join('');
+    }
+
+    async function addNewServiceType() {
+        const input = document.getElementById('apptNewServiceInput');
+        const name = input.value.trim();
+        if (!name) return;
+        if (serviceTypesList.some(s => s.toLowerCase() === name.toLowerCase())) {
+            input.value = '';
+            return; // already exists, nothing to add
+        }
+        serviceTypesList.push(name);
+        try { await SERVICE_TYPES_DOC.set({ entries: serviceTypesList }); } catch (e) { console.error(e); }
+        const currentlyChecked = Array.from(document.querySelectorAll('.appt-service-check:checked')).map(cb => cb.value);
+        currentlyChecked.push(name); // the service the user just typed is presumably what's needed
+        renderApptServiceCheckboxes(currentlyChecked);
+        input.value = '';
+    }
+
     function editAppointment(id) {
         const appt = appointments.find(a => a.id === id);
         if (!appt) return;
@@ -2321,6 +2406,7 @@
         document.getElementById('apptDate').value = appt.requestedDate || '';
         document.getElementById('apptTime').value = appt.requestedTime || '';
         document.getElementById('apptNote').value = appt.note || '';
+        renderApptServiceCheckboxes(appt.services || []);
         document.getElementById('addAppointmentTitle').innerText = t('editAppointmentTitle');
         document.getElementById('saveAppointmentBtnLabel').innerText = t('updateAppointmentBtn');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2334,6 +2420,7 @@
         document.getElementById('apptDate').value = '';
         document.getElementById('apptTime').value = '';
         document.getElementById('apptNote').value = '';
+        renderApptServiceCheckboxes([]);
         document.getElementById('addAppointmentTitle').innerText = t('addAppointmentTitle');
         document.getElementById('saveAppointmentBtnLabel').innerText = t('saveAppointmentBtn');
     }
@@ -2348,6 +2435,7 @@
             clientAddress: document.getElementById('apptClientAddress').value.trim(),
             requestedDate: document.getElementById('apptDate').value,
             requestedTime: document.getElementById('apptTime').value,
+            services: Array.from(document.querySelectorAll('.appt-service-check:checked')).map(cb => cb.value),
             note: document.getElementById('apptNote').value.trim(),
             by: currentUserEmail || '?'
         };
@@ -2385,6 +2473,8 @@
         document.getElementById('clientAddress').value = appt.clientAddress || '';
         if (appt.requestedDate) { document.getElementById('startDate').value = appt.requestedDate; document.getElementById('endDate').value = appt.requestedDate; }
         if (appt.requestedTime) { document.getElementById('scheduledTime').value = appt.requestedTime; }
+        const servicesLine = (appt.services && appt.services.length > 0) ? `${t('apptServicesLabel')} ${appt.services.join(', ')}` : '';
+        document.getElementById('clientDescription').value = [servicesLine, appt.note || ''].filter(Boolean).join('\n');
         checkCrmCustomerData();
 
         appointments = appointments.filter(a => a.id !== id);
@@ -2400,12 +2490,16 @@
         const sorted = [...appointments].sort((a, b) => (a.requestedDate || '9999').localeCompare(b.requestedDate || '9999'));
         let html = '';
         sorted.forEach(appt => {
+            const serviceTags = (appt.services && appt.services.length > 0)
+                ? `<div style="margin-top:6px; display:flex; flex-wrap:wrap; gap:5px;">${appt.services.map(s => `<span style="background:rgba(14,165,233,0.15); color:#38bdf8; border-radius:6px; padding:2px 8px; font-size:0.72rem;">${s}</span>`).join('')}</div>`
+                : '';
             html += `<div class="tech-card">
                 <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
                     <div>
                         <strong>${appt.clientName}</strong><br>
                         <span style="font-size:0.78rem; color:var(--text-muted);">${appt.clientPhone || ''} ${appt.clientAddress ? '— ' + appt.clientAddress : ''}</span><br>
                         <span style="font-size:0.78rem; color:#38bdf8;">${appt.requestedDate || t('noDateSet')} ${appt.requestedTime || ''}</span>
+                        ${serviceTags}
                         ${appt.note ? `<div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">${appt.note}</div>` : ''}
                     </div>
                     <div style="display:flex; gap:6px; align-self:center;">
