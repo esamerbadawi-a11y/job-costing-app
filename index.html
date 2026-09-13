@@ -2695,9 +2695,11 @@
             if (dayJobs.length === 0) return;
             msg += `*${dayNames[d.getDay() === 0 ? 6 : d.getDay() - 1]} (${dateStr})*\n`;
             dayJobs.forEach(job => {
-                const techNames = (job.technicians || []).map(tc => tc.name).filter(Boolean).join(', ');
-                const timePrefix = job.scheduledTime ? `[${job.scheduledTime}] ` : '';
-                msg += `- ${timePrefix}${job.clientName || ''}${job.clientAddress ? ' | ' + job.clientAddress : ''}${techNames ? ' | ' + techNames : ''}\n`;
+                const teamNames = (job.assignedTeam && job.assignedTeam.length > 0)
+                    ? job.assignedTeam.join(', ')
+                    : (job.technicians || []).map(tc => tc.name).filter(Boolean).join(', ');
+                const timePrefix = job.scheduledTime ? `⏰ ${job.scheduledTime} — ` : (currentLang === 'ar' ? '⏰ وقت مش محدد — ' : '⏰ No time set — ');
+                msg += `- ${timePrefix}${job.clientName || ''}${job.clientAddress ? ' | ' + job.clientAddress : ''}${teamNames ? ' | 👤 ' + teamNames : ''}\n`;
             });
             msg += '\n';
         });
