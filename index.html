@@ -2477,18 +2477,37 @@
     async function convertAppointmentToJob(id) {
         const appt = appointments.find(a => a.id === id);
         if (!appt) return;
-        resetForm();
-        document.getElementById('clientName').value = appt.clientName || '';
-        document.getElementById('clientPhone').value = appt.clientPhone || '';
-        document.getElementById('clientAddress').value = appt.clientAddress || '';
-        if (appt.requestedDate) { document.getElementById('startDate').value = appt.requestedDate; document.getElementById('endDate').value = appt.requestedDate; }
-        if (appt.requestedTime) { document.getElementById('scheduledTime').value = appt.requestedTime; }
-        const servicesLine = (appt.services && appt.services.length > 0) ? `${t('apptServicesLabel')} ${appt.services.join(', ')}` : '';
-        document.getElementById('clientDescription').value = [servicesLine, appt.note || ''].filter(Boolean).join('\n');
-        checkCrmCustomerData();
 
+        const servicesLine = (appt.services && appt.services.length > 0) ? `${t('apptServicesLabel')} ${appt.services.join(', ')}` : '';
+        const newJob = {
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+            clientName: appt.clientName || '',
+            clientPhone: appt.clientPhone || '',
+            jobStatus: 'شغال',
+            clientAddress: appt.clientAddress || '',
+            clientDescription: [servicesLine, appt.note || ''].filter(Boolean).join('\n'),
+            startDate: appt.requestedDate || '',
+            endDate: appt.requestedDate || '',
+            scheduledTime: appt.requestedTime || '',
+            totalRevenue: 0, amountReceived: 0, amountRemaining: 0,
+            followUpDate: '', materialCost: 0, extraExpenses: 0,
+            expenseItems: [], technicians: [], assignedTeam: [],
+            createdBy: currentUserEmail, lastEditedBy: currentUserEmail
+        };
+
+        savedJobs.unshift(newJob);
         appointments = appointments.filter(a => a.id !== id);
-        try { await APPOINTMENTS_DOC.set({ entries: appointments }); } catch (e) { console.error(e); }
+        try {
+            await saveSavedJobsData();
+            await APPOINTMENTS_DOC.set({ entries: appointments });
+            logActivity('add', newJob.clientName);
+        } catch (e) {
+            alert(t('alertJobSaveFailed'));
+            return;
+        }
+
+        refreshAllViews();
+        editJob(newJob.id); // opens it pre-filled, in edit mode, so refining it later never creates a duplicate
         switchScreen('entry');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
