@@ -536,6 +536,27 @@
     </div>
 </div>
 
+<div id="editScheduleModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:90%; max-width:500px; max-height:85vh; overflow-y:auto; padding:25px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.15rem;">🗓️ <span data-i18n="editScheduleTitle"></span></h2>
+            <button class="danger" onclick="closeEditScheduleModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+
+        <div id="editScheduleClientLabel" style="font-weight:700; margin-bottom:4px;"></div>
+        <div id="editScheduleDayLabel" style="color:var(--text-muted); font-size:0.82rem; margin-bottom:14px;"></div>
+
+        <div class="form-group"><label data-i18n="lblScheduledTime"></label><input type="time" id="esTime"></div>
+        <div class="form-group">
+            <label data-i18n="qsTeamLabel"></label>
+            <div id="esTeamCheckboxes" style="display:flex; flex-wrap:wrap; gap:8px; background:var(--panel-bg); border:1px solid var(--border-color); border-radius:8px; padding:10px;"></div>
+        </div>
+
+        <button class="success" style="width:100%; padding:11px; margin-bottom:8px;" onclick="saveEditSchedule()" data-i18n="qsSaveBtn"></button>
+        <button class="secondary" style="width:100%; padding:8px; font-size:0.8rem;" id="esFullEditLink" data-i18n="esFullEditLink"></button>
+    </div>
+</div>
+
 <script>
     /* ---------------- i18n ---------------- */
     let currentLang = 'en';
@@ -616,6 +637,8 @@
         allPendingSubtitle: { ar: 'كل الشغلانات اللي لسه مخلصتش، من كل التواريخ.', en: 'All unfinished jobs, across every date.' },
         overdueLabel: { ar: 'متأخرة', en: 'Overdue' },
         quickScheduleTitle: { ar: 'جدولة سريعة', en: 'Quick Schedule' },
+        editScheduleTitle: { ar: 'تعديل الوقت والفريق', en: 'Edit Time & Team' },
+        esFullEditLink: { ar: '⚙️ تعديل تفاصيل الشغلانة كاملة (السعر، الفنيين...)', en: '⚙️ Edit full job details (price, technicians...)' },
         qsNewJobTab: { ar: 'شغلانة جديدة', en: 'New Job' },
         qsExistingJobTab: { ar: 'شغلانة موجودة', en: 'Existing Job' },
         qsPickExisting: { ar: 'اختار الشغلانة:', en: 'Pick the Job:' },
@@ -1032,7 +1055,7 @@
     }
 
     function buildDebtReminderMessage() {
-        const today = new Date().toISOString().split('T')[0];
+        const today = isoDate(new Date());
         const outstanding = savedJobs.filter(job => jobRemaining(job) > 0);
         if (outstanding.length === 0) return null;
 
@@ -1550,7 +1573,7 @@
             const rec = parseVal(job.amountReceived);
             const rem = jobRemaining(job);
             const hasDebt = rem > 0;
-            const isOverdue = hasDebt && job.followUpDate && job.followUpDate <= new Date().toISOString().split('T')[0];
+            const isOverdue = hasDebt && job.followUpDate && job.followUpDate <= isoDate(new Date());
 
             const tr = document.createElement('tr');
             tr.setAttribute('data-id', job.id);
@@ -1583,6 +1606,16 @@
     // block the others (this was the actual bug — one failing step was silently skipping
     // every refresh call listed after it, so some cards never updated).
     function safeCall(fn) { try { fn(); } catch (e) { console.error(e); } }
+
+    // Formats a Date as YYYY-MM-DD using LOCAL calendar fields — never use toISOString()
+    // for this, since it converts to UTC first and can silently shift the date by a day
+    // depending on the device's timezone.
+    function isoDate(d) {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
     function refreshAllViews() {
         safeCall(renderJobsTable);
         safeCall(updateGlobalStats);
@@ -1852,7 +1885,7 @@
         const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = `AHA_BACKUP_${new Date().toISOString().split('T')[0]}.json`;
+        a.href = url; a.download = `AHA_BACKUP_${isoDate(new Date())}.json`;
         document.body.appendChild(a); a.click(); a.remove();
         URL.revokeObjectURL(url);
     }
@@ -2295,6 +2328,45 @@
     let quickScheduleDay = '';
     let quickScheduleMode = 'new';
 
+    let editScheduleJobId = '';
+
+    // Lets someone adjust just the time and assigned team for an already-saved job,
+    // without touching (or even seeing) its financial details.
+    function openEditScheduleModal(jobId) {
+        const job = savedJobs.find(j => j.id === jobId);
+        if (!job) return;
+        editScheduleJobId = jobId;
+        document.getElementById('editScheduleClientLabel').textContent = job.clientName || '';
+        document.getElementById('editScheduleDayLabel').textContent = job.startDate || t('noDateSet');
+        document.getElementById('esTime').value = job.scheduledTime || '';
+
+        const names = ['SAMER', 'MOHAMED', ...getUniqueRegisteredTechnicians()];
+        const uniqueNames = [...new Set(names)];
+        const checkedTeam = (job.assignedTeam && job.assignedTeam.length > 0) ? job.assignedTeam : (job.technicians || []).map(tc => tc.name).filter(Boolean);
+        document.getElementById('esTeamCheckboxes').innerHTML = uniqueNames.map(name => `
+            <label style="display:flex; align-items:center; gap:5px; font-size:0.82rem; cursor:pointer;">
+                <input type="checkbox" class="es-team-check" value="${name}" ${checkedTeam.includes(name) ? 'checked' : ''}> ${name}
+            </label>`).join('');
+
+        document.getElementById('esFullEditLink').onclick = () => { closeEditScheduleModal(); editJob(jobId); switchScreen('entry'); };
+        document.getElementById('editScheduleModal').style.display = 'flex';
+    }
+    function closeEditScheduleModal() { document.getElementById('editScheduleModal').style.display = 'none'; }
+
+    async function saveEditSchedule() {
+        const idx = savedJobs.findIndex(j => j.id === editScheduleJobId);
+        if (idx === -1) return;
+        savedJobs[idx].scheduledTime = document.getElementById('esTime').value;
+        savedJobs[idx].assignedTeam = Array.from(document.querySelectorAll('.es-team-check:checked')).map(cb => cb.value);
+        savedJobs[idx].lastEditedBy = currentUserEmail;
+        try {
+            await saveSavedJobsData();
+            logActivity('edit', savedJobs[idx].clientName);
+        } catch (e) { alert(t('alertJobSaveFailed')); return; }
+        closeEditScheduleModal();
+        renderWeeklyBoard();
+    }
+
     function openQuickScheduleModal(dateStr) {
         quickScheduleDay = dateStr;
         quickScheduleMode = 'new';
@@ -2568,8 +2640,6 @@
         renderWeeklyBoard();
     }
 
-    function isoDate(d) { return d.toISOString().split('T')[0]; }
-
     function toggleAllPendingMode() {
         showAllPendingMode = !showAllPendingMode;
         document.getElementById('showAllPendingBtn').style.background = showAllPendingMode ? 'var(--primary)' : '';
@@ -2605,7 +2675,7 @@
                     <div style="font-size:0.78rem; color:var(--text-muted);">${job.clientAddress || ''}${showAllPendingMode ? ' — ' + (job.startDate || t('noDateSet')) : ''}</div>
                     <div style="font-size:0.78rem; color:#38bdf8;">${t('weeklyTechsLabel')} ${teamNames}</div>
                 </div>
-                <button class="secondary" onclick="editJob('${job.id}')" style="padding:4px 10px; font-size:0.75rem; align-self:center;">${t('editBtn')}</button>
+                <button class="secondary" onclick="openEditScheduleModal('${job.id}')" style="padding:4px 10px; font-size:0.75rem; align-self:center;">${t('editBtn')}</button>
             </div>
         </div>`;
     }
@@ -2714,7 +2784,7 @@
         const fromEl = document.getElementById('guideDateFrom');
         const toEl = document.getElementById('guideDateTo');
         const today = new Date();
-        const iso = d => d.toISOString().split('T')[0];
+        const iso = d => isoDate(d);
         if (preset === 'today') {
             fromEl.value = iso(today); toEl.value = iso(today);
         } else if (preset === 'week') {
