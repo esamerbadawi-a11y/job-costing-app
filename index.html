@@ -47,6 +47,7 @@
         .stats-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 12px; margin-bottom: 20px; }
         @media(max-width: 1300px) { .stats-grid { grid-template-columns: repeat(4, 1fr); } }
         @media(max-width: 700px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media(max-width: 600px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
         .stat-card { background: var(--card-dark); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 10px; text-align: center; transition: all 0.25s ease; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); }
         .stat-card span { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; }
         .stat-card strong { font-size: 1.25rem; color: var(--text-main); font-weight: 700; }
@@ -2693,15 +2694,18 @@
             const dateStr = isoDate(d);
             const dayJobs = sortDayJobs(activeJobs.filter(j => (j.startDate || '') === dateStr));
             if (dayJobs.length === 0) return;
-            msg += `*${dayNames[d.getDay() === 0 ? 6 : d.getDay() - 1]} (${dateStr})*\n`;
-            dayJobs.forEach(job => {
+            msg += `━━━━━━━━━━━━\n*${dayNames[d.getDay() === 0 ? 6 : d.getDay() - 1]} — ${dateStr}*\n\n`;
+            dayJobs.forEach((job, i) => {
                 const teamNames = (job.assignedTeam && job.assignedTeam.length > 0)
                     ? job.assignedTeam.join(', ')
                     : (job.technicians || []).map(tc => tc.name).filter(Boolean).join(', ');
-                const timePrefix = job.scheduledTime ? `⏰ ${job.scheduledTime} — ` : (currentLang === 'ar' ? '⏰ وقت مش محدد — ' : '⏰ No time set — ');
-                msg += `- ${timePrefix}${job.clientName || ''}${job.clientAddress ? ' | ' + job.clientAddress : ''}${teamNames ? ' | 👤 ' + teamNames : ''}\n`;
+                const timeLine = job.scheduledTime ? job.scheduledTime : (currentLang === 'ar' ? 'وقت مش محدد' : 'No time set');
+                msg += `${i + 1}. *${job.clientName || ''}*\n`;
+                if (job.clientAddress) msg += `📍 ${job.clientAddress}\n`;
+                msg += `⏰ ${timeLine}\n`;
+                if (teamNames) msg += `👤 ${teamNames}\n`;
+                msg += '\n';
             });
-            msg += '\n';
         });
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
     }
