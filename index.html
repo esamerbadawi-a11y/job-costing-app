@@ -1484,6 +1484,7 @@
                 jobData.createdBy = savedJobs[index].createdBy || currentUserEmail;
                 if (savedJobs[index].assignedTeam !== undefined) jobData.assignedTeam = savedJobs[index].assignedTeam;
                 if (savedJobs[index].dayOrder !== undefined) jobData.dayOrder = savedJobs[index].dayOrder;
+                if (savedJobs[index].scheduledDate !== undefined) jobData.scheduledDate = savedJobs[index].scheduledDate;
                 savedJobs[index] = jobData;
             }
         } else {
@@ -2337,7 +2338,7 @@
         if (!job) return;
         editScheduleJobId = jobId;
         document.getElementById('editScheduleClientLabel').textContent = job.clientName || '';
-        document.getElementById('editScheduleDayLabel').textContent = job.startDate || t('noDateSet');
+        document.getElementById('editScheduleDayLabel').textContent = effectiveScheduleDate(job) || t('noDateSet');
         document.getElementById('esTime').value = job.scheduledTime || '';
 
         const names = ['SAMER', 'MOHAMED', ...getUniqueRegisteredTechnicians()];
@@ -2379,7 +2380,7 @@
         // Existing-job dropdown: any job not yet marked "done".
         const sel = document.getElementById('qsExistingJobSelect');
         const activeJobs = savedJobs.filter(j => j.jobStatus !== 'خلص');
-        sel.innerHTML = activeJobs.map(j => `<option value="${j.id}">${j.clientName || ''} (${j.startDate || t('noDateSet')})</option>`).join('')
+        sel.innerHTML = activeJobs.map(j => `<option value="${j.id}">${j.clientName || ''} (${effectiveScheduleDate(j) || t('noDateSet')})</option>`).join('')
             || `<option value="">${t('noJobsThisDay')}</option>`;
 
         // Team checkboxes: the two partners first, then every registered technician.
@@ -2420,6 +2421,7 @@
                 clientDescription: '',
                 startDate: quickScheduleDay,
                 endDate: quickScheduleDay,
+                scheduledDate: quickScheduleDay,
                 scheduledTime: time,
                 totalRevenue: 0, amountReceived: 0, amountRemaining: 0,
                 followUpDate: '', materialCost: 0, extraExpenses: 0,
@@ -2437,7 +2439,9 @@
             if (!jobId) { return; }
             const idx = savedJobs.findIndex(j => j.id === jobId);
             if (idx === -1) return;
-            savedJobs[idx].startDate = quickScheduleDay;
+            // Only the scheduling date changes here — the job's official record date
+            // (startDate, used in Log & Reports) is left untouched on purpose.
+            savedJobs[idx].scheduledDate = quickScheduleDay;
             savedJobs[idx].scheduledTime = time;
             savedJobs[idx].assignedTeam = team;
             savedJobs[idx].lastEditedBy = currentUserEmail;
@@ -2561,6 +2565,7 @@
             clientDescription: [servicesLine, appt.note || ''].filter(Boolean).join('\n'),
             startDate: appt.requestedDate || '',
             endDate: appt.requestedDate || '',
+            scheduledDate: appt.requestedDate || '',
             scheduledTime: appt.requestedTime || '',
             totalRevenue: 0, amountReceived: 0, amountRemaining: 0,
             followUpDate: '', materialCost: 0, extraExpenses: 0,
@@ -2616,6 +2621,12 @@
     }
 
     /* ---------------- Weekly Work Board ---------------- */
+    // The Weekly Board organizes work by its OWN scheduling date, separate from the job's
+    // official record date (startDate) used in reports — so reordering a job's day here
+    // never changes the date shown in Log & Reports. Falls back to startDate only for
+    // older jobs saved before this field existed.
+    function effectiveScheduleDate(job) { return job.scheduledDate || job.startDate || ''; }
+
     let weeklyBoardOffset = 0; // 0 = this week, -1 = previous week, +1 = next week
     let showAllPendingMode = false;
     let dragJobId = null;
@@ -2667,12 +2678,12 @@
         return `<div class="tech-card" draggable="true" data-job-id="${job.id}"
                 ondragstart="dragJobId='${job.id}'; event.dataTransfer.effectAllowed='move';"
                 ondragover="event.preventDefault();"
-                ondrop="handleJobDrop(event, '${job.startDate || ''}', '${job.id}')"
+                ondrop="handleJobDrop(event, '${effectiveScheduleDate(job)}', '${job.id}')"
                 style="margin-bottom:8px; padding:10px 14px; cursor:grab; ${isOverdue ? 'border-color:var(--danger); background:rgba(225,29,72,0.08);' : ''}">
             <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
                 <div>
                     <div>${timeLabel}<strong>${job.clientName || ''}</strong>${isOverdue ? ` <span style="color:#f87171; font-size:0.72rem; font-weight:700;">⚠️ ${t('overdueLabel')}</span>` : ''}</div>
-                    <div style="font-size:0.78rem; color:var(--text-muted);">${job.clientAddress || ''}${showAllPendingMode ? ' — ' + (job.startDate || t('noDateSet')) : ''}</div>
+                    <div style="font-size:0.78rem; color:var(--text-muted);">${job.clientAddress || ''}${showAllPendingMode ? ' — ' + (effectiveScheduleDate(job) || t('noDateSet')) : ''}</div>
                     <div style="font-size:0.78rem; color:#38bdf8;">${t('weeklyTechsLabel')} ${teamNames}</div>
                 </div>
                 <button class="secondary" onclick="openEditScheduleModal('${job.id}')" style="padding:4px 10px; font-size:0.75rem; align-self:center;">${t('editBtn')}</button>
@@ -2684,7 +2695,7 @@
     async function handleJobDrop(event, dateStr, targetJobId) {
         event.preventDefault();
         if (!dragJobId || dragJobId === targetJobId) return;
-        const dayJobs = sortDayJobs(savedJobs.filter(j => j.jobStatus !== 'خلص' && (j.startDate || '') === dateStr));
+        const dayJobs = sortDayJobs(savedJobs.filter(j => j.jobStatus !== 'خلص' && effectiveScheduleDate(j) === dateStr));
         const draggedIndex = dayJobs.findIndex(j => j.id === dragJobId);
         const targetIndex = dayJobs.findIndex(j => j.id === targetJobId);
         if (draggedIndex === -1 || targetIndex === -1) return;
@@ -2711,13 +2722,14 @@
 
         if (showAllPendingMode) {
             document.getElementById('weeklyRangeLabel').textContent = t('allPendingSubtitle');
-            const sorted = [...activeJobs].sort((a, b) => (a.startDate || '9999').localeCompare(b.startDate || '9999'));
+            const sorted = [...activeJobs].sort((a, b) => (effectiveScheduleDate(a) || '9999').localeCompare(effectiveScheduleDate(b) || '9999'));
             let html = '';
             if (sorted.length === 0) {
                 html = `<div style="padding:12px 14px; color:var(--text-muted); font-size:0.82rem;">${t('noJobsThisDay')}</div>`;
             } else {
                 sorted.forEach(job => {
-                    const isOverdue = job.startDate && job.startDate < todayStr;
+                    const jd = effectiveScheduleDate(job);
+                    const isOverdue = jd && jd < todayStr;
                     html += renderJobCard(job, isOverdue);
                 });
             }
@@ -2731,7 +2743,7 @@
         let html = '';
         days.forEach(d => {
             const dateStr = isoDate(d);
-            const dayJobs = sortDayJobs(activeJobs.filter(j => (j.startDate || '') === dateStr));
+            const dayJobs = sortDayJobs(activeJobs.filter(j => effectiveScheduleDate(j) === dateStr));
             const isToday = dateStr === todayStr;
             html += `<div style="margin-bottom:14px; border:1px solid var(--border-color); border-radius:10px; overflow:hidden;">
                 <div style="background:${isToday ? 'rgba(14,165,233,0.15)' : 'var(--panel-bg)'}; padding:8px 14px; font-weight:700; color:${isToday ? '#38bdf8' : 'var(--text-muted)'}; display:flex; justify-content:space-between; align-items:center;">
@@ -2762,7 +2774,7 @@
         let msg = (currentLang === 'ar' ? '📅 جدول شغل الأسبوع:\n\n' : "📅 This Week's Work Schedule:\n\n");
         days.forEach(d => {
             const dateStr = isoDate(d);
-            const dayJobs = sortDayJobs(activeJobs.filter(j => (j.startDate || '') === dateStr));
+            const dayJobs = sortDayJobs(activeJobs.filter(j => effectiveScheduleDate(j) === dateStr));
             if (dayJobs.length === 0) return;
             msg += `━━━━━━━━━━━━\n*${dayNames[d.getDay() === 0 ? 6 : d.getDay() - 1]} — ${dateStr}*\n\n`;
             dayJobs.forEach((job, i) => {
