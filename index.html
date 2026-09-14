@@ -544,7 +544,10 @@
         </div>
 
         <div id="editScheduleClientLabel" style="font-weight:700; margin-bottom:4px;"></div>
-        <div id="editScheduleDayLabel" style="color:var(--text-muted); font-size:0.82rem; margin-bottom:14px;"></div>
+        <div class="form-group">
+            <label data-i18n="lblScheduleDay"></label>
+            <input type="date" id="editScheduleDayLabel">
+        </div>
 
         <div class="form-group"><label data-i18n="lblScheduledTime"></label><input type="time" id="esTime"></div>
         <div class="form-group">
@@ -638,6 +641,7 @@
         overdueLabel: { ar: 'متأخرة', en: 'Overdue' },
         quickScheduleTitle: { ar: 'جدولة سريعة', en: 'Quick Schedule' },
         editScheduleTitle: { ar: 'تعديل الوقت والفريق', en: 'Edit Time & Team' },
+        lblScheduleDay: { ar: 'يوم الشغل:', en: 'Scheduled Day:' },
         esFullEditLink: { ar: '⚙️ تعديل تفاصيل الشغلانة كاملة (السعر، الفنيين...)', en: '⚙️ Edit full job details (price, technicians...)' },
         qsNewJobTab: { ar: 'شغلانة جديدة', en: 'New Job' },
         qsExistingJobTab: { ar: 'شغلانة موجودة', en: 'Existing Job' },
@@ -2338,7 +2342,7 @@
         if (!job) return;
         editScheduleJobId = jobId;
         document.getElementById('editScheduleClientLabel').textContent = job.clientName || '';
-        document.getElementById('editScheduleDayLabel').textContent = effectiveScheduleDate(job) || t('noDateSet');
+        document.getElementById('editScheduleDayLabel').value = effectiveScheduleDate(job) || '';
         document.getElementById('esTime').value = job.scheduledTime || '';
 
         const names = ['SAMER', 'MOHAMED', ...getUniqueRegisteredTechnicians()];
@@ -2357,6 +2361,7 @@
     async function saveEditSchedule() {
         const idx = savedJobs.findIndex(j => j.id === editScheduleJobId);
         if (idx === -1) return;
+        savedJobs[idx].scheduledDate = document.getElementById('editScheduleDayLabel').value;
         savedJobs[idx].scheduledTime = document.getElementById('esTime').value;
         savedJobs[idx].assignedTeam = Array.from(document.querySelectorAll('.es-team-check:checked')).map(cb => cb.value);
         savedJobs[idx].lastEditedBy = currentUserEmail;
@@ -2634,9 +2639,8 @@
     // Week starts on Monday.
     function getWeekRange(offset) {
         const today = new Date();
-        const dayIndex = (today.getDay() + 6) % 7; // Monday=0 ... Sunday=6
         const start = new Date(today);
-        start.setDate(today.getDate() - dayIndex + (offset * 7));
+        start.setDate(today.getDate() + 1 + (offset * 7)); // window always starts tomorrow, shifting by 7 days per offset
         const days = [];
         for (let i = 0; i < 7; i++) {
             const d = new Date(start);
