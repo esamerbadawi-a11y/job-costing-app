@@ -542,6 +542,15 @@
     </div>
 </div>
 
+<div id="mapChoiceModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center;" onclick="if(event.target===this) closeMapChoice();">
+    <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:85%; max-width:320px; padding:20px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+        <h3 style="color:#38bdf8; margin:0 0 14px; font-size:1rem; text-align:center;" data-i18n="mapChoiceTitle"></h3>
+        <button class="secondary" id="mapChoiceGoogleBtn" style="width:100%; padding:11px; margin-bottom:8px;">🗺️ Google Maps</button>
+        <button class="secondary" id="mapChoiceAppleBtn" style="width:100%; padding:11px; margin-bottom:8px;">🍎 Apple Maps</button>
+        <button class="danger" style="width:100%; padding:8px; font-size:0.85rem;" onclick="closeMapChoice()" data-i18n="cancelBtn"></button>
+    </div>
+</div>
+
 <div id="quickScheduleModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
     <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:90%; max-width:550px; max-height:85vh; overflow-y:auto; padding:25px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px;">
@@ -846,6 +855,7 @@
         phTechPhone: { ar: 'رقم الهاتف (مثال: 555-123-4567)', en: 'Phone (e.g. 555-123-4567)' },
         saveTechBtn: { ar: 'حفظ الفني', en: 'Save Technician' },
         cancelBtn: { ar: 'إلغاء', en: 'Cancel' },
+        mapChoiceTitle: { ar: 'افتح العنوان بـ:', en: 'Open address with:' },
         guideThName: { ar: 'اسم الفني', en: 'Name' },
         guideThPhone: { ar: 'رقم الهاتف', en: 'Phone' },
         guideThDuesInPeriod: { ar: 'المستحق في الفترة دي', en: 'Dues in Period' },
@@ -871,6 +881,14 @@
         document.getElementById('langToggleBtn').innerText = currentLang === 'ar' ? 'English 🌐' : 'عربي 🌐';
         applyLanguage();
     }
+
+    function showMapChoice(address) {
+        const q = encodeURIComponent(address);
+        document.getElementById('mapChoiceGoogleBtn').onclick = () => { window.open(`https://maps.google.com/?q=${q}`, '_blank'); closeMapChoice(); };
+        document.getElementById('mapChoiceAppleBtn').onclick = () => { window.open(`https://maps.apple.com/?q=${q}`, '_blank'); closeMapChoice(); };
+        document.getElementById('mapChoiceModal').style.display = 'flex';
+    }
+    function closeMapChoice() { document.getElementById('mapChoiceModal').style.display = 'none'; }
 
     function toggleUserMenu() {
         const menu = document.getElementById('userMenuDropdown');
@@ -1644,7 +1662,7 @@
 
             tr.innerHTML = `
                 <td style="text-align: center;"><input type="checkbox" class="job-checkbox" value="${job.id}" ${selectedJobIds.has(String(job.id)) ? 'checked' : ''} onchange="toggleJobSelection('${job.id}', this)"></td>
-                <td><strong>${job.clientName}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.clientPhone ? `<a href="tel:${job.clientPhone.replace(/[^+\d]/g, '')}" style="color:#38bdf8; text-decoration:none;" onclick="event.stopPropagation();">📞 ${job.clientPhone}</a>` : ''}${job.clientPhone && job.clientAddress ? ' - ' : ''}${job.clientAddress ? `<a href="https://maps.google.com/?q=${encodeURIComponent(job.clientAddress)}" target="_blank" style="color:#38bdf8; text-decoration:none;" onclick="event.stopPropagation();">📍 ${job.clientAddress}</a>` : ''}</span>${hasDebt ? '<br><span class="debt-alert-badge">' + t('debtBadgePrefix') + ' $' + rem.toFixed(2) + '</span>' : ''}${isOverdue ? '<br><span class="debt-alert-badge" style="background:rgba(217,119,6,0.2); color:#fbbf24; border-color:rgba(217,119,6,0.4);">🔔 ' + t('reminderOverdueSuffix') + '</span>' : ''}</td>
+                <td><strong>${job.clientName}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.clientPhone ? `<a href="tel:${job.clientPhone.replace(/[^+\d]/g, '')}" style="color:#38bdf8; text-decoration:none;" onclick="event.stopPropagation();">📞 ${job.clientPhone}</a>` : ''}${job.clientPhone && job.clientAddress ? ' - ' : ''}${job.clientAddress ? `<a href="#" onclick="event.stopPropagation(); event.preventDefault(); showMapChoice('${job.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${job.clientAddress}</a>` : ''}</span>${hasDebt ? '<br><span class="debt-alert-badge">' + t('debtBadgePrefix') + ' $' + rem.toFixed(2) + '</span>' : ''}${isOverdue ? '<br><span class="debt-alert-badge" style="background:rgba(217,119,6,0.2); color:#fbbf24; border-color:rgba(217,119,6,0.4);">🔔 ' + t('reminderOverdueSuffix') + '</span>' : ''}</td>
                 <td><span class="badge ${job.jobStatus === 'خلص' ? 'completed' : 'active'}">${statusLabel(job.jobStatus)}</span><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.startDate || ''}</span></td>
                 <td style="font-size: 0.82rem;">$${rev.toFixed(2)} / <span style="color:#34d399;">$${rec.toFixed(2)}</span> / <span style="color:#f87171; font-weight:700;">$${rem.toFixed(2)}</span></td>
                 <td style="color:#f87171;">$${parseVal(job.materialCost).toFixed(2)}</td>
@@ -2781,7 +2799,7 @@
                 <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
                     <div>
                         <strong>${appt.clientName}</strong><br>
-                        <span style="font-size:0.78rem; color:var(--text-muted);">${appt.clientPhone ? `<a href="tel:${appt.clientPhone.replace(/[^+\d]/g, '')}" style="color:#38bdf8; text-decoration:none;">📞 ${appt.clientPhone}</a>` : ''}${appt.clientPhone && appt.clientAddress ? ' — ' : ''}${appt.clientAddress ? `<a href="https://maps.google.com/?q=${encodeURIComponent(appt.clientAddress)}" target="_blank" style="color:#38bdf8; text-decoration:none;">📍 ${appt.clientAddress}</a>` : ''}</span><br>
+                        <span style="font-size:0.78rem; color:var(--text-muted);">${appt.clientPhone ? `<a href="tel:${appt.clientPhone.replace(/[^+\d]/g, '')}" style="color:#38bdf8; text-decoration:none;">📞 ${appt.clientPhone}</a>` : ''}${appt.clientPhone && appt.clientAddress ? ' — ' : ''}${appt.clientAddress ? `<a href="#" onclick="event.preventDefault(); showMapChoice('${appt.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${appt.clientAddress}</a>` : ''}</span><br>
                         <span style="font-size:0.78rem; color:#38bdf8;">${appt.requestedDate || t('noDateSet')} ${appt.requestedTime || ''}</span>
                         ${serviceTags}
                         ${appt.note ? `<div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">${appt.note}</div>` : ''}
@@ -2859,7 +2877,7 @@
             <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
                 <div>
                     <div>${timeLabel}<strong>${job.clientName || ''}</strong>${isOverdue ? ` <span style="color:#f87171; font-size:0.72rem; font-weight:700;">⚠️ ${t('overdueLabel')}</span>` : ''}</div>
-                    <div style="font-size:0.78rem; color:var(--text-muted);">${job.clientAddress ? `<a href="https://maps.google.com/?q=${encodeURIComponent(job.clientAddress)}" target="_blank" style="color:#38bdf8; text-decoration:none;">📍 ${job.clientAddress}</a>` : ''}${showAllPendingMode ? ' — ' + (effectiveScheduleDate(job) || t('noDateSet')) : ''}</div>
+                    <div style="font-size:0.78rem; color:var(--text-muted);">${job.clientAddress ? `<a href="#" onclick="event.preventDefault(); event.stopPropagation(); showMapChoice('${job.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${job.clientAddress}</a>` : ''}${showAllPendingMode ? ' — ' + (effectiveScheduleDate(job) || t('noDateSet')) : ''}</div>
                     <div style="font-size:0.78rem; color:#38bdf8;">${t('weeklyTechsLabel')} ${teamNames}</div>
                 </div>
                 <button class="secondary" onclick="openEditScheduleModal('${job.id}')" style="padding:4px 10px; font-size:0.75rem; align-self:center;">${t('editBtn')}</button>
