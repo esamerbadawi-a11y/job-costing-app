@@ -229,7 +229,15 @@
         </div>
     </div>
 
-    <div class="stats-grid">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <button class="secondary" onclick="toggleStatsGrid()" id="statsToggleBtn" style="padding:6px 14px; font-size:0.8rem;"></button>
+    </div>
+    <div id="statsCompactBar" style="display:none; background:var(--card-dark); border:1px solid var(--border-color); border-radius:10px; padding:10px 16px; margin-bottom:16px; flex-wrap:wrap; gap:16px; font-size:0.85rem; cursor:pointer;" onclick="toggleStatsGrid()">
+        <span data-i18n="statTotalNet"></span>: <strong id="statCompactNet" style="color:#38bdf8;">$0.00</strong>
+        <span data-i18n="statTotalJobs"></span>: <strong id="statCompactRevenue">$0.00</strong>
+        <span data-i18n="statShareCompany"></span>: <strong id="statCompactCompany" style="color:#fbbf24;">$0.00</strong>
+    </div>
+    <div class="stats-grid" id="statsGridFull">
         <div class="stat-card"><span data-i18n="statTotalJobs"></span><strong id="statTotalJobs">0.0</strong></div>
         <div class="stat-card"><span data-i18n="statTotalMat"></span><strong id="statTotalMat" style="color: #f87171;">0.0</strong></div>
         <div class="stat-card"><span data-i18n="statTotalTech"></span><strong id="statTotalTech">0.0</strong></div>
@@ -607,6 +615,8 @@
         loginBtn: { ar: 'دخول', en: 'Sign In' },
         logoutBtn: { ar: 'خروج', en: 'Logout' },
         darkModeBtn: { ar: '🌙 الوضع الغامق', en: '🌙 Dark Mode' },
+        showStatsBtn: { ar: '📊 إظهار الملخص', en: '📊 Show Summary' },
+        hideStatsBtn: { ar: '📊 إخفاء الملخص', en: '📊 Hide Summary' },
         lightModeBtn: { ar: '☀️ الوضع الفاتح', en: '☀️ Light Mode' },
         activityLogBtn: { ar: '🕒 سجل النشاط', en: '🕒 Activity Log' },
         activityLogTitle: { ar: 'سجل النشاط — مين عمل إيه', en: 'Activity Log — Who Did What' },
@@ -917,6 +927,7 @@
         safeCall(updateSelectedStats);
         safeCall(refreshDebtReminderBanner);
         safeCall(updateThemeToggleLabel);
+        safeCall(updateStatsToggleLabel);
         if (document.getElementById('techGuideModal').style.display !== 'none') safeCall(renderTechGuideContent);
         if (document.getElementById('expenseReportModal').style.display !== 'none') safeCall(renderExpenseReportContent);
         if (document.getElementById('partnerAccountModal').style.display !== 'none') safeCall(renderPartnerAccountContent);
@@ -1633,7 +1644,7 @@
 
             tr.innerHTML = `
                 <td style="text-align: center;"><input type="checkbox" class="job-checkbox" value="${job.id}" ${selectedJobIds.has(String(job.id)) ? 'checked' : ''} onchange="toggleJobSelection('${job.id}', this)"></td>
-                <td><strong>${job.clientName}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.clientPhone || ''} - ${job.clientAddress || ''}</span>${hasDebt ? '<br><span class="debt-alert-badge">' + t('debtBadgePrefix') + ' $' + rem.toFixed(2) + '</span>' : ''}${isOverdue ? '<br><span class="debt-alert-badge" style="background:rgba(217,119,6,0.2); color:#fbbf24; border-color:rgba(217,119,6,0.4);">🔔 ' + t('reminderOverdueSuffix') + '</span>' : ''}</td>
+                <td><strong>${job.clientName}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.clientPhone ? `<a href="tel:${job.clientPhone.replace(/[^+\d]/g, '')}" style="color:#38bdf8; text-decoration:none;" onclick="event.stopPropagation();">📞 ${job.clientPhone}</a>` : ''}${job.clientPhone && job.clientAddress ? ' - ' : ''}${job.clientAddress ? `<a href="https://maps.google.com/?q=${encodeURIComponent(job.clientAddress)}" target="_blank" style="color:#38bdf8; text-decoration:none;" onclick="event.stopPropagation();">📍 ${job.clientAddress}</a>` : ''}</span>${hasDebt ? '<br><span class="debt-alert-badge">' + t('debtBadgePrefix') + ' $' + rem.toFixed(2) + '</span>' : ''}${isOverdue ? '<br><span class="debt-alert-badge" style="background:rgba(217,119,6,0.2); color:#fbbf24; border-color:rgba(217,119,6,0.4);">🔔 ' + t('reminderOverdueSuffix') + '</span>' : ''}</td>
                 <td><span class="badge ${job.jobStatus === 'خلص' ? 'completed' : 'active'}">${statusLabel(job.jobStatus)}</span><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.startDate || ''}</span></td>
                 <td style="font-size: 0.82rem;">$${rev.toFixed(2)} / <span style="color:#34d399;">$${rec.toFixed(2)}</span> / <span style="color:#f87171; font-weight:700;">$${rem.toFixed(2)}</span></td>
                 <td style="color:#f87171;">$${parseVal(job.materialCost).toFixed(2)}</td>
@@ -1692,7 +1703,31 @@
         document.getElementById('statShareM').innerText = '$' + totalShareM.toFixed(2);
         document.getElementById('statShareCompany').innerText = '$' + totalShareCompany.toFixed(2);
         document.getElementById('statExtraExp').innerText = '$' + totalExtraExp.toFixed(2);
+
+        document.getElementById('statCompactNet').innerText = '$' + totalNetVal.toFixed(2);
+        document.getElementById('statCompactRevenue').innerText = '$' + totalJobsVal.toFixed(2);
+        document.getElementById('statCompactCompany').innerText = '$' + totalShareCompany.toFixed(2);
     }
+
+    function toggleStatsGrid() {
+        const isHidden = document.getElementById('statsGridFull').style.display === 'none';
+        document.getElementById('statsGridFull').style.display = isHidden ? 'grid' : 'none';
+        document.getElementById('statsCompactBar').style.display = isHidden ? 'none' : 'flex';
+        try { localStorage.setItem('jobCostingStatsCollapsed', isHidden ? 'false' : 'true'); } catch (e) {}
+        updateStatsToggleLabel();
+    }
+    function updateStatsToggleLabel() {
+        const isHidden = document.getElementById('statsGridFull').style.display === 'none';
+        document.getElementById('statsToggleBtn').innerText = isHidden ? t('showStatsBtn') : t('hideStatsBtn');
+    }
+    (function initStatsGridState() {
+        try {
+            if (localStorage.getItem('jobCostingStatsCollapsed') === 'true') {
+                document.getElementById('statsGridFull').style.display = 'none';
+                document.getElementById('statsCompactBar').style.display = 'flex';
+            }
+        } catch (e) {}
+    })();
 
     function toggleJobSelection(id, checkbox) {
         id = String(id);
@@ -2746,7 +2781,7 @@
                 <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
                     <div>
                         <strong>${appt.clientName}</strong><br>
-                        <span style="font-size:0.78rem; color:var(--text-muted);">${appt.clientPhone || ''} ${appt.clientAddress ? '— ' + appt.clientAddress : ''}</span><br>
+                        <span style="font-size:0.78rem; color:var(--text-muted);">${appt.clientPhone ? `<a href="tel:${appt.clientPhone.replace(/[^+\d]/g, '')}" style="color:#38bdf8; text-decoration:none;">📞 ${appt.clientPhone}</a>` : ''}${appt.clientPhone && appt.clientAddress ? ' — ' : ''}${appt.clientAddress ? `<a href="https://maps.google.com/?q=${encodeURIComponent(appt.clientAddress)}" target="_blank" style="color:#38bdf8; text-decoration:none;">📍 ${appt.clientAddress}</a>` : ''}</span><br>
                         <span style="font-size:0.78rem; color:#38bdf8;">${appt.requestedDate || t('noDateSet')} ${appt.requestedTime || ''}</span>
                         ${serviceTags}
                         ${appt.note ? `<div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">${appt.note}</div>` : ''}
@@ -2824,7 +2859,7 @@
             <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
                 <div>
                     <div>${timeLabel}<strong>${job.clientName || ''}</strong>${isOverdue ? ` <span style="color:#f87171; font-size:0.72rem; font-weight:700;">⚠️ ${t('overdueLabel')}</span>` : ''}</div>
-                    <div style="font-size:0.78rem; color:var(--text-muted);">${job.clientAddress || ''}${showAllPendingMode ? ' — ' + (effectiveScheduleDate(job) || t('noDateSet')) : ''}</div>
+                    <div style="font-size:0.78rem; color:var(--text-muted);">${job.clientAddress ? `<a href="https://maps.google.com/?q=${encodeURIComponent(job.clientAddress)}" target="_blank" style="color:#38bdf8; text-decoration:none;">📍 ${job.clientAddress}</a>` : ''}${showAllPendingMode ? ' — ' + (effectiveScheduleDate(job) || t('noDateSet')) : ''}</div>
                     <div style="font-size:0.78rem; color:#38bdf8;">${t('weeklyTechsLabel')} ${teamNames}</div>
                 </div>
                 <button class="secondary" onclick="openEditScheduleModal('${job.id}')" style="padding:4px 10px; font-size:0.75rem; align-self:center;">${t('editBtn')}</button>
