@@ -140,6 +140,7 @@
             <button class="secondary" onclick="openExpenseReportModal()" data-i18n="expenseReportBtn"></button>
             <button class="secondary" id="activityLogBtnEl" style="display:none;" onclick="openActivityLogModal()" data-i18n="activityLogBtn"></button>
             <button class="secondary" onclick="openPartnerAccountModal()" data-i18n="partnerAccountBtn"></button>
+            <button class="secondary" onclick="openCompanyAccountModal()" data-i18n="companyAccountBtn"></button>
             <button class="success" onclick="exportBackupJSON()" style="background:#0f766e;" data-i18n="exportBackupBtn"></button>
             <button class="secondary" onclick="document.getElementById('importBackupInput').click()" style="border-color:#0f766e; color:#2dd4bf;" data-i18n="importBackupBtn"></button>
             <input type="file" id="importBackupInput" accept=".json" style="display:none;" onchange="importBackupJSON(event)">
@@ -499,6 +500,40 @@
     </div>
 </div>
 
+<div id="companyAccountModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:90%; max-width:700px; max-height:85vh; overflow-y:auto; padding:25px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.2rem;">🏢 <span data-i18n="companyAccountTitle"></span></h2>
+            <button class="danger" onclick="closeCompanyAccountModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+
+        <div style="background:var(--panel-bg); border:1px solid var(--border-color); padding:15px; border-radius:10px; margin-bottom:18px;">
+            <h3 style="color:#38bdf8; font-size:0.95rem; margin-bottom:10px;" data-i18n="addCompanyExpenseTitle"></h3>
+            <div class="grid-3" style="margin-bottom:10px;">
+                <select id="companyExpenseCategory"></select>
+                <input type="text" id="companyExpenseAmount" placeholder="0" onfocus="this.select()">
+                <input type="date" id="companyExpenseDate">
+            </div>
+            <input type="text" id="companyExpenseNote" data-i18n-ph="companyExpenseNotePh" style="margin-bottom:10px;">
+            <button class="success" onclick="saveCompanyExpense()" data-i18n="saveWithdrawalBtn"></button>
+        </div>
+
+        <div style="background:var(--panel-bg); border:1px solid var(--border-color); padding:12px; border-radius:10px; margin-bottom:15px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <div style="display:flex; align-items:center; gap:6px;">
+                <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="filterDateFromLabel"></label>
+                <input type="date" id="ceFilterFrom" onchange="renderCompanyAccountContent()" style="min-width:130px;">
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+                <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="filterDateToLabel"></label>
+                <input type="date" id="ceFilterTo" onchange="renderCompanyAccountContent()" style="min-width:130px;">
+            </div>
+            <button class="secondary" onclick="document.getElementById('ceFilterFrom').value=''; document.getElementById('ceFilterTo').value=''; renderCompanyAccountContent();" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
+        </div>
+
+        <div id="companyAccountContent" style="font-size:0.85rem; line-height:1.7; color:var(--text-main);"></div>
+    </div>
+</div>
+
 <div id="quickScheduleModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
     <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:90%; max-width:550px; max-height:85vh; overflow-y:auto; padding:25px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px;">
@@ -581,6 +616,10 @@
         activityWho: { ar: 'مين', en: 'Who' },
         activityWhat: { ar: 'إيه', en: 'What' },
         partnerAccountBtn: { ar: '💰 حساب S و M', en: '💰 S & M Account' },
+        companyAccountBtn: { ar: '🏢 حساب الشركة', en: '🏢 Company Account' },
+        companyAccountTitle: { ar: 'حساب الشركة — الدخل والمصروفات العامة', en: 'Company Account — Income vs General Expenses' },
+        addCompanyExpenseTitle: { ar: 'تسجيل مصروف عام', en: 'Record a General Expense' },
+        companyExpenseNotePh: { ar: 'ملاحظة (اختياري)', en: 'Note (optional)' },
         partnerAccountTitle: { ar: 'حساب S و M — المستحق والمسحوب', en: 'S & M Account — Earned vs Withdrawn' },
         addWithdrawalTitle: { ar: 'تسجيل مبلغ اتصرف', en: 'Record a Withdrawal' },
         withdrawalNotePh: { ar: 'ملاحظة (اختياري)', en: 'Note (optional)' },
@@ -881,6 +920,7 @@
         if (document.getElementById('techGuideModal').style.display !== 'none') safeCall(renderTechGuideContent);
         if (document.getElementById('expenseReportModal').style.display !== 'none') safeCall(renderExpenseReportContent);
         if (document.getElementById('partnerAccountModal').style.display !== 'none') safeCall(renderPartnerAccountContent);
+        if (document.getElementById('companyAccountModal').style.display !== 'none') safeCall(renderCompanyAccountContent);
         if (document.getElementById('screenWeekly').style.display !== 'none') safeCall(renderWeeklyBoard);
         if (document.getElementById('screenAppointments').style.display !== 'none') safeCall(renderAppointments);
     }
@@ -904,6 +944,7 @@
     const WITHDRAWALS_DOC = db.collection('jobCostingApp').doc('partnerWithdrawals');
     const APPOINTMENTS_DOC = db.collection('jobCostingApp').doc('appointments');
     const SERVICE_TYPES_DOC = db.collection('jobCostingApp').doc('serviceTypes');
+    const COMPANY_EXPENSES_DOC = db.collection('jobCostingApp').doc('companyExpenses');
 
     async function saveSavedJobsData(){ await JOBS_DOC.set({ jobs: savedJobs }); }
     async function saveTechPhonesData(){ await TECHS_DOC.set({ phones: technicianPhones }); }
@@ -975,6 +1016,7 @@
     let partnerWithdrawals = [];
     let appointments = [];
     let serviceTypesList = ['Estimate', 'Drywall', 'Plumbing', 'Flooring', 'Electrical', 'Painting', 'HVAC', 'Roofing'];
+    let companyExpenses = [];
     let onlyShowDebt = false;
 
     const EXCLUSIVE_PERCENT_TYPES = ['فني لوحده (%60)', 'نسبة (50%)'];
@@ -1040,6 +1082,11 @@
             if (doc.exists && doc.data().entries && doc.data().entries.length > 0) serviceTypesList = doc.data().entries;
             if (document.getElementById('screenAppointments').style.display !== 'none') safeCall(renderApptServiceCheckboxes);
         }, err => console.error('Firestore service types sync error:', err));
+
+        COMPANY_EXPENSES_DOC.onSnapshot(doc => {
+            companyExpenses = (doc.exists && doc.data().entries) ? doc.data().entries : [];
+            if (document.getElementById('companyAccountModal').style.display !== 'none') safeCall(renderCompanyAccountContent);
+        }, err => console.error('Firestore company expenses sync error:', err));
 
         safeCall(updateUndoButtonUI);
         safeCall(() => switchScreen('log'));
@@ -2070,6 +2117,96 @@
         } catch (e) {
             container.innerHTML = `<p style="text-align:center; color:var(--danger); padding:20px;">${t('activityLogError')}</p>`;
         }
+    }
+
+    function openCompanyAccountModal() {
+        document.getElementById('companyAccountModal').style.display = 'flex';
+        document.getElementById('companyExpenseDate').valueAsDate = new Date();
+        const catSelect = document.getElementById('companyExpenseCategory');
+        catSelect.innerHTML = EXPENSE_CATEGORIES.map(cat => `<option value="${cat}">${expenseCatLabel(cat)}</option>`).join('');
+        renderCompanyAccountContent();
+    }
+    function closeCompanyAccountModal() { document.getElementById('companyAccountModal').style.display = 'none'; }
+
+    async function saveCompanyExpense() {
+        const category = document.getElementById('companyExpenseCategory').value;
+        const amount = parseVal(document.getElementById('companyExpenseAmount').value);
+        const date = document.getElementById('companyExpenseDate').value;
+        const note = document.getElementById('companyExpenseNote').value.trim();
+        if (amount <= 0) { alert(t('alertWithdrawalAmountRequired')); return; }
+
+        const entry = { category, amount, date, note, by: currentUserEmail || '?', at: new Date().toISOString() };
+        try {
+            companyExpenses.unshift(entry);
+            await COMPANY_EXPENSES_DOC.set({ entries: companyExpenses });
+            document.getElementById('companyExpenseAmount').value = '';
+            document.getElementById('companyExpenseNote').value = '';
+            renderCompanyAccountContent();
+        } catch (err) {
+            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+        }
+    }
+
+    async function deleteCompanyExpense(index) {
+        if (!confirm(t('confirmDeleteWithdrawal'))) return;
+        companyExpenses.splice(index, 1);
+        try {
+            await COMPANY_EXPENSES_DOC.set({ entries: companyExpenses });
+            renderCompanyAccountContent();
+        } catch (err) {
+            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+        }
+    }
+
+    function renderCompanyAccountContent() {
+        const container = document.getElementById('companyAccountContent');
+
+        // Total company income = the company's 20% share across every job, already net
+        // of that job's own one-off expenses — this general account is for expenses that
+        // aren't tied to any single job (rent, subscriptions, general fuel, etc).
+        let totalIncome = 0;
+        savedJobs.forEach(job => { totalIncome += jobNet(job).companyNet; });
+        let totalGeneralExpenses = 0;
+        companyExpenses.forEach(e => { totalGeneralExpenses += parseVal(e.amount); });
+        const remaining = totalIncome - totalGeneralExpenses;
+
+        let html = `<div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:8px; padding:14px; margin-bottom:18px;">
+            <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalEarnedLabel')} <b style="color:#34d399;">$${totalIncome.toFixed(2)}</b></div>
+            <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalWithdrawnLabel')} <b style="color:#f87171;">$${totalGeneralExpenses.toFixed(2)}</b></div>
+            <div style="font-size:0.9rem; margin-top:6px; border-top:1px solid var(--border-color); padding-top:6px;">${t('remainingBalanceLabel')} <b style="color:${remaining < 0 ? '#f87171' : '#fbbf24'};">$${remaining.toFixed(2)}</b></div>
+        </div>`;
+
+        if (companyExpenses.length === 0) {
+            html += `<p style="text-align:center; color:var(--text-muted); padding:15px;">${t('noWithdrawalsYet')}</p>`;
+        } else {
+            const dateFrom = document.getElementById('ceFilterFrom').value;
+            const dateTo = document.getElementById('ceFilterTo').value;
+            const filtered = companyExpenses
+                .map((e, i) => ({ ...e, _origIndex: i }))
+                .filter(e => {
+                    const matchFrom = !dateFrom || (e.date && e.date >= dateFrom);
+                    const matchTo = !dateTo || (e.date && e.date <= dateTo);
+                    return matchFrom && matchTo;
+                });
+
+            html += `<h4 style="color:var(--text-muted); font-size:0.85rem; margin-bottom:8px;">${t('withdrawalHistoryTitle')} (${filtered.length})</h4>`;
+            if (filtered.length === 0) {
+                html += `<p style="text-align:center; color:var(--text-muted); padding:15px;">${t('noWithdrawalsMatchFilter')}</p>`;
+            } else {
+                html += '<table style="width:100%; border-collapse:collapse;"><tbody>';
+                filtered.forEach(e => {
+                    html += `<tr style="border-top:1px solid var(--border-color);">
+                        <td style="padding:6px; font-size:0.78rem; color:var(--text-muted); white-space:nowrap;">${e.date || ''}</td>
+                        <td style="padding:6px; font-weight:700; color:#38bdf8;">${expenseCatLabel(e.category)}</td>
+                        <td style="padding:6px; color:#f87171; font-weight:700;">$${parseVal(e.amount).toFixed(2)}</td>
+                        <td style="padding:6px; font-size:0.78rem; color:var(--text-muted);">${e.note || ''}</td>
+                        <td style="padding:6px;"><button class="danger" onclick="deleteCompanyExpense(${e._origIndex})" style="padding:3px 8px; font-size:0.72rem;">${t('deleteBtn')}</button></td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+            }
+        }
+        container.innerHTML = html;
     }
 
     function openPartnerAccountModal() {
