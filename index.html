@@ -157,6 +157,14 @@
         </div>
     </header>
 
+    <div id="todayJobsBanner" class="no-print" style="display:none; background:rgba(217,119,6,0.12); border:1px solid var(--warning); border-radius:12px; padding:14px 18px; margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+            <strong style="color:#fbbf24;">📅 <span data-i18n="todayJobsTitle"></span></strong>
+            <button class="secondary" onclick="dismissTodayJobsBanner()" style="padding:4px 10px; font-size:0.72rem;" data-i18n="dismissBtn"></button>
+        </div>
+        <div id="todayJobsContent" style="font-size:0.85rem;"></div>
+    </div>
+
     <div class="no-print" style="display:flex; gap:10px; margin-bottom:16px;">
         <button id="tabEntryBtn" onclick="switchScreen('entry')" class="secondary" data-i18n="tabEntryLabel" style="flex:1; padding:12px;"></button>
         <button id="tabWeeklyBtn" onclick="switchScreen('weekly')" class="secondary" data-i18n="tabWeeklyLabel" style="flex:1; padding:12px;"></button>
@@ -191,6 +199,7 @@
                     <input type="text" id="apptClientName" data-i18n-ph="apptNamePh">
                     <input type="text" id="apptClientPhone" placeholder="(555) 123-4567">
                 </div>
+                <input type="email" id="apptClientEmail" data-i18n-ph="apptEmailPh" style="margin-bottom:10px;">
                 <div class="form-group" style="position: relative;">
                     <input type="text" id="apptClientAddress" data-i18n-ph="apptAddressPh" oninput="onAddressInput('apptClientAddress','apptAddressAutocompleteList')" autocomplete="off">
                     <div id="apptAddressAutocompleteList" class="autocomplete-items" style="display: none;"></div>
@@ -349,6 +358,11 @@
                     </div>
                 </div>
 
+                <div class="form-group">
+                    <label data-i18n="lblClientEmail"></label>
+                    <input type="email" id="clientEmail" data-i18n-ph="apptEmailPh">
+                </div>
+
                 <div class="form-group" style="position: relative;">
                     <label data-i18n="lblAddress"></label>
                     <input type="text" id="clientAddress" data-i18n-ph="phAddress" oninput="onAddressInput('clientAddress','addressAutocompleteList')" autocomplete="off">
@@ -370,6 +384,11 @@
                 <div class="form-group"><label data-i18n="lblFollowUpDate"></label><input type="date" id="followUpDate"></div>
 
                 <div class="form-group"><label data-i18n="lblMaterialCost"></label><input type="text" id="materialCost" value="0" onfocus="this.select()" oninput="calculate()"></div>
+
+                <div class="card" id="jobScheduleSummaryCard" style="background: var(--panel-bg); padding: 16px; margin-top: 15px; border: 1px solid var(--border-color); display:none;">
+                    <div style="color: #38bdf8; font-weight: bold; font-size: 0.9rem; margin-bottom: 10px;" data-i18n="jobScheduleSummaryTitle"></div>
+                    <div id="jobScheduleSummaryContent" style="font-size:0.82rem;"></div>
+                </div>
 
                 <div class="card" style="background: var(--panel-bg); padding: 16px; margin-top: 15px; border: 1px solid var(--border-color);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -694,6 +713,9 @@
         jobsWord: { ar: 'شغلانة', en: 'job(s)' },
         noJobsThisDay: { ar: 'مفيش شغل مسجل في اليوم ده.', en: 'No jobs scheduled this day.' },
         weeklyTechsLabel: { ar: 'الفنيين:', en: 'Techs:' },
+        todayJobsTitle: { ar: 'شغل النهاردة', en: "Today's Jobs" },
+        dismissBtn: { ar: 'إخفاء', en: 'Dismiss' },
+        addToCalendarBtn: { ar: 'أضف للتقويم', en: 'Add to Calendar' },
         lblScheduledTime: { ar: 'وقت الشغل (اختياري):', en: 'Job Time (optional):' },
         showAllPendingBtn: { ar: '📋 كل الشغل اللي لسه', en: '📋 All Unfinished Jobs' },
         allPendingSubtitle: { ar: 'كل الشغلانات اللي لسه مخلصتش، من كل التواريخ.', en: 'All unfinished jobs, across every date.' },
@@ -720,6 +742,7 @@
         editAppointmentTitle: { ar: 'تعديل الميعاد', en: 'Edit Appointment' },
         updateAppointmentBtn: { ar: 'حفظ التعديلات', en: 'Update Appointment' },
         apptNamePh: { ar: 'اسم العميل', en: 'Client Name' },
+        apptEmailPh: { ar: 'إيميل العميل (اختياري)', en: "Client's Email (optional)" },
         apptAddressPh: { ar: 'العنوان', en: 'Address' },
         apptNotePh: { ar: 'ملاحظة (تفاصيل الطلب، اختياري)', en: 'Note (request details, optional)' },
         apptServicesLabel: { ar: 'الخدمات المطلوبة:', en: 'Services Needed:' },
@@ -738,6 +761,7 @@
         lblClientName: { ar: 'اسم الشغلانة / العميل:', en: 'Job / Client Name:' },
         phClientName: { ar: 'أدخل اسم العميل أو المشروع', en: 'Enter client or project name' },
         lblPhone: { ar: 'رقم الهاتف:', en: 'Phone Number:' },
+        lblClientEmail: { ar: 'إيميل العميل:', en: "Client's Email:" },
         lblStatus: { ar: 'حالة المشروع:', en: 'Project Status:' },
         statusInProgress: { ar: 'قيد التنفيذ (شغال)', en: 'In Progress' },
         statusCompleted: { ar: 'تم الانتهاء (خلص)', en: 'Completed' },
@@ -762,6 +786,7 @@
         notifTitle: { ar: 'تذكير بمتابعة الدفع', en: 'Payment Follow-up Reminder' },
         lblMaterialCost: { ar: 'تكلفة الخامات ($):', en: 'Material Cost ($):' },
         techSectionTitle: { ar: 'الفنيين المشاركين في الشغلانة:', en: 'Technicians on this Job:' },
+        jobScheduleSummaryTitle: { ar: '📅 مين اشتغل وامتى (من جدول الأسبوع)', en: '📅 Who Worked When (from the Weekly Board)' },
         addTechBtn: { ar: '+ إضافة فني', en: '+ Add Technician' },
         lblExtraExpenses: { ar: 'مصروفات إدارية للشركة ($):', en: 'Company Admin Expenses ($):' },
         expenseSectionTitle: { ar: 'مصروفات إدارية للشركة:', en: 'Company Admin Expenses:' },
@@ -1156,6 +1181,82 @@
         return message;
     }
 
+    // Shows every job scheduled for TODAY right at the top of the app, regardless of
+    // which tab is open — so a job later in the day doesn't get lost in the shuffle.
+    function renderTodayJobsBanner() {
+        const banner = document.getElementById('todayJobsBanner');
+        const todayStr = isoDate(new Date());
+        try {
+            if (localStorage.getItem('jobCostingTodayBannerDismissed') === todayStr) { banner.style.display = 'none'; return; }
+        } catch (e) {}
+
+        const activeJobs = savedJobs.filter(j => j.jobStatus !== 'خلص');
+        let pairs = [];
+        activeJobs.forEach(job => { getScheduleEntries(job).forEach(entry => { if (entry.date === todayStr) pairs.push({ job, entry }); }); });
+        if (pairs.length === 0) { banner.style.display = 'none'; return; }
+
+        pairs.sort((a, b) => (a.entry.time || '99:99').localeCompare(b.entry.time || '99:99'));
+        const nowStr = new Date().toTimeString().slice(0, 5);
+
+        let html = '';
+        pairs.forEach(({ job, entry }) => {
+            const isPast = entry.time && entry.time < nowStr;
+            const teamNames = (entry.team || []).join(', ');
+            html += `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 0; border-top:1px solid rgba(217,119,6,0.25); flex-wrap:wrap;">
+                <div>
+                    ${entry.time ? `<strong style="color:${isPast ? '#f87171' : '#fbbf24'};">${entry.time}${isPast ? ' ⚠️' : ''}</strong> — ` : ''}<strong>${job.clientName || ''}</strong>
+                    ${job.clientAddress ? `<span style="color:var(--text-muted); font-size:0.8rem;"> — ${job.clientAddress}</span>` : ''}
+                    ${teamNames ? `<div style="font-size:0.78rem; color:#38bdf8;">${t('weeklyTechsLabel')} ${teamNames}</div>` : ''}
+                </div>
+                <button class="secondary" onclick="downloadJobICS('${job.id}', '${entry.date}')" style="padding:4px 10px; font-size:0.72rem; white-space:nowrap;">📆 ${t('addToCalendarBtn')}</button>
+            </div>`;
+        });
+        document.getElementById('todayJobsContent').innerHTML = html;
+        banner.style.display = 'block';
+    }
+
+    function dismissTodayJobsBanner() {
+        try { localStorage.setItem('jobCostingTodayBannerDismissed', isoDate(new Date())); } catch (e) {}
+        document.getElementById('todayJobsBanner').style.display = 'none';
+    }
+
+    // Builds a calendar file with a 30-minute-before reminder. Adding it to the phone's
+    // own Calendar app means the OS handles the alert — it still fires even with this
+    // site closed, which nothing purely web-based here can promise on its own.
+    function downloadJobICS(jobId, date) {
+        const job = savedJobs.find(j => j.id === jobId);
+        if (!job) return;
+        const entries = getScheduleEntries(job);
+        const entry = entries.find(e => e.date === date) || { date, time: '09:00' };
+        const time = entry.time || '09:00';
+        const [y, mo, d] = date.split('-');
+        const [h, mi] = time.split(':');
+        const startLocal = `${y}${mo}${d}T${h}${mi}00`;
+        const startDate = new Date(`${date}T${time}:00`);
+        const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // default 1-hour block
+        const fmt = dt => `${dt.getFullYear()}${String(dt.getMonth()+1).padStart(2,'0')}${String(dt.getDate()).padStart(2,'0')}T${String(dt.getHours()).padStart(2,'0')}${String(dt.getMinutes()).padStart(2,'0')}00`;
+        const teamNames = (entry.team || []).join(', ');
+        const desc = [job.clientAddress || '', teamNames ? `${t('weeklyTechsLabel')} ${teamNames}` : ''].filter(Boolean).join('\\n');
+
+        const ics = [
+            'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Job Costing App//EN', 'BEGIN:VEVENT',
+            `UID:${jobId}-${date}@jobcosting`,
+            `DTSTART:${fmt(startDate)}`, `DTEND:${fmt(endDate)}`,
+            `SUMMARY:${(job.clientName || 'Job').replace(/\n/g, ' ')}`,
+            `DESCRIPTION:${desc.replace(/\n/g, ' ')}`,
+            `LOCATION:${(job.clientAddress || '').replace(/\n/g, ' ')}`,
+            'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Reminder', 'TRIGGER:-PT30M', 'END:VALARM',
+            'END:VEVENT', 'END:VCALENDAR'
+        ].join('\r\n');
+
+        const blob = new Blob([ics], { type: 'text/calendar' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `${(job.clientName || 'job').replace(/[^a-z0-9]/gi, '_')}_${date}.ics`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
     function refreshDebtReminderBanner() {
         if (debtBannerDismissed) return;
         const message = buildDebtReminderMessage();
@@ -1266,6 +1367,7 @@
             item.onclick = function() {
                 document.getElementById('clientName').value = job.clientName;
                 document.getElementById('clientPhone').value = job.clientPhone || '';
+                document.getElementById('clientEmail').value = job.clientEmail || '';
                 document.getElementById('clientAddress').value = job.clientAddress || '';
                 listDiv.style.display = 'none';
                 checkCrmCustomerData();
@@ -1432,6 +1534,39 @@
     // Counts how many of this job's scheduled days actually included this technician,
     // using the same day-by-day schedule shown on the Weekly Board — so daily-rate pay
     // matches the days they were really assigned, not a manually-guessed number.
+    // Shows, for the job currently open in the form, exactly which dates each person
+    // was scheduled to work — grouped by name, so "who worked which days" is a glance,
+    // not a manual count through the Weekly Board.
+    function renderJobScheduleSummary() {
+        const card = document.getElementById('jobScheduleSummaryCard');
+        const editingId = document.getElementById('editingJobId').value;
+        if (!editingId) { card.style.display = 'none'; return; }
+        const job = savedJobs.find(j => j.id === editingId);
+        if (!job) { card.style.display = 'none'; return; }
+        const entries = getScheduleEntries(job);
+        if (entries.length === 0) { card.style.display = 'none'; return; }
+
+        const byPerson = {};
+        entries.forEach(entry => {
+            (entry.team || []).forEach(name => {
+                if (!byPerson[name]) byPerson[name] = [];
+                byPerson[name].push(entry.date);
+            });
+        });
+
+        let html;
+        if (Object.keys(byPerson).length === 0) {
+            html = `<div style="color:var(--text-muted);">${t('noTechsAdded')}</div>`;
+        } else {
+            html = Object.keys(byPerson).map(name => {
+                const dates = byPerson[name].slice().sort().join(', ');
+                return `<div style="margin-bottom:6px;"><strong style="color:#fbbf24;">${name}:</strong> ${dates}</div>`;
+            }).join('');
+        }
+        document.getElementById('jobScheduleSummaryContent').innerHTML = html;
+        card.style.display = 'block';
+    }
+
     function calculateDaysFromSchedule(index) {
         const editingId = document.getElementById('editingJobId').value;
         if (!editingId) { alert(t('alertNoScheduleYet')); return; }
@@ -1560,6 +1695,7 @@
             id: editingId ? editingId : Date.now().toString() + Math.random().toString(36).substr(2, 5),
             clientName,
             clientPhone: document.getElementById('clientPhone').value.trim(),
+            clientEmail: document.getElementById('clientEmail').value.trim(),
             jobStatus: document.getElementById('jobStatus').value,
             clientAddress: document.getElementById('clientAddress').value.trim(),
             clientDescription: document.getElementById('clientDescription').value.trim(),
@@ -1616,6 +1752,7 @@
         document.getElementById('editingJobId').value = '';
         document.getElementById('clientName').value = '';
         document.getElementById('clientPhone').value = '';
+        document.getElementById('clientEmail').value = '';
         document.getElementById('jobStatus').value = 'شغال';
         document.getElementById('clientAddress').value = '';
         document.getElementById('clientDescription').value = '';
@@ -1635,6 +1772,7 @@
         renderTechnicians();
         expenseItems = [];
         renderExpenseItems();
+        document.getElementById('jobScheduleSummaryCard').style.display = 'none';
         document.getElementById('formTitle').innerText = t('formTitleNew');
         document.getElementById('saveBtn').innerText = t('saveBtnNew');
         document.getElementById('cancelEditBtn').style.display = 'none';
@@ -1732,6 +1870,7 @@
         safeCall(updateGlobalStats);
         safeCall(updateTechDropdownFilter);
         safeCall(updateSelectedStats);
+        safeCall(renderTodayJobsBanner);
         if (document.getElementById('screenWeekly').style.display !== 'none') safeCall(renderWeeklyBoard);
     }
 
@@ -1823,6 +1962,7 @@
 
         document.getElementById('clientName').value = job.clientName || '';
         document.getElementById('clientPhone').value = job.clientPhone || '';
+        document.getElementById('clientEmail').value = job.clientEmail || '';
         document.getElementById('jobStatus').value = 'شغال'; // a duplicated job starts fresh, not already "done"
         document.getElementById('clientAddress').value = job.clientAddress || '';
         document.getElementById('clientDescription').value = job.clientDescription || '';
@@ -1858,6 +1998,7 @@
         document.getElementById('editingJobId').value = job.id;
         document.getElementById('clientName').value = job.clientName || '';
         document.getElementById('clientPhone').value = job.clientPhone || '';
+        document.getElementById('clientEmail').value = job.clientEmail || '';
         document.getElementById('jobStatus').value = job.jobStatus || 'شغال';
         document.getElementById('clientAddress').value = job.clientAddress || '';
         document.getElementById('clientDescription').value = job.clientDescription || '';
@@ -1883,6 +2024,7 @@
         }
         renderExpenseItems();
         checkCrmCustomerData();
+        renderJobScheduleSummary();
 
         document.getElementById('formTitle').innerText = t('formTitleEdit');
         document.getElementById('saveBtn').innerText = t('saveBtnUpdate');
@@ -2743,6 +2885,7 @@
         editingApptId = id;
         document.getElementById('apptClientName').value = appt.clientName || '';
         document.getElementById('apptClientPhone').value = appt.clientPhone || '';
+        document.getElementById('apptClientEmail').value = appt.clientEmail || '';
         document.getElementById('apptClientAddress').value = appt.clientAddress || '';
         document.getElementById('apptDate').value = appt.requestedDate || '';
         document.getElementById('apptTime').value = appt.requestedTime || '';
@@ -2757,6 +2900,7 @@
         editingApptId = '';
         document.getElementById('apptClientName').value = '';
         document.getElementById('apptClientPhone').value = '';
+        document.getElementById('apptClientEmail').value = '';
         document.getElementById('apptClientAddress').value = '';
         document.getElementById('apptDate').value = '';
         document.getElementById('apptTime').value = '';
@@ -2773,6 +2917,7 @@
         const fields = {
             clientName,
             clientPhone: document.getElementById('apptClientPhone').value.trim(),
+            clientEmail: document.getElementById('apptClientEmail').value.trim(),
             clientAddress: document.getElementById('apptClientAddress').value.trim(),
             requestedDate: document.getElementById('apptDate').value,
             requestedTime: document.getElementById('apptTime').value,
@@ -2814,6 +2959,7 @@
             id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
             clientName: appt.clientName || '',
             clientPhone: appt.clientPhone || '',
+            clientEmail: appt.clientEmail || '',
             jobStatus: 'شغال',
             clientAddress: appt.clientAddress || '',
             clientDescription: [servicesLine, appt.note || ''].filter(Boolean).join('\n'),
@@ -2857,7 +3003,7 @@
                 <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
                     <div>
                         <strong>${appt.clientName}</strong><br>
-                        <span style="font-size:0.78rem; color:var(--text-muted);">${appt.clientPhone ? `<a href="tel:${appt.clientPhone.replace(/[^+\d]/g, '')}" style="color:#38bdf8; text-decoration:none;">📞 ${appt.clientPhone}</a>` : ''}${appt.clientPhone && appt.clientAddress ? ' — ' : ''}${appt.clientAddress ? `<a href="#" onclick="event.preventDefault(); showMapChoice('${appt.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${appt.clientAddress}</a>` : ''}</span><br>
+                        <span style="font-size:0.78rem; color:var(--text-muted);">${appt.clientPhone ? `<a href="tel:${appt.clientPhone.replace(/[^+\d]/g, '')}" style="color:#38bdf8; text-decoration:none;">📞 ${appt.clientPhone}</a>` : ''}${appt.clientPhone && appt.clientAddress ? ' — ' : ''}${appt.clientAddress ? `<a href="#" onclick="event.preventDefault(); showMapChoice('${appt.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${appt.clientAddress}</a>` : ''}${appt.clientEmail ? ` — <a href="mailto:${appt.clientEmail}" style="color:#38bdf8; text-decoration:none;">✉️ ${appt.clientEmail}</a>` : ''}</span><br>
                         <span style="font-size:0.78rem; color:#38bdf8;">${appt.requestedDate || t('noDateSet')} ${appt.requestedTime || ''}</span>
                         ${serviceTags}
                         ${appt.note ? `<div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">${appt.note}</div>` : ''}
@@ -2962,7 +3108,10 @@
                     <div style="font-size:0.78rem; color:var(--text-muted);">${job.clientAddress ? `<a href="#" onclick="event.preventDefault(); event.stopPropagation(); showMapChoice('${job.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${job.clientAddress}</a>` : ''}${showAllPendingMode ? ' — ' + (entry.date || t('noDateSet')) : ''}</div>
                     <div style="font-size:0.78rem; color:#38bdf8;">${t('weeklyTechsLabel')} ${teamNames}</div>
                 </div>
-                <button class="secondary" onclick="openEditScheduleModal('${job.id}', '${entry.date}')" style="padding:4px 10px; font-size:0.75rem; align-self:center;">${t('editBtn')}</button>
+                <div style="display:flex; flex-direction:column; gap:4px; align-self:center;">
+                    <button class="secondary" onclick="openEditScheduleModal('${job.id}', '${entry.date}')" style="padding:4px 10px; font-size:0.75rem;">${t('editBtn')}</button>
+                    <button class="secondary" onclick="event.stopPropagation(); downloadJobICS('${job.id}', '${entry.date}')" style="padding:4px 10px; font-size:0.7rem;">📆</button>
+                </div>
             </div>
         </div>`;
     }
