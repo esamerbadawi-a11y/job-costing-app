@@ -608,6 +608,7 @@
         </div>
 
         <button class="success" style="width:100%; padding:11px; margin-bottom:8px;" onclick="saveEditSchedule()" data-i18n="qsSaveBtn"></button>
+        <button class="danger" style="width:100%; padding:8px; font-size:0.8rem; margin-bottom:8px; display:none;" id="esRemoveDayBtn" data-i18n="esRemoveDayBtn"></button>
         <button class="secondary" style="width:100%; padding:8px; font-size:0.8rem;" id="esFullEditLink" data-i18n="esFullEditLink"></button>
     </div>
 </div>
@@ -701,6 +702,12 @@
         editScheduleTitle: { ar: 'تعديل الوقت والفريق', en: 'Edit Time & Team' },
         lblScheduleDay: { ar: 'يوم الشغل:', en: 'Scheduled Day:' },
         esFullEditLink: { ar: '⚙️ تعديل تفاصيل الشغلانة كاملة (السعر، الفنيين...)', en: '⚙️ Edit full job details (price, technicians...)' },
+        esRemoveDayBtn: { ar: '🗑️ شيل اليوم ده بس من الجدول', en: '🗑️ Remove just this day' },
+        calcDaysFromScheduleBtn: { ar: 'احسب الأيام من جدول الأسبوع', en: 'Calculate days from the schedule' },
+        alertNoScheduleYet: { ar: 'الخاصية دي شغالة بس بعد ما تحفظ الشغلانة وتحدد أيام العمل ليها من لوحة الأسبوع.', en: 'This only works after saving the job and scheduling its work days from the Weekly Board.' },
+        alertPickTechFirst: { ar: 'اختار اسم الفني الأول.', en: "Pick the technician's name first." },
+        alertNoDaysFoundForTech: { ar: 'الفني ده لسه مالوش أي يوم محدد ليه في جدول الشغلانة دي.', en: "This technician has no scheduled days on this job's calendar yet." },
+        confirmRemoveDay: { ar: 'متأكد من شيل اليوم ده من جدول الشغلانة؟', en: "Remove this day from the job's schedule?" },
         qsNewJobTab: { ar: 'شغلانة جديدة', en: 'New Job' },
         qsExistingJobTab: { ar: 'شغلانة موجودة', en: 'Existing Job' },
         qsPickExisting: { ar: 'اختار الشغلانة:', en: 'Pick the Job:' },
@@ -1377,7 +1384,12 @@
                     </div>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 10px; align-items: center;">
-                    <div><label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblDaysHours')}</label><input type="text" placeholder="1" value="${tech.days !== undefined ? tech.days : 1}" onfocus="this.select()" oninput="updateTechData(${index}, 'days', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; text-align: center;"></div>
+                    <div><label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblDaysHours')}</label>
+                        <div style="display:flex; gap:4px;">
+                            <input type="text" placeholder="1" value="${tech.days !== undefined ? tech.days : 1}" onfocus="this.select()" oninput="updateTechData(${index}, 'days', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; text-align: center;">
+                            ${tech.type === 'باليومية' ? `<button type="button" onclick="calculateDaysFromSchedule(${index})" title="${t('calcDaysFromScheduleBtn')}" style="background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius:8px; padding:0 10px; cursor:pointer; font-size:0.9rem;">📅</button>` : ''}
+                        </div>
+                    </div>
                     <div><label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblPaid')}</label><input type="text" placeholder="0" value="${tech.paid !== undefined ? tech.paid : ''}" onfocus="this.select()" oninput="updateTechData(${index}, 'paid', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; text-align: center;"></div>
                     <div>
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblDueRemaining')}</label>
@@ -1415,6 +1427,23 @@
         if (tech.type === 'نسبة مخصصة') return base > 0 ? base * (customPercent / 100) : 0;
         if (tech.type === 'مبلغ ثابت') return rate;
         return rate * days;
+    }
+
+    // Counts how many of this job's scheduled days actually included this technician,
+    // using the same day-by-day schedule shown on the Weekly Board — so daily-rate pay
+    // matches the days they were really assigned, not a manually-guessed number.
+    function calculateDaysFromSchedule(index) {
+        const editingId = document.getElementById('editingJobId').value;
+        if (!editingId) { alert(t('alertNoScheduleYet')); return; }
+        const job = savedJobs.find(j => j.id === editingId);
+        if (!job) { alert(t('alertNoScheduleYet')); return; }
+        const techName = technicians[index].name;
+        if (!techName) { alert(t('alertPickTechFirst')); return; }
+        const entries = getScheduleEntries(job);
+        const count = entries.filter(e => (e.team || []).includes(techName)).length;
+        if (count === 0) { alert(t('alertNoDaysFoundForTech')); return; }
+        updateTechData(index, 'days', count);
+        renderTechnicians();
     }
 
     function updateTechData(index, field, value) {
@@ -1565,6 +1594,7 @@
                 if (savedJobs[index].assignedTeam !== undefined) jobData.assignedTeam = savedJobs[index].assignedTeam;
                 if (savedJobs[index].dayOrder !== undefined) jobData.dayOrder = savedJobs[index].dayOrder;
                 if (savedJobs[index].scheduledDate !== undefined) jobData.scheduledDate = savedJobs[index].scheduledDate;
+                if (savedJobs[index].dailySchedule !== undefined) jobData.dailySchedule = savedJobs[index].dailySchedule;
                 savedJobs[index] = jobData;
             }
         } else {
@@ -2525,35 +2555,67 @@
 
     let editScheduleJobId = '';
 
-    // Lets someone adjust just the time and assigned team for an already-saved job,
-    // without touching (or even seeing) its financial details.
-    function openEditScheduleModal(jobId) {
+    // Lets someone adjust the time and team for ONE specific scheduled day of a job —
+    // a job spanning several days (maybe with a different tech each day) keeps its other
+    // days untouched. Never touches the job's financial details.
+    let editScheduleOrigDate = '';
+    function openEditScheduleModal(jobId, date) {
         const job = savedJobs.find(j => j.id === jobId);
         if (!job) return;
         editScheduleJobId = jobId;
+        editScheduleOrigDate = date;
+        const entries = getScheduleEntries(job);
+        const entry = entries.find(e => e.date === date) || { date, time: '', team: [] };
+
         document.getElementById('editScheduleClientLabel').textContent = job.clientName || '';
-        document.getElementById('editScheduleDayLabel').value = effectiveScheduleDate(job) || '';
-        document.getElementById('esTime').value = job.scheduledTime || '';
+        document.getElementById('editScheduleDayLabel').value = entry.date || '';
+        document.getElementById('esTime').value = entry.time || '';
 
         const names = ['SAMER', 'MOHAMED', ...getUniqueRegisteredTechnicians()];
         const uniqueNames = [...new Set(names)];
-        const checkedTeam = (job.assignedTeam && job.assignedTeam.length > 0) ? job.assignedTeam : (job.technicians || []).map(tc => tc.name).filter(Boolean);
+        const checkedTeam = entry.team || [];
         document.getElementById('esTeamCheckboxes').innerHTML = uniqueNames.map(name => `
             <label style="display:flex; align-items:center; gap:5px; font-size:0.82rem; cursor:pointer;">
                 <input type="checkbox" class="es-team-check" value="${name}" ${checkedTeam.includes(name) ? 'checked' : ''}> ${name}
             </label>`).join('');
+
+        const removeBtn = document.getElementById('esRemoveDayBtn');
+        removeBtn.style.display = entries.length > 1 ? 'block' : 'none';
+        removeBtn.onclick = () => removeScheduleDay(jobId, date);
 
         document.getElementById('esFullEditLink').onclick = () => { closeEditScheduleModal(); editJob(jobId); switchScreen('entry'); };
         document.getElementById('editScheduleModal').style.display = 'flex';
     }
     function closeEditScheduleModal() { document.getElementById('editScheduleModal').style.display = 'none'; }
 
+    async function removeScheduleDay(jobId, date) {
+        if (!confirm(t('confirmRemoveDay'))) return;
+        const idx = savedJobs.findIndex(j => j.id === jobId);
+        if (idx === -1) return;
+        const entries = getScheduleEntries(savedJobs[idx]).filter(e => e.date !== date);
+        savedJobs[idx].dailySchedule = entries;
+        savedJobs[idx].lastEditedBy = currentUserEmail;
+        try {
+            await saveSavedJobsData();
+            logActivity('edit', savedJobs[idx].clientName);
+        } catch (e) { alert(t('alertJobSaveFailed')); return; }
+        closeEditScheduleModal();
+        renderWeeklyBoard();
+    }
+
     async function saveEditSchedule() {
         const idx = savedJobs.findIndex(j => j.id === editScheduleJobId);
         if (idx === -1) return;
-        savedJobs[idx].scheduledDate = document.getElementById('editScheduleDayLabel').value;
-        savedJobs[idx].scheduledTime = document.getElementById('esTime').value;
-        savedJobs[idx].assignedTeam = Array.from(document.querySelectorAll('.es-team-check:checked')).map(cb => cb.value);
+        const newDate = document.getElementById('editScheduleDayLabel').value;
+        const newTime = document.getElementById('esTime').value;
+        const newTeam = Array.from(document.querySelectorAll('.es-team-check:checked')).map(cb => cb.value);
+
+        // Drop the entry being edited, then add it back at (possibly) its new date —
+        // this both handles "just changed the time/team" and "moved this day elsewhere"
+        // without ever touching this job's OTHER scheduled days.
+        const entries = getScheduleEntries(savedJobs[idx]).filter(e => e.date !== editScheduleOrigDate);
+        entries.push({ date: newDate, time: newTime, team: newTeam, dayOrder: 0 });
+        savedJobs[idx].dailySchedule = entries;
         savedJobs[idx].lastEditedBy = currentUserEmail;
         try {
             await saveSavedJobsData();
@@ -2616,12 +2678,10 @@
                 clientDescription: '',
                 startDate: quickScheduleDay,
                 endDate: quickScheduleDay,
-                scheduledDate: quickScheduleDay,
-                scheduledTime: time,
+                dailySchedule: [{ date: quickScheduleDay, time, team, dayOrder: 0 }],
                 totalRevenue: 0, amountReceived: 0, amountRemaining: 0,
                 followUpDate: '', materialCost: 0, extraExpenses: 0,
                 expenseItems: [], technicians: [],
-                assignedTeam: team,
                 createdBy: currentUserEmail, lastEditedBy: currentUserEmail
             };
             savedJobs.unshift(newJob);
@@ -2634,11 +2694,10 @@
             if (!jobId) { return; }
             const idx = savedJobs.findIndex(j => j.id === jobId);
             if (idx === -1) return;
-            // Only the scheduling date changes here — the job's official record date
-            // (startDate, used in Log & Reports) is left untouched on purpose.
-            savedJobs[idx].scheduledDate = quickScheduleDay;
-            savedJobs[idx].scheduledTime = time;
-            savedJobs[idx].assignedTeam = team;
+            // Adds/updates just THIS day's entry — a job already scheduled on other days
+            // (maybe with a different tech) keeps those days untouched. The job's official
+            // record date (startDate, used in Log & Reports) is never touched either.
+            upsertScheduleEntry(savedJobs[idx], quickScheduleDay, time, team);
             savedJobs[idx].lastEditedBy = currentUserEmail;
             try {
                 await saveSavedJobsData();
@@ -2760,11 +2819,10 @@
             clientDescription: [servicesLine, appt.note || ''].filter(Boolean).join('\n'),
             startDate: appt.requestedDate || '',
             endDate: appt.requestedDate || '',
-            scheduledDate: appt.requestedDate || '',
-            scheduledTime: appt.requestedTime || '',
+            dailySchedule: appt.requestedDate ? [{ date: appt.requestedDate, time: appt.requestedTime || '', team: [], dayOrder: 0 }] : [],
             totalRevenue: 0, amountReceived: 0, amountRemaining: 0,
             followUpDate: '', materialCost: 0, extraExpenses: 0,
-            expenseItems: [], technicians: [], assignedTeam: [],
+            expenseItems: [], technicians: [],
             createdBy: currentUserEmail, lastEditedBy: currentUserEmail
         };
 
@@ -2822,6 +2880,32 @@
     // older jobs saved before this field existed.
     function effectiveScheduleDate(job) { return job.scheduledDate || job.startDate || ''; }
 
+    // A job can now span several days, with a different team on each — e.g. Nathan works
+    // Mon-Tue, then Oscar picks it up Wed-Thu, all under the same job/price. job.dailySchedule
+    // is the source of truth going forward: [{date, time, team, dayOrder}, ...]. Falls back to
+    // the old single-date/assignedTeam fields for jobs saved before this existed.
+    function getScheduleEntries(job) {
+        if (job.dailySchedule && job.dailySchedule.length > 0) return job.dailySchedule;
+        const d = effectiveScheduleDate(job);
+        if (!d) return [];
+        return [{ date: d, time: job.scheduledTime || '', team: job.assignedTeam || (job.technicians || []).map(tc => tc.name).filter(Boolean), dayOrder: 0 }];
+    }
+
+    // Adds or updates (for the same date) one day's entry, without touching any other day
+    // already scheduled for this job.
+    function upsertScheduleEntry(job, date, time, team) {
+        const entries = getScheduleEntries(job).map(e => ({ ...e })); // clone, since getScheduleEntries may synthesize from legacy fields
+        const idx = entries.findIndex(e => e.date === date);
+        if (idx !== -1) { entries[idx].time = time; entries[idx].team = team; }
+        else { entries.push({ date, time, team, dayOrder: entries.filter(e => e.date === date).length }); }
+        job.dailySchedule = entries;
+        // Keep the legacy fields roughly in sync too, so anything not yet updated to read
+        // dailySchedule (e.g. an older cached page) still shows something reasonable.
+        job.scheduledDate = entries[0].date;
+        job.scheduledTime = entries[0].time;
+        job.assignedTeam = entries[0].team;
+    }
+
     let weeklyBoardOffset = 0; // 0 = this week, -1 = previous week, +1 = next week
     let showAllPendingMode = false;
     let dragJobId = null;
@@ -2853,53 +2937,57 @@
 
     // Sorts a day's jobs: manual drag order first (dayOrder), then by scheduled time,
     // then jobs with no time at all go last.
-    function sortDayJobs(jobs) {
-        return [...jobs].sort((a, b) => {
-            const orderA = a.dayOrder !== undefined ? a.dayOrder : 999;
-            const orderB = b.dayOrder !== undefined ? b.dayOrder : 999;
+    function sortDayEntries(pairs) {
+        return [...pairs].sort((a, b) => {
+            const orderA = a.entry.dayOrder !== undefined ? a.entry.dayOrder : 999;
+            const orderB = b.entry.dayOrder !== undefined ? b.entry.dayOrder : 999;
             if (orderA !== orderB) return orderA - orderB;
-            const timeA = a.scheduledTime || '99:99';
-            const timeB = b.scheduledTime || '99:99';
+            const timeA = a.entry.time || '99:99';
+            const timeB = b.entry.time || '99:99';
             return timeA.localeCompare(timeB);
         });
     }
 
-    function renderJobCard(job, isOverdue) {
-        const teamNames = (job.assignedTeam && job.assignedTeam.length > 0)
-            ? job.assignedTeam.join(', ')
-            : ((job.technicians || []).map(tc => tc.name).filter(Boolean).join(', ') || t('noTechsAdded'));
-        const timeLabel = job.scheduledTime ? `<span style="color:#fbbf24; font-weight:700;">${job.scheduledTime}</span> — ` : '';
+    function renderJobCard(job, entry, isOverdue) {
+        const teamNames = (entry.team && entry.team.length > 0) ? entry.team.join(', ') : t('noTechsAdded');
+        const timeLabel = entry.time ? `<span style="color:#fbbf24; font-weight:700;">${entry.time}</span> — ` : '';
         return `<div class="tech-card" draggable="true" data-job-id="${job.id}"
                 ondragstart="dragJobId='${job.id}'; event.dataTransfer.effectAllowed='move';"
                 ondragover="event.preventDefault();"
-                ondrop="handleJobDrop(event, '${effectiveScheduleDate(job)}', '${job.id}')"
+                ondrop="handleJobDrop(event, '${entry.date}', '${job.id}')"
                 style="margin-bottom:8px; padding:10px 14px; cursor:grab; ${isOverdue ? 'border-color:var(--danger); background:rgba(225,29,72,0.08);' : ''}">
             <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
                 <div>
                     <div>${timeLabel}<strong>${job.clientName || ''}</strong>${isOverdue ? ` <span style="color:#f87171; font-size:0.72rem; font-weight:700;">⚠️ ${t('overdueLabel')}</span>` : ''}</div>
-                    <div style="font-size:0.78rem; color:var(--text-muted);">${job.clientAddress ? `<a href="#" onclick="event.preventDefault(); event.stopPropagation(); showMapChoice('${job.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${job.clientAddress}</a>` : ''}${showAllPendingMode ? ' — ' + (effectiveScheduleDate(job) || t('noDateSet')) : ''}</div>
+                    <div style="font-size:0.78rem; color:var(--text-muted);">${job.clientAddress ? `<a href="#" onclick="event.preventDefault(); event.stopPropagation(); showMapChoice('${job.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${job.clientAddress}</a>` : ''}${showAllPendingMode ? ' — ' + (entry.date || t('noDateSet')) : ''}</div>
                     <div style="font-size:0.78rem; color:#38bdf8;">${t('weeklyTechsLabel')} ${teamNames}</div>
                 </div>
-                <button class="secondary" onclick="openEditScheduleModal('${job.id}')" style="padding:4px 10px; font-size:0.75rem; align-self:center;">${t('editBtn')}</button>
+                <button class="secondary" onclick="openEditScheduleModal('${job.id}', '${entry.date}')" style="padding:4px 10px; font-size:0.75rem; align-self:center;">${t('editBtn')}</button>
             </div>
         </div>`;
     }
 
-    // Reassigns dayOrder for every job on the dropped-into day, based on the drag target.
+    // Reassigns dayOrder for every (job, day) entry sharing the dropped-into day.
     async function handleJobDrop(event, dateStr, targetJobId) {
         event.preventDefault();
         if (!dragJobId || dragJobId === targetJobId) return;
-        const dayJobs = sortDayJobs(savedJobs.filter(j => j.jobStatus !== 'خلص' && effectiveScheduleDate(j) === dateStr));
-        const draggedIndex = dayJobs.findIndex(j => j.id === dragJobId);
-        const targetIndex = dayJobs.findIndex(j => j.id === targetJobId);
+        const activeJobs = savedJobs.filter(j => j.jobStatus !== 'خلص');
+        let pairs = [];
+        activeJobs.forEach(job => { getScheduleEntries(job).forEach(entry => { if (entry.date === dateStr) pairs.push({ job, entry }); }); });
+        pairs = sortDayEntries(pairs);
+        const draggedIndex = pairs.findIndex(p => p.job.id === dragJobId);
+        const targetIndex = pairs.findIndex(p => p.job.id === targetJobId);
         if (draggedIndex === -1 || targetIndex === -1) return;
 
-        const reordered = [...dayJobs];
+        const reordered = [...pairs];
         const [moved] = reordered.splice(draggedIndex, 1);
         reordered.splice(targetIndex, 0, moved);
-        reordered.forEach((job, i) => {
-            const idx = savedJobs.findIndex(j => j.id === job.id);
-            if (idx !== -1) savedJobs[idx].dayOrder = i;
+        reordered.forEach((pair, i) => {
+            const jobIdx = savedJobs.findIndex(j => j.id === pair.job.id);
+            if (jobIdx === -1) return;
+            const entries = getScheduleEntries(savedJobs[jobIdx]).map(e => ({ ...e }));
+            const entryIdx = entries.findIndex(e => e.date === dateStr);
+            if (entryIdx !== -1) { entries[entryIdx].dayOrder = i; savedJobs[jobIdx].dailySchedule = entries; }
         });
 
         dragJobId = null;
@@ -2916,15 +3004,20 @@
 
         if (showAllPendingMode) {
             document.getElementById('weeklyRangeLabel').textContent = t('allPendingSubtitle');
-            const sorted = [...activeJobs].sort((a, b) => (effectiveScheduleDate(a) || '9999').localeCompare(effectiveScheduleDate(b) || '9999'));
+            let pairs = [];
+            activeJobs.forEach(job => {
+                const entries = getScheduleEntries(job);
+                if (entries.length === 0) { pairs.push({ job, entry: { date: '', time: '', team: [] } }); }
+                else entries.forEach(entry => pairs.push({ job, entry }));
+            });
+            pairs.sort((a, b) => (a.entry.date || '9999').localeCompare(b.entry.date || '9999'));
             let html = '';
-            if (sorted.length === 0) {
+            if (pairs.length === 0) {
                 html = `<div style="padding:12px 14px; color:var(--text-muted); font-size:0.82rem;">${t('noJobsThisDay')}</div>`;
             } else {
-                sorted.forEach(job => {
-                    const jd = effectiveScheduleDate(job);
-                    const isOverdue = jd && jd < todayStr;
-                    html += renderJobCard(job, isOverdue);
+                pairs.forEach(({ job, entry }) => {
+                    const isOverdue = entry.date && entry.date < todayStr;
+                    html += renderJobCard(job, entry, isOverdue);
                 });
             }
             document.getElementById('weeklyBoardContent').innerHTML = html;
@@ -2937,21 +3030,23 @@
         let html = '';
         days.forEach(d => {
             const dateStr = isoDate(d);
-            const dayJobs = sortDayJobs(activeJobs.filter(j => effectiveScheduleDate(j) === dateStr));
+            let pairs = [];
+            activeJobs.forEach(job => { getScheduleEntries(job).forEach(entry => { if (entry.date === dateStr) pairs.push({ job, entry }); }); });
+            pairs = sortDayEntries(pairs);
             const isToday = dateStr === todayStr;
             html += `<div style="margin-bottom:14px; border:1px solid var(--border-color); border-radius:10px; overflow:hidden;">
                 <div style="background:${isToday ? 'rgba(14,165,233,0.15)' : 'var(--panel-bg)'}; padding:8px 14px; font-weight:700; color:${isToday ? '#38bdf8' : 'var(--text-muted)'}; display:flex; justify-content:space-between; align-items:center;">
                     <span>${dayNames[d.getDay() === 0 ? 6 : d.getDay() - 1]} — ${dateStr}</span>
                     <div style="display:flex; align-items:center; gap:10px;">
-                        <span style="font-weight:400; font-size:0.78rem;">${dayJobs.length} ${t('jobsWord')}</span>
+                        <span style="font-weight:400; font-size:0.78rem;">${pairs.length} ${t('jobsWord')}</span>
                         <button class="success" onclick="openQuickScheduleModal('${dateStr}')" style="padding:3px 10px; font-size:0.72rem;">+ ${t('qsAddBtn')}</button>
                     </div>
                 </div>
-                <div style="padding:10px 14px 4px;" ondragover="event.preventDefault();" ondrop="handleJobDrop(event, '${dateStr}', '${dayJobs[0] ? dayJobs[0].id : ''}')">`;
-            if (dayJobs.length === 0) {
+                <div style="padding:10px 14px 4px;" ondragover="event.preventDefault();" ondrop="handleJobDrop(event, '${dateStr}', '${pairs[0] ? pairs[0].job.id : ''}')">`;
+            if (pairs.length === 0) {
                 html += `<div style="padding:6px 0 10px; color:var(--text-muted); font-size:0.82rem;">${t('noJobsThisDay')}</div>`;
             } else {
-                dayJobs.forEach(job => { html += renderJobCard(job, false); });
+                pairs.forEach(({ job, entry }) => { html += renderJobCard(job, entry, false); });
             }
             html += '</div></div>';
         });
@@ -2968,14 +3063,14 @@
         let msg = (currentLang === 'ar' ? '📅 جدول شغل الأسبوع:\n\n' : "📅 This Week's Work Schedule:\n\n");
         days.forEach(d => {
             const dateStr = isoDate(d);
-            const dayJobs = sortDayJobs(activeJobs.filter(j => effectiveScheduleDate(j) === dateStr));
-            if (dayJobs.length === 0) return;
+            let pairs = [];
+            activeJobs.forEach(job => { getScheduleEntries(job).forEach(entry => { if (entry.date === dateStr) pairs.push({ job, entry }); }); });
+            pairs = sortDayEntries(pairs);
+            if (pairs.length === 0) return;
             msg += `━━━━━━━━━━━━\n*${dayNames[d.getDay() === 0 ? 6 : d.getDay() - 1]} — ${dateStr}*\n\n`;
-            dayJobs.forEach((job, i) => {
-                const teamNames = (job.assignedTeam && job.assignedTeam.length > 0)
-                    ? job.assignedTeam.join(', ')
-                    : (job.technicians || []).map(tc => tc.name).filter(Boolean).join(', ');
-                const timeLine = job.scheduledTime ? job.scheduledTime : (currentLang === 'ar' ? 'وقت مش محدد' : 'No time set');
+            pairs.forEach(({ job, entry }, i) => {
+                const teamNames = (entry.team || []).join(', ');
+                const timeLine = entry.time ? entry.time : (currentLang === 'ar' ? 'وقت مش محدد' : 'No time set');
                 msg += `${i + 1}. *${job.clientName || ''}*\n`;
                 if (job.clientAddress) msg += `📍 ${job.clientAddress}\n`;
                 msg += `⏰ ${timeLine}\n`;
