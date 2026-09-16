@@ -105,6 +105,9 @@
 </head>
 <body>
 
+<button class="no-print" id="checkTodayFab" onclick="renderTodayJobsBanner(true)" data-i18n="checkTodayBtn"
+    style="display:none; position:fixed; inset-inline-end:16px; bottom:22px; z-index:500; background:linear-gradient(135deg, #d97706, #fbbf24); color:#1a1206; border:none; border-radius:50px; padding:14px 20px; font-weight:800; font-size:0.85rem; box-shadow:0 8px 20px rgba(217,119,6,0.45); cursor:pointer;"></button>
+
 <div id="loginScreen" style="display:none; min-height:100vh; align-items:center; justify-content:center;">
     <div style="max-width:380px; margin:15vh auto; background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; padding:28px; box-shadow:0 10px 30px rgba(0,0,0,0.4);">
         <h2 style="color:#38bdf8; font-size:1.2rem; margin-bottom:18px; text-align:center;">🔒 <span data-i18n="loginTitle"></span></h2>
@@ -716,6 +719,8 @@
         todayJobsTitle: { ar: 'شغل النهاردة', en: "Today's Jobs" },
         dismissBtn: { ar: 'إخفاء', en: 'Dismiss' },
         addToCalendarBtn: { ar: 'أضف للتقويم', en: 'Add to Calendar' },
+        checkTodayBtn: { ar: '🔍 شغل النهاردة؟', en: '🔍 Jobs Today?' },
+        noJobsScheduledToday: { ar: 'مفيش أي شغلانة مجدولة النهاردة.', en: 'No jobs scheduled for today.' },
         lblScheduledTime: { ar: 'وقت الشغل (اختياري):', en: 'Job Time (optional):' },
         showAllPendingBtn: { ar: '📋 كل الشغل اللي لسه', en: '📋 All Unfinished Jobs' },
         allPendingSubtitle: { ar: 'كل الشغلانات اللي لسه مخلصتش، من كل التواريخ.', en: 'All unfinished jobs, across every date.' },
@@ -1060,11 +1065,13 @@
             document.getElementById('pdfContentArea').style.display = 'block';
             document.getElementById('currentUserBadge').textContent = displayNameFor(user.email);
             document.getElementById('activityLogBtnEl').style.display = (user.email === ADMIN_EMAIL) ? '' : 'none';
+            document.getElementById('checkTodayFab').style.display = 'block';
             setupRealtimeSync();
         } else {
             currentUserEmail = null;
             document.getElementById('loginScreen').style.display = 'flex';
             document.getElementById('pdfContentArea').style.display = 'none';
+            document.getElementById('checkTodayFab').style.display = 'none';
         }
     });
 
@@ -1183,17 +1190,23 @@
 
     // Shows every job scheduled for TODAY right at the top of the app, regardless of
     // which tab is open — so a job later in the day doesn't get lost in the shuffle.
-    function renderTodayJobsBanner() {
+    function renderTodayJobsBanner(forceShow) {
         const banner = document.getElementById('todayJobsBanner');
         const todayStr = isoDate(new Date());
-        try {
-            if (localStorage.getItem('jobCostingTodayBannerDismissed') === todayStr) { banner.style.display = 'none'; return; }
-        } catch (e) {}
+        if (!forceShow) {
+            try {
+                if (localStorage.getItem('jobCostingTodayBannerDismissed') === todayStr) { banner.style.display = 'none'; return; }
+            } catch (e) {}
+        }
 
         const activeJobs = savedJobs.filter(j => j.jobStatus !== 'خلص');
         let pairs = [];
         activeJobs.forEach(job => { getScheduleEntries(job).forEach(entry => { if (entry.date === todayStr) pairs.push({ job, entry }); }); });
-        if (pairs.length === 0) { banner.style.display = 'none'; return; }
+        if (pairs.length === 0) {
+            banner.style.display = 'none';
+            if (forceShow) alert(t('noJobsScheduledToday'));
+            return;
+        }
 
         pairs.sort((a, b) => (a.entry.time || '99:99').localeCompare(b.entry.time || '99:99'));
         const nowStr = new Date().toTimeString().slice(0, 5);
