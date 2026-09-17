@@ -438,7 +438,14 @@
                 </div>
                 <div class="form-group"><label data-i18n="lblFollowUpDate"></label><input type="date" id="followUpDate"></div>
 
-                <div class="form-group"><label data-i18n="lblMaterialCost"></label><input type="text" id="materialCost" value="0" onfocus="this.select()" oninput="calculate()"></div>
+                <div class="form-group">
+                    <label data-i18n="lblMaterialCost"></label>
+                    <div style="display:flex; gap:6px;">
+                        <input type="text" id="materialCost" value="0" onfocus="this.select()" oninput="calculate()" style="flex:1;">
+                        <input type="text" id="materialCostAdd" data-i18n-ph="materialAddPh" onfocus="this.select()" style="width:90px;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addToMaterialCost();}">
+                        <button type="button" onclick="addToMaterialCost()" style="background:var(--secondary-bg); border:1px solid var(--border-color); color:var(--text-main); border-radius:8px; padding:0 16px; cursor:pointer; font-weight:700; font-size:1.1rem;">+</button>
+                    </div>
+                </div>
 
                 <div class="card" id="jobScheduleSummaryCard" style="background: var(--panel-bg); padding: 16px; margin-top: 15px; border: 1px solid var(--border-color); display:none;">
                     <div style="color: #38bdf8; font-weight: bold; font-size: 0.9rem; margin-bottom: 10px;" data-i18n="jobScheduleSummaryTitle"></div>
@@ -872,6 +879,7 @@
         reminderTitle: { ar: '🔔 تذكير: عندك فلوس متبقية عند عملاء', en: '🔔 Reminder: You have outstanding balances' },
         notifTitle: { ar: 'تذكير بمتابعة الدفع', en: 'Payment Follow-up Reminder' },
         lblMaterialCost: { ar: 'تكلفة الخامات ($):', en: 'Material Cost ($):' },
+        materialAddPh: { ar: 'ضيف مبلغ', en: 'Add amount' },
         techSectionTitle: { ar: 'الفنيين المشاركين في الشغلانة:', en: 'Technicians on this Job:' },
         jobScheduleSummaryTitle: { ar: '📅 مين اشتغل وامتى (من جدول الأسبوع)', en: '📅 Who Worked When (from the Weekly Board)' },
         addTechBtn: { ar: '+ إضافة فني', en: '+ Add Technician' },
@@ -1727,6 +1735,18 @@
     }
 
     function calculate() { technicians.forEach((t, i) => updateTechCardDues(i)); }
+
+    // Adds a new materials purchase onto the running total instead of making the user
+    // work out the sum by hand each time more materials are bought mid-job.
+    function addToMaterialCost() {
+        const addInput = document.getElementById('materialCostAdd');
+        const addVal = parseVal(addInput.value);
+        if (addVal <= 0) return;
+        const current = parseVal(document.getElementById('materialCost').value);
+        document.getElementById('materialCost').value = (current + addVal).toFixed(2);
+        addInput.value = '';
+        calculate();
+    }
 
     function addExpenseItem(category = 'بنزين / مواصلات', note = '', amount = 0) {
         expenseItems.push({ category, note, amount });
@@ -3605,7 +3625,7 @@
 
             row.style.display = (matchSearch && matchTech && matchStatus && matchDebt && matchDateFrom && matchDateTo) ? '' : 'none';
         });
-    } in
+    }
 
     // Numbers are now assembled with an explicit country code when entered (buildFullPhone),
     // so this just cleans stray formatting characters — it no longer guesses a country.
