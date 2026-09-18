@@ -2348,20 +2348,24 @@
 
         const dateFrom = document.getElementById('guideDateFrom').value;
         const dateTo = document.getElementById('guideDateTo').value;
+        const hasDateFilter = !!(dateFrom || dateTo);
 
         const rows = [];
         let totalDues = 0, totalPaid = 0;
         savedJobs.forEach(job => {
-            const jobDate = job.startDate || '';
-            const inRange = (!dateFrom || (jobDate && jobDate >= dateFrom)) && (!dateTo || (jobDate && jobDate <= dateTo));
+            const entries = getScheduleEntries(job);
+            const techEntry = (job.technicians || []).find(t => t.name === techName);
+            if (!techEntry) return;
+            const inRange = !hasDateFilter || entries.some(e =>
+                (e.team || []).includes(techName) &&
+                (!dateFrom || e.date >= dateFrom) &&
+                (!dateTo || e.date <= dateTo)
+            );
             if (!inRange) return;
-            (job.technicians || []).forEach(techEntry => {
-                if (techEntry.name !== techName) return;
-                const dues = calculateJobTechDues(techEntry, job.totalRevenue, job.materialCost);
-                const paid = parseVal(techEntry.paid);
-                totalDues += dues; totalPaid += paid;
-                rows.push({ date: job.startDate || '', client: job.clientName || '', type: techTypeLabel(techEntry.type), dues, paid, remaining: dues - paid });
-            });
+            const dues = calculateJobTechDues(techEntry, job.totalRevenue, job.materialCost);
+            const paid = parseVal(techEntry.paid);
+            totalDues += dues; totalPaid += paid;
+            rows.push({ date: job.startDate || '', client: job.clientName || '', type: techTypeLabel(techEntry.type), dues, paid, remaining: dues - paid });
         });
 
         if (rows.length === 0) { alert(currentLang === 'ar' ? 'الفني ده لسه مالوش شغلانات مسجلة في الفترة دي.' : 'This technician has no recorded jobs in this period.'); return; }
@@ -3651,6 +3655,7 @@
                 if (job.clientAddress) msg += `📍 ${job.clientAddress}\n`;
                 msg += `⏰ ${timeLine}\n`;
                 if (teamNames) msg += `👤 ${teamNames}\n`;
+                if (job.clientDescription) msg += `🔧 ${job.clientDescription}\n`;
                 msg += '\n';
             });
         });
@@ -3696,11 +3701,18 @@
 
         let techMap = {};
         savedJobs.forEach(job => {
-            const jobDate = job.startDate || '';
-            const inRange = (!dateFrom || (jobDate && jobDate >= dateFrom)) && (!dateTo || (jobDate && jobDate <= dateTo));
-            if (!inRange) return;
+            const entries = getScheduleEntries(job);
             (job.technicians || []).forEach(tech => {
                 if (!tech.name) return;
+                // No date filter set → count everything, all-time. Otherwise, only count
+                // this job's dues for a tech if at least one of THEIR scheduled days on
+                // it (from the Weekly Board) falls inside the chosen period.
+                const inRange = !hasDateFilter || entries.some(e =>
+                    (e.team || []).includes(tech.name) &&
+                    (!dateFrom || e.date >= dateFrom) &&
+                    (!dateTo || e.date <= dateTo)
+                );
+                if (!inRange) return;
                 techMap[tech.name] = (techMap[tech.name] || 0) + calculateJobTechDues(tech, job.totalRevenue, job.materialCost);
             });
         });
