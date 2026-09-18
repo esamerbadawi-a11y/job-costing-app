@@ -3590,7 +3590,15 @@
     }
 
     function sendWeeklyScheduleWhatsApp() {
-        const days = getWeekRange(weeklyBoardOffset);
+        // Independent of whichever week the board is currently showing: always starts
+        // from today — or tomorrow if it's already past 5pm — so a stale/past day never
+        // shows up in the message.
+        const now = new Date();
+        const start = new Date(now);
+        if (now.getHours() >= 17) start.setDate(start.getDate() + 1);
+        const days = [];
+        for (let i = 0; i < 7; i++) { const d = new Date(start); d.setDate(start.getDate() + i); days.push(d); }
+
         const dayNamesAr = ['الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'];
         const dayNamesEn = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
         const dayNames = currentLang === 'ar' ? dayNamesAr : dayNamesEn;
