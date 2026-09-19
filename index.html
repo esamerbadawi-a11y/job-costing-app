@@ -769,6 +769,12 @@
         alertWithdrawalAmountRequired: { ar: 'اكتب مبلغ أكبر من صفر.', en: 'Enter an amount greater than zero.' },
         confirmDeleteWithdrawal: { ar: 'متأكد من حذف المبلغ ده من السجل؟', en: 'Delete this entry from the record?' },
         totalEarnedLabel: { ar: 'المستحق له إجمالي:', en: 'Total Earned:' },
+        cwTotalRevenue: { ar: 'إجمالي إيراد كل الشغلانات:', en: 'Total Revenue (All Jobs):' },
+        cwMaterials: { ar: 'الخامات:', en: 'Materials:' },
+        cwTechDues: { ar: 'مستحقات الفنيين:', en: 'Technician Dues:' },
+        cwShareS: { ar: 'نصيب S (40%):', en: 'S Share (40%):' },
+        cwShareM: { ar: 'نصيب M (40%):', en: 'M Share (40%):' },
+        cwCompanyShare: { ar: 'نصيب الشركة (20%):', en: "Company's Share (20%):" },
         totalWithdrawnLabel: { ar: 'اتصرف له فعلاً:', en: 'Total Withdrawn:' },
         remainingBalanceLabel: { ar: 'الباقي له لسه:', en: 'Remaining Balance:' },
         noWithdrawalsYet: { ar: 'لسه مفيش أي مبلغ اتسجل إنه اتصرف.', en: 'No withdrawals recorded yet.' },
@@ -846,6 +852,8 @@
         alertNoScheduleYet: { ar: 'الخاصية دي شغالة بس بعد ما تحفظ الشغلانة وتحدد أيام العمل ليها من لوحة الأسبوع.', en: 'This only works after saving the job and scheduling its work days from the Weekly Board.' },
         alertPickTechFirst: { ar: 'اختار اسم الفني الأول.', en: "Pick the technician's name first." },
         alertNoDaysFoundForTech: { ar: 'الفني ده لسه مالوش أي يوم محدد ليه في جدول الشغلانة دي.', en: "This technician has no scheduled days on this job's calendar yet." },
+        confirmSplitSharedDay: { ar: 'الفني ده شغال في شغلانة تانية نفس اليوم. تقسيم اليوم بينهم؟ (إلغاء = تحميل اليوم كامل على الشغلانة دي)', en: 'This technician also worked another job the same day. Split that day between them? (Cancel = load the full day onto this job)' },
+        remindAdjustOtherJob: { ar: '⚠️ متنساش تظبط عدد أيام الفني ده يدويًا في شغلانة:', en: "⚠️ Don't forget to manually adjust this technician's days in:" },
         confirmRemoveDay: { ar: 'متأكد من شيل اليوم ده من جدول الشغلانة؟', en: "Remove this day from the job's schedule?" },
         qsNewJobTab: { ar: 'شغلانة جديدة', en: 'New Job' },
         qsExistingJobTab: { ar: 'شغلانة موجودة', en: 'Existing Job' },
@@ -1757,11 +1765,37 @@
         if (!job) { alert(t('alertNoScheduleYet')); return; }
         const techName = technicians[index].name;
         if (!techName) { alert(t('alertPickTechFirst')); return; }
-        const entries = getScheduleEntries(job);
-        const count = entries.filter(e => (e.team || []).includes(techName)).length;
-        if (count === 0) { alert(t('alertNoDaysFoundForTech')); return; }
-        updateTechData(index, 'days', count);
+        const myDates = getScheduleEntries(job).filter(e => (e.team || []).includes(techName)).map(e => e.date);
+        if (myDates.length === 0) { alert(t('alertNoDaysFoundForTech')); return; }
+
+        // Find any day also shared with another job for this same technician.
+        const sharedInfo = myDates.map(date => {
+            const otherJobs = savedJobs.filter(j2 => j2.id !== job.id &&
+                getScheduleEntries(j2).some(e => e.date === date && (e.team || []).includes(techName)));
+            return { date, otherJobs };
+        }).filter(s => s.otherJobs.length > 0);
+
+        // Only ask when it actually matters — a technician earns one daily rate per
+        // calendar day, so a day shared with another job needs a decision either way.
+        let loadFully = false;
+        if (sharedInfo.length > 0) {
+            loadFully = !confirm(t('confirmSplitSharedDay'));
+        }
+
+        let totalDays = 0;
+        myDates.forEach(date => {
+            const shared = sharedInfo.find(s => s.date === date);
+            if (!shared) { totalDays += 1; return; }
+            totalDays += loadFully ? 1 : (1 / (shared.otherJobs.length + 1));
+        });
+
+        updateTechData(index, 'days', parseFloat(totalDays.toFixed(2)));
         renderTechnicians();
+
+        if (loadFully && sharedInfo.length > 0) {
+            const otherNames = [...new Set(sharedInfo.flatMap(s => s.otherJobs.map(j2 => j2.clientName || '?')))];
+            alert(t('remindAdjustOtherJob') + ' ' + otherNames.join(', '));
+        }
     }
 
     function updateTechData(index, field, value) {
@@ -2661,19 +2695,32 @@
     function renderCompanyAccountContent() {
         const container = document.getElementById('companyAccountContent');
 
-        // Total company income = the company's 20% share across every job, already net
-        // of that job's own one-off expenses — this general account is for expenses that
-        // aren't tied to any single job (rent, subscriptions, general fuel, etc).
-        let totalIncome = 0;
-        savedJobs.forEach(job => { totalIncome += jobNet(job).companyNet; });
+        // The full waterfall, aggregated across every job: revenue in, materials and
+        // technician dues out, the 40/40/20 split, then the company's own general
+        // expenses (not tied to any one job) out of its 20% share.
+        let totalRevenue = 0, totalMaterials = 0, totalTechDues = 0, totalShareS = 0, totalShareM = 0, totalIncome = 0;
+        savedJobs.forEach(job => {
+            const { totalTechDues: dues, shareS, shareM, companyNet } = jobNet(job);
+            totalRevenue += parseVal(job.totalRevenue);
+            totalMaterials += parseVal(job.materialCost);
+            totalTechDues += dues;
+            totalShareS += shareS;
+            totalShareM += shareM;
+            totalIncome += companyNet;
+        });
         let totalGeneralExpenses = 0;
         companyExpenses.forEach(e => { totalGeneralExpenses += parseVal(e.amount); });
         const remaining = totalIncome - totalGeneralExpenses;
 
         let html = `<div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:8px; padding:14px; margin-bottom:18px;">
-            <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalEarnedLabel')} <b style="color:#34d399;">$${totalIncome.toFixed(2)}</b></div>
-            <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalWithdrawnLabel')} <b style="color:#f87171;">$${totalGeneralExpenses.toFixed(2)}</b></div>
-            <div style="font-size:0.9rem; margin-top:6px; border-top:1px solid var(--border-color); padding-top:6px;">${t('remainingBalanceLabel')} <b style="color:${remaining < 0 ? '#f87171' : '#fbbf24'};">$${remaining.toFixed(2)}</b></div>
+            <div style="font-size:0.8rem; color:var(--text-muted);">${t('cwTotalRevenue')} <b>$${totalRevenue.toFixed(2)}</b></div>
+            <div style="font-size:0.8rem; color:var(--text-muted);">${t('cwMaterials')} <b style="color:#f87171;">-$${totalMaterials.toFixed(2)}</b></div>
+            <div style="font-size:0.8rem; color:var(--text-muted);">${t('cwTechDues')} <b style="color:#f87171;">-$${totalTechDues.toFixed(2)}</b></div>
+            <div style="font-size:0.8rem; color:var(--text-muted); border-top:1px dashed var(--border-color); margin-top:4px; padding-top:4px;">${t('cwShareS')} <b style="color:#34d399;">$${totalShareS.toFixed(2)}</b></div>
+            <div style="font-size:0.8rem; color:var(--text-muted);">${t('cwShareM')} <b style="color:#34d399;">$${totalShareM.toFixed(2)}</b></div>
+            <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">${t('cwCompanyShare')} <b style="color:#fbbf24;">$${totalIncome.toFixed(2)}</b></div>
+            <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalWithdrawnLabel')} <b style="color:#f87171;">-$${totalGeneralExpenses.toFixed(2)}</b></div>
+            <div style="font-size:0.95rem; margin-top:6px; border-top:1px solid var(--border-color); padding-top:6px;">${t('remainingBalanceLabel')} <b style="color:${remaining < 0 ? '#f87171' : '#fbbf24'};">$${remaining.toFixed(2)}</b></div>
         </div>`;
 
         if (companyExpenses.length === 0) {
