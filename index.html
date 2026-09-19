@@ -1879,7 +1879,7 @@
                 ? `حوّل الملاحظات دي بتاعة شغلانة صيانة/مقاولات لوصف نقاط واضح ومختصر ومرتب للشغل المطلوب، بنفس اللغة، من غير مقدمات: ${current}`
                 : `Rewrite these handyman/contracting job notes as a clean, concise bullet-point scope of work, same language, no preamble: ${current}`;
 
-            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: promptText });
+            const response = await ai.models.generateContent({ model: 'gemini-3.6-flash', contents: promptText });
             const resultText = response && response.text;
             if (!resultText) throw new Error('empty response');
             field.value = resultText.trim();
