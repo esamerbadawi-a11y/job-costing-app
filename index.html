@@ -136,6 +136,7 @@
                 <div id="userMenuDropdown" style="display:none; position:absolute; top:110%; inset-inline-start:0; background:var(--card-dark); border:1px solid var(--border-color); border-radius:10px; box-shadow:0 10px 25px rgba(0,0,0,0.4); min-width:180px; z-index:1000; overflow:hidden;">
                     <button class="secondary" onclick="toggleLanguage()" id="langToggleBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;">عربي 🌐</button>
                     <button class="secondary" onclick="toggleTheme()" id="themeToggleBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
+                    <button class="secondary" onclick="resetGeminiApiKey()" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;" data-i18n="resetAiKeyBtn"></button>
                     <button class="danger" onclick="doLogout()" data-i18n="logoutBtn" style="width:100%; border-radius:0; text-align:start; padding:10px 14px;"></button>
                 </div>
             </div>
@@ -425,7 +426,11 @@
                     <input type="text" id="clientAddress" data-i18n-ph="phAddress" oninput="onAddressInput('clientAddress','addressAutocompleteList')" autocomplete="off">
                     <div id="addressAutocompleteList" class="autocomplete-items" style="display: none;"></div>
                 </div>
-                <div class="form-group"><label data-i18n="lblDescription"></label><textarea id="clientDescription" data-i18n-ph="phDescription"></textarea></div>
+                <div class="form-group">
+                    <label data-i18n="lblDescription"></label>
+                    <textarea id="clientDescription" data-i18n-ph="phDescription"></textarea>
+                    <button type="button" onclick="improveScopeWithAI()" id="aiScopeBtn" style="margin-top:6px; background:linear-gradient(135deg,#7c3aed,#38bdf8); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">✨ <span data-i18n="aiScopeBtn"></span></button>
+                </div>
 
                 <div class="grid-3">
                     <div class="form-group"><label data-i18n="lblStartDate"></label><input type="date" id="startDate"></div>
@@ -930,6 +935,13 @@
         notifTitle: { ar: 'تذكير بمتابعة الدفع', en: 'Payment Follow-up Reminder' },
         lblMaterialCost: { ar: 'تكلفة الخامات ($):', en: 'Material Cost ($):' },
         materialAddPh: { ar: 'ضيف مبلغ', en: 'Add amount' },
+        aiScopeBtn: { ar: 'رتّب الوصف بالـ AI', en: 'Clean up with AI' },
+        alertAiNeedsSomeText: { ar: 'اكتب كلمتين عن الشغل الأول.', en: 'Type a few words about the job first.' },
+        alertAiKeyMissing: { ar: 'محتاج تحط مفتاح Gemini الأول.', en: 'You need to add your Gemini API key first.' },
+        promptEnterGeminiKey: { ar: 'الصق مفتاح Gemini API بتاعك هنا (من aistudio.google.com):', en: 'Paste your Gemini API key here (from aistudio.google.com):' },
+        resetAiKeyBtn: { ar: '🔑 تغيير مفتاح الـ AI', en: '🔑 Change AI Key' },
+        alertAiKeyReset: { ar: 'تم مسح المفتاح. المرة الجاية هيطلب منك تلصقه تاني.', en: "Key cleared. It'll ask you to paste it again next time." },
+        alertAiFailed: { ar: 'حصل خطأ في الاتصال بالـ AI.', en: 'Error contacting the AI.' },
         techSectionTitle: { ar: 'الفنيين المشاركين في الشغلانة:', en: 'Technicians on this Job:' },
         jobScheduleSummaryTitle: { ar: '📅 مين اشتغل وامتى (من جدول الأسبوع)', en: '📅 Who Worked When (from the Weekly Board)' },
         addTechBtn: { ar: '+ إضافة فني', en: '+ Add Technician' },
@@ -1825,6 +1837,67 @@
 
     // Adds a new materials purchase onto the running total instead of making the user
     // work out the sum by hand each time more materials are bought mid-job.
+    // Asks for the Gemini API key once (via a simple native prompt — no file editing
+    // needed) and remembers it on this device from then on.
+    function getGeminiApiKey() {
+        let key = null;
+        try { key = localStorage.getItem('geminiApiKey'); } catch (e) {}
+        if (!key) {
+            const entered = prompt(t('promptEnterGeminiKey'));
+            if (!entered) return null;
+            key = entered.trim();
+            try { localStorage.setItem('geminiApiKey', key); } catch (e) {}
+        }
+        return key;
+    }
+    function resetGeminiApiKey() {
+        try { localStorage.removeItem('geminiApiKey'); } catch (e) {}
+        alert(t('alertAiKeyReset'));
+    }
+
+    // Google's newer "Authorization Key" format (starts with "AQ.") is sent as a Bearer
+    // token, not the old ?key= / x-goog-api-key style used by legacy "AIza..." keys.
+    async function improveScopeWithAI() {
+        const field = document.getElementById('clientDescription');
+        const current = field.value.trim();
+        if (!current) { alert(t('alertAiNeedsSomeText')); return; }
+        const apiKey = getGeminiApiKey();
+        if (!apiKey) return;
+
+        const btn = document.getElementById('aiScopeBtn');
+        const originalLabel = btn.innerHTML;
+        btn.disabled = true; btn.innerHTML = '⏳ ...';
+
+        try {
+            const promptText = currentLang === 'ar'
+                ? `حوّل الملاحظات دي بتاعة شغلانة صيانة/مقاولات لوصف نقاط واضح ومختصر ومرتب للشغل المطلوب، بنفس اللغة، من غير مقدمات: ${current}`
+                : `Rewrite these handyman/contracting job notes as a clean, concise bullet-point scope of work, same language, no preamble: ${current}`;
+
+            const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                // A saved key that's wrong/expired shouldn't keep failing silently forever —
+                // clear it so the next attempt asks fresh.
+                if (res.status === 401 || res.status === 403) { try { localStorage.removeItem('geminiApiKey'); } catch (e) {} }
+                throw new Error(data?.error?.message || res.status);
+            }
+            const resultText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!resultText) throw new Error('empty response');
+            field.value = resultText.trim();
+        } catch (err) {
+            alert(t('alertAiFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+        } finally {
+            btn.disabled = false; btn.innerHTML = originalLabel;
+        }
+    }
+
     function addToMaterialCost() {
         const addInput = document.getElementById('materialCostAdd');
         const addVal = parseVal(addInput.value);
