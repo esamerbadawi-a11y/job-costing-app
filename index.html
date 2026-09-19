@@ -1869,30 +1869,24 @@
         btn.disabled = true; btn.innerHTML = '⏳ ...';
 
         try {
+            // Google's own docs use this SDK (not a hand-built fetch) for the newer
+            // "Authorization Key" format — loaded on demand so the rest of the app
+            // doesn't depend on it.
+            const { GoogleGenAI } = await import('https://esm.sh/@google/genai');
+            const ai = new GoogleGenAI({ apiKey });
+
             const promptText = currentLang === 'ar'
                 ? `حوّل الملاحظات دي بتاعة شغلانة صيانة/مقاولات لوصف نقاط واضح ومختصر ومرتب للشغل المطلوب، بنفس اللغة، من غير مقدمات: ${current}`
                 : `Rewrite these handyman/contracting job notes as a clean, concise bullet-point scope of work, same language, no preamble: ${current}`;
 
-            const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                // A saved key that's wrong/expired shouldn't keep failing silently forever —
-                // clear it so the next attempt asks fresh.
-                if (res.status === 401 || res.status === 403) { try { localStorage.removeItem('geminiApiKey'); } catch (e) {} }
-                throw new Error(data?.error?.message || res.status);
-            }
-            const resultText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: promptText });
+            const resultText = response && response.text;
             if (!resultText) throw new Error('empty response');
             field.value = resultText.trim();
         } catch (err) {
-            alert(t('alertAiFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            const msg = (err && err.message) ? err.message : String(err);
+            if (/401|403|UNAUTHENTICATED|PERMISSION|API key/i.test(msg)) { try { localStorage.removeItem('geminiApiKey'); } catch (e) {} }
+            alert(t('alertAiFailed') + ' (' + msg + ')');
         } finally {
             btn.disabled = false; btn.innerHTML = originalLabel;
         }
