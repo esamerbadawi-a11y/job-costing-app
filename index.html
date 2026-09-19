@@ -70,6 +70,9 @@
             }
             #jobsTableCard tbody tr td:first-child { text-align: start !important; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); margin-bottom: 8px; }
             #jobsTableCard tbody tr td.no-print { display: flex; flex-wrap: wrap; gap: 6px; border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 4px; }
+            /* Materials/Expenses/Tech Pay/Net/S/M/Company are already covered by the
+               "ℹ️" Quick Details popup — hiding them here keeps each card short. */
+            #jobsTableCard tbody tr td:nth-child(n+5):not(.no-print) { display: none; }
         }
         .stat-card { background: var(--card-dark); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 10px; text-align: center; transition: all 0.25s ease; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); }
         .stat-card span { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; }
@@ -2181,8 +2184,11 @@
     function showJobQuickDetails(jobId) {
         const job = savedJobs.find(j => j.id === jobId);
         if (!job) return;
-        const { shareS, shareM, companyNet } = jobNet(job);
+        const { net, shareS, shareM, companyNet } = jobNet(job);
         const rem = jobRemaining(job);
+        const expensesTotal = (job.expenseItems && job.expenseItems.length > 0)
+            ? job.expenseItems.reduce((sum, e) => sum + parseVal(e.amount), 0)
+            : parseVal(job.extraExpenses);
 
         let lines = [];
         lines.push(job.clientName || '');
@@ -2194,6 +2200,8 @@
         lines.push(`${t('qdTotalRevenue')} $${parseVal(job.totalRevenue).toFixed(2)}`);
         lines.push(`${t('qdReceived')} $${parseVal(job.amountReceived).toFixed(2)}`);
         lines.push(`${t('qdRemainingFromClient')} $${rem.toFixed(2)}`);
+        lines.push(`${t('thMaterials')} $${parseVal(job.materialCost).toFixed(2)}`);
+        lines.push(`${t('thExpenses')} $${expensesTotal.toFixed(2)}`);
         lines.push('');
         lines.push(t('qdTechBreakdown'));
         if ((job.technicians || []).length === 0) {
@@ -2206,6 +2214,7 @@
             });
         }
         lines.push('');
+        lines.push(`${t('thNet')} $${net.toFixed(2)}`);
         lines.push(`S: $${shareS.toFixed(2)}  |  M: $${shareM.toFixed(2)}  |  ${t('statShareCompany')}: $${companyNet.toFixed(2)}`);
         alert(lines.join('\n'));
     }
