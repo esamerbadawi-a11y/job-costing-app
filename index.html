@@ -48,6 +48,29 @@
         @media(max-width: 1300px) { .stats-grid { grid-template-columns: repeat(4, 1fr); } }
         @media(max-width: 700px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
         @media(max-width: 600px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+        /* On narrow screens, the jobs table becomes a stack of cards — one per job —
+           so every action button is reachable without side-scrolling. Each cell's
+           data-label attribute (set when the row is rendered) supplies its caption. */
+        @media(max-width: 760px) {
+            #jobsTableCard table, #jobsTableCard thead, #jobsTableCard tbody, #jobsTableCard tr, #jobsTableCard td {
+                display: block; width: 100%;
+            }
+            #jobsTableCard thead { display: none; }
+            #jobsTableCard tbody tr {
+                background: var(--card-dark); border: 1px solid var(--border-color); border-radius: 12px;
+                padding: 12px; margin-bottom: 12px;
+            }
+            #jobsTableCard tbody tr td {
+                border: none; padding: 6px 0; text-align: start !important;
+            }
+            #jobsTableCard tbody tr td[data-label]:not([data-label=""])::before {
+                content: attr(data-label); display: block; font-size: 0.7rem; font-weight: 700;
+                color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;
+            }
+            #jobsTableCard tbody tr td:first-child { text-align: start !important; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); margin-bottom: 8px; }
+            #jobsTableCard tbody tr td.no-print { display: flex; flex-wrap: wrap; gap: 6px; border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 4px; }
+        }
         .stat-card { background: var(--card-dark); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 10px; text-align: center; transition: all 0.25s ease; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); }
         .stat-card span { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; }
         .stat-card strong { font-size: 1.25rem; color: var(--text-main); font-weight: 700; }
@@ -429,7 +452,11 @@
                 <div class="form-group">
                     <label data-i18n="lblDescription"></label>
                     <textarea id="clientDescription" data-i18n-ph="phDescription"></textarea>
-                    <button type="button" onclick="improveScopeWithAI()" id="aiScopeBtn" style="margin-top:6px; background:linear-gradient(135deg,#7c3aed,#38bdf8); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">✨ <span data-i18n="aiScopeBtn"></span></button>
+                    <input type="text" id="aiInstructionInput" data-i18n-ph="aiInstructionPh" style="margin-top:6px;">
+                    <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">
+                        <button type="button" onclick="improveScopeWithAI()" id="aiScopeBtn" style="background:linear-gradient(135deg,#7c3aed,#38bdf8); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">✨ <span data-i18n="aiScopeBtn"></span></button>
+                        <button type="button" onclick="startVoiceScope()" id="voiceScopeBtn" style="background:linear-gradient(135deg,#dc2626,#f97316); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">🎤 <span data-i18n="voiceScopeBtn"></span></button>
+                    </div>
                 </div>
 
                 <div class="grid-3">
@@ -942,6 +969,12 @@
         resetAiKeyBtn: { ar: '🔑 تغيير مفتاح الـ AI', en: '🔑 Change AI Key' },
         alertAiKeyReset: { ar: 'تم مسح المفتاح. المرة الجاية هيطلب منك تلصقه تاني.', en: "Key cleared. It'll ask you to paste it again next time." },
         alertAiFailed: { ar: 'حصل خطأ في الاتصال بالـ AI.', en: 'Error contacting the AI.' },
+        voiceScopeBtn: { ar: 'سجّل بصوتك', en: 'Record Voice' },
+        aiInstructionPh: { ar: 'قول للـ AI عايزه يعمل إيه بالظبط (اختياري، زي: اختصرها في سطرين)', en: 'Tell the AI exactly what you want (optional, e.g.: shorten to 2 lines)' },
+        confirmVoiceLangArabic: { ar: 'هتتكلم عربي؟ (إلغاء = هتتكلم إنجليزي)', en: "Will you speak Arabic? (Cancel = you'll speak English)" },
+        alertVoiceNotSupported: { ar: 'المتصفح ده مش بيدعم التسجيل الصوتي.', en: "This browser doesn't support voice recording." },
+        alertVoiceError: { ar: 'حصل خطأ في التسجيل.', en: 'Recording error.' },
+        aiReminderBtn: { ar: 'تذكير AI', en: 'AI Reminder' },
         techSectionTitle: { ar: 'الفنيين المشاركين في الشغلانة:', en: 'Technicians on this Job:' },
         jobScheduleSummaryTitle: { ar: '📅 مين اشتغل وامتى (من جدول الأسبوع)', en: '📅 Who Worked When (from the Weekly Board)' },
         addTechBtn: { ar: '+ إضافة فني', en: '+ Add Technician' },
@@ -1857,6 +1890,69 @@
 
     // Google's newer "Authorization Key" format (starts with "AQ.") is sent as a Bearer
     // token, not the old ?key= / x-goog-api-key style used by legacy "AIza..." keys.
+    // Records a quick voice note and drops the transcript into Scope of Work, then
+    // automatically runs it through the AI cleanup — handy while out on-site.
+    // Crafts a polite, situation-appropriate payment reminder (tone shifts with how
+    // overdue it is) and opens WhatsApp with it ready to send to the client.
+    async function sendAiPaymentReminder(jobId) {
+        const job = savedJobs.find(j => j.id === jobId);
+        if (!job) return;
+        const apiKey = getGeminiApiKey();
+        if (!apiKey) return;
+
+        const rem = jobRemaining(job);
+        let daysOverdue = null;
+        if (job.followUpDate) {
+            const diff = Math.floor((new Date() - new Date(job.followUpDate + 'T00:00:00')) / 86400000);
+            if (diff > 0) daysOverdue = diff;
+        }
+
+        try {
+            const { GoogleGenAI } = await import('https://esm.sh/@google/genai');
+            const ai = new GoogleGenAI({ apiKey });
+            const promptText = currentLang === 'ar'
+                ? `اكتب رسالة تذكير بدفعة متأخرة، مهذبة ومختصرة (2-4 جمل)، للعميل ${job.clientName}، بخصوص شغلانة "${job.clientDescription || 'صيانة'}"، المبلغ المتبقي $${rem.toFixed(2)}${daysOverdue ? `، ومتأخر عن الموعد بـ ${daysOverdue} يوم` : ''}. النبرة تتناسب مع ${daysOverdue && daysOverdue > 14 ? 'تأخير طويل نسبيًا لكن لسه محترمة' : 'تذكير ودّي بسيط'}. من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`
+                : `Write a polite, concise (2-4 sentence) payment reminder to client ${job.clientName}, regarding a "${job.clientDescription || 'service'}" job, outstanding balance $${rem.toFixed(2)}${daysOverdue ? `, ${daysOverdue} days past the follow-up date` : ''}. Tone should be ${daysOverdue && daysOverdue > 14 ? 'a bit firmer given the longer delay, but still respectful' : 'a gentle, friendly nudge'}. No preamble or headers, just the message.`;
+
+            const response = await ai.models.generateContent({ model: 'gemini-3.6-flash', contents: promptText });
+            const resultText = response && response.text;
+            if (!resultText) throw new Error('empty response');
+
+            const digits = (job.clientPhone || '').replace(/[^+\d]/g, '');
+            const waLink = digits ? `https://wa.me/${digits}?text=${encodeURIComponent(resultText.trim())}` : `https://wa.me/?text=${encodeURIComponent(resultText.trim())}`;
+            window.open(waLink, '_blank');
+        } catch (err) {
+            const msg = (err && err.message) ? err.message : String(err);
+            if (/401|403|UNAUTHENTICATED|PERMISSION|API key/i.test(msg)) { try { localStorage.removeItem('geminiApiKey'); } catch (e) {} }
+            alert(t('alertAiFailed') + ' (' + msg + ')');
+        }
+    }
+
+    function startVoiceScope() {
+        const SpeechRecognitionApi = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognitionApi) { alert(t('alertVoiceNotSupported')); return; }
+
+        const speakArabic = confirm(t('confirmVoiceLangArabic')); // OK = Arabic, Cancel = English
+        const recognition = new SpeechRecognitionApi();
+        recognition.lang = speakArabic ? 'ar-EG' : 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        const micBtn = document.getElementById('voiceScopeBtn');
+        const originalLabel = micBtn.innerHTML;
+        micBtn.disabled = true; micBtn.innerHTML = '🔴 ...';
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            const field = document.getElementById('clientDescription');
+            field.value = (field.value.trim() ? field.value.trim() + ' ' : '') + transcript;
+            improveScopeWithAI();
+        };
+        recognition.onerror = (event) => { alert(t('alertVoiceError') + ' (' + event.error + ')'); };
+        recognition.onend = () => { micBtn.disabled = false; micBtn.innerHTML = originalLabel; };
+        recognition.start();
+    }
+
     async function improveScopeWithAI() {
         const field = document.getElementById('clientDescription');
         const current = field.value.trim();
@@ -1875,9 +1971,13 @@
             const { GoogleGenAI } = await import('https://esm.sh/@google/genai');
             const ai = new GoogleGenAI({ apiKey });
 
+            const customInstruction = document.getElementById('aiInstructionInput').value.trim();
+            const defaultInstructionAr = 'حوّل الملاحظات دي بتاعة شغلانة صيانة/مقاولات لوصف نقاط واضح ومختصر ومرتب للشغل المطلوب';
+            const defaultInstructionEn = 'Rewrite these handyman/contracting job notes as a clean, concise bullet-point scope of work';
+            const instruction = customInstruction || (currentLang === 'ar' ? defaultInstructionAr : defaultInstructionEn);
             const promptText = currentLang === 'ar'
-                ? `حوّل الملاحظات دي بتاعة شغلانة صيانة/مقاولات لوصف نقاط واضح ومختصر ومرتب للشغل المطلوب، بنفس اللغة، من غير مقدمات: ${current}`
-                : `Rewrite these handyman/contracting job notes as a clean, concise bullet-point scope of work, same language, no preamble: ${current}`;
+                ? `${instruction}. حافظ على نفس لغة النص الأصلي، من غير مقدمات: ${current}`
+                : `${instruction}. Keep the same language as the original text, no preamble: ${current}`;
 
             const response = await ai.models.generateContent({ model: 'gemini-3.6-flash', contents: promptText });
             const resultText = response && response.text;
@@ -2198,18 +2298,18 @@
             if (hasDebt) tr.className = 'has-debt';
 
             tr.innerHTML = `
-                <td style="text-align: center;"><input type="checkbox" class="job-checkbox" value="${job.id}" ${selectedJobIds.has(String(job.id)) ? 'checked' : ''} onchange="toggleJobSelection('${job.id}', this)"></td>
-                <td><strong>${job.clientName}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.clientPhone ? `<a href="tel:${job.clientPhone.replace(/[^+\d]/g, '')}" style="color:#38bdf8; text-decoration:none;" onclick="event.stopPropagation();">📞 ${job.clientPhone}</a>` : ''}${job.clientPhone && job.clientAddress ? ' - ' : ''}${job.clientAddress ? `<a href="#" onclick="event.stopPropagation(); event.preventDefault(); showMapChoice('${job.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${job.clientAddress}</a>` : ''}</span>${hasDebt ? '<br><span class="debt-alert-badge">' + t('debtBadgePrefix') + ' $' + rem.toFixed(2) + '</span>' : ''}${isOverdue ? '<br><span class="debt-alert-badge" style="background:rgba(217,119,6,0.2); color:#fbbf24; border-color:rgba(217,119,6,0.4);">🔔 ' + t('reminderOverdueSuffix') + '</span>' : ''}</td>
-                <td><span class="badge ${job.jobStatus === 'خلص' ? 'completed' : 'active'}">${statusLabel(job.jobStatus)}</span><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.startDate || ''}</span></td>
-                <td style="font-size: 0.82rem;">$${rev.toFixed(2)} / <span style="color:#34d399;">$${rec.toFixed(2)}</span> / <span style="color:#f87171; font-weight:700;">$${rem.toFixed(2)}</span></td>
-                <td style="color:#f87171;">$${parseVal(job.materialCost).toFixed(2)}</td>
-                <td style="font-size:0.8rem;">${expenseDetailsText || '$' + parseVal(job.extraExpenses).toFixed(2)}</td>
-                <td style="font-size:0.8rem;">${techDetailsText || t('noTechData')}</td>
-                <td style="color:${netProfit < 0 ? '#f87171' : '#34d399'}; font-weight:700;">$${netProfit.toFixed(2)}</td>
-                <td style="color:#38bdf8;">$${shareS.toFixed(2)}</td>
-                <td style="color:#38bdf8;">$${shareM.toFixed(2)}</td>
-                <td style="color:#fbbf24;">$${companyNet.toFixed(2)}</td>
-                <td class="no-print">
+                <td data-label="" style="text-align: center;"><input type="checkbox" class="job-checkbox" value="${job.id}" ${selectedJobIds.has(String(job.id)) ? 'checked' : ''} onchange="toggleJobSelection('${job.id}', this)"></td>
+                <td data-label="${t('thClient')}"><strong>${job.clientName}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.clientPhone ? `<a href="tel:${job.clientPhone.replace(/[^+\d]/g, '')}" style="color:#38bdf8; text-decoration:none;" onclick="event.stopPropagation();">📞 ${job.clientPhone}</a>` : ''}${job.clientPhone && job.clientAddress ? ' - ' : ''}${job.clientAddress ? `<a href="#" onclick="event.stopPropagation(); event.preventDefault(); showMapChoice('${job.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${job.clientAddress}</a>` : ''}</span>${hasDebt ? '<br><span class="debt-alert-badge">' + t('debtBadgePrefix') + ' $' + rem.toFixed(2) + '</span> <button onclick="event.stopPropagation(); sendAiPaymentReminder(\'' + job.id + '\');" style="background:linear-gradient(135deg,#7c3aed,#38bdf8); color:#fff; border:none; border-radius:6px; padding:2px 8px; font-size:0.68rem; font-weight:700; cursor:pointer;">✨ ' + t('aiReminderBtn') + '</button>' : ''}${isOverdue ? '<br><span class="debt-alert-badge" style="background:rgba(217,119,6,0.2); color:#fbbf24; border-color:rgba(217,119,6,0.4);">🔔 ' + t('reminderOverdueSuffix') + '</span>' : ''}</td>
+                <td data-label="${t('thDateStatus')}"><span class="badge ${job.jobStatus === 'خلص' ? 'completed' : 'active'}">${statusLabel(job.jobStatus)}</span><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.startDate || ''}</span></td>
+                <td data-label="${t('thAmounts')}" style="font-size: 0.82rem;">$${rev.toFixed(2)} / <span style="color:#34d399;">$${rec.toFixed(2)}</span> / <span style="color:#f87171; font-weight:700;">$${rem.toFixed(2)}</span></td>
+                <td data-label="${t('thMaterials')}" style="color:#f87171;">$${parseVal(job.materialCost).toFixed(2)}</td>
+                <td data-label="${t('thExpenses')}" style="font-size:0.8rem;">${expenseDetailsText || '$' + parseVal(job.extraExpenses).toFixed(2)}</td>
+                <td data-label="${t('thTechPay')}" style="font-size:0.8rem;">${techDetailsText || t('noTechData')}</td>
+                <td data-label="${t('thNet')}" style="color:${netProfit < 0 ? '#f87171' : '#34d399'}; font-weight:700;">$${netProfit.toFixed(2)}</td>
+                <td data-label="S (40%)" style="color:#38bdf8;">$${shareS.toFixed(2)}</td>
+                <td data-label="M (40%)" style="color:#38bdf8;">$${shareM.toFixed(2)}</td>
+                <td data-label="${t('thCompany')}" style="color:#fbbf24;">$${companyNet.toFixed(2)}</td>
+                <td data-label="${t('thActions')}" class="no-print">
                     <button class="secondary" onclick="showJobQuickDetails('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#7c3aed;">ℹ️</button>
                     <button class="secondary" onclick="editJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem;">${t('editBtn')}</button>
                     <button class="secondary" onclick="duplicateJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#0284c7;">${t('duplicateBtn')}</button>
