@@ -660,7 +660,10 @@
                 <input type="date" id="guideDateTo" onchange="renderTechGuideContent()" style="min-width:130px;">
             </div>
             <button class="secondary" onclick="setGuideDateRange('today')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetTodayBtn"></button>
+            <button class="secondary" onclick="shiftGuideWeek(-1)" style="padding:6px 12px; font-size:0.75rem;">◀</button>
             <button class="secondary" onclick="setGuideDateRange('week')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetWeekBtn"></button>
+            <button class="secondary" onclick="shiftGuideWeek(1)" style="padding:6px 12px; font-size:0.75rem;">▶</button>
+            <button class="secondary" onclick="setGuideDateRange('lastweek')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetLastWeekBtn"></button>
             <button class="secondary" onclick="setGuideDateRange('clear')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
             <div style="display:flex; align-items:center; gap:6px;">
                 <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="lblTechShort"></label>
@@ -812,10 +815,10 @@
 
 <div id="techPaymentModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center;">
     <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:85%; max-width:360px; padding:20px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
-        <h3 style="color:#38bdf8; margin:0 0 4px; font-size:1rem;" data-i18n="techPaymentTitle"></h3>
+        <h3 id="techPaymentTitleEl" style="color:#38bdf8; margin:0 0 4px; font-size:1rem;" data-i18n="techPaymentTitle"></h3>
         <div id="techPaymentNameLabel" style="font-weight:700; margin-bottom:14px;"></div>
         <div class="form-group"><label data-i18n="withdrawalAmountLabel"></label><input type="text" id="techPaymentAmount" placeholder="0" onfocus="this.select()"></div>
-        <div class="form-group"><label data-i18n="filterDateFromLabel"></label><input type="date" id="techPaymentDate"></div>
+        <div class="form-group"><label data-i18n="lblReceiptDate"></label><input type="date" id="techPaymentDate"></div>
         <input type="text" id="techPaymentNote" data-i18n-ph="companyExpenseNotePh" style="margin-bottom:12px;">
         <button class="success" style="width:100%; padding:11px; margin-bottom:8px;" onclick="saveTechPayment()" data-i18n="saveWithdrawalBtn"></button>
         <button class="danger" style="width:100%; padding:8px; font-size:0.85rem;" onclick="closeTechPaymentModal()" data-i18n="cancelBtn"></button>
@@ -885,6 +888,9 @@
             <div class="form-group"><label data-i18n="postponeNewDate"></label><input type="date" id="postponeDate"></div>
             <div class="form-group"><label data-i18n="postponeNewTime"></label><input type="time" id="postponeTime"></div>
         </div>
+        <div class="form-group"><label data-i18n="qsTeamLabel"></label>
+            <div id="postponeTeam" style="display:flex; flex-wrap:wrap; gap:8px; background:var(--panel-bg); border:1px solid var(--border-color); border-radius:8px; padding:10px;"></div></div>
+        <div id="postponeWarn" class="note-box" style="display:none; margin-bottom:12px;" data-i18n="postponeTechWarn"></div>
         <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin:4px 0 14px; color:var(--text-main); font-size:0.85rem;">
             <input type="checkbox" id="postponeNotify"> <span data-i18n="notifyClientLabel"></span>
         </label>
@@ -1280,6 +1286,20 @@
         guideNoJobsInPeriod: { ar: 'مفيش شغلانات ليه في الفترة دي.', en: 'No jobs for this technician in this period.' },
         guideNoPaymentsInPeriod: { ar: 'مفيش دفعات مسجلة في الفترة دي.', en: 'No payments recorded in this period.' },
         confirmDeleteTechPayment: { ar: 'تمسح الدفعة دي من سجل الفني؟', en: "Delete this payment from the technician's record?" },
+        guideDetailsBtn: { ar: 'تفاصيل', en: 'Details' },
+        guideProrateNote: { ar: 'الحصة: {a} من {b} أيام على الشغلانة × {full}', en: 'Share: {a} of {b} scheduled days on the job × {full}' },
+        techPaymentEditTitle: { ar: '✏️ تعديل دفعة فني', en: '✏️ Edit Technician Payment' },
+        postponeTechWarn: { ar: 'تنبيه: الفني اللي معلّمه هنا هيتحسب له يوم شغل في اليوم ده، فمستحقه في الأسابيع هيتقسم على أيام الجدول.', en: 'Note: a technician you tick here is counted as working that day, so his dues get split across weeks by the schedule days.' },
+        guideEditDaysHint: { ar: 'أيام الفني المجدولة على الشغلانة دي. دوس على يوم لو عايز تشيل الفني منه أو تعدّله:', en: "This technician's scheduled days on the job. Tap a day to remove him from it or edit it:" },
+        guideOutsidePeriod: { ar: '(برّه الفترة)', en: '(outside period)' },
+        twTitle: { ar: '📆 توزيع المبلغ على الأسابيع (اختياري)', en: '📆 Amount per week (optional)' },
+        twHint: { ar: 'لو كتبت أسابيع هنا، دليل الفنيين بيحسب للفني الأرقام دي بالظبط لكل أسبوع، من غير أي قسمة. الأسبوع من الإثنين للأحد.', en: 'If you enter weeks here, the Technicians Guide uses exactly these amounts per week, with no splitting. Weeks run Monday to Sunday.' },
+        twWeekOf: { ar: 'أي يوم في الأسبوع', en: 'Any day in the week' },
+        twSummary: { ar: 'موزّع {a} من {b}', en: 'Entered {a} of {b}' },
+        twRemainder: { ar: 'باقي {c}', en: '{c} left' },
+        twOver: { ar: 'زيادة {c} عن المستحق', en: '{c} more than the dues' },
+        guideManualNote: { ar: 'حسب الأسابيع المسجلة على الشغلانة', en: 'By the weeks entered on the job' },
+        presetLastWeekBtn: { ar: 'الأسبوع اللي فات', en: 'Last week' },
         agendaTitle: { ar: 'شغل النهارده', en: "Today's Work" },
         agendaScheduledToday: { ar: '📅 ميعاده النهارده', en: '📅 Scheduled today' },
         agendaRunning: { ar: '🔧 شغّالة النهارده (من غير ميعاد محدد)', en: '🔧 In progress today (no visit set)' },
@@ -1305,7 +1325,7 @@
         activityPostponed: { ar: 'اتأجل ميعاد:', en: 'Visit postponed:' },
         activityHandedOver: { ar: 'الزيارة اتحوّلت لـ', en: 'Visit handed over to' },
         clientNoPhone: { ar: 'مفيش رقم تليفون للعميل ده.', en: 'This client has no phone number.' },
-        guidePeriodNote: { ar: 'الأرقام دي محسوبة بس على الشغلانات في الفترة المحددة فوق.', en: 'These figures only cover jobs within the selected date range above.' },
+        guidePeriodNote: { ar: 'الفني اللي ليه أسابيع متسجلة على الشغلانة (📆) بيتحسب بالأرقام دي زي ما هي لكل أسبوع (الأسبوع من الإثنين للأحد). غير كده، مستحق الشغلانة بيتقسم على أيام الفني المجدولة. دوس 🔎 تفاصيل عشان تشوف كل رقم جه منين.', en: 'A technician with weeks entered on the job (📆) is counted with exactly those amounts per week (weeks run Monday to Sunday). Otherwise the job\'s dues are split by his scheduled days. Tap 🔎 Details to see where each number comes from.' },
         presetTodayBtn: { ar: 'اليوم', en: 'Today' },
         presetWeekBtn: { ar: 'الأسبوع ده', en: 'This Week' },
         guideThDues: { ar: 'إجمالي المستحقات', en: 'Total Dues' },
@@ -1765,7 +1785,22 @@
         document.getElementById('postponeDate').value = scheduleMode ? today : addDaysISO(date, 1);
         document.getElementById('postponeTime').value = entry ? (entry.time || '') : (job.scheduledTime || '');
         document.getElementById('postponeNotify').checked = !scheduleMode && !!normalizePhone(job.clientPhone);
+        // Who goes: an existing visit keeps its team; a NEW visit starts with just you. Technicians are only added if you tick them.
+        const me = displayNameFor(currentUserEmail);
+        const names = [...new Set([...PARTNER_NAMES, ...getUniqueRegisteredTechnicians(), ...((entry && entry.team) || [])])];
+        const checked = entry ? (entry.team || []) : (PARTNER_NAMES.includes(me) ? [me] : []);
+        document.getElementById('postponeTeam').innerHTML = names.map(n => `<label style="display:flex; align-items:center; gap:5px; font-size:0.82rem; cursor:pointer;"><input type="checkbox" class="pp-team-check" value="${escHtml(n)}" ${checked.includes(n) ? 'checked' : ''} onchange="updatePostponeWarn()"> ${escHtml(n)}</label>`).join('');
+        updatePostponeWarn();
         document.getElementById('postponeModal').style.display = 'flex';
+    }
+    // The pay warning only matters when one of THIS job's technicians is ticked for the visit.
+    function updatePostponeWarn() {
+        if (!postponeCtx) return;
+        const job = savedJobs.find(j => j.id === postponeCtx.jobId);
+        if (!job) return;
+        const jobTechs = (job.technicians || []).map(tc => tc.name).filter(Boolean);
+        const selected = [...document.querySelectorAll('.pp-team-check:checked')].map(cb => cb.value);
+        document.getElementById('postponeWarn').style.display = selected.some(n => jobTechs.includes(n)) ? 'block' : 'none';
     }
     function closePostponeModal() { document.getElementById('postponeModal').style.display = 'none'; postponeCtx = null; }
     function setPostponeQuick(kind) {
@@ -1803,7 +1838,8 @@
 
         const backup = JSON.parse(JSON.stringify(job));
         if (oldEntry) entries.splice(oldIdx, 1);
-        const moved = { ...(oldEntry || { team: defaultTeamFor(job) }), date: newDate, time: newTime, dayOrder: 0 };
+        const team = [...document.querySelectorAll('.pp-team-check:checked')].map(cb => cb.value);
+        const moved = { ...(oldEntry || {}), team, date: newDate, time: newTime, dayOrder: 0 };
         if (oldEntry) moved.postponedFrom = oldEntry.postponedFrom || oldEntry.date;
         const sameDayIdx = entries.findIndex(e => e.date === newDate);
         if (sameDayIdx !== -1) {   // that day already has a visit for this job: merge the teams into one
@@ -2195,9 +2231,63 @@
                         </div>
                     </div>
                 </div>
+                ${techWeeksPanelHtml(tech, index, dues)}
             `;
             container.appendChild(card);
         });
+    }
+
+    // ---------- Weekly amounts typed on the job (per technician) ----------
+    // A technician on a job may carry an optional list of weeks: [{weekStart: Monday, amount}].
+    // When it exists the Guide uses EXACTLY these amounts per week: no splitting by schedule days, so the number can never drift.
+    function mondayOf(dateStr) { const d = new Date(dateStr + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return isoDate(d); }
+    function ltrAmt(v) { return `<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">$${parseVal(v).toFixed(2)}</span>`; }
+
+    function techWeeksSummaryHtml(tech, dues) {
+        const weeks = tech.weeks || [];
+        if (weeks.length === 0) return '';
+        const alloc = round2(weeks.reduce((s, w) => s + parseVal(w.amount), 0));
+        const diff = round2(dues - alloc);
+        let txt = t('twSummary').replace('{a}', ltrAmt(alloc)).replace('{b}', ltrAmt(dues));
+        if (diff > 0.005) txt += ' — ' + t('twRemainder').replace('{c}', ltrAmt(diff));
+        else if (diff < -0.005) txt += ' — ⚠️ ' + t('twOver').replace('{c}', ltrAmt(Math.abs(diff)));
+        return txt;
+    }
+
+    function techWeeksPanelHtml(tech, index, dues) {
+        const weeks = (tech.weeks || []).slice().sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+        const rows = weeks.map(w => `<div class="ledger-row"><span style="min-width:170px;">${escHtml(w.weekStart)} → ${addDaysISO(w.weekStart, 6)}</span><strong style="color:#fbbf24;">${ltrAmt(w.amount)}</strong><button type="button" class="ledger-del" style="margin-inline-start:auto;" onclick="removeTechWeek(${index}, '${jsArg(w.weekStart)}')">🗑</button></div>`).join('');
+        return `<details class="tw-box" ${weeks.length > 0 ? 'open' : ''} style="margin-top:12px;">
+            <summary style="cursor:pointer; font-size:0.78rem; font-weight:700; color:var(--text-muted);">${t('twTitle')}</summary>
+            <div class="ag-meta" style="margin:6px 0;">${t('twHint')}</div>
+            ${rows}
+            <div class="ledger-add-row" style="margin-top:8px;">
+                <div class="lg-field lg-date"><span>${t('twWeekOf')}</span><input type="date" id="tw-date-${index}" value="${isoDate(new Date())}"></div>
+                <div class="lg-field lg-amt"><span>${t('lblAmountShort')}</span><input type="text" inputmode="decimal" id="tw-amt-${index}" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); addTechWeek(${index});}"></div>
+                <button type="button" class="ledger-plus" onclick="addTechWeek(${index})">+</button>
+            </div>
+            <div class="tw-summary ag-meta" style="margin-top:6px;">${techWeeksSummaryHtml(tech, dues)}</div>
+        </details>`;
+    }
+
+    function addTechWeek(index) {
+        const tech = technicians[index];
+        if (!tech) return;
+        const date = document.getElementById(`tw-date-${index}`).value;
+        const amt = round2(parseVal(document.getElementById(`tw-amt-${index}`).value));
+        if (amt <= 0) { alert(t('alertWithdrawalAmountRequired')); return; }
+        if (!date) { alert(t('alertPickDate')); return; }
+        const weekStart = mondayOf(date);
+        tech.weeks = tech.weeks || [];
+        const existing = tech.weeks.find(w => w.weekStart === weekStart);
+        if (existing) existing.amount = amt; else tech.weeks.push({ weekStart, amount: amt });
+        renderTechnicians();
+    }
+    function removeTechWeek(index, weekStart) {
+        const tech = technicians[index];
+        if (!tech) return;
+        tech.weeks = (tech.weeks || []).filter(w => w.weekStart !== weekStart);
+        renderTechnicians();
     }
 
     function calculateTechDues(tech) {
@@ -2335,6 +2425,8 @@
         if (display) {
             display.innerHTML = `<span style="color:#fbbf24;">$${dues.toFixed(2)}</span>`;
         }
+        const wsum = card.querySelector('.tw-summary');
+        if (wsum) wsum.innerHTML = techWeeksSummaryHtml(tech, dues);
     }
 
     function calculate() { technicians.forEach((t, i) => updateTechCardDues(i)); }
@@ -2927,6 +3019,7 @@
             job.technicians.forEach(tech => {
                 const dues = calculateJobTechDues(tech, job.amountReceived, job.materialCost);
                 lines.push(`  ${tech.name || '?'} — ${t('qdDues')} $${dues.toFixed(2)}`);
+                (tech.weeks || []).slice().sort((a, b) => a.weekStart.localeCompare(b.weekStart)).forEach(w => lines.push(`      📆 ${w.weekStart} → ${addDaysISO(w.weekStart, 6)}: $${parseVal(w.amount).toFixed(2)}`));
             });
         }
         lines.push('');
@@ -3060,6 +3153,8 @@
         const day = String(d.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     }
+    function refreshGuideIfOpen() { if (document.getElementById('techGuideModal').style.display === 'flex') safeCall(renderTechGuideContent); }
+
     function refreshAllViews() {
         safeCall(renderJobsTable);
         safeCall(updateGlobalStats);
@@ -3067,6 +3162,7 @@
         safeCall(updateSelectedStats);
         safeCall(renderTodayJobsBanner);
         if (document.getElementById('agendaModal').style.display === 'flex') safeCall(renderAgendaContent);
+        refreshGuideIfOpen();
         if (document.getElementById('screenWeekly').style.display !== 'none') safeCall(renderWeeklyBoard);
     }
 
@@ -3191,7 +3287,7 @@
 
         technicians = JSON.parse(JSON.stringify(job.technicians || []));
         // Any prior "paid" amounts don't apply to the new job.
-        technicians.forEach(tech => { tech.paid = 0; });
+        technicians.forEach(tech => { tech.paid = 0; tech.weeks = []; });
         renderTechnicians();
 
         if (job.expenseItems && job.expenseItems.length > 0) {
@@ -4067,7 +4163,10 @@
     }
 
     let techPaymentName = '';
+    let editingPaymentAt = '';
     function openTechPaymentPrompt(name) {
+        editingPaymentAt = '';
+        document.getElementById('techPaymentTitleEl').textContent = t('techPaymentTitle');
         techPaymentName = name;
         document.getElementById('techPaymentNameLabel').textContent = name;
         document.getElementById('techPaymentAmount').value = '';
@@ -4075,13 +4174,43 @@
         document.getElementById('techPaymentNote').value = '';
         document.getElementById('techPaymentModal').style.display = 'flex';
     }
-    function closeTechPaymentModal() { document.getElementById('techPaymentModal').style.display = 'none'; }
+    function openTechPaymentEdit(at) {
+        const p = techPayments.find(x => x.at === at);
+        if (!p) return;
+        editingPaymentAt = at;
+        techPaymentName = p.name;
+        document.getElementById('techPaymentTitleEl').textContent = t('techPaymentEditTitle');
+        document.getElementById('techPaymentNameLabel').textContent = p.name;
+        document.getElementById('techPaymentAmount').value = parseVal(p.amount);
+        document.getElementById('techPaymentDate').value = p.date || isoDate(new Date());
+        document.getElementById('techPaymentNote').value = p.note || '';
+        document.getElementById('techPaymentModal').style.display = 'flex';
+    }
+    function closeTechPaymentModal() { document.getElementById('techPaymentModal').style.display = 'none'; editingPaymentAt = ''; }
 
     async function saveTechPayment() {
         const amount = parseVal(document.getElementById('techPaymentAmount').value);
         const date = document.getElementById('techPaymentDate').value;
         const note = document.getElementById('techPaymentNote').value.trim();
         if (amount <= 0) { alert(t('alertWithdrawalAmountRequired')); return; }
+
+        if (editingPaymentAt) {   // editing an existing payment: same record, new amount / date / note
+            const idx = techPayments.findIndex(x => x.at === editingPaymentAt);
+            if (idx === -1) { closeTechPaymentModal(); renderTechGuideContent(); return; }
+            const backup = { ...techPayments[idx] };
+            techPayments[idx] = { ...backup, amount, date, note, editedBy: currentUserEmail || '?', editedAt: new Date().toISOString() };
+            try {
+                await TECH_PAYMENTS_DOC.set({ entries: techPayments });
+                logActivity('edit', backup.name || '', `${t('guidePaymentsTitle')}: $${parseVal(backup.amount).toFixed(2)} (${backup.date || ''}) → $${amount.toFixed(2)} (${date})`);
+            } catch (err) {
+                techPayments[idx] = backup;
+                alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+                return;
+            }
+            closeTechPaymentModal();
+            renderTechGuideContent();
+            return;
+        }
 
         const entry = { name: techPaymentName, amount, date, note, by: currentUserEmail || '?', at: new Date().toISOString() };
         try {
@@ -4090,6 +4219,7 @@
             closeTechPaymentModal();
             renderTechGuideContent();
         } catch (err) {
+            techPayments = techPayments.filter(x => x !== entry);   // the save failed: don't keep a payment that was never stored
             alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
         }
     }
@@ -4181,6 +4311,7 @@
         } catch (e) { alert(t('alertJobSaveFailed')); return; }
         closeEditScheduleModal();
         renderWeeklyBoard();
+        refreshGuideIfOpen();
     }
 
     async function saveEditSchedule() {
@@ -4203,6 +4334,7 @@
         } catch (e) { alert(t('alertJobSaveFailed')); return; }
         closeEditScheduleModal();
         renderWeeklyBoard();
+        refreshGuideIfOpen();
     }
 
     function openQuickScheduleModal(dateStr) {
@@ -4715,6 +4847,14 @@
         filterJobs();
     }
 
+    function shiftGuideWeek(dir) {
+        const fromEl = document.getElementById('guideDateFrom'), toEl = document.getElementById('guideDateTo');
+        const base = mondayOf(fromEl.value || isoDate(new Date()));
+        const start = addDaysISO(base, 7 * dir);
+        fromEl.value = start; toEl.value = addDaysISO(start, 6);
+        renderTechGuideContent();
+    }
+
     function setGuideDateRange(preset) {
         const fromEl = document.getElementById('guideDateFrom');
         const toEl = document.getElementById('guideDateTo');
@@ -4722,12 +4862,11 @@
         const iso = d => isoDate(d);
         if (preset === 'today') {
             fromEl.value = iso(today); toEl.value = iso(today);
-        } else if (preset === 'week') {
-            // A trailing 7-day range avoids a real bug the old "since Sunday" logic had:
-            // on a Sunday itself, that range collapsed to just that single day, silently
-            // dropping the rest of the week's work.
-            const start = new Date(today); start.setDate(today.getDate() - 6);
-            fromEl.value = iso(start); toEl.value = iso(today);
+        } else if (preset === 'week' || preset === 'lastweek') {
+            // Weeks run Monday to Sunday (the whole week, so a Monday never collapses to a single day).
+            const thisMonday = mondayOf(iso(today));
+            const start = preset === 'week' ? thisMonday : addDaysISO(thisMonday, -7);
+            fromEl.value = start; toEl.value = addDaysISO(start, 6);
         } else {
             fromEl.value = ''; toEl.value = '';
         }
@@ -4746,17 +4885,29 @@
             (job.technicians || []).forEach(tech => {
                 if (!tech.name) return;
                 const fullDues = calculateJobTechDues(tech, job.amountReceived, job.materialCost);
-                let fraction = 1;
+                // Weeks typed on the job win: a week belongs to the period when its Monday is inside it. No splitting.
+                const manualWeeks = (tech.weeks || []).filter(w => w && w.weekStart);
+                if (manualWeeks.length > 0) {
+                    const counted = manualWeeks.filter(w => (!dateFrom || w.weekStart >= dateFrom) && (!dateTo || w.weekStart <= dateTo));
+                    if (hasDateFilter && counted.length === 0) return;
+                    const manualDues = round2(counted.reduce((s, w) => s + parseVal(w.amount), 0));
+                    if (!stats[tech.name]) stats[tech.name] = { dues: 0, jobs: [] };
+                    stats[tech.name].dues += manualDues;
+                    stats[tech.name].jobs.push({ job, tech, dues: manualDues, fullDues, fraction: 1, daysIn: 0, daysAll: 0, dates: [], manual: true, weeks: counted });
+                    return;
+                }
+                let fraction = 1, daysIn = 0, daysAll = 0, dates = [];
                 if (hasDateFilter) {
                     const allDates = entries.filter(e => (e.team || []).includes(tech.name));
                     if (allDates.length === 0) return;
                     const inPeriod = allDates.filter(e => (!dateFrom || e.date >= dateFrom) && (!dateTo || e.date <= dateTo));
                     if (inPeriod.length === 0) return;
                     fraction = inPeriod.length / allDates.length;
+                    daysIn = inPeriod.length; daysAll = allDates.length; dates = allDates.map(e => e.date);
                 }
                 if (!stats[tech.name]) stats[tech.name] = { dues: 0, jobs: [] };
                 stats[tech.name].dues += fullDues * fraction;
-                stats[tech.name].jobs.push({ job, tech, dues: fullDues * fraction });
+                stats[tech.name].jobs.push({ job, tech, dues: fullDues * fraction, fullDues, fraction, daysIn, daysAll, dates });
             });
         });
         return stats;
@@ -4766,6 +4917,14 @@
     function techPaymentsInPeriod(name, dateFrom, dateTo) {
         return techPayments.filter(p => p.name === name &&
             (!dateFrom || (p.date && p.date >= dateFrom)) && (!dateTo || (p.date && p.date <= dateTo)));
+    }
+
+    function showTechDetails(name) {
+        const sel = document.getElementById('guideTechFilter');
+        sel.value = name;
+        renderTechGuideContent();
+        const d = document.querySelector('#techGuideContent .tg-detail');
+        if (d) d.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     async function deleteTechPayment(at) {
@@ -4793,12 +4952,12 @@
         h += `<h4>${t('guideJobsTitle')} (${jobs.length})</h4>`;
         if (jobs.length === 0) h += `<div class="tg-empty">${t('guideNoJobsInPeriod')}</div>`;
         jobs.forEach(j => {
-            h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(j.job.startDate || '')}</span><span class="tg-d-main"><strong>${escHtml(j.job.clientName || '')}</strong> <small style="color:var(--text-muted);">${techTypeLabel(j.tech.type)}</small></span><strong style="color:#fbbf24;">$${j.dues.toFixed(2)}</strong></div>`;
+            h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(j.job.startDate || '')}</span><span class="tg-d-main"><strong>${escHtml(j.job.clientName || '')}</strong> <small style="color:var(--text-muted);">${techTypeLabel(j.tech.type)}</small>${j.manual ? `<div class="ag-meta" style="color:#34d399;">📆 ${t('guideManualNote')}: ${j.weeks.map(w => escHtml(w.weekStart) + ' ' + ltrAmt(w.amount)).join(' · ')}</div>` : ''}${j.fraction < 0.9999 ? `<div class="ag-meta" style="color:#fbbf24;">${t('guideProrateNote').replace('{a}', j.daysIn).replace('{b}', j.daysAll).replace('{full}', '<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">$' + j.fullDues.toFixed(2) + '</span>')}</div>` : ''}${j.fraction < 0.9999 ? `<div class="ag-meta">${t('guideEditDaysHint')}</div><div class="ag-actions">${j.dates.map(d => { const inside = (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo); return `<button class="secondary" onclick="openEditScheduleModal('${jsArg(j.job.id)}', '${jsArg(d)}')" style="${inside ? '' : 'opacity:0.65;'}">📅 ${escHtml(d)}${inside ? '' : ' ' + t('guideOutsidePeriod')}</button>`; }).join('')}</div>` : ''}</span><strong style="color:#fbbf24;">$${j.dues.toFixed(2)}</strong></div>`;
         });
         h += `<h4 style="margin-top:14px;">${t('guidePaymentsTitle')} (${pays.length})</h4>`;
         if (pays.length === 0) h += `<div class="tg-empty">${t('guideNoPaymentsInPeriod')}</div>`;
         pays.forEach(p => {
-            h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(p.date || '')}</span><span class="tg-d-main">${escHtml(p.note || '')}</span><strong style="color:#34d399;">$${parseVal(p.amount).toFixed(2)}</strong><button class="danger" onclick="deleteTechPayment('${escJs(p.at || '')}')" style="padding:3px 9px; font-size:0.72rem;">${t('deleteBtn')}</button></div>`;
+            h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(p.date || '')}</span><span class="tg-d-main">${escHtml(p.note || '')}</span><strong style="color:#34d399;">$${parseVal(p.amount).toFixed(2)}</strong><button class="secondary" onclick="openTechPaymentEdit('${jsArg(p.at || '')}')" style="padding:3px 9px; font-size:0.72rem;">${t('editBtn')}</button><button class="danger" onclick="deleteTechPayment('${escJs(p.at || '')}')" style="padding:3px 9px; font-size:0.72rem;">${t('deleteBtn')}</button></div>`;
         });
         return h + '</div>';
     }
@@ -4838,6 +4997,7 @@
                 <td data-label="${t('guideThPaidInPeriod')}" style="color:#34d399; font-weight:700;">$${paidInPeriod.toFixed(2)}</td>
                 <td data-label="${t('guideThRemainingInPeriod')}" style="color:${remainingInPeriod > 0 ? '#f87171' : '#94a3b8'}; font-weight:700;">$${remainingInPeriod.toFixed(2)}</td>
                 <td data-label="" class="tg-actions-cell"><div class="tg-actions">
+                    <button class="secondary" onclick="showTechDetails('${jsArg(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#475569;">🔎 ${t('guideDetailsBtn')}</button>
                     <button class="secondary" onclick="openTechPaymentPrompt('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#7c3aed;">💵</button>
                     <button class="secondary" onclick="sendWhatsAppTech('${escJs(name)}', '${escJs(rawPhone)}', ${dues})" style="padding:4px 8px; font-size:0.75rem; background:#059669;">${t('guideWhatsAppBtn')}</button>
                     <button class="secondary" onclick="printTechnicianReport('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#0ea5e9;">${t('printReportBtn')}</button>
