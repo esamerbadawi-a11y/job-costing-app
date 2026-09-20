@@ -475,7 +475,7 @@
 
                 <div class="grid-3">
                     <div class="form-group"><label data-i18n="lblTotalRevenue"></label><input type="text" id="totalRevenue" value="0" onfocus="this.select()" oninput="calculateRemaining(); calculate();"></div>
-                    <div class="form-group"><label data-i18n="lblAmountReceived"></label><input type="text" id="amountReceived" value="0" onfocus="this.select()" oninput="calculateRemaining()"></div>
+                    <div class="form-group"><label data-i18n="lblAmountReceived"></label><input type="text" id="amountReceived" value="0" onfocus="this.select()" oninput="calculateRemaining(); calculate();"></div>
                     <div class="form-group"><label data-i18n="lblAmountRemaining"></label><input type="text" id="amountRemaining" value="0" readonly style="background: #1e293b; color: #f87171; font-weight: 700;"></div>
                 </div>
                 <div class="form-group"><label data-i18n="lblFollowUpDate"></label><input type="date" id="followUpDate"></div>
@@ -825,6 +825,7 @@
         confirmDeleteWithdrawal: { ar: 'متأكد من حذف المبلغ ده من السجل؟', en: 'Delete this entry from the record?' },
         totalEarnedLabel: { ar: 'المستحق له إجمالي:', en: 'Total Earned:' },
         cwTotalRevenue: { ar: 'إجمالي إيراد كل الشغلانات:', en: 'Total Revenue (All Jobs):' },
+        cwTotalReceived: { ar: 'إجمالي المستلم من كل الشغلانات:', en: 'Total Received (All Jobs):' },
         cwMaterials: { ar: 'الخامات:', en: 'Materials:' },
         cwTechDues: { ar: 'مستحقات الفنيين:', en: 'Technician Dues:' },
         cwShareS: { ar: 'نصيب S (40%):', en: 'S Share (40%):' },
@@ -1714,9 +1715,9 @@
     function removeTechnician(index) { technicians.splice(index, 1); renderTechnicians(); calculate(); }
 
     function getPercentBase() {
-        const revenue = parseVal(document.getElementById('totalRevenue').value);
+        const received = parseVal(document.getElementById('amountReceived').value);
         const material = parseVal(document.getElementById('materialCost').value);
-        return revenue - material;
+        return received - material;
     }
 
     function renderTechnicians() {
@@ -1799,10 +1800,10 @@
         return rate * (days === 0 ? 0 : days);
     }
 
-    function calculateJobTechDues(tech, totalRevenue, materialCost) {
+    function calculateJobTechDues(tech, amountReceived, materialCost) {
         const rate = parseVal(tech.rate);
         const days = parseVal(tech.days);
-        const base = parseVal(totalRevenue) - parseVal(materialCost);
+        const base = parseVal(amountReceived) - parseVal(materialCost);
         const customPercent = tech.customPercent !== undefined ? parseVal(tech.customPercent) : 50;
 
         if (tech.type === 'فني لوحده (%60)') return base > 0 ? base * 0.6 : 0;
@@ -2302,8 +2303,8 @@
     // share only. S and M's shares are never reduced by the company's spending.
     function jobNet(job) {
         let totalTechDues = 0;
-        (job.technicians || []).forEach(tech => { totalTechDues += calculateJobTechDues(tech, job.totalRevenue, job.materialCost); });
-        const netForSplit = parseVal(job.totalRevenue) - parseVal(job.materialCost) - totalTechDues;
+        (job.technicians || []).forEach(tech => { totalTechDues += calculateJobTechDues(tech, job.amountReceived, job.materialCost); });
+        const netForSplit = parseVal(job.amountReceived) - parseVal(job.materialCost) - totalTechDues;
         const shareS = netForSplit * 0.4;
         const shareM = netForSplit * 0.4;
         const expensesTotal = parseVal(job.extraExpenses);
@@ -2363,7 +2364,7 @@
         jobsToRender.forEach(job => {
             let techDetailsText = '';
             (job.technicians || []).forEach(tech => {
-                const dues = calculateJobTechDues(tech, job.totalRevenue, job.materialCost);
+                const dues = calculateJobTechDues(tech, job.amountReceived, job.materialCost);
                 techDetailsText += `• ${tech.name || 'Tech'} (${techTypeLabel(tech.type)}): ${t('techLineDue')} $${dues.toFixed(2)} | ${t('techLinePaid')} $${parseVal(tech.paid)}<br>`;
             });
 
@@ -2673,7 +2674,7 @@
                 (!dateTo || e.date <= dateTo)
             );
             if (!inRange) return;
-            const dues = calculateJobTechDues(techEntry, job.totalRevenue, job.materialCost);
+            const dues = calculateJobTechDues(techEntry, job.amountReceived, job.materialCost);
             const paid = parseVal(techEntry.paid);
             totalDues += dues; totalPaid += paid;
             rows.push({ date: job.startDate || '', client: job.clientName || '', type: techTypeLabel(techEntry.type), dues, paid, remaining: dues - paid });
@@ -2773,7 +2774,7 @@
         csvRows.push(["Jobs #", "Date", "Customer", "Phone", "Address", "Description", "Contract", "Received", "Balance", "Materials", "Technicians", "Expenses Total", "Expenses Breakdown", "Status", "Net Profit", "S Share", "M Share", "Company Share"].join(","));
         savedJobs.forEach((job, index) => {
             const { net: netProfit, shareS, shareM, companyNet } = jobNet(job);
-            const techSummary = (job.technicians || []).map(tc => `${tc.name || 'Tech'}: $${calculateJobTechDues(tc, job.totalRevenue, job.materialCost).toFixed(2)}`).join(' | ');
+            const techSummary = (job.technicians || []).map(tc => `${tc.name || 'Tech'}: $${calculateJobTechDues(tc, job.amountReceived, job.materialCost).toFixed(2)}`).join(' | ');
             const expenseSummary = (job.expenseItems || []).map(it => `${expenseCatLabel(it.category)}${it.note ? ' (' + it.note + ')' : ''}: $${parseVal(it.amount).toFixed(2)}`).join(' | ');
             const rowData = [
                 csvEscape('#' + (index + 1)), csvEscape(job.startDate || ''), csvEscape(job.clientName || ''),
@@ -2959,10 +2960,10 @@
         // The full waterfall, aggregated across every job: revenue in, materials and
         // technician dues out, the 40/40/20 split, then the company's own general
         // expenses (not tied to any one job) out of its 20% share.
-        let totalRevenue = 0, totalMaterials = 0, totalTechDues = 0, totalShareS = 0, totalShareM = 0, totalIncome = 0;
+        let totalReceived = 0, totalMaterials = 0, totalTechDues = 0, totalShareS = 0, totalShareM = 0, totalIncome = 0;
         savedJobs.forEach(job => {
             const { totalTechDues: dues, shareS, shareM, companyNet } = jobNet(job);
-            totalRevenue += parseVal(job.totalRevenue);
+            totalReceived += parseVal(job.amountReceived);
             totalMaterials += parseVal(job.materialCost);
             totalTechDues += dues;
             totalShareS += shareS;
@@ -2974,7 +2975,7 @@
         const remaining = totalIncome - totalGeneralExpenses;
 
         let html = `<div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:8px; padding:14px; margin-bottom:18px;">
-            <div style="font-size:0.8rem; color:var(--text-muted);">${t('cwTotalRevenue')} <b>$${totalRevenue.toFixed(2)}</b></div>
+            <div style="font-size:0.8rem; color:var(--text-muted);">${t('cwTotalReceived')} <b>$${totalReceived.toFixed(2)}</b></div>
             <div style="font-size:0.8rem; color:var(--text-muted);">${t('cwMaterials')} <b style="color:#f87171;">-$${totalMaterials.toFixed(2)}</b></div>
             <div style="font-size:0.8rem; color:var(--text-muted);">${t('cwTechDues')} <b style="color:#f87171;">-$${totalTechDues.toFixed(2)}</b></div>
             <div style="font-size:0.8rem; color:var(--text-muted); border-top:1px dashed var(--border-color); margin-top:4px; padding-top:4px;">${t('cwShareS')} <b style="color:#34d399;">$${totalShareS.toFixed(2)}</b></div>
@@ -4077,7 +4078,7 @@
                     (!dateTo || e.date <= dateTo)
                 );
                 if (!inRange) return;
-                techMap[tech.name] = (techMap[tech.name] || 0) + calculateJobTechDues(tech, job.totalRevenue, job.materialCost);
+                techMap[tech.name] = (techMap[tech.name] || 0) + calculateJobTechDues(tech, job.amountReceived, job.materialCost);
             });
         });
 
