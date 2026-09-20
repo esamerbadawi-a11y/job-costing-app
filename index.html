@@ -333,6 +333,7 @@
         <div class="stat-card warning"><span data-i18n="statShareCompany"></span><strong id="statShareCompany">0.0</strong></div>
         <div class="stat-card"><span data-i18n="statExtraExp"></span><strong id="statExtraExp" style="color: #f87171;">0.0</strong></div>
         <div class="stat-card success"><span data-i18n="statTotalReceived"></span><strong id="statTotalReceived" style="color:#34d399;">0.0</strong></div>
+        <div class="stat-card"><span data-i18n="statActualRemaining"></span><strong id="statActualRemaining" style="color:#fbbf24;">0.0</strong></div>
     </div>
 
     <div class="card" id="selectedStatsCard" style="background: #0f172a; border: 1px dashed var(--accent); margin-bottom: 20px; display: none;">
@@ -866,6 +867,7 @@
         statShareCompany: { ar: 'شركة (20%)', en: 'Company (20%)' },
         statExtraExp: { ar: 'مصروفات الشركة', en: 'Company Expenses' },
         statTotalReceived: { ar: '💵 إجمالي المستلم', en: '💵 Total Received' },
+        statActualRemaining: { ar: '💰 الباقي فعليًا (بعد الفنيين والماتريال والمصاريف)', en: '💰 Actual Remaining (after techs, materials & expenses)' },
         qdScopeOfWork: { ar: '🔧 طبيعة الشغل المطلوب:', en: '🔧 Scope of Work:' },
         qdNoScopeSet: { ar: 'مفيش وصف مسجل للشغل', en: 'No description entered' },
         qdTotalRevenue: { ar: 'إجمالي العقد:', en: 'Total Contract:' },
@@ -2456,6 +2458,18 @@
             totalShareS += shareS; totalShareM += shareM; totalShareCompany += companyNet;
             totalReceivedVal += parseVal(job.amountReceived);
         });
+
+        // General (non-job) company expenses logged within the same active date range,
+        // so "what's actually left" reflects the whole picture for that period.
+        const dateFrom = document.getElementById('filterDateFrom').value;
+        const dateTo = document.getElementById('filterDateTo').value;
+        let generalExpensesInRange = 0;
+        companyExpenses.forEach(e => {
+            const d = e.date || '';
+            if ((!dateFrom || (d && d >= dateFrom)) && (!dateTo || (d && d <= dateTo))) generalExpensesInRange += parseVal(e.amount);
+        });
+        const actualRemaining = totalReceivedVal - totalMatVal - totalTechVal - generalExpensesInRange;
+
         document.getElementById('statTotalJobs').innerText = '$' + totalJobsVal.toFixed(2);
         document.getElementById('statTotalMat').innerText = '$' + totalMatVal.toFixed(2);
         document.getElementById('statTotalTech').innerText = '$' + totalTechVal.toFixed(2);
@@ -2465,6 +2479,7 @@
         document.getElementById('statShareCompany').innerText = '$' + totalShareCompany.toFixed(2);
         document.getElementById('statExtraExp').innerText = '$' + totalExtraExp.toFixed(2);
         document.getElementById('statTotalReceived').innerText = '$' + totalReceivedVal.toFixed(2);
+        document.getElementById('statActualRemaining').innerText = '$' + actualRemaining.toFixed(2);
 
         document.getElementById('statCompactNet').innerText = '$' + totalNetVal.toFixed(2);
         document.getElementById('statCompactRevenue').innerText = '$' + totalJobsVal.toFixed(2);
