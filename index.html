@@ -909,6 +909,8 @@
         alertPickTechFirst: { ar: 'اختار اسم الفني الأول.', en: "Pick the technician's name first." },
         alertNoDaysFoundForTech: { ar: 'الفني ده لسه مالوش أي يوم محدد ليه في جدول الشغلانة دي.', en: "This technician has no scheduled days on this job's calendar yet." },
         confirmSplitSharedDay: { ar: 'الفني ده شغال في شغلانة تانية نفس اليوم. تقسيم اليوم بينهم؟ (إلغاء = تحميل اليوم كامل على الشغلانة دي)', en: 'This technician also worked another job the same day. Split that day between them? (Cancel = load the full day onto this job)' },
+        confirmCountThisWeekOnly: { ar: 'تحسب أيام الأسبوع ده بس؟ (إلغاء = كل أيام الشغلانة من الأول)', en: "Count just this week's days? (Cancel = every day on this job from the start)" },
+        alertNoDaysThisWeekForTech: { ar: 'الفني ده مالوش أي يوم مجدول الأسبوع ده.', en: 'This technician has no scheduled days this week.' },
         remindAdjustOtherJob: { ar: '⚠️ متنساش تظبط عدد أيام الفني ده يدويًا في شغلانة:', en: "⚠️ Don't forget to manually adjust this technician's days in:" },
         confirmRemoveDay: { ar: 'متأكد من شيل اليوم ده من جدول الشغلانة؟', en: "Remove this day from the job's schedule?" },
         qsNewJobTab: { ar: 'شغلانة جديدة', en: 'New Job' },
@@ -1856,8 +1858,21 @@
         if (!job) { alert(t('alertNoScheduleYet')); return; }
         const techName = technicians[index].name;
         if (!techName) { alert(t('alertPickTechFirst')); return; }
-        const myDates = getScheduleEntries(job).filter(e => (e.team || []).includes(techName)).map(e => e.date);
+        let myDates = getScheduleEntries(job).filter(e => (e.team || []).includes(techName)).map(e => e.date);
         if (myDates.length === 0) { alert(t('alertNoDaysFoundForTech')); return; }
+
+        // For a job that runs across several weeks, counting every day at once means
+        // waiting until the whole thing wraps up to pay anyone — this lets the days (and
+        // so the pay) be settled one week at a time instead.
+        const thisWeekOnly = confirm(t('confirmCountThisWeekOnly'));
+        if (thisWeekOnly) {
+            const today = new Date();
+            const weekStart = new Date(today); weekStart.setDate(today.getDate() - today.getDay());
+            const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6);
+            const weekStartStr = isoDate(weekStart), weekEndStr = isoDate(weekEnd);
+            myDates = myDates.filter(d => d >= weekStartStr && d <= weekEndStr);
+            if (myDates.length === 0) { alert(t('alertNoDaysThisWeekForTech')); return; }
+        }
 
         // Find any day also shared with another job for this same technician.
         const sharedInfo = myDates.map(date => {
@@ -2668,13 +2683,15 @@
             const entries = getScheduleEntries(job);
             const techEntry = (job.technicians || []).find(t => t.name === techName);
             if (!techEntry) return;
-            const inRange = !hasDateFilter || entries.some(e =>
-                (e.team || []).includes(techName) &&
-                (!dateFrom || e.date >= dateFrom) &&
-                (!dateTo || e.date <= dateTo)
-            );
-            if (!inRange) return;
-            const dues = calculateJobTechDues(techEntry, job.amountReceived, job.materialCost);
+            const fullDues = calculateJobTechDues(techEntry, job.amountReceived, job.materialCost);
+            let dues = fullDues;
+            if (hasDateFilter) {
+                const allDatesForTech = entries.filter(e => (e.team || []).includes(techName));
+                if (allDatesForTech.length === 0) return;
+                const datesInPeriod = allDatesForTech.filter(e => (!dateFrom || e.date >= dateFrom) && (!dateTo || e.date <= dateTo));
+                if (datesInPeriod.length === 0) return;
+                dues = fullDues * (datesInPeriod.length / allDatesForTech.length);
+            }
             const paid = parseVal(techEntry.paid);
             totalDues += dues; totalPaid += paid;
             rows.push({ date: job.startDate || '', client: job.clientName || '', type: techTypeLabel(techEntry.type), dues, paid, remaining: dues - paid });
@@ -4069,16 +4086,18 @@
             const entries = getScheduleEntries(job);
             (job.technicians || []).forEach(tech => {
                 if (!tech.name) return;
-                // No date filter set → count everything, all-time. Otherwise, only count
-                // this job's dues for a tech if at least one of THEIR scheduled days on
-                // it (from the Weekly Board) falls inside the chosen period.
-                const inRange = !hasDateFilter || entries.some(e =>
-                    (e.team || []).includes(tech.name) &&
-                    (!dateFrom || e.date >= dateFrom) &&
-                    (!dateTo || e.date <= dateTo)
-                );
-                if (!inRange) return;
-                techMap[tech.name] = (techMap[tech.name] || 0) + calculateJobTechDues(tech, job.amountReceived, job.materialCost);
+                const fullDues = calculateJobTechDues(tech, job.amountReceived, job.materialCost);
+                if (!hasDateFilter) { techMap[tech.name] = (techMap[tech.name] || 0) + fullDues; return; }
+
+                // A job that spans several weeks shouldn't have its full dues counted
+                // again in every single week it touches — split them by the share of
+                // this technician's scheduled days on the job that fall in this period.
+                const allDatesForTech = entries.filter(e => (e.team || []).includes(tech.name));
+                if (allDatesForTech.length === 0) return;
+                const datesInPeriod = allDatesForTech.filter(e => (!dateFrom || e.date >= dateFrom) && (!dateTo || e.date <= dateTo));
+                if (datesInPeriod.length === 0) return;
+                const fraction = datesInPeriod.length / allDatesForTech.length;
+                techMap[tech.name] = (techMap[tech.name] || 0) + fullDues * fraction;
             });
         });
 
