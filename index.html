@@ -251,7 +251,12 @@
                         <button class="secondary" onclick="addNewServiceType()" data-i18n="apptAddServiceBtn"></button>
                     </div>
                 </div>
-                <input type="text" id="apptNote" data-i18n-ph="apptNotePh" style="margin-bottom:10px;">
+                <input type="text" id="apptNote" data-i18n-ph="apptNotePh" style="margin-bottom:6px;">
+                <input type="text" id="apptAiInstructionInput" data-i18n-ph="aiInstructionPh" style="margin-bottom:6px;">
+                <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+                    <button type="button" onclick="improveScopeWithAI('apptNote','apptAiScopeBtn','apptAiInstructionInput')" id="apptAiScopeBtn" style="background:linear-gradient(135deg,#7c3aed,#38bdf8); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">✨ <span data-i18n="aiScopeBtn"></span></button>
+                    <button type="button" onclick="startVoiceScope('apptNote','apptVoiceScopeBtn','apptAiScopeBtn','apptAiInstructionInput')" id="apptVoiceScopeBtn" style="background:linear-gradient(135deg,#dc2626,#f97316); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">🎤 <span data-i18n="voiceScopeBtn"></span></button>
+                </div>
                 <div style="display:flex; gap:8px;">
                     <button class="success" onclick="saveAppointment()"><span id="saveAppointmentBtnLabel" data-i18n="saveAppointmentBtn"></span></button>
                     <button class="secondary" onclick="resetAppointmentForm()" data-i18n="cancelBtn"></button>
@@ -2005,7 +2010,7 @@
         }
     }
 
-    function startVoiceScope() {
+    function startVoiceScope(fieldId = 'clientDescription', btnId = 'voiceScopeBtn', aiBtnId = 'aiScopeBtn', instructionId = 'aiInstructionInput') {
         const SpeechRecognitionApi = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognitionApi) { alert(t('alertVoiceNotSupported')); return; }
 
@@ -2015,36 +2020,37 @@
         recognition.interimResults = false;
         recognition.maxAlternatives = 1;
 
-        const micBtn = document.getElementById('voiceScopeBtn');
+        const micBtn = document.getElementById(btnId);
         const originalLabel = micBtn.innerHTML;
         micBtn.disabled = true; micBtn.innerHTML = '🔴 ...';
 
         recognition.onresult = (event) => {
             const transcript = event.results[0][0].transcript;
-            const field = document.getElementById('clientDescription');
+            const field = document.getElementById(fieldId);
             field.value = (field.value.trim() ? field.value.trim() + ' ' : '') + transcript;
-            improveScopeWithAI();
+            improveScopeWithAI(fieldId, aiBtnId, instructionId);
         };
         recognition.onerror = (event) => { alert(t('alertVoiceError') + ' (' + event.error + ')'); };
         recognition.onend = () => { micBtn.disabled = false; micBtn.innerHTML = originalLabel; };
         recognition.start();
     }
 
-    async function improveScopeWithAI() {
-        const field = document.getElementById('clientDescription');
+    async function improveScopeWithAI(fieldId = 'clientDescription', btnId = 'aiScopeBtn', instructionId = 'aiInstructionInput') {
+        const field = document.getElementById(fieldId);
         const current = field.value.trim();
         if (!current) { alert(t('alertAiNeedsSomeText')); return; }
         const apiKey = getGeminiApiKey();
         if (!apiKey) return;
 
-        const btn = document.getElementById('aiScopeBtn');
+        const btn = document.getElementById(btnId);
         const originalLabel = btn.innerHTML;
         btn.disabled = true; btn.innerHTML = '⏳ ...';
 
         try {
             const ai = await getGenAIClient(apiKey);
 
-            const customInstruction = document.getElementById('aiInstructionInput').value.trim();
+            const instructionField = document.getElementById(instructionId);
+            const customInstruction = instructionField ? instructionField.value.trim() : '';
             const defaultInstructionAr = 'حوّل الملاحظات دي بتاعة شغلانة صيانة/مقاولات لوصف نقاط واضح ومختصر ومرتب للشغل المطلوب';
             const defaultInstructionEn = 'Rewrite these handyman/contracting job notes as a clean, concise bullet-point scope of work';
             const instruction = customInstruction || (currentLang === 'ar' ? defaultInstructionAr : defaultInstructionEn);
@@ -3671,6 +3677,7 @@
         document.getElementById('apptDate').value = '';
         document.getElementById('apptTime').value = '';
         document.getElementById('apptNote').value = '';
+        document.getElementById('apptAiInstructionInput').value = '';
         renderApptServiceCheckboxes([]);
         document.getElementById('addAppointmentTitle').innerText = t('addAppointmentTitle');
         document.getElementById('saveAppointmentBtnLabel').innerText = t('saveAppointmentBtn');
