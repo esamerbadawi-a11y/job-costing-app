@@ -4194,12 +4194,16 @@
         const matchStatus = !statusVal || job.jobStatus === statusVal;
         const rem = jobRemaining(job);
         const matchDebt = !onlyShowDebt || rem > 0;
-        // A job matches the date range if its start date falls within [from, to] (either side optional).
+        // A job matches the date range if its start date falls within [from, to], OR if
+        // any technician actually worked on it (via the Weekly Board) during that range —
+        // a job started earlier but worked on this week should still show up this week.
         const jobDate = job.startDate || '';
-        const matchDateFrom = !dateFrom || (jobDate && jobDate >= dateFrom);
-        const matchDateTo = !dateTo || (jobDate && jobDate <= dateTo);
+        const matchStartDate = (!dateFrom || (jobDate && jobDate >= dateFrom)) && (!dateTo || (jobDate && jobDate <= dateTo));
+        const scheduleDates = getScheduleEntries(job).map(e => e.date);
+        const matchScheduleDate = scheduleDates.some(d => (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo));
+        const matchDate = !dateFrom && !dateTo ? true : (matchStartDate || matchScheduleDate);
 
-        return matchSearch && matchTech && matchStatus && matchDebt && matchDateFrom && matchDateTo;
+        return matchSearch && matchTech && matchStatus && matchDebt && matchDate;
     }
 
     // Every job currently matching the search/status/technician/date filters — this is
