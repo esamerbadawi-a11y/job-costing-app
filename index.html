@@ -267,7 +267,10 @@
                 <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
                     <button type="button" onclick="improveScopeWithAI('apptNote','apptAiScopeBtn','apptAiInstructionInput')" id="apptAiScopeBtn" style="background:linear-gradient(135deg,#7c3aed,#38bdf8); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">✨ <span data-i18n="aiScopeBtn"></span></button>
                     <button type="button" onclick="startVoiceScope('apptNote','apptVoiceScopeBtn','apptAiScopeBtn','apptAiInstructionInput')" id="apptVoiceScopeBtn" style="background:linear-gradient(135deg,#dc2626,#f97316); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">🎤 <span data-i18n="voiceScopeBtn"></span></button>
+                    <button type="button" onclick="document.getElementById('apptPhotoInput').click()" id="apptPhotoBtn" style="background:linear-gradient(135deg,#0ea5e9,#0284c7); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">📷 <span data-i18n="photoScopeBtn"></span></button>
+                    <input type="file" id="apptPhotoInput" accept="image/*" capture="environment" style="display:none;" onchange="analyzePhotoForScope(event,'apptNote','apptPhotoBtn','apptPhotoGallery')">
                 </div>
+                <div id="apptPhotoGallery" style="display:none; gap:8px; flex-wrap:wrap; margin-bottom:10px;"></div>
                 <div style="display:flex; gap:8px;">
                     <button class="success" onclick="saveAppointment()"><span id="saveAppointmentBtnLabel" data-i18n="saveAppointmentBtn"></span></button>
                     <button class="secondary" onclick="resetAppointmentForm()" data-i18n="cancelBtn"></button>
@@ -478,7 +481,10 @@
                     <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">
                         <button type="button" onclick="improveScopeWithAI()" id="aiScopeBtn" style="background:linear-gradient(135deg,#7c3aed,#38bdf8); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">✨ <span data-i18n="aiScopeBtn"></span></button>
                         <button type="button" onclick="startVoiceScope()" id="voiceScopeBtn" style="background:linear-gradient(135deg,#dc2626,#f97316); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">🎤 <span data-i18n="voiceScopeBtn"></span></button>
+                        <button type="button" onclick="document.getElementById('jobPhotoInput').click()" id="jobPhotoBtn" style="background:linear-gradient(135deg,#0ea5e9,#0284c7); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">📷 <span data-i18n="photoScopeBtn"></span></button>
+                        <input type="file" id="jobPhotoInput" accept="image/*" capture="environment" style="display:none;" onchange="analyzePhotoForScope(event,'clientDescription','jobPhotoBtn','jobPhotoGallery')">
                     </div>
+                    <div id="jobPhotoGallery" style="display:none; gap:8px; flex-wrap:wrap; margin-top:6px;"></div>
                 </div>
 
                 <div class="grid-3">
@@ -1012,6 +1018,7 @@
         alertAiKeyReset: { ar: 'تم مسح المفتاح. المرة الجاية هيطلب منك تلصقه تاني.', en: "Key cleared. It'll ask you to paste it again next time." },
         alertAiFailed: { ar: 'حصل خطأ في الاتصال بالـ AI.', en: 'Error contacting the AI.' },
         voiceScopeBtn: { ar: 'سجّل بصوتك', en: 'Record Voice' },
+        photoScopeBtn: { ar: 'أضف صورة', en: 'Add Photo' },
         aiInstructionPh: { ar: 'قول للـ AI عايزه يعمل إيه بالظبط (اختياري، زي: اختصرها في سطرين)', en: 'Tell the AI exactly what you want (optional, e.g.: shorten to 2 lines)' },
         confirmVoiceLangArabic: { ar: 'هتتكلم عربي؟ (إلغاء = هتتكلم إنجليزي)', en: "Will you speak Arabic? (Cancel = you'll speak English)" },
         alertVoiceNotSupported: { ar: 'المتصفح ده مش بيدعم التسجيل الصوتي.', en: "This browser doesn't support voice recording." },
@@ -1970,6 +1977,67 @@
     // slowdown the user noticed.
     let cachedGenAIClient = null;
     let cachedGenAIClientKey = null;
+
+    // Photos for the job/appointment currently open in the form — populated when
+    // editing an existing record, cleared on a fresh form, and saved along with it.
+    let currentJobPhotos = [];
+    let currentApptPhotos = [];
+
+    // Resizes/compresses an image client-side before it's stored — since there's no
+    // Firebase Storage set up, photos live as base64 inside the record itself, so
+    // keeping each one small (under ~150KB) matters for Firestore's document size limit.
+    function compressImageToBase64(file, maxDim = 900, quality = 0.6) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const img = new Image();
+                img.onload = () => {
+                    let { width, height } = img;
+                    if (width > maxDim || height > maxDim) {
+                        if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+                        else { width = Math.round(width * maxDim / height); height = maxDim; }
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width; canvas.height = height;
+                    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', quality));
+                };
+                img.onerror = reject;
+                img.src = reader.result;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function renderPhotoGallery(photosArr, containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        if (!photosArr || photosArr.length === 0) { container.innerHTML = ''; container.style.display = 'none'; return; }
+        container.style.display = 'flex';
+        container.innerHTML = photosArr.map((p, i) => `
+            <div style="position:relative;">
+                <img src="${p.data}" onclick="viewFullPhoto('${containerId}', ${i})" style="width:60px; height:60px; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid var(--border-color);">
+                <button type="button" onclick="removePhotoFromGallery('${containerId}', ${i})" style="position:absolute; top:-6px; inset-inline-end:-6px; background:#e11d48; color:#fff; border:none; border-radius:50%; width:18px; height:18px; font-size:0.65rem; cursor:pointer; line-height:1;">×</button>
+            </div>
+        `).join('');
+    }
+
+    function getPhotosArrayFor(containerId) { return containerId === 'apptPhotoGallery' ? currentApptPhotos : currentJobPhotos; }
+
+    function viewFullPhoto(containerId, index) {
+        const arr = getPhotosArrayFor(containerId);
+        const photo = arr[index];
+        if (!photo) return;
+        const win = window.open('');
+        if (win) win.document.write(`<body style="margin:0; background:#000;"><img src="${photo.data}" style="max-width:100%; display:block; margin:0 auto;"></body>`);
+    }
+
+    function removePhotoFromGallery(containerId, index) {
+        const arr = getPhotosArrayFor(containerId);
+        arr.splice(index, 1);
+        renderPhotoGallery(arr, containerId);
+    }
     async function getGenAIClient(apiKey) {
         if (cachedGenAIClient && cachedGenAIClientKey === apiKey) return cachedGenAIClient;
         const { GoogleGenAI } = await import('https://esm.sh/@google/genai');
@@ -2064,6 +2132,53 @@
         recognition.onerror = (event) => { alert(t('alertVoiceError') + ' (' + event.error + ')'); };
         recognition.onend = () => { micBtn.disabled = false; micBtn.innerHTML = originalLabel; };
         recognition.start();
+    }
+
+    // Reads a photo, sends it to Gemini's vision-capable model, and appends what it
+    // thinks the job needs into the target field — handy for a quick on-site photo.
+    async function analyzePhotoForScope(event, fieldId, btnId, galleryId) {
+        const file = event.target.files && event.target.files[0];
+        event.target.value = ''; // allow re-selecting the same file next time
+        if (!file) return;
+        const apiKey = getGeminiApiKey();
+        if (!apiKey) return;
+
+        const btn = document.getElementById(btnId);
+        const originalLabel = btn.innerHTML;
+        btn.disabled = true; btn.innerHTML = '⏳ ...';
+
+        try {
+            const dataUrl = await compressImageToBase64(file);
+            const base64Data = dataUrl.split(',')[1];
+
+            const ai = await getGenAIClient(apiKey);
+            const promptText = currentLang === 'ar'
+                ? 'اتفرج على الصورة دي لموقع شغل صيانة/مقاولات، واكتب وصف نقاط مختصر وواضح لإيه المطلوب عمله (تصليحات، دهانات، إلخ) بناءً على اللي شايفه. من غير مقدمات.'
+                : "Look at this handyman/contracting job-site photo and write a short, clear bullet-point description of what work appears to be needed, based on what you see. No preamble.";
+
+            const response = await ai.models.generateContent({
+                model: 'gemini-3.6-flash',
+                contents: [{ inlineData: { mimeType: 'image/jpeg', data: base64Data } }, { text: promptText }]
+            });
+            const resultText = response && response.text;
+            if (!resultText) throw new Error('empty response');
+
+            const field = document.getElementById(fieldId);
+            field.value = (field.value.trim() ? field.value.trim() + '\n\n' : '') + resultText.trim();
+
+            // Keep the photo itself attached to the record, not just its description.
+            if (galleryId) {
+                const photosArr = getPhotosArrayFor(galleryId);
+                photosArr.push({ data: dataUrl, addedAt: new Date().toISOString() });
+                renderPhotoGallery(photosArr, galleryId);
+            }
+        } catch (err) {
+            const msg = (err && err.message) ? err.message : String(err);
+            if (/401|403|UNAUTHENTICATED|PERMISSION|API key/i.test(msg)) { try { localStorage.removeItem('geminiApiKey'); } catch (e) {} }
+            alert(t('alertAiFailed') + ' (' + msg + ')');
+        } finally {
+            btn.disabled = false; btn.innerHTML = originalLabel;
+        }
     }
 
     async function improveScopeWithAI(fieldId = 'clientDescription', btnId = 'aiScopeBtn', instructionId = 'aiInstructionInput') {
@@ -2216,6 +2331,7 @@
             extraExpenses: parseVal(document.getElementById('extraExpenses').value),
             expenseItems: JSON.parse(JSON.stringify(expenseItems)),
             technicians: JSON.parse(JSON.stringify(technicians)),
+            photos: JSON.parse(JSON.stringify(currentJobPhotos)),
             createdBy: currentUserEmail,
             lastEditedBy: currentUserEmail
         };
@@ -2280,6 +2396,8 @@
         renderTechnicians();
         expenseItems = [];
         renderExpenseItems();
+        currentJobPhotos = [];
+        renderPhotoGallery(currentJobPhotos, 'jobPhotoGallery');
         document.getElementById('jobScheduleSummaryCard').style.display = 'none';
         document.getElementById('formTitle').innerText = t('formTitleNew');
         document.getElementById('saveBtn').innerText = t('saveBtnNew');
@@ -2629,6 +2747,8 @@
             expenseItems = [];
         }
         renderExpenseItems();
+        currentJobPhotos = JSON.parse(JSON.stringify(job.photos || []));
+        renderPhotoGallery(currentJobPhotos, 'jobPhotoGallery');
         checkCrmCustomerData();
         renderJobScheduleSummary();
 
@@ -3712,6 +3832,8 @@
         document.getElementById('apptTime').value = appt.requestedTime || '';
         document.getElementById('apptNote').value = appt.note || '';
         renderApptServiceCheckboxes(appt.services || []);
+        currentApptPhotos = JSON.parse(JSON.stringify(appt.photos || []));
+        renderPhotoGallery(currentApptPhotos, 'apptPhotoGallery');
         document.getElementById('addAppointmentTitle').innerText = t('editAppointmentTitle');
         document.getElementById('saveAppointmentBtnLabel').innerText = t('updateAppointmentBtn');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -3727,6 +3849,8 @@
         document.getElementById('apptTime').value = '';
         document.getElementById('apptNote').value = '';
         document.getElementById('apptAiInstructionInput').value = '';
+        currentApptPhotos = [];
+        renderPhotoGallery(currentApptPhotos, 'apptPhotoGallery');
         renderApptServiceCheckboxes([]);
         document.getElementById('addAppointmentTitle').innerText = t('addAppointmentTitle');
         document.getElementById('saveAppointmentBtnLabel').innerText = t('saveAppointmentBtn');
@@ -3745,6 +3869,7 @@
             requestedTime: document.getElementById('apptTime').value,
             services: Array.from(document.querySelectorAll('.appt-service-check:checked')).map(cb => cb.value),
             note: document.getElementById('apptNote').value.trim(),
+            photos: JSON.parse(JSON.stringify(currentApptPhotos)),
             by: currentUserEmail || '?'
         };
 
@@ -3791,6 +3916,7 @@
             totalRevenue: 0, amountReceived: 0, amountRemaining: 0,
             followUpDate: '', materialCost: 0, extraExpenses: 0,
             expenseItems: [], technicians: [],
+            photos: JSON.parse(JSON.stringify(appt.photos || [])),
             createdBy: currentUserEmail, lastEditedBy: currentUserEmail
         };
 
