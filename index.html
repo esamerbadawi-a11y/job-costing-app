@@ -134,6 +134,39 @@
         .autocomplete-items div { padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-main); }
         .autocomplete-items div:hover { background: var(--card-hover); color: #38bdf8; }
 
+        /* Job form: on a phone the technician card's first row was squeezed into 5 tiny columns. Two per row instead. */
+        @media(max-width: 600px) {
+            .tg-row1 { grid-template-columns: 1fr 1fr !important; }
+            .tg-row1 select, .tg-row1 input { min-width: 0 !important; }
+            .tg-row1 > div:last-child { grid-column: 1 / -1; }
+        }
+        /* Job form on a phone: the 3-column rows (dates / amounts) were wider than the screen, so the page could be dragged sideways. Let the columns shrink. */
+        .grid-2 > *, .grid-3 > * { min-width: 0; }
+        /* ---- Dated client payments / material invoices (job form) ---- */
+        .ledger-add-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+        .lg-field { display: flex; flex-direction: column; gap: 3px; }
+        .lg-field > span { font-size: 0.72rem; color: var(--text-muted); font-weight: 600; }
+        .lg-amt { flex: 1 1 90px; min-width: 90px; }
+        .lg-date { flex: 1 1 140px; min-width: 130px; }
+        .lg-note { flex: 2 1 140px; min-width: 120px; }
+        .ledger-plus { background: var(--secondary-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 0 18px; height: 40px; cursor: pointer; font-weight: 700; font-size: 1.1rem; }
+        .ledger-box { margin-top: 10px; padding: 10px 12px; background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 10px; }
+        .ledger-title { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; }
+        .ledger-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 0; border-top: 1px solid var(--border-color); font-size: 0.82rem; }
+        .ledger-row input[type="date"] { width: auto; min-width: 130px; padding: 6px 8px; }
+        .ledger-note { flex: 1 1 100px; min-width: 0; color: var(--text-muted); overflow-wrap: anywhere; }
+        .ledger-del { background: rgba(225,29,72,0.15); color: #e11d48; border: 1px solid rgba(225,29,72,0.4); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+        .ledger-undated { margin-top: 8px; padding: 10px 12px; border: 1px dashed var(--warning); border-radius: 10px; background: rgba(217,119,6,0.08); font-size: 0.82rem; }
+        .ledger-hint { color: var(--text-muted); font-size: 0.75rem; margin: 4px 0 8px; }
+        .ledger-warn { margin-top: 8px; padding: 8px 12px; border: 1px solid var(--danger); border-radius: 10px; background: rgba(225,29,72,0.1); color: #fca5a5; font-size: 0.8rem; }
+        /* ---- Technicians Guide: one technician with all his data ---- */
+        #techGuideContent .tg-detail { margin-top: 16px; padding: 12px 14px; background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 12px; }
+        #techGuideContent .tg-detail h4 { color: #38bdf8; font-size: 0.9rem; margin-bottom: 6px; }
+        #techGuideContent .tg-detail-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 0; border-top: 1px solid var(--border-color); font-size: 0.82rem; }
+        #techGuideContent .tg-d-date { color: var(--text-muted); white-space: nowrap; min-width: 88px; }
+        #techGuideContent .tg-d-main { flex: 1 1 140px; min-width: 0; overflow-wrap: anywhere; }
+        #techGuideContent .tg-empty { color: var(--text-muted); font-size: 0.8rem; padding: 4px 0; }
+
         /* ---- Technicians Guide: fits the screen with no side-scrolling, in both languages ---- */
         .tg-modal-box { background: var(--card-dark); border: 1px solid var(--border-color); border-radius: 14px; width: 96%; max-width: 1100px; max-height: 88vh; overflow-y: auto; overflow-x: hidden; padding: 22px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
         #techGuideContent table { white-space: normal; }
@@ -512,18 +545,32 @@
 
                 <div class="grid-3">
                     <div class="form-group"><label data-i18n="lblTotalRevenue"></label><input type="text" id="totalRevenue" value="0" onfocus="this.select()" oninput="calculateRemaining(); calculate();"></div>
-                    <div class="form-group"><label data-i18n="lblAmountReceived"></label><input type="text" id="amountReceived" value="0" onfocus="this.select()" oninput="calculateRemaining(); calculate();"></div>
+                    <div class="form-group"><label data-i18n="lblAmountReceived"></label><input type="text" id="amountReceived" value="0" onfocus="this.select()" oninput="calculateRemaining(); calculate(); renderLedger('receipt');"></div>
                     <div class="form-group"><label data-i18n="lblAmountRemaining"></label><input type="text" id="amountRemaining" value="0" readonly style="background: #1e293b; color: #f87171; font-weight: 700;"></div>
+                </div>
+                <div class="form-group" id="receiptAddBox">
+                    <label data-i18n="lblAddReceived"></label>
+                    <div class="ledger-add-row">
+                        <div class="lg-field lg-amt"><span data-i18n="lblAmountShort"></span><input type="text" id="receiptAddAmount" inputmode="decimal" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); addReceipt();}"></div>
+                        <div class="lg-field lg-date"><span data-i18n="lblReceiptDate"></span><input type="date" id="receiptAddDate"></div>
+                        <div class="lg-field lg-note"><span data-i18n="lblNoteShort"></span><input type="text" id="receiptAddNote" data-i18n-ph="withdrawalNotePh" onkeydown="if(event.key==='Enter'){event.preventDefault(); addReceipt();}"></div>
+                        <button type="button" class="ledger-plus" onclick="addReceipt()">+</button>
+                    </div>
+                    <div id="receiptsLedger"></div>
                 </div>
                 <div class="form-group"><label data-i18n="lblFollowUpDate"></label><input type="date" id="followUpDate"></div>
 
                 <div class="form-group">
                     <label data-i18n="lblMaterialCost"></label>
-                    <div style="display:flex; gap:6px;">
-                        <input type="text" id="materialCost" value="0" onfocus="this.select()" oninput="calculate()" style="flex:1;">
-                        <input type="text" id="materialCostAdd" data-i18n-ph="materialAddPh" onfocus="this.select()" style="width:90px;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addToMaterialCost();}">
-                        <button type="button" onclick="addToMaterialCost()" style="background:var(--secondary-bg); border:1px solid var(--border-color); color:var(--text-main); border-radius:8px; padding:0 16px; cursor:pointer; font-weight:700; font-size:1.1rem;">+</button>
+                    <input type="text" id="materialCost" value="0" onfocus="this.select()" oninput="calculate(); renderLedger('material');">
+                    <div style="margin-top:8px; font-size:0.78rem; font-weight:600; color:var(--text-muted);" data-i18n="lblAddMaterial"></div>
+                    <div class="ledger-add-row">
+                        <div class="lg-field lg-amt"><span data-i18n="lblAmountShort"></span><input type="text" id="materialCostAdd" inputmode="decimal" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); addToMaterialCost();}"></div>
+                        <div class="lg-field lg-date"><span data-i18n="lblInvoiceDate"></span><input type="date" id="materialInvoiceDate"></div>
+                        <div class="lg-field lg-note"><span data-i18n="lblNoteShort"></span><input type="text" id="materialNote" data-i18n-ph="withdrawalNotePh" onkeydown="if(event.key==='Enter'){event.preventDefault(); addToMaterialCost();}"></div>
+                        <button type="button" class="ledger-plus" onclick="addToMaterialCost()">+</button>
                     </div>
+                    <div id="materialsLedger"></div>
                 </div>
 
                 <div class="card" id="jobScheduleSummaryCard" style="background: var(--panel-bg); padding: 16px; margin-top: 15px; border: 1px solid var(--border-color); display:none;">
@@ -601,6 +648,10 @@
             <button class="secondary" onclick="setGuideDateRange('today')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetTodayBtn"></button>
             <button class="secondary" onclick="setGuideDateRange('week')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetWeekBtn"></button>
             <button class="secondary" onclick="setGuideDateRange('clear')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
+            <div style="display:flex; align-items:center; gap:6px;">
+                <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="lblTechShort"></label>
+                <select id="guideTechFilter" onchange="renderTechGuideContent()" style="width:auto; min-width:150px; padding:8px 10px;"></select>
+            </div>
         </div>
         <div id="techGuideContent" style="font-size:0.9rem; line-height:1.7; color:var(--text-main);"></div>
     </div>
@@ -1078,6 +1129,7 @@
         lblRateOrLimit: { ar: 'الحد/القيمة', en: 'Limit / Value' },
         lblRatePrice: { ar: 'المعدل / السعر', en: 'Rate / Price' },
         lblDaysHours: { ar: 'الأيام / الساعات', en: 'Days / Hours' },
+        lblDue: { ar: 'المستحق ($)', en: 'Due ($)' },
         lblPaid: { ar: 'المدفوع له ($)', en: 'Paid ($)' },
         lblDueRemaining: { ar: 'المستحق / الباقي', en: 'Due / Remaining' },
         duePrefix: { ar: 'المستحق:', en: 'Due:' },
@@ -1151,7 +1203,34 @@
         guideThRemainingInPeriod: { ar: 'الباقي في الفترة دي', en: 'Remaining in Period' },
         techPaymentTitle: { ar: '💵 تسجيل دفعة لفني', en: '💵 Record Technician Payment' },
         withdrawalAmountLabel: { ar: 'المبلغ ($):', en: 'Amount ($):' },
-        guidePaidNote: { ar: 'المدفوع هنا = الدفعات المسجلة بزرار 💵 بس (بتاريخها). خانة "المدفوع له" جوه الشغلانة مش بتتحسب في الدليل.', en: 'Paid here = payments logged with the 💵 button only (by their date). The "Paid" field inside a job is not counted in this guide.' },
+        guidePaidNote: { ar: 'المدفوع هنا = الدفعات المسجلة بزرار 💵 (بتاريخها). الدفعات مش بتتسجل جوه الشغلانة.', en: 'Paid here = payments logged with the 💵 button (by their date). Payments are not recorded inside a job.' },
+        lblAddReceived: { ar: 'سجّل دفعة جديدة من العميل (بتتجمع في المبلغ المستلم)', en: 'Record a new client payment (added to Amount Received)' },
+        lblAddMaterial: { ar: 'سجّل فاتورة خامات جديدة (بتتجمع في تكلفة الخامات)', en: 'Record a new material invoice (added to Material Cost)' },
+        lblAmountShort: { ar: 'المبلغ ($)', en: 'Amount ($)' },
+        lblReceiptDate: { ar: 'تاريخ الدفعة', en: 'Payment date' },
+        lblInvoiceDate: { ar: 'تاريخ الفاتورة', en: 'Invoice date' },
+        lblNoteShort: { ar: 'ملاحظة', en: 'Note' },
+        receiptsLedgerTitle: { ar: '🧾 دفعات العميل بتواريخها', en: '🧾 Client payments by date' },
+        materialsLedgerTitle: { ar: '🧾 فواتير الخامات بتواريخها', en: '🧾 Material invoices by date' },
+        undatedLabel: { ar: 'مبلغ غير مؤرخ', en: 'Undated amount' },
+        undatedHintReceipt: { ar: 'مبلغ قديم اتسجل من غير تاريخ. محسوب في الإجماليات، بس مش هيدخل في أي أسبوع لحد ما تحدد له تاريخ (ممكن تقسمه على أكتر من دفعة).', en: 'An older amount recorded without a date. It counts in the totals, but will not fall in any week until you give it a date (you can split it into several payments).' },
+        undatedHintMaterial: { ar: 'مبلغ قديم اتسجل من غير تاريخ. محسوب في الإجماليات، بس مش هيدخل في أي أسبوع لحد ما تحدد له تاريخ الفاتورة (ممكن تقسمه على أكتر من فاتورة).', en: 'An older amount recorded without a date. It counts in the totals, but will not fall in any week until you give it an invoice date (you can split it into several invoices).' },
+        dateItBtn: { ar: 'حدد التاريخ', en: 'Set date' },
+        alertPickDate: { ar: 'اختار التاريخ الأول.', en: 'Pick a date first.' },
+        alertExceedsUndated: { ar: 'المبلغ أكبر من المبلغ غير المؤرخ المتاح.', en: 'The amount is more than the undated amount available.' },
+        datedExceedsTotal: { ar: 'الدفعات/الفواتير المؤرخة أكبر من الإجمالي المكتوب بفرق', en: 'Dated entries add up to more than the total, by' },
+        errDatedReceiptsExceed: { ar: 'الدفعات المؤرخة أكبر من المبلغ المستلم. صحّح المبلغ المستلم أو امسح دفعة.', en: 'Dated payments add up to more than the Amount Received. Fix the amount or delete a payment.' },
+        errDatedMaterialsExceed: { ar: 'الفواتير المؤرخة أكبر من تكلفة الخامات. صحّح التكلفة أو امسح فاتورة.', en: 'Dated invoices add up to more than the Material Cost. Fix the cost or delete an invoice.' },
+        confirmDeleteReceipt: { ar: 'تمسح الدفعة دي؟ مبلغها هيتخصم من المبلغ المستلم.', en: 'Delete this payment? Its amount will be taken out of Amount Received.' },
+        confirmDeleteMaterial: { ar: 'تمسح الفاتورة دي؟ مبلغها هيتخصم من تكلفة الخامات.', en: 'Delete this invoice? Its amount will be taken out of Material Cost.' },
+        activityReceiptsChanged: { ar: 'دفعات العميل المؤرخة اتغيّرت', en: 'Dated client payments changed' },
+        activityMaterialsChanged: { ar: 'فواتير الخامات المؤرخة اتغيّرت', en: 'Dated material invoices changed' },
+        lblTechShort: { ar: 'الفني:', en: 'Technician:' },
+        guideJobsTitle: { ar: 'شغلاناته في الفترة', en: 'Jobs in the period' },
+        guidePaymentsTitle: { ar: 'دفعاته في الفترة', en: 'Payments in the period' },
+        guideNoJobsInPeriod: { ar: 'مفيش شغلانات ليه في الفترة دي.', en: 'No jobs for this technician in this period.' },
+        guideNoPaymentsInPeriod: { ar: 'مفيش دفعات مسجلة في الفترة دي.', en: 'No payments recorded in this period.' },
+        confirmDeleteTechPayment: { ar: 'تمسح الدفعة دي من سجل الفني؟', en: "Delete this payment from the technician's record?" },
         guidePeriodNote: { ar: 'الأرقام دي محسوبة بس على الشغلانات في الفترة المحددة فوق.', en: 'These figures only cover jobs within the selected date range above.' },
         presetTodayBtn: { ar: 'اليوم', en: 'Today' },
         presetWeekBtn: { ar: 'الأسبوع ده', en: 'This Week' },
@@ -1245,6 +1324,7 @@
 
         safeCall(renderTechnicians);
         safeCall(renderExpenseItems);
+        safeCall(renderLedgers);
         safeCall(renderJobsTable);
         safeCall(updateGlobalStats);
         safeCall(updateTechDropdownFilter);
@@ -1320,6 +1400,8 @@
         });
         if (JSON.stringify(oldJob.technicians || []) !== JSON.stringify(newJob.technicians || [])) changes.push(t('activityTechsChanged'));
         if (JSON.stringify(oldJob.expenseItems || []) !== JSON.stringify(newJob.expenseItems || [])) changes.push(t('activityExpensesChanged'));
+        if (JSON.stringify(oldJob.receipts || []) !== JSON.stringify(newJob.receipts || [])) changes.push(t('activityReceiptsChanged'));
+        if (JSON.stringify(oldJob.materialEntries || []) !== JSON.stringify(newJob.materialEntries || [])) changes.push(t('activityMaterialsChanged'));
         return changes.length > 0 ? changes.join('\n') : t('activityNoFieldChanges');
     }
 
@@ -1387,8 +1469,9 @@
     const EXPENSE_CAT_KEYS = { 'بنزين / مواصلات': 'expFuel', 'أكل ومشروبات': 'expFood', 'إيجار موقع/مكتب الشركة': 'expRent', 'صيانة عربية': 'expVehicle', 'أدوات ومعدات': 'expTools', 'تراخيص ورسوم': 'expPermits', 'تأمين': 'expInsurance', 'دعاية وإعلان': 'expAds', 'أخرى': 'expOther' };
     function expenseCatLabel(cat) { return t(EXPENSE_CAT_KEYS[cat] || 'expOther'); }
 
-    document.getElementById('startDate').valueAsDate = new Date();
-    document.getElementById('endDate').valueAsDate = new Date();
+    document.getElementById('startDate').value = isoDate(new Date());
+    document.getElementById('endDate').value = isoDate(new Date());
+    safeCall(initLedgerDates);
 
     let currentScreen = 'log';
     function switchScreen(name) {
@@ -1471,6 +1554,13 @@
     // Must be declared BEFORE the first applyLanguage() call below, which reads it (otherwise: a
     // "before initialization" error in the console on every page load).
     let debtBannerDismissed = false;
+    let currentReceipts = [];
+    let currentMaterialEntries = [];
+    const LEDGERS = {
+        receipt:  { totalId: 'amountReceived', boxId: 'receiptsLedger',  amtId: 'receiptAddAmount', dateId: 'receiptAddDate',    noteId: 'receiptAddNote', titleKey: 'receiptsLedgerTitle',  hintKey: 'undatedHintReceipt',  delKey: 'confirmDeleteReceipt',  dateLbl: 'lblReceiptDate', color: '#34d399' },
+        material: { totalId: 'materialCost',   boxId: 'materialsLedger', amtId: 'materialCostAdd',  dateId: 'materialInvoiceDate', noteId: 'materialNote',   titleKey: 'materialsLedgerTitle', hintKey: 'undatedHintMaterial', delKey: 'confirmDeleteMaterial', dateLbl: 'lblInvoiceDate', color: '#f87171' }
+    };
+
 
     // Translate the login screen (and everything else) right away, before any login happens.
     safeCall(applyLanguage);
@@ -1777,7 +1867,6 @@
         technicians.forEach((tech, index) => {
             if (!tech.type) { tech.type = 'نسبة مخصصة'; if (tech.customPercent === undefined) tech.customPercent = 50; }
             const dues = calculateTechDues(tech);
-            const remaining = dues - parseVal(tech.paid);
             const isCustom = tech.type === 'نسبة مخصصة';
 
             const card = document.createElement('div');
@@ -1792,7 +1881,7 @@
                 .map(v => `<option value="${v}" ${tech.type === v ? 'selected' : ''}>${techTypeLabel(v)}</option>`).join('');
 
             card.innerHTML = `
-                <div style="display: grid; grid-template-columns: 2.2fr ${isCustom ? '1.1fr 1.1fr' : '1.6fr'} 1fr 40px; gap: 10px; align-items: center; margin-bottom: 12px;">
+                <div class="tg-row1" style="display: grid; grid-template-columns: 2.2fr ${isCustom ? '1.1fr 1.1fr' : '1.6fr'} 1fr 40px; gap: 10px; align-items: center; margin-bottom: 12px;">
                     <div>
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblTechName')}</label>
                         <select onchange="updateTechData(${index}, 'name', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; min-width: 140px;">${techOptionsHtml}</select>
@@ -1812,18 +1901,17 @@
                         </button>
                     </div>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 10px; align-items: center;">
+                <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 10px; align-items: center;">
                     <div><label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblDaysHours')}</label>
                         <div style="display:flex; gap:4px;">
                             <input type="text" placeholder="1" value="${tech.days !== undefined ? tech.days : 1}" onfocus="this.select()" oninput="updateTechData(${index}, 'days', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; text-align: center;">
                             ${tech.type === 'باليومية' ? `<button type="button" onclick="calculateDaysFromSchedule(${index})" title="${t('calcDaysFromScheduleBtn')}" style="background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius:8px; padding:0 10px; cursor:pointer; font-size:0.9rem;">📅</button>` : ''}
                         </div>
                     </div>
-                    <div><label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblPaid')}</label><input type="text" placeholder="0" value="${tech.paid !== undefined ? tech.paid : ''}" onfocus="this.select()" oninput="updateTechData(${index}, 'paid', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; text-align: center;"></div>
                     <div>
-                        <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblDueRemaining')}</label>
+                        <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblDue')}</label>
                         <div class="tech-dues-display" style="background: #11141d; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; text-align: center; font-size: 0.85rem; color: #38bdf8; font-weight: 700;">
-                            ${t('duePrefix')} <span style="color:#fbbf24;">$${dues.toFixed(2)}</span> | ${t('remainingPrefix')} <span style="color:${remaining > 0 ? '#f87171' : '#34d399'};">$${remaining.toFixed(2)}</span>
+                            <span style="color:#fbbf24;">$${dues.toFixed(2)}</span>
                         </div>
                     </div>
                 </div>
@@ -1961,12 +2049,11 @@
         const tech = technicians[index];
         if (!tech) return;
         const dues = calculateTechDues(tech);
-        const remaining = dues - parseVal(tech.paid);
         const card = document.getElementById(`techcard-${index}`);
         if (!card) return;
         const display = card.querySelector('.tech-dues-display');
         if (display) {
-            display.innerHTML = `${t('duePrefix')} <span style="color:#fbbf24;">$${dues.toFixed(2)}</span> | ${t('remainingPrefix')} <span style="color:${remaining > 0 ? '#f87171' : '#34d399'};">$${remaining.toFixed(2)}</span>`;
+            display.innerHTML = `<span style="color:#fbbf24;">$${dues.toFixed(2)}</span>`;
         }
     }
 
@@ -2238,15 +2325,112 @@
         }
     }
 
-    function addToMaterialCost() {
-        const addInput = document.getElementById('materialCostAdd');
-        const addVal = parseVal(addInput.value);
-        if (addVal <= 0) return;
-        const current = parseVal(document.getElementById('materialCost').value);
-        document.getElementById('materialCost').value = (current + addVal).toFixed(2);
-        addInput.value = '';
-        calculate();
+    // ---------- Dated ledgers: client payments + material invoices (per job) ----------
+    // The job keeps its familiar TOTALS (amountReceived / materialCost) so every existing screen and
+    // formula is untouched. On top of that each job now keeps dated entries. Whatever part of a total
+    // has no entry yet is "undated" (all old data starts that way): it still counts in the totals,
+    // but it can't be placed in any week until you give it a date.
+    function ledgerArr(kind) { return kind === 'receipt' ? currentReceipts : currentMaterialEntries; }
+    function round2(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
+    function ledgerSum(arr) { return round2((arr || []).reduce((s, e) => s + parseVal(e.amount), 0)); }
+    // total - dated entries. Positive = still undated. Negative = the entries add up to more than the total (a mistake to fix).
+    function undatedAmount(total, arr) { return round2(parseVal(total) - ledgerSum(arr)); }
+    function newLedgerId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+    function escHtml(s) { return String(s === undefined || s === null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
+    // Local calendar date (never valueAsDate: it works in UTC and shows tomorrow's date on Florida evenings).
+    function initLedgerDates() {
+        ['receiptAddDate', 'materialInvoiceDate'].forEach(id => { const el = document.getElementById(id); if (el) el.value = isoDate(new Date()); });
     }
+
+    function renderLedgers() { safeCall(() => renderLedger('receipt')); safeCall(() => renderLedger('material')); }
+
+    function renderLedger(kind) {
+        const cfg = LEDGERS[kind];
+        const box = document.getElementById(cfg.boxId);
+        if (!box) return;
+        const entries = ledgerArr(kind).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+        const undated = undatedAmount(document.getElementById(cfg.totalId).value, entries);
+        if (entries.length === 0 && Math.abs(undated) < 0.005) { box.innerHTML = ''; return; }
+
+        let html = '<div class="ledger-box">';
+        if (entries.length > 0) {
+            html += `<div class="ledger-title">${t(cfg.titleKey)}</div>`;
+            entries.forEach(e => {
+                html += `<div class="ledger-row">
+                    <input type="date" value="${escHtml(e.date)}" onchange="setLedgerEntryDate('${kind}', '${e.id}', this.value)">
+                    <strong style="color:${cfg.color};">$${parseVal(e.amount).toFixed(2)}</strong>
+                    <span class="ledger-note">${escHtml(e.note)}</span>
+                    <button type="button" class="ledger-del" onclick="removeLedgerEntry('${kind}', '${e.id}')">🗑</button>
+                </div>`;
+            });
+        }
+        if (undated > 0.005) {
+            html += `<div class="ledger-undated">
+                <div>⚠️ ${t('undatedLabel')}: <strong dir="ltr" style="unicode-bidi:isolate; display:inline-block;">$${undated.toFixed(2)}</strong></div>
+                <div class="ledger-hint">${t(cfg.hintKey)}</div>
+                <div class="ledger-add-row">
+                    <div class="lg-field lg-amt"><span>${t('lblAmountShort')}</span><input type="text" id="undated_${kind}_amt" inputmode="decimal" value="${undated.toFixed(2)}" onfocus="this.select()"></div>
+                    <div class="lg-field lg-date"><span>${t(cfg.dateLbl)}</span><input type="date" id="undated_${kind}_date"></div>
+                    <button type="button" class="secondary" style="height:40px;" onclick="dateUndated('${kind}')">${t('dateItBtn')}</button>
+                </div>
+            </div>`;
+        } else if (undated < -0.005) {
+            html += `<div class="ledger-warn">⛔ ${t('datedExceedsTotal')} <span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">$${Math.abs(undated).toFixed(2)}</span></div>`;
+        }
+        html += '</div>';
+        box.innerHTML = html;
+    }
+
+    // Records a NEW amount: adds it to the job's total AND keeps it as a dated entry.
+    function addLedgerEntry(kind) {
+        const cfg = LEDGERS[kind];
+        const amtEl = document.getElementById(cfg.amtId), dateEl = document.getElementById(cfg.dateId), noteEl = document.getElementById(cfg.noteId);
+        const amt = round2(parseVal(amtEl.value));
+        if (amt <= 0) { alert(t('alertWithdrawalAmountRequired')); return; }
+        if (!dateEl.value) { alert(t('alertPickDate')); return; }
+        ledgerArr(kind).push({ id: newLedgerId(), date: dateEl.value, amount: amt, note: noteEl.value.trim() });
+        const totalEl = document.getElementById(cfg.totalId);
+        totalEl.value = round2(parseVal(totalEl.value) + amt).toFixed(2);
+        amtEl.value = ''; noteEl.value = '';
+        calculateRemaining(); calculate(); renderLedgers();
+    }
+    function addReceipt() { addLedgerEntry('receipt'); }
+    function addToMaterialCost() { addLedgerEntry('material'); }
+
+    // Deleting an entry also takes its amount out of the total (it was a mistaken entry).
+    function removeLedgerEntry(kind, id) {
+        const cfg = LEDGERS[kind];
+        const arr = ledgerArr(kind);
+        const idx = arr.findIndex(e => e.id === id);
+        if (idx === -1) return;
+        if (!confirm(t(cfg.delKey))) return;
+        const totalEl = document.getElementById(cfg.totalId);
+        totalEl.value = Math.max(0, round2(parseVal(totalEl.value) - parseVal(arr[idx].amount))).toFixed(2);
+        arr.splice(idx, 1);
+        calculateRemaining(); calculate(); renderLedgers();
+    }
+
+    function setLedgerEntryDate(kind, id, value) {
+        const e = ledgerArr(kind).find(x => x.id === id);
+        if (!e) return;
+        e.date = value;
+        renderLedger(kind);
+    }
+
+    // Gives a date to (part of) the OLD undated amount. The job's total does not change.
+    function dateUndated(kind) {
+        const cfg = LEDGERS[kind];
+        const amt = round2(parseVal(document.getElementById(`undated_${kind}_amt`).value));
+        const date = document.getElementById(`undated_${kind}_date`).value;
+        const undated = undatedAmount(document.getElementById(cfg.totalId).value, ledgerArr(kind));
+        if (amt <= 0) { alert(t('alertWithdrawalAmountRequired')); return; }
+        if (!date) { alert(t('alertPickDate')); return; }
+        if (amt > undated + 0.005) { alert(t('alertExceedsUndated') + ` ($${undated.toFixed(2)})`); return; }
+        ledgerArr(kind).push({ id: newLedgerId(), date, amount: amt, note: '' });
+        renderLedger(kind);
+    }
+
 
     function addExpenseItem(category = 'بنزين / مواصلات', note = '', amount = 0) {
         expenseItems.push({ category, note, amount });
@@ -2309,12 +2493,13 @@
         if (parseVal(jobData.totalRevenue) < 0) errors.push(t('errNegRevenue'));
         if (parseVal(jobData.amountReceived) < 0) errors.push(t('errNegReceived'));
         if (parseVal(jobData.materialCost) < 0) errors.push(t('errNegMaterial'));
+        if (undatedAmount(jobData.amountReceived, jobData.receipts) < -0.005) errors.push(t('errDatedReceiptsExceed'));
+        if (undatedAmount(jobData.materialCost, jobData.materialEntries) < -0.005) errors.push(t('errDatedMaterialsExceed'));
 
         techs.forEach((tech, i) => {
             const label = `${t('errRowLabel')} ${i + 1} (${tech.name || t('techSelectPlaceholder')})`;
             if (parseVal(tech.rate) < 0) errors.push(`${t('errNegRate')} — ${label}`);
             if (parseVal(tech.days) < 0) errors.push(`${t('errNegDays')} — ${label}`);
-            if (parseVal(tech.paid) < 0) errors.push(`${t('errNegPaid')} — ${label}`);
             if (tech.type === 'نسبة مخصصة') {
                 const p = parseVal(tech.customPercent);
                 if (p < 0 || p > 100) errors.push(`${t('errPercentRange')} — ${label}`);
@@ -2353,6 +2538,8 @@
             expenseItems: JSON.parse(JSON.stringify(expenseItems)),
             technicians: JSON.parse(JSON.stringify(technicians)),
             photos: JSON.parse(JSON.stringify(currentJobPhotos)),
+            receipts: JSON.parse(JSON.stringify(currentReceipts)),
+            materialEntries: JSON.parse(JSON.stringify(currentMaterialEntries)),
             createdBy: currentUserEmail,
             lastEditedBy: currentUserEmail
         };
@@ -2401,8 +2588,8 @@
         document.getElementById('jobStatus').value = 'شغال';
         document.getElementById('clientAddress').value = '';
         document.getElementById('clientDescription').value = '';
-        document.getElementById('startDate').valueAsDate = new Date();
-        document.getElementById('endDate').valueAsDate = new Date();
+        document.getElementById('startDate').value = isoDate(new Date());
+        document.getElementById('endDate').value = isoDate(new Date());
         document.getElementById('scheduledTime').value = '';
         document.getElementById('totalRevenue').value = 0;
         document.getElementById('amountReceived').value = 0;
@@ -2419,6 +2606,8 @@
         renderExpenseItems();
         currentJobPhotos = [];
         renderPhotoGallery(currentJobPhotos, 'jobPhotoGallery');
+        currentReceipts = []; currentMaterialEntries = [];
+        initLedgerDates(); renderLedgers();
         document.getElementById('jobScheduleSummaryCard').style.display = 'none';
         document.getElementById('formTitle').innerText = t('formTitleNew');
         document.getElementById('saveBtn').innerText = t('saveBtnNew');
@@ -2457,8 +2646,7 @@
         } else {
             job.technicians.forEach(tech => {
                 const dues = calculateJobTechDues(tech, job.amountReceived, job.materialCost);
-                const paid = parseVal(tech.paid);
-                lines.push(`  ${tech.name || '?'} — ${t('qdDues')} $${dues.toFixed(2)} | ${t('qdPaid')} $${paid.toFixed(2)} | ${t('qdOwed')} $${(dues - paid).toFixed(2)}`);
+                lines.push(`  ${tech.name || '?'} — ${t('qdDues')} $${dues.toFixed(2)}`);
             });
         }
         lines.push('');
@@ -2534,7 +2722,7 @@
             let techDetailsText = '';
             (job.technicians || []).forEach(tech => {
                 const dues = calculateJobTechDues(tech, job.amountReceived, job.materialCost);
-                techDetailsText += `• ${tech.name || 'Tech'} (${techTypeLabel(tech.type)}): ${t('techLineDue')} $${dues.toFixed(2)} | ${t('techLinePaid')} $${parseVal(tech.paid)}<br>`;
+                techDetailsText += `• ${tech.name || 'Tech'} (${techTypeLabel(tech.type)}): ${t('techLineDue')} $${dues.toFixed(2)}<br>`;
             });
 
             let expenseDetailsText = '';
@@ -2718,6 +2906,7 @@
         document.getElementById('amountReceived').value = 0;
         calculateRemaining();
         document.getElementById('materialCost').value = job.materialCost || 0;
+        renderLedgers(); // a duplicate starts with no dated entries: its copied material figure shows as undated
 
         technicians = JSON.parse(JSON.stringify(job.technicians || []));
         // Any prior "paid" amounts don't apply to the new job.
@@ -2757,6 +2946,9 @@
         document.getElementById('amountRemaining').value = job.amountRemaining || 0;
         document.getElementById('followUpDate').value = job.followUpDate || '';
         document.getElementById('materialCost').value = job.materialCost || 0;
+        currentReceipts = JSON.parse(JSON.stringify(job.receipts || []));
+        currentMaterialEntries = JSON.parse(JSON.stringify(job.materialEntries || []));
+        initLedgerDates(); renderLedgers();
 
         technicians = JSON.parse(JSON.stringify(job.technicians || []));
         renderTechnicians();
@@ -3109,7 +3301,7 @@
 
     function openCompanyAccountModal() {
         document.getElementById('companyAccountModal').style.display = 'flex';
-        document.getElementById('companyExpenseDate').valueAsDate = new Date();
+        document.getElementById('companyExpenseDate').value = isoDate(new Date());
         const catSelect = document.getElementById('companyExpenseCategory');
         catSelect.innerHTML = EXPENSE_CATEGORIES.map(cat => `<option value="${cat}">${expenseCatLabel(cat)}</option>`).join('');
         renderCompanyAccountContent();
@@ -3212,7 +3404,7 @@
 
     function openPartnerAccountModal() {
         document.getElementById('partnerAccountModal').style.display = 'flex';
-        document.getElementById('withdrawalDate').valueAsDate = new Date();
+        document.getElementById('withdrawalDate').value = isoDate(new Date());
         renderPartnerAccountContent();
     }
     function closePartnerAccountModal() { document.getElementById('partnerAccountModal').style.display = 'none'; }
@@ -3598,7 +3790,7 @@
         techPaymentName = name;
         document.getElementById('techPaymentNameLabel').textContent = name;
         document.getElementById('techPaymentAmount').value = '';
-        document.getElementById('techPaymentDate').valueAsDate = new Date();
+        document.getElementById('techPaymentDate').value = isoDate(new Date());
         document.getElementById('techPaymentNote').value = '';
         document.getElementById('techPaymentModal').style.display = 'flex';
     }
@@ -4292,6 +4484,41 @@
             (!dateFrom || (p.date && p.date >= dateFrom)) && (!dateTo || (p.date && p.date <= dateTo)));
     }
 
+    async function deleteTechPayment(at) {
+        const idx = techPayments.findIndex(p => p.at === at);
+        if (idx === -1) return;
+        if (!confirm(t('confirmDeleteTechPayment'))) return;
+        const removed = techPayments[idx];
+        techPayments.splice(idx, 1);
+        try {
+            await TECH_PAYMENTS_DOC.set({ entries: techPayments });
+            logActivity('delete', removed.name || '', `${t('guidePaymentsTitle')}: $${parseVal(removed.amount).toFixed(2)} (${removed.date || ''})`);
+        } catch (err) {
+            techPayments.splice(idx, 0, removed);
+            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+        }
+        renderTechGuideContent();
+    }
+
+    // Everything about ONE technician in the selected period: the jobs behind his dues, and his payments.
+    function renderTechDetailHtml(name, stats, dateFrom, dateTo) {
+        const s = stats[name];
+        const jobs = s ? s.jobs.slice().sort((a, b) => (a.job.startDate || '').localeCompare(b.job.startDate || '')) : [];
+        const pays = techPaymentsInPeriod(name, dateFrom, dateTo).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+        let h = '<div class="tg-detail">';
+        h += `<h4>${t('guideJobsTitle')} (${jobs.length})</h4>`;
+        if (jobs.length === 0) h += `<div class="tg-empty">${t('guideNoJobsInPeriod')}</div>`;
+        jobs.forEach(j => {
+            h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(j.job.startDate || '')}</span><span class="tg-d-main"><strong>${escHtml(j.job.clientName || '')}</strong> <small style="color:var(--text-muted);">${techTypeLabel(j.tech.type)}</small></span><strong style="color:#fbbf24;">$${j.dues.toFixed(2)}</strong></div>`;
+        });
+        h += `<h4 style="margin-top:14px;">${t('guidePaymentsTitle')} (${pays.length})</h4>`;
+        if (pays.length === 0) h += `<div class="tg-empty">${t('guideNoPaymentsInPeriod')}</div>`;
+        pays.forEach(p => {
+            h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(p.date || '')}</span><span class="tg-d-main">${escHtml(p.note || '')}</span><strong style="color:#34d399;">$${parseVal(p.amount).toFixed(2)}</strong><button class="danger" onclick="deleteTechPayment('${escJs(p.at || '')}')" style="padding:3px 9px; font-size:0.72rem;">${t('deleteBtn')}</button></div>`;
+        });
+        return h + '</div>';
+    }
+
     function renderTechGuideContent() {
         const container = document.getElementById('techGuideContent');
         const dateFrom = document.getElementById('guideDateFrom').value;
@@ -4302,10 +4529,20 @@
 
         const stats = computeTechPeriodStats(dateFrom, dateTo);
         const allNames = new Set([...Object.keys(stats), ...Object.keys(technicianPhones)]);
+        // Technician picker next to the dates: pick one to see only him, with all his data underneath.
+        const techSel = document.getElementById('guideTechFilter');
+        const previouslySelected = techSel ? techSel.value : '';
+        if (techSel) {
+            const sortedNames = [...allNames].sort((a, b) => a.localeCompare(b));
+            techSel.innerHTML = `<option value="">${t('allTechs')}</option>` + sortedNames.map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
+            techSel.value = sortedNames.includes(previouslySelected) ? previouslySelected : '';
+        }
+        const selectedTech = techSel ? techSel.value : '';
+        const shownNames = selectedTech ? [selectedTech] : [...allNames];
         if (allNames.size === 0) { container.innerHTML = periodLabel + `<p style="text-align:center; color:var(--text-muted); padding:20px;">${t('guideEmpty')}</p>`; return; }
 
         let html = periodLabel + `<table style="width:100%; border-collapse:collapse; margin-top:10px;"><thead><tr><th>${t('guideThName')}</th><th>${t('guideThPhone')}</th><th>${t('guideThDuesInPeriod')}</th><th>${t('guideThPaidInPeriod')}</th><th>${t('guideThRemainingInPeriod')}</th><th>${t('guideThActions')}</th></tr></thead><tbody>`;
-        allNames.forEach(name => {
+        shownNames.forEach(name => {
             const dues = stats[name] ? stats[name].dues : 0;
             const paidInPeriod = techPaymentsInPeriod(name, dateFrom, dateTo).reduce((sum, p) => sum + parseVal(p.amount), 0);
             const remainingInPeriod = dues - paidInPeriod;
@@ -4325,6 +4562,7 @@
                 </div></td></tr>`;
         });
         html += '</tbody></table>';
+        if (selectedTech) html += renderTechDetailHtml(selectedTech, stats, dateFrom, dateTo);
         container.innerHTML = html;
     }
 
