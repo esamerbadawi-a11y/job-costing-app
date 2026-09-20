@@ -694,6 +694,15 @@
     </div>
 </div>
 
+<div id="sendMethodModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center;" onclick="if(event.target===this) closeSendMethodModal();">
+    <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:85%; max-width:320px; padding:20px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+        <h3 style="color:#38bdf8; margin:0 0 14px; font-size:1rem; text-align:center;" data-i18n="sendMethodTitle"></h3>
+        <button class="secondary" id="sendMethodWhatsAppBtn" style="width:100%; padding:11px; margin-bottom:8px;">📱 WhatsApp</button>
+        <button class="secondary" id="sendMethodSmsBtn" style="width:100%; padding:11px; margin-bottom:8px;">💬 <span data-i18n="phoneChoiceMsgBtn"></span></button>
+        <button class="danger" style="width:100%; padding:8px; font-size:0.85rem;" onclick="closeSendMethodModal()" data-i18n="cancelBtn"></button>
+    </div>
+</div>
+
 <div id="techPaymentModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center;">
     <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:85%; max-width:360px; padding:20px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
         <h3 style="color:#38bdf8; margin:0 0 4px; font-size:1rem;" data-i18n="techPaymentTitle"></h3>
@@ -788,6 +797,12 @@
         activityLogBtn: { ar: '🕒 سجل النشاط', en: '🕒 Activity Log' },
         activityLogTitle: { ar: 'سجل النشاط — مين عمل إيه', en: 'Activity Log — Who Did What' },
         activityLogEmpty: { ar: 'لسه مفيش أي نشاط مسجل.', en: 'No activity recorded yet.' },
+        activityNewJobSummary: { ar: 'شغلانة جديدة بمبلغ', en: 'New job added, total' },
+        activityTechsChanged: { ar: 'بيانات الفنيين اتغيّرت', en: 'Technician details changed' },
+        activityExpensesChanged: { ar: 'بيانات المصروفات اتغيّرت', en: 'Expense details changed' },
+        activityNoFieldChanges: { ar: 'مفيش تغيير في البيانات الأساسية (يمكن تحديث جدولة بس).', en: 'No change in the main fields (maybe just a schedule update).' },
+        activityRemovedDay: { ar: 'اتشال يوم من الجدول:', en: 'Removed schedule day:' },
+        activityScheduleUpdated: { ar: 'اتحدّث الجدول:', en: 'Schedule updated:' },
         activityLogError: { ar: 'حصل خطأ في تحميل السجل.', en: 'Error loading the log.' },
         activityWhen: { ar: 'الوقت', en: 'When' },
         activityWho: { ar: 'مين', en: 'Who' },
@@ -914,6 +929,7 @@
         noNewContactsToImport: { ar: 'كل عملاء الشغلانات موجودين بالفعل في جهات الاتصال.', en: 'Every job client is already in your contacts.' },
         importedContactsCount: { ar: 'تم استيراد {n} عميل جديد.', en: '{n} new contact(s) imported.' },
         phoneChoiceTitle: { ar: 'إيه اللي عايز تعمله؟', en: 'What would you like to do?' },
+        sendMethodTitle: { ar: 'تبعتها إزاي؟', en: 'Send it how?' },
         phoneChoiceCallBtn: { ar: 'اتصال', en: 'Call' },
         phoneChoiceMsgBtn: { ar: 'رسالة', en: 'Message' },
         appointmentsTitle: { ar: '📆 مواعيد وطلبات العملاء', en: '📆 Customer Appointments & Requests' },
@@ -1228,14 +1244,35 @@
 
     // Appends one entry to a shared activity log so everyone can see who added,
     // edited, or deleted what, and when.
-    async function logActivity(action, clientName) {
+    async function logActivity(action, clientName, details) {
         try {
-            const entry = { action, clientName, by: currentUserEmail || '?', at: new Date().toISOString() };
+            const entry = { action, clientName, details: details || '', by: currentUserEmail || '?', at: new Date().toISOString() };
             const doc = await ACTIVITY_LOG.get();
             const entries = (doc.exists && doc.data().entries) ? doc.data().entries : [];
             entries.unshift(entry);
             await ACTIVITY_LOG.set({ entries: entries.slice(0, 200) }); // keep the log from growing forever
         } catch (e) { console.error('Activity log error:', e); }
+    }
+
+    // Compares the job before and after a save and produces a short, readable list of
+    // exactly what changed — this is what the Activity Log's "ℹ️" button shows.
+    function buildJobChangeSummary(oldJob, newJob) {
+        if (!oldJob) return t('activityNewJobSummary') + ` $${parseVal(newJob.totalRevenue).toFixed(2)}`;
+        const fields = [
+            ['clientName', t('lblClientName')], ['clientPhone', t('lblPhone')], ['clientAddress', t('lblAddress')],
+            ['clientDescription', t('lblDescription')], ['jobStatus', t('lblStatus')],
+            ['startDate', t('lblStartDate')], ['endDate', t('lblEndDate')], ['followUpDate', t('lblFollowUpDate')],
+            ['totalRevenue', t('lblTotalRevenue')], ['amountReceived', t('lblAmountReceived')], ['materialCost', t('lblMaterialCost')]
+        ];
+        let changes = [];
+        fields.forEach(([field, label]) => {
+            const oldVal = oldJob[field] ?? '';
+            const newVal = newJob[field] ?? '';
+            if (String(oldVal) !== String(newVal)) changes.push(`${label} "${oldVal || '—'}" → "${newVal || '—'}"`);
+        });
+        if (JSON.stringify(oldJob.technicians || []) !== JSON.stringify(newJob.technicians || [])) changes.push(t('activityTechsChanged'));
+        if (JSON.stringify(oldJob.expenseItems || []) !== JSON.stringify(newJob.expenseItems || [])) changes.push(t('activityExpensesChanged'));
+        return changes.length > 0 ? changes.join('\n') : t('activityNoFieldChanges');
     }
 
     function toggleLoginPasswordVisibility() {
@@ -1888,7 +1925,21 @@
     }
     function resetGeminiApiKey() {
         try { localStorage.removeItem('geminiApiKey'); } catch (e) {}
+        cachedGenAIClient = null; cachedGenAIClientKey = null;
         alert(t('alertAiKeyReset'));
+    }
+
+    // The SDK module and client are fetched/built once and reused — re-importing the
+    // whole package from the CDN on every single AI call was the main source of the
+    // slowdown the user noticed.
+    let cachedGenAIClient = null;
+    let cachedGenAIClientKey = null;
+    async function getGenAIClient(apiKey) {
+        if (cachedGenAIClient && cachedGenAIClientKey === apiKey) return cachedGenAIClient;
+        const { GoogleGenAI } = await import('https://esm.sh/@google/genai');
+        cachedGenAIClient = new GoogleGenAI({ apiKey });
+        cachedGenAIClientKey = apiKey;
+        return cachedGenAIClient;
     }
 
     // Google's newer "Authorization Key" format (starts with "AQ.") is sent as a Bearer
@@ -1903,6 +1954,12 @@
         const apiKey = getGeminiApiKey();
         if (!apiKey) return;
 
+        // Must open the tab synchronously, right here in the click handler — opening it
+        // later (after the AI call finishes) gets silently blocked as a "popup" by most
+        // mobile browsers, which is why nothing seemed to happen before.
+        const popup = window.open('', '_blank');
+        if (popup) popup.document.write(currentLang === 'ar' ? 'جاري تجهيز الرسالة...' : 'Preparing your message...');
+
         const rem = jobRemaining(job);
         let daysOverdue = null;
         if (job.followUpDate) {
@@ -1911,8 +1968,7 @@
         }
 
         try {
-            const { GoogleGenAI } = await import('https://esm.sh/@google/genai');
-            const ai = new GoogleGenAI({ apiKey });
+            const ai = await getGenAIClient(apiKey);
             const promptText = currentLang === 'ar'
                 ? `اكتب رسالة تذكير بدفعة متأخرة، مهذبة ومختصرة (2-4 جمل)، للعميل ${job.clientName}، بخصوص شغلانة "${job.clientDescription || 'صيانة'}"، المبلغ المتبقي $${rem.toFixed(2)}${daysOverdue ? `، ومتأخر عن الموعد بـ ${daysOverdue} يوم` : ''}. النبرة تتناسب مع ${daysOverdue && daysOverdue > 14 ? 'تأخير طويل نسبيًا لكن لسه محترمة' : 'تذكير ودّي بسيط'}. من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`
                 : `Write a polite, concise (2-4 sentence) payment reminder to client ${job.clientName}, regarding a "${job.clientDescription || 'service'}" job, outstanding balance $${rem.toFixed(2)}${daysOverdue ? `, ${daysOverdue} days past the follow-up date` : ''}. Tone should be ${daysOverdue && daysOverdue > 14 ? 'a bit firmer given the longer delay, but still respectful' : 'a gentle, friendly nudge'}. No preamble or headers, just the message.`;
@@ -1922,9 +1978,9 @@
             if (!resultText) throw new Error('empty response');
 
             const digits = (job.clientPhone || '').replace(/[^+\d]/g, '');
-            const waLink = digits ? `https://wa.me/${digits}?text=${encodeURIComponent(resultText.trim())}` : `https://wa.me/?text=${encodeURIComponent(resultText.trim())}`;
-            window.open(waLink, '_blank');
+            showSendMethodChoice(resultText.trim(), digits, popup);
         } catch (err) {
+            if (popup) popup.close();
             const msg = (err && err.message) ? err.message : String(err);
             if (/401|403|UNAUTHENTICATED|PERMISSION|API key/i.test(msg)) { try { localStorage.removeItem('geminiApiKey'); } catch (e) {} }
             alert(t('alertAiFailed') + ' (' + msg + ')');
@@ -1968,11 +2024,7 @@
         btn.disabled = true; btn.innerHTML = '⏳ ...';
 
         try {
-            // Google's own docs use this SDK (not a hand-built fetch) for the newer
-            // "Authorization Key" format — loaded on demand so the rest of the app
-            // doesn't depend on it.
-            const { GoogleGenAI } = await import('https://esm.sh/@google/genai');
-            const ai = new GoogleGenAI({ apiKey });
+            const ai = await getGenAIClient(apiKey);
 
             const customInstruction = document.getElementById('aiInstructionInput').value.trim();
             const defaultInstructionAr = 'حوّل الملاحظات دي بتاعة شغلانة صيانة/مقاولات لوصف نقاط واضح ومختصر ومرتب للشغل المطلوب';
@@ -2122,9 +2174,11 @@
             if (!confirm(t('confirmOverpayment'))) return;
         }
 
+        let oldJobSnapshot = null;
         if (editingId) {
             const index = savedJobs.findIndex(j => j.id === editingId);
             if (index !== -1) {
+                oldJobSnapshot = JSON.parse(JSON.stringify(savedJobs[index]));
                 jobData.createdBy = savedJobs[index].createdBy || currentUserEmail;
                 if (savedJobs[index].assignedTeam !== undefined) jobData.assignedTeam = savedJobs[index].assignedTeam;
                 if (savedJobs[index].dayOrder !== undefined) jobData.dayOrder = savedJobs[index].dayOrder;
@@ -2138,7 +2192,7 @@
 
         try {
             await saveSavedJobsData();
-            logActivity(editingId ? 'edit' : 'add', clientName);
+            logActivity(editingId ? 'edit' : 'add', clientName, buildJobChangeSummary(oldJobSnapshot, jobData));
         } catch (err) {
             alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
             return;
@@ -2800,12 +2854,14 @@
     function closeActivityLogModal() { document.getElementById('activityLogModal').style.display = 'none'; }
 
     const ACTIVITY_ACTION_KEYS = { add: 'activityAdded', edit: 'activityEdited', delete: 'activityDeleted' };
+    let currentActivityEntries = [];
     async function renderActivityLogContent() {
         const container = document.getElementById('activityLogContent');
         container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:15px;">${currentLang === 'ar' ? 'جاري التحميل...' : 'Loading...'}</p>`;
         try {
             const doc = await ACTIVITY_LOG.get();
             const entries = (doc.exists && doc.data().entries) ? doc.data().entries : [];
+            currentActivityEntries = entries;
             if (entries.length === 0) { container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:20px;">${t('activityLogEmpty')}</p>`; return; }
 
             let html = '<table style="width:100%; border-collapse:collapse;"><thead><tr>' +
@@ -2813,13 +2869,13 @@
                 `<th style="text-align:${currentLang === 'ar' ? 'right' : 'left'}; padding:6px; color:var(--text-muted); font-size:0.78rem;">${t('activityWho')}</th>` +
                 `<th style="text-align:${currentLang === 'ar' ? 'right' : 'left'}; padding:6px; color:var(--text-muted); font-size:0.78rem;">${t('activityWhat')}</th>` +
                 '</tr></thead><tbody>';
-            entries.forEach(e => {
+            entries.forEach((e, idx) => {
                 const when = new Date(e.at).toLocaleString(currentLang === 'ar' ? 'ar-EG' : 'en-US');
                 const actionColor = e.action === 'delete' ? '#f87171' : (e.action === 'add' ? '#34d399' : '#fbbf24');
                 html += `<tr style="border-top:1px solid var(--border-color);">
                     <td style="padding:8px 6px; font-size:0.78rem; color:var(--text-muted); white-space:nowrap;">${when}</td>
                     <td style="padding:8px 6px; font-size:0.8rem;">${displayNameFor(e.by) || '?'}</td>
-                    <td style="padding:8px 6px;"><span style="color:${actionColor}; font-weight:700;">${t(ACTIVITY_ACTION_KEYS[e.action] || e.action)}</span> — ${e.clientName || ''}</td>
+                    <td style="padding:8px 6px;"><span style="color:${actionColor}; font-weight:700;">${t(ACTIVITY_ACTION_KEYS[e.action] || e.action)}</span> — ${e.clientName || ''} ${e.details ? `<button onclick="showActivityDetails(${idx})" style="padding:2px 8px; font-size:0.68rem; background:#7c3aed; color:#fff; border:none; border-radius:6px; cursor:pointer;">ℹ️</button>` : ''}</td>
                 </tr>`;
             });
             html += '</tbody></table>';
@@ -2827,6 +2883,11 @@
         } catch (e) {
             container.innerHTML = `<p style="text-align:center; color:var(--danger); padding:20px;">${t('activityLogError')}</p>`;
         }
+    }
+    function showActivityDetails(idx) {
+        const e = currentActivityEntries[idx];
+        if (!e) return;
+        alert((e.clientName || '') + '\n─────────────────\n' + (e.details || t('activityNoFieldChanges')));
     }
 
     function openCompanyAccountModal() {
@@ -3311,6 +3372,26 @@
     }
     function closePhoneChoice() { document.getElementById('phoneChoiceModal').style.display = 'none'; }
 
+    // Lets the user pick WhatsApp or a plain text message for an AI-crafted message
+    // that's already been generated and is sitting in `message`. If a popup tab is
+    // already open (from the synchronous window.open() before the AI call), reuse it.
+    function showSendMethodChoice(message, digits, popup) {
+        document.getElementById('sendMethodWhatsAppBtn').onclick = () => {
+            const waLink = digits ? `https://wa.me/${digits}?text=${encodeURIComponent(message)}` : `https://wa.me/?text=${encodeURIComponent(message)}`;
+            if (popup && !popup.closed) popup.location.href = waLink; else window.open(waLink, '_blank');
+            closeSendMethodModal();
+        };
+        document.getElementById('sendMethodSmsBtn').onclick = () => {
+            const smsLink = digits ? `sms:${digits}&body=${encodeURIComponent(message)}` : `sms:&body=${encodeURIComponent(message)}`;
+            if (popup && !popup.closed) popup.location.href = smsLink; else window.location.href = smsLink;
+            closeSendMethodModal();
+        };
+        document.getElementById('sendMethodModal').style.display = 'flex';
+    }
+    function closeSendMethodModal() {
+        document.getElementById('sendMethodModal').style.display = 'none';
+    }
+
     let techPaymentName = '';
     function openTechPaymentPrompt(name) {
         techPaymentName = name;
@@ -3422,7 +3503,7 @@
         savedJobs[idx].lastEditedBy = currentUserEmail;
         try {
             await saveSavedJobsData();
-            logActivity('edit', savedJobs[idx].clientName);
+            logActivity('edit', savedJobs[idx].clientName, t('activityRemovedDay') + ' ' + date);
         } catch (e) { alert(t('alertJobSaveFailed')); return; }
         closeEditScheduleModal();
         renderWeeklyBoard();
@@ -3444,7 +3525,7 @@
         savedJobs[idx].lastEditedBy = currentUserEmail;
         try {
             await saveSavedJobsData();
-            logActivity('edit', savedJobs[idx].clientName);
+            logActivity('edit', savedJobs[idx].clientName, t('activityScheduleUpdated') + ` ${newDate} ${newTime} (${newTeam.join(', ')})`);
         } catch (e) { alert(t('alertJobSaveFailed')); return; }
         closeEditScheduleModal();
         renderWeeklyBoard();
@@ -3526,7 +3607,7 @@
             savedJobs[idx].lastEditedBy = currentUserEmail;
             try {
                 await saveSavedJobsData();
-                logActivity('edit', savedJobs[idx].clientName);
+                logActivity('edit', savedJobs[idx].clientName, t('activityScheduleUpdated') + ` ${quickScheduleDay} ${time} (${team.join(', ')})`);
             } catch (err) { alert(t('alertJobSaveFailed')); return; }
         }
 
