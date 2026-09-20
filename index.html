@@ -4050,8 +4050,9 @@
         const toEl = document.getElementById('filterDateTo');
         const today = new Date();
         if (preset === 'week') {
-            const day = today.getDay(); // 0=Sunday
-            const start = new Date(today); start.setDate(today.getDate() - day);
+            // A trailing 7-day range (rather than "since Sunday") avoids a real bug: on a
+            // Sunday itself, "since Sunday" collapsed to just that single day.
+            const start = new Date(today); start.setDate(today.getDate() - 6);
             fromEl.value = isoDate(start); toEl.value = isoDate(today);
         }
         filterJobs();
@@ -4065,8 +4066,10 @@
         if (preset === 'today') {
             fromEl.value = iso(today); toEl.value = iso(today);
         } else if (preset === 'week') {
-            const day = today.getDay(); // 0=Sunday
-            const start = new Date(today); start.setDate(today.getDate() - day);
+            // A trailing 7-day range avoids a real bug the old "since Sunday" logic had:
+            // on a Sunday itself, that range collapsed to just that single day, silently
+            // dropping the rest of the week's work.
+            const start = new Date(today); start.setDate(today.getDate() - 6);
             fromEl.value = iso(start); toEl.value = iso(today);
         } else {
             fromEl.value = ''; toEl.value = '';
