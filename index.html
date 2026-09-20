@@ -1954,19 +1954,39 @@
         const apiKey = getGeminiApiKey();
         if (!apiKey) return;
 
-        // Must open the tab synchronously, right here in the click handler — opening it
-        // later (after the AI call finishes) gets silently blocked as a "popup" by most
-        // mobile browsers, which is why nothing seemed to happen before.
-        const popup = window.open('', '_blank');
-        if (popup) popup.document.write(currentLang === 'ar' ? 'جاري تجهيز الرسالة...' : 'Preparing your message...');
-
         const rem = jobRemaining(job);
         let daysOverdue = null;
         if (job.followUpDate) {
             const diff = Math.floor((new Date() - new Date(job.followUpDate + 'T00:00:00')) / 86400000);
             if (diff > 0) daysOverdue = diff;
         }
+        const digits = (job.clientPhone || '').replace(/[^+\d]/g, '');
 
+        // Ask the send method FIRST, in this same tab, so nothing ever happens on a
+        // separate tab the user isn't looking at.
+        document.getElementById('sendMethodWhatsAppBtn').onclick = async () => {
+            closeSendMethodModal();
+            // Opening the tab must happen synchronously inside this click — doing it
+            // after the AI call finishes gets silently blocked as a "popup".
+            const popup = window.open('', '_blank');
+            if (popup) popup.document.write(currentLang === 'ar' ? 'جاري تجهيز الرسالة...' : 'Preparing your message...');
+            const resultText = await generateReminderMessage(job, rem, daysOverdue, apiKey);
+            if (!resultText) { if (popup) popup.close(); return; }
+            const waLink = digits ? `https://wa.me/${digits}?text=${encodeURIComponent(resultText)}` : `https://wa.me/?text=${encodeURIComponent(resultText)}`;
+            if (popup) popup.location.href = waLink; else window.open(waLink, '_blank');
+        };
+        document.getElementById('sendMethodSmsBtn').onclick = async () => {
+            closeSendMethodModal();
+            const resultText = await generateReminderMessage(job, rem, daysOverdue, apiKey);
+            if (!resultText) return;
+            const smsLink = digits ? `sms:${digits}&body=${encodeURIComponent(resultText)}` : `sms:&body=${encodeURIComponent(resultText)}`;
+            window.location.href = smsLink;
+        };
+        document.getElementById('sendMethodModal').style.display = 'flex';
+    }
+
+    // Runs the actual AI call; returns the message text, or null (after alerting) on failure.
+    async function generateReminderMessage(job, rem, daysOverdue, apiKey) {
         try {
             const ai = await getGenAIClient(apiKey);
             const promptText = currentLang === 'ar'
@@ -1976,14 +1996,12 @@
             const response = await ai.models.generateContent({ model: 'gemini-3.6-flash', contents: promptText });
             const resultText = response && response.text;
             if (!resultText) throw new Error('empty response');
-
-            const digits = (job.clientPhone || '').replace(/[^+\d]/g, '');
-            showSendMethodChoice(resultText.trim(), digits, popup);
+            return resultText.trim();
         } catch (err) {
-            if (popup) popup.close();
             const msg = (err && err.message) ? err.message : String(err);
             if (/401|403|UNAUTHENTICATED|PERMISSION|API key/i.test(msg)) { try { localStorage.removeItem('geminiApiKey'); } catch (e) {} }
             alert(t('alertAiFailed') + ' (' + msg + ')');
+            return null;
         }
     }
 
@@ -3372,22 +3390,6 @@
     }
     function closePhoneChoice() { document.getElementById('phoneChoiceModal').style.display = 'none'; }
 
-    // Lets the user pick WhatsApp or a plain text message for an AI-crafted message
-    // that's already been generated and is sitting in `message`. If a popup tab is
-    // already open (from the synchronous window.open() before the AI call), reuse it.
-    function showSendMethodChoice(message, digits, popup) {
-        document.getElementById('sendMethodWhatsAppBtn').onclick = () => {
-            const waLink = digits ? `https://wa.me/${digits}?text=${encodeURIComponent(message)}` : `https://wa.me/?text=${encodeURIComponent(message)}`;
-            if (popup && !popup.closed) popup.location.href = waLink; else window.open(waLink, '_blank');
-            closeSendMethodModal();
-        };
-        document.getElementById('sendMethodSmsBtn').onclick = () => {
-            const smsLink = digits ? `sms:${digits}&body=${encodeURIComponent(message)}` : `sms:&body=${encodeURIComponent(message)}`;
-            if (popup && !popup.closed) popup.location.href = smsLink; else window.location.href = smsLink;
-            closeSendMethodModal();
-        };
-        document.getElementById('sendMethodModal').style.display = 'flex';
-    }
     function closeSendMethodModal() {
         document.getElementById('sendMethodModal').style.display = 'none';
     }
