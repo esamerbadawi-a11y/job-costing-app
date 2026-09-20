@@ -142,6 +142,20 @@
         }
         /* Job form on a phone: the 3-column rows (dates / amounts) were wider than the screen, so the page could be dragged sideways. Let the columns shrink. */
         .grid-2 > *, .grid-3 > * { min-width: 0; }
+        /* ---- "Jobs Today?" sheet, postpone / hand-over ---- */
+        .ag-section-title { color: #38bdf8; font-weight: 700; font-size: 0.9rem; margin: 14px 0 6px; }
+        .ag-date { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 4px; }
+        .ag-item { background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+        .ag-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .ag-time { color: #fbbf24; font-weight: 700; white-space: nowrap; }
+        .ag-meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; overflow-wrap: anywhere; }
+        .ag-meta a { color: #38bdf8; text-decoration: none; }
+        .ag-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+        .ag-actions button { padding: 5px 10px; font-size: 0.75rem; }
+        .ag-badge { display: inline-block; background: rgba(217,119,6,0.18); color: #fbbf24; border: 1px solid rgba(217,119,6,0.4); border-radius: 8px; padding: 1px 7px; font-size: 0.7rem; font-weight: 700; }
+        .chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+        .chip-row button { padding: 6px 12px; font-size: 0.78rem; }
+        #toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 90px; max-width: 92%; background: #059669; color: #fff; padding: 10px 18px; border-radius: 12px; font-weight: 700; font-size: 0.85rem; box-shadow: 0 8px 20px rgba(0,0,0,0.4); z-index: 10002; display: none; text-align: center; }
         /* ---- Dated client payments / material invoices (job form) ---- */
         .ledger-add-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
         .lg-field { display: flex; flex-direction: column; gap: 3px; }
@@ -192,7 +206,7 @@
 </head>
 <body>
 
-<button class="no-print" id="checkTodayFab" onclick="renderTodayJobsBanner(true)" data-i18n="checkTodayBtn"
+<button class="no-print" id="checkTodayFab" onclick="openAgendaModal()" data-i18n="checkTodayBtn"
     style="display:none; position:fixed; inset-inline-end:16px; bottom:22px; z-index:500; background:linear-gradient(135deg, #d97706, #fbbf24); color:#1a1206; border:none; border-radius:50px; padding:14px 20px; font-weight:800; font-size:0.85rem; box-shadow:0 8px 20px rgba(217,119,6,0.45); cursor:pointer;"></button>
 
 <div id="loginScreen" style="display:none; min-height:100vh; align-items:center; justify-content:center;">
@@ -845,6 +859,41 @@
     </div>
 </div>
 
+<div id="agendaModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;" onclick="if(event.target===this) closeAgendaModal();">
+    <div class="tg-modal-box" style="max-width:640px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:10px; gap:10px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.15rem;">🔍 <span data-i18n="agendaTitle"></span></h2>
+            <button class="danger" onclick="closeAgendaModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+        <div id="agendaContent"></div>
+    </div>
+</div>
+
+<div id="postponeModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+    <div class="tg-modal-box" style="max-width:460px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:12px; gap:10px;">
+            <h2 id="postponeTitle" style="color:#38bdf8; margin:0; font-size:1.1rem;"></h2>
+            <button class="danger" onclick="closePostponeModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+        <div id="postponeInfo" style="font-weight:700; margin-bottom:12px; overflow-wrap:anywhere;"></div>
+        <div class="chip-row">
+            <button type="button" class="secondary" onclick="setPostponeQuick('tomorrow')" data-i18n="quickTomorrow"></button>
+            <button type="button" class="secondary" onclick="setPostponeQuick('plus2')" data-i18n="quickPlus2"></button>
+            <button type="button" class="secondary" onclick="setPostponeQuick('monday')" data-i18n="quickNextMonday"></button>
+        </div>
+        <div class="grid-2">
+            <div class="form-group"><label data-i18n="postponeNewDate"></label><input type="date" id="postponeDate"></div>
+            <div class="form-group"><label data-i18n="postponeNewTime"></label><input type="time" id="postponeTime"></div>
+        </div>
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin:4px 0 14px; color:var(--text-main); font-size:0.85rem;">
+            <input type="checkbox" id="postponeNotify"> <span data-i18n="notifyClientLabel"></span>
+        </label>
+        <button class="success" style="width:100%; padding:11px;" onclick="savePostpone()" data-i18n="qsSaveBtn"></button>
+    </div>
+</div>
+
+<div id="toast"></div>
+
 <div id="editScheduleModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
     <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:90%; max-width:500px; max-height:85vh; overflow-y:auto; padding:25px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px;">
@@ -1231,6 +1280,31 @@
         guideNoJobsInPeriod: { ar: 'مفيش شغلانات ليه في الفترة دي.', en: 'No jobs for this technician in this period.' },
         guideNoPaymentsInPeriod: { ar: 'مفيش دفعات مسجلة في الفترة دي.', en: 'No payments recorded in this period.' },
         confirmDeleteTechPayment: { ar: 'تمسح الدفعة دي من سجل الفني؟', en: "Delete this payment from the technician's record?" },
+        agendaTitle: { ar: 'شغل النهارده', en: "Today's Work" },
+        agendaScheduledToday: { ar: '📅 ميعاده النهارده', en: '📅 Scheduled today' },
+        agendaRunning: { ar: '🔧 شغّالة النهارده (من غير ميعاد محدد)', en: '🔧 In progress today (no visit set)' },
+        agendaTomorrow: { ar: '🌅 بكرة', en: '🌅 Tomorrow' },
+        agendaNoTime: { ar: 'من غير وقت', en: 'No time' },
+        agendaNoTeam: { ar: 'محدش متحدد', en: 'No one assigned' },
+        postponeBtn: { ar: '⏭ أجّل', en: '⏭ Postpone' },
+        setVisitBtn: { ar: '📅 حدد الميعاد', en: '📅 Set visit' },
+        partnerGoesBtn: { ar: '🤝 شريكي يروح', en: '🤝 Partner goes' },
+        postponedFromLabel: { ar: 'اتأجلت من', en: 'Postponed from' },
+        postponeTitle: { ar: '⏭ تأجيل الميعاد', en: '⏭ Postpone the visit' },
+        scheduleVisitTitle: { ar: '📅 تحديد ميعاد الزيارة', en: '📅 Set the visit' },
+        postponeNewDate: { ar: 'التاريخ الجديد', en: 'New date' },
+        postponeNewTime: { ar: 'الوقت (اختياري)', en: 'Time (optional)' },
+        quickTomorrow: { ar: 'بكرة', en: 'Tomorrow' },
+        quickPlus2: { ar: 'بعد يومين', en: 'In 2 days' },
+        quickNextMonday: { ar: 'الإثنين الجاي', en: 'Next Monday' },
+        notifyClientLabel: { ar: 'ابعت للعميل رسالة بالميعاد', en: 'Message the client about the time' },
+        alertNothingChanged: { ar: 'الميعاد الجديد هو نفس القديم بالظبط.', en: 'The new time is exactly the same as the current one.' },
+        confirmPartnerGoes: { ar: '{partner} هيروح بدلك؟ (هتتشال من الفريق في اليوم ده)', en: '{partner} will go instead of you? (You will be removed from the team for that day)' },
+        toastMoved: { ar: 'اتنقل الميعاد لـ {date}', en: 'Moved to {date}' },
+        toastHandedOver: { ar: 'تمام، {partner} هو اللي هيروح', en: 'Done, {partner} will go' },
+        activityPostponed: { ar: 'اتأجل ميعاد:', en: 'Visit postponed:' },
+        activityHandedOver: { ar: 'الزيارة اتحوّلت لـ', en: 'Visit handed over to' },
+        clientNoPhone: { ar: 'مفيش رقم تليفون للعميل ده.', en: 'This client has no phone number.' },
         guidePeriodNote: { ar: 'الأرقام دي محسوبة بس على الشغلانات في الفترة المحددة فوق.', en: 'These figures only cover jobs within the selected date range above.' },
         presetTodayBtn: { ar: 'اليوم', en: 'Today' },
         presetWeekBtn: { ar: 'الأسبوع ده', en: 'This Week' },
@@ -1325,6 +1399,7 @@
         safeCall(renderTechnicians);
         safeCall(renderExpenseItems);
         safeCall(renderLedgers);
+        if (document.getElementById('agendaModal').style.display === 'flex') safeCall(renderAgendaContent);
         safeCall(renderJobsTable);
         safeCall(updateGlobalStats);
         safeCall(updateTechDropdownFilter);
@@ -1591,6 +1666,210 @@
 
     // Shows every job scheduled for TODAY right at the top of the app, regardless of
     // which tab is open — so a job later in the day doesn't get lost in the shuffle.
+    // ---------- "Jobs Today?" sheet + postpone / partner-goes ----------
+    const PARTNER_NAMES = ['SAMER', 'MOHAMED'];
+    let postponeCtx = null;
+
+    function addDaysISO(dateStr, n) { const d = new Date(dateStr + 'T00:00:00'); d.setDate(d.getDate() + n); return isoDate(d); }
+    function nextMondayISO(dateStr) { const d = new Date(dateStr + 'T00:00:00'); d.setDate(d.getDate() + ((1 - d.getDay() + 7) % 7 || 7)); return isoDate(d); }
+    function jsArg(s) { return escHtml(escJs(s)); }  // safe inside onclick="fn('...')"
+
+    function showToast(msg) {
+        const el = document.getElementById('toast');
+        el.textContent = msg; el.style.display = 'block';
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(() => { el.style.display = 'none'; }, 3500);
+    }
+
+    // Visits scheduled on one day (Weekly Board entries), earliest first.
+    function getAgendaForDay(dateStr) {
+        const pairs = [];
+        savedJobs.filter(j => j.jobStatus !== 'خلص').forEach(job => getScheduleEntries(job).forEach(entry => { if (entry.date === dateStr) pairs.push({ job, entry }); }));
+        return pairs.sort((a, b) => (a.entry.time || '99:99').localeCompare(b.entry.time || '99:99'));
+    }
+    // Unfinished jobs whose Start/End dates cover the day but that have NO visit set on the Weekly Board at all.
+    function getRunningJobs(dateStr) {
+        return savedJobs.filter(job => job.jobStatus !== 'خلص' && !(job.dailySchedule && job.dailySchedule.length > 0)
+            && job.startDate && job.startDate <= dateStr && (job.endDate || job.startDate) >= dateStr
+            && !getScheduleEntries(job).some(e => e.date === dateStr));
+    }
+
+    function agendaActionsHtml(job, date) {
+        const hasEntry = !!date && getScheduleEntries(job).some(e => e.date === date);
+        const j = jsArg(job.id), d = jsArg(date || '');
+        return `<div class="ag-actions">
+            <button class="warning" onclick="openPostponeModal('${j}', '${d}')">${hasEntry ? t('postponeBtn') : t('setVisitBtn')}</button>
+            <button class="secondary" style="background:#0284c7;" onclick="partnerGoes('${j}', '${d}')">${t('partnerGoesBtn')}</button>
+            ${hasEntry ? `<button class="secondary" onclick="closeAgendaModal(); openEditScheduleModal('${j}', '${d}')">${t('editBtn')}</button>` : ''}
+        </div>`;
+    }
+
+    function agendaItemHtml(job, entry, dayLabelIfRunning) {
+        const team = (entry && entry.team && entry.team.length > 0) ? entry.team.join(', ') : '';
+        const phone = job.clientPhone ? `<a href="#" onclick="event.preventDefault(); showPhoneChoice('${jsArg(job.clientPhone)}');">📞 <span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${escHtml(job.clientPhone)}</span></a>` : '';
+        const addr = job.clientAddress ? `<a href="#" onclick="event.preventDefault(); showMapChoice('${jsArg(job.clientAddress)}');">📍 ${escHtml(job.clientAddress)}</a>` : '';
+        const postponed = (entry && entry.postponedFrom) ? `<span class="ag-badge">⏭ ${t('postponedFromLabel')} ${escHtml(entry.postponedFrom)}</span>` : '';
+        const when = entry ? `<span class="ag-time">${entry.time ? escHtml(entry.time) : t('agendaNoTime')}</span>` : `<span class="ag-time">${escHtml(job.startDate)} → ${escHtml(job.endDate || job.startDate)}</span>`;
+        return `<div class="ag-item">
+            <div class="ag-line">${when}<strong>${escHtml(job.clientName || '')}</strong>${postponed}</div>
+            ${(addr || phone) ? `<div class="ag-meta">${[addr, phone].filter(Boolean).join(' &nbsp; ')}</div>` : ''}
+            ${entry ? `<div class="ag-meta" style="color:#38bdf8;">${t('weeklyTechsLabel')} ${team ? escHtml(team) : t('agendaNoTeam')}</div>` : ''}
+            ${agendaActionsHtml(job, entry ? entry.date : '')}
+        </div>`;
+    }
+
+    function renderAgendaContent() {
+        const container = document.getElementById('agendaContent');
+        if (!container) return;
+        const today = isoDate(new Date()), tomorrow = addDaysISO(today, 1);
+        const todayItems = getAgendaForDay(today), running = getRunningJobs(today), tomorrowItems = getAgendaForDay(tomorrow);
+        const dayLabel = new Date(today + 'T00:00:00').toLocaleDateString(currentLang === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+        let html = `<div class="ag-date">${dayLabel}</div>`;
+        html += `<div class="ag-section-title">${t('agendaScheduledToday')} (${todayItems.length})</div>`;
+        html += todayItems.length ? todayItems.map(p => agendaItemHtml(p.job, p.entry)).join('') : `<div class="tg-empty">${t('noJobsScheduledToday')}</div>`;
+        if (running.length > 0) {
+            html += `<div class="ag-section-title">${t('agendaRunning')} (${running.length})</div>`;
+            html += running.map(job => agendaItemHtml(job, null)).join('');
+        }
+        if (tomorrowItems.length > 0) {
+            html += `<div class="ag-section-title">${t('agendaTomorrow')} (${tomorrowItems.length})</div>`;
+            html += tomorrowItems.map(p => agendaItemHtml(p.job, p.entry)).join('');
+        }
+        html += `<div style="margin-top:14px;"><button class="secondary" onclick="openWeeklyAllPending()">${t('showAllPendingBtn')}</button></div>`;
+        container.innerHTML = html;
+    }
+
+    function openAgendaModal() { document.getElementById('agendaModal').style.display = 'flex'; renderAgendaContent(); }
+    function closeAgendaModal() { document.getElementById('agendaModal').style.display = 'none'; }
+    function openWeeklyAllPending() {
+        closeAgendaModal();
+        showAllPendingMode = true;
+        document.getElementById('showAllPendingBtn').style.background = 'var(--primary)';
+        switchScreen('weekly');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function defaultTeamFor(job) { return (job.assignedTeam && job.assignedTeam.length > 0) ? job.assignedTeam.slice() : (job.technicians || []).map(tc => tc.name).filter(Boolean); }
+
+    // ----- Postpone / set the visit -----
+    function openPostponeModal(jobId, date) {
+        const job = savedJobs.find(j => j.id === jobId);
+        if (!job) return;
+        const entry = date ? getScheduleEntries(job).find(e => e.date === date) : null;
+        const scheduleMode = !entry;
+        postponeCtx = { jobId, date: date || '', scheduleMode };
+        const today = isoDate(new Date());
+        document.getElementById('postponeTitle').textContent = scheduleMode ? t('scheduleVisitTitle') : t('postponeTitle');
+        document.getElementById('postponeInfo').textContent = (job.clientName || '') + (entry ? ` — ${entry.date}${entry.time ? ' ' + entry.time : ''}` : '');
+        document.getElementById('postponeDate').value = scheduleMode ? today : addDaysISO(date, 1);
+        document.getElementById('postponeTime').value = entry ? (entry.time || '') : (job.scheduledTime || '');
+        document.getElementById('postponeNotify').checked = !scheduleMode && !!normalizePhone(job.clientPhone);
+        document.getElementById('postponeModal').style.display = 'flex';
+    }
+    function closePostponeModal() { document.getElementById('postponeModal').style.display = 'none'; postponeCtx = null; }
+    function setPostponeQuick(kind) {
+        const base = isoDate(new Date());
+        document.getElementById('postponeDate').value = kind === 'tomorrow' ? addDaysISO(base, 1) : kind === 'plus2' ? addDaysISO(base, 2) : nextMondayISO(base);
+    }
+
+    async function persistJobChange(idx, backup, activityText) {
+        try {
+            await saveSavedJobsData();
+            logActivity('edit', savedJobs[idx].clientName, activityText);
+            return true;
+        } catch (err) {
+            savedJobs[idx] = backup;
+            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            return false;
+        }
+    }
+
+    async function savePostpone() {
+        const ctx = postponeCtx;
+        if (!ctx) return;
+        const idx = savedJobs.findIndex(j => j.id === ctx.jobId);
+        if (idx === -1) return;
+        const job = savedJobs[idx];
+        const newDate = document.getElementById('postponeDate').value;
+        const newTime = document.getElementById('postponeTime').value;
+        const notify = document.getElementById('postponeNotify').checked;
+        if (!newDate) { alert(t('alertPickDate')); return; }
+
+        const entries = getScheduleEntries(job).map(e => ({ ...e }));
+        const oldIdx = ctx.date ? entries.findIndex(e => e.date === ctx.date) : -1;
+        const oldEntry = oldIdx !== -1 ? entries[oldIdx] : null;
+        if (oldEntry && oldEntry.date === newDate && (oldEntry.time || '') === newTime) { alert(t('alertNothingChanged')); return; }
+
+        const backup = JSON.parse(JSON.stringify(job));
+        if (oldEntry) entries.splice(oldIdx, 1);
+        const moved = { ...(oldEntry || { team: defaultTeamFor(job) }), date: newDate, time: newTime, dayOrder: 0 };
+        if (oldEntry) moved.postponedFrom = oldEntry.postponedFrom || oldEntry.date;
+        const sameDayIdx = entries.findIndex(e => e.date === newDate);
+        if (sameDayIdx !== -1) {   // that day already has a visit for this job: merge the teams into one
+            moved.team = [...new Set([...(entries[sameDayIdx].team || []), ...(moved.team || [])])];
+            entries.splice(sameDayIdx, 1);
+        }
+        entries.push(moved);
+        job.dailySchedule = entries;
+        if (job.endDate && newDate > job.endDate) job.endDate = newDate;   // the job now runs later than planned
+        job.lastEditedBy = currentUserEmail;
+
+        const text = (oldEntry ? `${t('activityPostponed')} ${oldEntry.date} → ` : `${t('activityScheduleUpdated')} `) + `${newDate} ${newTime}`;
+        if (!await persistJobChange(idx, backup, text)) return;
+        const wasSchedule = ctx.scheduleMode, oldDate = oldEntry ? oldEntry.date : '';
+        closePostponeModal();
+        refreshAllViews();
+        showToast(t('toastMoved').replace('{date}', newDate));
+        if (notify) offerClientMessage(job, oldDate, newDate, newTime, wasSchedule);
+    }
+
+    // ----- Partner goes instead of me -----
+    async function partnerGoes(jobId, date) {
+        const idx = savedJobs.findIndex(j => j.id === jobId);
+        if (idx === -1) return;
+        const job = savedJobs[idx];
+        const day = date || isoDate(new Date());
+        const me = displayNameFor(currentUserEmail);
+        if (!PARTNER_NAMES.includes(me)) { closeAgendaModal(); openEditScheduleModal(jobId, day); return; }   // unknown user: pick the team by hand
+        const partner = PARTNER_NAMES.find(n => n !== me);
+        if (!confirm(t('confirmPartnerGoes').replace('{partner}', partner))) return;
+
+        const backup = JSON.parse(JSON.stringify(job));
+        const entries = getScheduleEntries(job).map(e => ({ ...e }));
+        let entry = entries.find(e => e.date === day);
+        if (!entry) { entry = { date: day, time: job.scheduledTime || '', team: [], dayOrder: 0 }; entries.push(entry); }
+        let team = (entry.team || []).map(n => n === me ? partner : n);
+        team = team.filter((n, i) => team.indexOf(n) === i);
+        if (!team.includes(partner)) team.push(partner);
+        entry.team = team;
+        entry.handedOverFrom = me;
+        job.dailySchedule = entries;
+        job.lastEditedBy = currentUserEmail;
+
+        if (!await persistJobChange(idx, backup, `${t('activityHandedOver')} ${partner} (${day})`)) return;
+        refreshAllViews();
+        showToast(t('toastHandedOver').replace('{partner}', partner));
+    }
+
+    // ----- Message the client (English: the customers are English-speaking) -----
+    function fmtClientDate(ds) { return new Date(ds + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }); }
+    function fmtClientTime(tm) { if (!tm) return ''; const [h, m] = tm.split(':').map(Number); return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`; }
+    function buildClientVisitMessage(oldDate, newDate, newTime, scheduleMode) {
+        const at = newTime ? ` at ${fmtClientTime(newTime)}` : '';
+        if (scheduleMode || !oldDate) return `Hello, this is AHA Handyman. Our appointment is set for ${fmtClientDate(newDate)}${at}. Please let me know if that works for you.`;
+        return `Hello, this is AHA Handyman. I need to move our appointment from ${fmtClientDate(oldDate)} to ${fmtClientDate(newDate)}${at}. Sorry for the inconvenience - does that work for you?`;
+    }
+    function offerClientMessage(job, oldDate, newDate, newTime, scheduleMode) {
+        let digits = normalizePhone(job.clientPhone);
+        if (!digits) { alert(t('clientNoPhone')); return; }
+        if (digits.length === 10) digits = '1' + digits;   // US number typed without the country code
+        const msg = buildClientVisitMessage(oldDate, newDate, newTime, scheduleMode);
+        document.getElementById('sendMethodWhatsAppBtn').onclick = () => { closeSendMethodModal(); window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, '_blank'); };
+        document.getElementById('sendMethodSmsBtn').onclick = () => { closeSendMethodModal(); window.location.href = `sms:${digits}&body=${encodeURIComponent(msg)}`; };
+        document.getElementById('sendMethodModal').style.display = 'flex';
+    }
+
     function renderTodayJobsBanner(forceShow) {
         const banner = document.getElementById('todayJobsBanner');
         const todayStr = isoDate(new Date());
@@ -1623,6 +1902,7 @@
                     ${teamNames ? `<div style="font-size:0.78rem; color:#38bdf8;">${t('weeklyTechsLabel')} ${teamNames}</div>` : ''}
                 </div>
                 <button class="secondary" onclick="downloadJobICS('${job.id}', '${entry.date}')" style="padding:4px 10px; font-size:0.72rem; white-space:nowrap;">📆 ${t('addToCalendarBtn')}</button>
+                <div style="width:100%;">${agendaActionsHtml(job, entry.date)}</div>
             </div>`;
         });
         document.getElementById('todayJobsContent').innerHTML = html;
@@ -2786,6 +3066,7 @@
         safeCall(updateTechDropdownFilter);
         safeCall(updateSelectedStats);
         safeCall(renderTodayJobsBanner);
+        if (document.getElementById('agendaModal').style.display === 'flex') safeCall(renderAgendaContent);
         if (document.getElementById('screenWeekly').style.display !== 'none') safeCall(renderWeeklyBoard);
     }
 
@@ -4271,9 +4552,12 @@
                     <div>${timeLabel}<strong>${job.clientName || ''}</strong>${isOverdue ? ` <span style="color:#f87171; font-size:0.72rem; font-weight:700;">⚠️ ${t('overdueLabel')}</span>` : ''}</div>
                     <div style="font-size:0.78rem; color:var(--text-muted);">${job.clientAddress ? `<a href="#" onclick="event.preventDefault(); event.stopPropagation(); showMapChoice('${job.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${job.clientAddress}</a>` : ''}${showAllPendingMode ? ' — ' + (entry.date || t('noDateSet')) : ''}</div>
                     <div style="font-size:0.78rem; color:#38bdf8;">${t('weeklyTechsLabel')} ${teamNames}</div>
+                    ${entry.postponedFrom ? `<span class="ag-badge">⏭ ${t('postponedFromLabel')} ${entry.postponedFrom}</span>` : ''}
                 </div>
-                <div style="display:flex; flex-direction:column; gap:4px; align-self:center;">
+                <div style="display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px; align-self:center; max-width:170px;">
                     <button class="secondary" onclick="openEditScheduleModal('${job.id}', '${entry.date}')" style="padding:4px 10px; font-size:0.75rem;">${t('editBtn')}</button>
+                    <button class="warning" title="${t('postponeBtn')}" onclick="event.stopPropagation(); openPostponeModal('${job.id}', '${entry.date}')" style="padding:4px 10px; font-size:0.75rem;">⏭</button>
+                    <button class="secondary" title="${t('partnerGoesBtn')}" onclick="event.stopPropagation(); partnerGoes('${job.id}', '${entry.date}')" style="padding:4px 10px; font-size:0.75rem; background:#0284c7;">🤝</button>
                     <button class="secondary" onclick="event.stopPropagation(); downloadJobICS('${job.id}', '${entry.date}')" style="padding:4px 10px; font-size:0.7rem;">📆</button>
                 </div>
             </div>
