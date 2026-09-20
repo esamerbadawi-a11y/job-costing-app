@@ -52,6 +52,17 @@
         /* On narrow screens, the jobs table becomes a stack of cards — one per job —
            so every action button is reachable without side-scrolling. Each cell's
            data-label attribute (set when the row is rendered) supplies its caption. */
+        /* On wider screens the table stays a real table (no card transform), but the
+           Actions column can still be scrolled off to the side — pinning it to the
+           trailing edge keeps Edit/Delete/Info always reachable without scrolling. */
+        @media(min-width: 761px) {
+            #jobsTableCard th.no-print, #jobsTableCard td.no-print {
+                position: sticky; inset-inline-end: 0; background: var(--card-dark); z-index: 2;
+                box-shadow: -6px 0 8px -6px rgba(0,0,0,0.4);
+            }
+            #jobsTableCard thead th.no-print { z-index: 3; }
+        }
+
         @media(max-width: 760px) {
             #jobsTableCard table, #jobsTableCard thead, #jobsTableCard tbody, #jobsTableCard tr, #jobsTableCard td {
                 display: block; width: 100%;
@@ -340,8 +351,9 @@
         <h2 style="color: #38bdf8; font-size: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 12px;">
             📊 <span data-i18n="selectedTitle"></span> (<span id="selectedCount">0</span> <span data-i18n="selectedTitleSuffix"></span>)
         </h2>
-        <div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; text-align: center;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; text-align: center;">
             <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="statTotalJobs"></span><strong id="selTotalJobs" style="display:block; font-size:1.1rem; color:#f8fafc;">0.0</strong></div>
+            <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="statTotalReceived"></span><strong id="selTotalReceived" style="display:block; font-size:1.1rem; color:#34d399;">0.0</strong></div>
             <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="statTotalMat"></span><strong id="selTotalMat" style="display:block; font-size:1.1rem; color:#f87171;">0.0</strong></div>
             <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="statTotalTech"></span><strong id="selTotalTech" style="display:block; font-size:1.1rem; color:#fbbf24;">0.0</strong></div>
             <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="statTotalNet"></span><strong id="selTotalNet" style="display:block; font-size:1.1rem; color:#34d399;">0.0</strong></div>
@@ -349,6 +361,7 @@
             <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);">M (40%)</span><strong id="selShareM" style="display:block; font-size:1.1rem; color:#38bdf8;">0.0</strong></div>
             <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="statShareCompany"></span><strong id="selShareCompany" style="display:block; font-size:1.1rem; color:#fbbf24;">0.0</strong></div>
             <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="statExtraExp"></span><strong id="selExtraExp" style="display:block; font-size:1.1rem; color:#f87171;">0.0</strong></div>
+            <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="statActualRemaining"></span><strong id="selActualRemaining" style="display:block; font-size:1.1rem; color:#fbbf24;">0.0</strong></div>
         </div>
     </div>
 
@@ -2525,16 +2538,18 @@
         card.style.display = 'block';
         document.getElementById('selectedCount').innerText = selectedJobIds.size;
 
-        let selJobs = 0, selMat = 0, selTech = 0, selNet = 0, selS = 0, selM = 0, selComp = 0, selExtra = 0;
+        let selJobs = 0, selMat = 0, selTech = 0, selNet = 0, selS = 0, selM = 0, selComp = 0, selExtra = 0, selReceived = 0;
         savedJobs.forEach(job => {
             if (selectedJobIds.has(String(job.id))) {
                 const { totalTechDues, net, shareS, shareM, companyNet } = jobNet(job);
                 selJobs += parseVal(job.totalRevenue); selMat += parseVal(job.materialCost); selTech += totalTechDues;
                 selNet += net; selExtra += parseVal(job.extraExpenses);
                 selS += shareS; selM += shareM; selComp += companyNet;
+                selReceived += parseVal(job.amountReceived);
             }
         });
         document.getElementById('selTotalJobs').innerText = '$' + selJobs.toFixed(2);
+        document.getElementById('selTotalReceived').innerText = '$' + selReceived.toFixed(2);
         document.getElementById('selTotalMat').innerText = '$' + selMat.toFixed(2);
         document.getElementById('selTotalTech').innerText = '$' + selTech.toFixed(2);
         document.getElementById('selTotalNet').innerText = '$' + selNet.toFixed(2);
@@ -2542,6 +2557,7 @@
         document.getElementById('selShareM').innerText = '$' + selM.toFixed(2);
         document.getElementById('selShareCompany').innerText = '$' + selComp.toFixed(2);
         document.getElementById('selExtraExp').innerText = '$' + selExtra.toFixed(2);
+        document.getElementById('selActualRemaining').innerText = '$' + (selReceived - selMat - selTech - selExtra).toFixed(2);
     }
 
     function duplicateJob(id) {
