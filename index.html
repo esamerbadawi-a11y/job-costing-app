@@ -1151,7 +1151,7 @@
         guideThRemainingInPeriod: { ar: 'الباقي في الفترة دي', en: 'Remaining in Period' },
         techPaymentTitle: { ar: '💵 تسجيل دفعة لفني', en: '💵 Record Technician Payment' },
         withdrawalAmountLabel: { ar: 'المبلغ ($):', en: 'Amount ($):' },
-        guidePaidNote: { ar: 'المدفوع = الدفعات المسجلة بزرار 💵 + خانة "المدفوع له" جوه كل شغلانة. متسجلش نفس الدفعة في الاتنين عشان متتحسبش مرتين.', en: 'Paid = payments logged with the 💵 button + the "Paid" amount typed inside each job. Do not record the same payment in both places or it will count twice.' },
+        guidePaidNote: { ar: 'المدفوع هنا = الدفعات المسجلة بزرار 💵 بس (بتاريخها). خانة "المدفوع له" جوه الشغلانة مش بتتحسب في الدليل.', en: 'Paid here = payments logged with the 💵 button only (by their date). The "Paid" field inside a job is not counted in this guide.' },
         guidePeriodNote: { ar: 'الأرقام دي محسوبة بس على الشغلانات في الفترة المحددة فوق.', en: 'These figures only cover jobs within the selected date range above.' },
         presetTodayBtn: { ar: 'اليوم', en: 'Today' },
         presetWeekBtn: { ar: 'الأسبوع ده', en: 'This Week' },
@@ -2856,23 +2856,26 @@
         const techStats = computeTechPeriodStats(dateFrom, dateTo)[techName];
         if (techStats) {
             techStats.jobs.forEach(j => {
-                totalDues += j.dues; totalPaid += j.paid;
-                rows.push({ date: j.job.startDate || '', client: j.job.clientName || '', type: techTypeLabel(j.tech.type), dues: j.dues, paid: j.paid, remaining: j.dues - j.paid });
+                totalDues += j.dues;
+                rows.push({ date: j.job.startDate || '', client: j.job.clientName || '', type: techTypeLabel(j.tech.type), dues: j.dues, paid: null, remaining: null });
             });
         }
-        // Payments logged with the 💵 button show up as their own rows, so the totals match the Guide screen.
+        // Payments come only from the 💵 button (same as the Guide), listed as their own rows.
+        // Job rows show what was earned; payments are per technician, not per job, so the running
+        // balance is given in the totals below the table instead of on each row.
         techPaymentsInPeriod(techName, dateFrom, dateTo)
             .slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''))
             .forEach(p => {
                 const amt = parseVal(p.amount);
                 totalPaid += amt;
-                rows.push({ date: p.date || '', client: 'Payment' + (p.note ? ' - ' + p.note : ''), type: '-', dues: 0, paid: amt, remaining: -amt });
+                rows.push({ date: p.date || '', client: 'Payment' + (p.note ? ' - ' + p.note : ''), type: '-', dues: null, paid: amt, remaining: null });
             });
 
         if (rows.length === 0) { alert(currentLang === 'ar' ? 'الفني ده لسه مالوش شغلانات مسجلة في الفترة دي.' : 'This technician has no recorded jobs in this period.'); return; }
 
         const headers = [["Date", "Client", "Pay Type", "Dues", "Paid", "Remaining"]];
-        const data = rows.map(r => [r.date, r.client, r.type, "$" + r.dues.toFixed(2), "$" + r.paid.toFixed(2), "$" + r.remaining.toFixed(2)]);
+        const money = v => (v === null || v === undefined) ? '-' : '$' + v.toFixed(2);
+        const data = rows.map(r => [r.date, r.client, r.type, money(r.dues), money(r.paid), money(r.remaining)]);
         const TECH_REPORT_ARABIC_COLS = [1, 2]; // Client, Pay Type
 
         doc.autoTable({
@@ -4255,10 +4258,10 @@
         renderTechGuideContent();
     }
 
-    // ONE place that works out, per technician, what they earned and what they were paid on each job.
+    // ONE place that works out, per technician, what they EARNED on each job.
     // The Technicians Guide table AND the printed technician report both use it, so they can never disagree.
-    // With a date range set, a job's dues AND its job-level "Paid" are prorated by the share of the
-    // technician's scheduled days on that job that fall inside the range (same rule dues already used).
+    // With a date range set, a job's dues are prorated by the share of the technician's scheduled days
+    // on that job that fall inside the range. What they were PAID comes only from the dated 💵 payments.
     function computeTechPeriodStats(dateFrom, dateTo) {
         const hasDateFilter = !!(dateFrom || dateTo);
         const stats = {};
@@ -4267,7 +4270,6 @@
             (job.technicians || []).forEach(tech => {
                 if (!tech.name) return;
                 const fullDues = calculateJobTechDues(tech, job.amountReceived, job.materialCost);
-                const fullPaid = parseVal(tech.paid);
                 let fraction = 1;
                 if (hasDateFilter) {
                     const allDates = entries.filter(e => (e.team || []).includes(tech.name));
@@ -4276,10 +4278,9 @@
                     if (inPeriod.length === 0) return;
                     fraction = inPeriod.length / allDates.length;
                 }
-                if (!stats[tech.name]) stats[tech.name] = { dues: 0, jobPaid: 0, jobs: [] };
+                if (!stats[tech.name]) stats[tech.name] = { dues: 0, jobs: [] };
                 stats[tech.name].dues += fullDues * fraction;
-                stats[tech.name].jobPaid += fullPaid * fraction;
-                stats[tech.name].jobs.push({ job, tech, dues: fullDues * fraction, paid: fullPaid * fraction });
+                stats[tech.name].jobs.push({ job, tech, dues: fullDues * fraction });
             });
         });
         return stats;
@@ -4306,9 +4307,7 @@
         let html = periodLabel + `<table style="width:100%; border-collapse:collapse; margin-top:10px;"><thead><tr><th>${t('guideThName')}</th><th>${t('guideThPhone')}</th><th>${t('guideThDuesInPeriod')}</th><th>${t('guideThPaidInPeriod')}</th><th>${t('guideThRemainingInPeriod')}</th><th>${t('guideThActions')}</th></tr></thead><tbody>`;
         allNames.forEach(name => {
             const dues = stats[name] ? stats[name].dues : 0;
-            const jobLevelPaid = stats[name] ? stats[name].jobPaid : 0;
-            const loggedPaid = techPaymentsInPeriod(name, dateFrom, dateTo).reduce((sum, p) => sum + parseVal(p.amount), 0);
-            const paidInPeriod = jobLevelPaid + loggedPaid; // both places count, in the same period
+            const paidInPeriod = techPaymentsInPeriod(name, dateFrom, dateTo).reduce((sum, p) => sum + parseVal(p.amount), 0);
             const remainingInPeriod = dues - paidInPeriod;
             const rawPhone = technicianPhones[name] || '';
             const phoneDisplay = rawPhone ? (() => { const { code, local } = splitPhoneForEdit(rawPhone); return code === 'other' ? rawPhone : `+${code} ${local}`; })() : t('guideNA');
