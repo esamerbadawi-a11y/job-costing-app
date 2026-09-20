@@ -1151,6 +1151,7 @@
         guideThRemainingInPeriod: { ar: 'الباقي في الفترة دي', en: 'Remaining in Period' },
         techPaymentTitle: { ar: '💵 تسجيل دفعة لفني', en: '💵 Record Technician Payment' },
         withdrawalAmountLabel: { ar: 'المبلغ ($):', en: 'Amount ($):' },
+        guidePaidNote: { ar: 'المدفوع = الدفعات المسجلة بزرار 💵 + خانة "المدفوع له" جوه كل شغلانة. متسجلش نفس الدفعة في الاتنين عشان متتحسبش مرتين.', en: 'Paid = payments logged with the 💵 button + the "Paid" amount typed inside each job. Do not record the same payment in both places or it will count twice.' },
         guidePeriodNote: { ar: 'الأرقام دي محسوبة بس على الشغلانات في الفترة المحددة فوق.', en: 'These figures only cover jobs within the selected date range above.' },
         presetTodayBtn: { ar: 'اليوم', en: 'Today' },
         presetWeekBtn: { ar: 'الأسبوع ده', en: 'This Week' },
@@ -1467,6 +1468,10 @@
         safeCall(() => switchScreen('log'));
     }
 
+    // Must be declared BEFORE the first applyLanguage() call below, which reads it (otherwise: a
+    // "before initialization" error in the console on every page load).
+    let debtBannerDismissed = false;
+
     // Translate the login screen (and everything else) right away, before any login happens.
     safeCall(applyLanguage);
 
@@ -1474,7 +1479,6 @@
     // balances. This only fires while the page is open — a real background alarm that works
     // with the browser fully closed would need a server to send push notifications, which
     // this app doesn't have.
-    let debtBannerDismissed = false;
     function dismissDebtReminderBanner() {
         debtBannerDismissed = true;
         document.getElementById('debtReminderBanner').style.display = 'none';
@@ -2452,7 +2456,7 @@
             lines.push('  ' + t('noTechsAdded'));
         } else {
             job.technicians.forEach(tech => {
-                const dues = calculateTechDues(tech);
+                const dues = calculateJobTechDues(tech, job.amountReceived, job.materialCost);
                 const paid = parseVal(tech.paid);
                 lines.push(`  ${tech.name || '?'} — ${t('qdDues')} $${dues.toFixed(2)} | ${t('qdPaid')} $${paid.toFixed(2)} | ${t('qdOwed')} $${(dues - paid).toFixed(2)}`);
             });
@@ -2616,7 +2620,9 @@
             const d = e.date || '';
             if ((!dateFrom || (d && d >= dateFrom)) && (!dateTo || (d && d <= dateTo))) generalExpensesInRange += parseVal(e.amount);
         });
-        const actualRemaining = totalReceivedVal - totalMatVal - totalTechVal - generalExpensesInRange;
+        // Same definition as the "Selected Jobs" card (received - materials - tech dues - job expenses),
+        // plus the company's general (non-job) expenses that fall inside the active date range.
+        const actualRemaining = totalReceivedVal - totalMatVal - totalTechVal - totalExtraExp - generalExpensesInRange;
 
         document.getElementById('statTotalJobs').innerText = '$' + totalJobsVal.toFixed(2);
         document.getElementById('statTotalMat').innerText = '$' + totalMatVal.toFixed(2);
@@ -2847,23 +2853,21 @@
 
         const rows = [];
         let totalDues = 0, totalPaid = 0;
-        savedJobs.forEach(job => {
-            const entries = getScheduleEntries(job);
-            const techEntry = (job.technicians || []).find(t => t.name === techName);
-            if (!techEntry) return;
-            const fullDues = calculateJobTechDues(techEntry, job.amountReceived, job.materialCost);
-            let dues = fullDues;
-            if (hasDateFilter) {
-                const allDatesForTech = entries.filter(e => (e.team || []).includes(techName));
-                if (allDatesForTech.length === 0) return;
-                const datesInPeriod = allDatesForTech.filter(e => (!dateFrom || e.date >= dateFrom) && (!dateTo || e.date <= dateTo));
-                if (datesInPeriod.length === 0) return;
-                dues = fullDues * (datesInPeriod.length / allDatesForTech.length);
-            }
-            const paid = parseVal(techEntry.paid);
-            totalDues += dues; totalPaid += paid;
-            rows.push({ date: job.startDate || '', client: job.clientName || '', type: techTypeLabel(techEntry.type), dues, paid, remaining: dues - paid });
-        });
+        const techStats = computeTechPeriodStats(dateFrom, dateTo)[techName];
+        if (techStats) {
+            techStats.jobs.forEach(j => {
+                totalDues += j.dues; totalPaid += j.paid;
+                rows.push({ date: j.job.startDate || '', client: j.job.clientName || '', type: techTypeLabel(j.tech.type), dues: j.dues, paid: j.paid, remaining: j.dues - j.paid });
+            });
+        }
+        // Payments logged with the 💵 button show up as their own rows, so the totals match the Guide screen.
+        techPaymentsInPeriod(techName, dateFrom, dateTo)
+            .slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+            .forEach(p => {
+                const amt = parseVal(p.amount);
+                totalPaid += amt;
+                rows.push({ date: p.date || '', client: 'Payment' + (p.note ? ' - ' + p.note : ''), type: '-', dues: 0, paid: amt, remaining: -amt });
+            });
 
         if (rows.length === 0) { alert(currentLang === 'ar' ? 'الفني ده لسه مالوش شغلانات مسجلة في الفترة دي.' : 'This technician has no recorded jobs in this period.'); return; }
 
@@ -4251,45 +4255,60 @@
         renderTechGuideContent();
     }
 
-    function renderTechGuideContent() {
-        const container = document.getElementById('techGuideContent');
-        const dateFrom = document.getElementById('guideDateFrom').value;
-        const dateTo = document.getElementById('guideDateTo').value;
+    // ONE place that works out, per technician, what they earned and what they were paid on each job.
+    // The Technicians Guide table AND the printed technician report both use it, so they can never disagree.
+    // With a date range set, a job's dues AND its job-level "Paid" are prorated by the share of the
+    // technician's scheduled days on that job that fall inside the range (same rule dues already used).
+    function computeTechPeriodStats(dateFrom, dateTo) {
         const hasDateFilter = !!(dateFrom || dateTo);
-        const periodLabel = hasDateFilter ? `<div class="note-box" style="margin-bottom:10px;">${t('guidePeriodNote')}</div>` : '';
-
-        let techMap = {};
+        const stats = {};
         savedJobs.forEach(job => {
             const entries = getScheduleEntries(job);
             (job.technicians || []).forEach(tech => {
                 if (!tech.name) return;
                 const fullDues = calculateJobTechDues(tech, job.amountReceived, job.materialCost);
-                if (!hasDateFilter) { techMap[tech.name] = (techMap[tech.name] || 0) + fullDues; return; }
-
-                // A job that spans several weeks shouldn't have its full dues counted
-                // again in every single week it touches — split them by the share of
-                // this technician's scheduled days on the job that fall in this period.
-                const allDatesForTech = entries.filter(e => (e.team || []).includes(tech.name));
-                if (allDatesForTech.length === 0) return;
-                const datesInPeriod = allDatesForTech.filter(e => (!dateFrom || e.date >= dateFrom) && (!dateTo || e.date <= dateTo));
-                if (datesInPeriod.length === 0) return;
-                const fraction = datesInPeriod.length / allDatesForTech.length;
-                techMap[tech.name] = (techMap[tech.name] || 0) + fullDues * fraction;
+                const fullPaid = parseVal(tech.paid);
+                let fraction = 1;
+                if (hasDateFilter) {
+                    const allDates = entries.filter(e => (e.team || []).includes(tech.name));
+                    if (allDates.length === 0) return;
+                    const inPeriod = allDates.filter(e => (!dateFrom || e.date >= dateFrom) && (!dateTo || e.date <= dateTo));
+                    if (inPeriod.length === 0) return;
+                    fraction = inPeriod.length / allDates.length;
+                }
+                if (!stats[tech.name]) stats[tech.name] = { dues: 0, jobPaid: 0, jobs: [] };
+                stats[tech.name].dues += fullDues * fraction;
+                stats[tech.name].jobPaid += fullPaid * fraction;
+                stats[tech.name].jobs.push({ job, tech, dues: fullDues * fraction, paid: fullPaid * fraction });
             });
         });
+        return stats;
+    }
 
-        const allNames = new Set([...Object.keys(techMap), ...Object.keys(technicianPhones)]);
+    // Payments logged with the 💵 button (dated, per technician) that fall inside the range.
+    function techPaymentsInPeriod(name, dateFrom, dateTo) {
+        return techPayments.filter(p => p.name === name &&
+            (!dateFrom || (p.date && p.date >= dateFrom)) && (!dateTo || (p.date && p.date <= dateTo)));
+    }
+
+    function renderTechGuideContent() {
+        const container = document.getElementById('techGuideContent');
+        const dateFrom = document.getElementById('guideDateFrom').value;
+        const dateTo = document.getElementById('guideDateTo').value;
+        const hasDateFilter = !!(dateFrom || dateTo);
+        const periodLabel = (hasDateFilter ? `<div class="note-box" style="margin-bottom:10px;">${t('guidePeriodNote')}</div>` : '')
+            + `<div class="note-box" style="margin-bottom:10px;">${t('guidePaidNote')}</div>`;
+
+        const stats = computeTechPeriodStats(dateFrom, dateTo);
+        const allNames = new Set([...Object.keys(stats), ...Object.keys(technicianPhones)]);
         if (allNames.size === 0) { container.innerHTML = periodLabel + `<p style="text-align:center; color:var(--text-muted); padding:20px;">${t('guideEmpty')}</p>`; return; }
 
         let html = periodLabel + `<table style="width:100%; border-collapse:collapse; margin-top:10px;"><thead><tr><th>${t('guideThName')}</th><th>${t('guideThPhone')}</th><th>${t('guideThDuesInPeriod')}</th><th>${t('guideThPaidInPeriod')}</th><th>${t('guideThRemainingInPeriod')}</th><th>${t('guideThActions')}</th></tr></thead><tbody>`;
         allNames.forEach(name => {
-            const dues = techMap[name] || 0;
-            // Same idea as dues: with no date filter this is the tech's all-time payment
-            // history; with one set, only payments actually logged inside that window —
-            // so a new week's numbers start clean without erasing older weeks' records.
-            const paidInPeriod = techPayments
-                .filter(p => p.name === name && (!hasDateFilter || ((!dateFrom || p.date >= dateFrom) && (!dateTo || p.date <= dateTo))))
-                .reduce((sum, p) => sum + parseVal(p.amount), 0);
+            const dues = stats[name] ? stats[name].dues : 0;
+            const jobLevelPaid = stats[name] ? stats[name].jobPaid : 0;
+            const loggedPaid = techPaymentsInPeriod(name, dateFrom, dateTo).reduce((sum, p) => sum + parseVal(p.amount), 0);
+            const paidInPeriod = jobLevelPaid + loggedPaid; // both places count, in the same period
             const remainingInPeriod = dues - paidInPeriod;
             const rawPhone = technicianPhones[name] || '';
             const phoneDisplay = rawPhone ? (() => { const { code, local } = splitPhoneForEdit(rawPhone); return code === 'other' ? rawPhone : `+${code} ${local}`; })() : t('guideNA');
