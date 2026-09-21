@@ -145,6 +145,11 @@
         }
         /* Job form on a phone: the 3-column rows (dates / amounts) were wider than the screen, so the page could be dragged sideways. Let the columns shrink. */
         .grid-2 > *, .grid-3 > * { min-width: 0; }
+        /* ---- Full job editor as a window above the page you are on ---- */
+        .overlay-only { display: none; }
+        #screenEntry.job-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 10000; overflow-y: auto; -webkit-overflow-scrolling: touch; max-width: none !important; margin: 0 !important; padding: 12px; background: rgba(0,0,0,0.78); }
+        #screenEntry.job-overlay > .card { max-width: 720px; margin: 8px auto 40px; }
+        #screenEntry.job-overlay > .overlay-only { display: flex; justify-content: flex-end; max-width: 720px; margin: 0 auto; position: sticky; top: 0; z-index: 3; padding-bottom: 4px; }
         /* ---- "Jobs Today?" sheet, postpone / hand-over ---- */
         .ag-section-title { color: #38bdf8; font-weight: 700; font-size: 0.9rem; margin: 14px 0 6px; }
         .ag-date { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 4px; }
@@ -498,6 +503,7 @@
     </div>
 
     <div id="screenEntry" class="no-print" style="display:none; max-width:700px; margin:0 auto;">
+            <div class="overlay-only"><button type="button" class="danger" onclick="cancelJobEdit()" style="padding:8px 16px;" data-i18n="guideCloseBtn"></button></div>
             <div class="card">
                 <h2 id="formTitle"></h2>
                 <div id="jobFormBody" style="padding-top:0;">
@@ -621,7 +627,7 @@
 
                 <div style="display: flex; gap: 8px;">
                     <button class="success" onclick="saveJob()" id="saveBtn" style="flex: 2; padding: 12px; margin-top: 5px;"></button>
-                    <button class="secondary" onclick="resetForm()" id="cancelEditBtn" style="flex: 1; padding: 12px; margin-top: 5px; display: none;" data-i18n="cancelEditBtn"></button>
+                    <button class="secondary" onclick="cancelJobEdit()" id="cancelEditBtn" style="flex: 1; padding: 12px; margin-top: 5px; display: none;" data-i18n="cancelEditBtn"></button>
                 </div>
                 </div>
             </div>
@@ -902,6 +908,16 @@
 </div>
 
 <div id="toast"></div>
+
+<div id="unsavedScheduleModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10001; justify-content:center; align-items:center;">
+    <div class="tg-modal-box" style="max-width:420px;">
+        <h3 style="color:#38bdf8; margin:0 0 10px; font-size:1.05rem;" data-i18n="unsavedTitle"></h3>
+        <p style="font-size:0.88rem; margin-bottom:16px; line-height:1.6;" data-i18n="unsavedMsg"></p>
+        <button class="success" style="width:100%; padding:11px; margin-bottom:8px;" onclick="unsavedChoice('save')" data-i18n="unsavedSaveOpen"></button>
+        <button class="secondary" style="width:100%; padding:11px; margin-bottom:8px;" onclick="unsavedChoice('discard')" data-i18n="unsavedOpenNoSave"></button>
+        <button class="danger" style="width:100%; padding:8px; font-size:0.85rem;" onclick="unsavedChoice('back')" data-i18n="unsavedBack"></button>
+    </div>
+</div>
 
 <div id="editScheduleModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
     <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:90%; max-width:500px; max-height:85vh; overflow-y:auto; padding:25px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
@@ -1307,6 +1323,12 @@
         guidePaymentsTitleAll: { ar: 'كل دفعاته (من غير فلتر تاريخ)', en: 'All his payments (no date filter)' },
         guideLegacyPaid: { ar: 'مكتوب جوه الشغلانة: مدفوع {a} (مش محسوب)', en: 'Job says paid {a} (not counted)' },
         guideLegacyTotal: { ar: 'تنبيه: الشغلانات دي مكتوب جواها إن الفني اتدفع له {a} (خانة قديمة). الرقم ده مش داخل في "المدفوع" لأن المدفوع بيتحسب من دفعات 💵 بس. لو الفلوس دي اتدفعت فعلًا، سجّلها بزرار 💵 عشان الباقي يبقى صح.', en: 'Note: these jobs say the technician was paid {a} (an old field). It is NOT part of "Paid", because Paid only counts 💵 payments. If that money really was paid, record it with the 💵 button so the remaining balance is right.' },
+        toastJobSaved: { ar: 'اتحفظت الشغلانة', en: 'Job saved' },
+        unsavedTitle: { ar: 'فيه تعديلات لسه ما اتحفظتش', en: 'You have changes that are not saved' },
+        unsavedMsg: { ar: 'غيّرت الوقت أو الفريق أو اليوم في النافذة دي ومحفظتهمش. تحفظهم الأول قبل ما تفتح تفاصيل الشغلانة؟', en: 'You changed the day, time or team in this window and did not save. Save them before opening the full job details?' },
+        unsavedSaveOpen: { ar: 'احفظ وافتح الشغلانة', en: 'Save and open the job' },
+        unsavedOpenNoSave: { ar: 'افتح من غير حفظ', en: 'Open without saving' },
+        unsavedBack: { ar: 'رجوع', en: 'Go back' },
         agendaTitle: { ar: 'شغل النهارده', en: "Today's Work" },
         agendaScheduledToday: { ar: '📅 ميعاده النهارده', en: '📅 Scheduled today' },
         agendaRunning: { ar: '🔧 شغّالة النهارده (من غير ميعاد محدد)', en: '🔧 In progress today (no visit set)' },
@@ -2957,6 +2979,7 @@
         }
         resetForm();
         refreshAllViews();
+        if (jobOverlayOpen) { closeJobOverlay(); showToast(t('toastJobSaved')); }
     }
 
     function resetForm() {
@@ -4276,6 +4299,52 @@
     // a job spanning several days (maybe with a different tech each day) keeps its other
     // days untouched. Never touches the job's financial details.
     let editScheduleOrigDate = '';
+    // ---------- The full job editor as a window above the page you are on (Technicians Guide, Weekly Board...) ----------
+    let jobOverlayOpen = false;
+    let editScheduleSnap = null;
+    let pendingFullEditJobId = '';
+
+    function openJobOverlay(jobId) {
+        if (!savedJobs.find(j => j.id === jobId)) return;
+        if (currentScreen === 'entry') { editJob(jobId); return; }   // already on the form tab: nothing to hover over, use it directly
+        const back = currentScreen, y = window.scrollY;
+        editJob(jobId);                                   // fills the form (and jumps to the "Add Job" tab)...
+        switchScreen(back);                               // ...so put the page underneath back exactly where it was
+        window.scrollTo({ top: y, behavior: 'auto' });
+        const el = document.getElementById('screenEntry');
+        el.style.display = 'block'; el.classList.add('job-overlay'); el.scrollTop = 0;
+        jobOverlayOpen = true;
+    }
+    function closeJobOverlay() {
+        const el = document.getElementById('screenEntry');
+        el.classList.remove('job-overlay'); el.style.display = 'none';
+        jobOverlayOpen = false;
+    }
+    function cancelJobEdit() { resetForm(); if (jobOverlayOpen) closeJobOverlay(); }
+
+    // What the day editor looks like right now, to tell whether something was changed and not saved.
+    function scheduleEditorState() {
+        return { date: document.getElementById('editScheduleDayLabel').value, time: document.getElementById('esTime').value,
+                 team: [...document.querySelectorAll('.es-team-check:checked')].map(c => c.value).sort().join('|') };
+    }
+    function scheduleEditorDirty() {
+        if (!editScheduleSnap) return false;
+        const now = scheduleEditorState();
+        return now.date !== editScheduleSnap.date || now.time !== editScheduleSnap.time || now.team !== editScheduleSnap.team;
+    }
+    function goFullEdit(jobId) { closeEditScheduleModal(); openJobOverlay(jobId); }
+    function requestFullEdit(jobId) {
+        if (scheduleEditorDirty()) { pendingFullEditJobId = jobId; document.getElementById('unsavedScheduleModal').style.display = 'flex'; return; }
+        goFullEdit(jobId);
+    }
+    async function unsavedChoice(choice) {
+        document.getElementById('unsavedScheduleModal').style.display = 'none';
+        if (choice === 'back') return;
+        const jobId = pendingFullEditJobId;
+        if (choice === 'save' && !(await saveEditSchedule())) return;   // saving failed: stay in the day editor
+        goFullEdit(jobId);
+    }
+
     function openEditScheduleModal(jobId, date) {
         const job = savedJobs.find(j => j.id === jobId);
         if (!job) return;
@@ -4288,9 +4357,9 @@
         document.getElementById('editScheduleDayLabel').value = entry.date || '';
         document.getElementById('esTime').value = entry.time || '';
 
-        const names = ['SAMER', 'MOHAMED', ...getUniqueRegisteredTechnicians()];
-        const uniqueNames = [...new Set(names)];
         const checkedTeam = entry.team || [];
+        const names = ['SAMER', 'MOHAMED', ...getUniqueRegisteredTechnicians(), ...checkedTeam];
+        const uniqueNames = [...new Set(names)];
         document.getElementById('esTeamCheckboxes').innerHTML = uniqueNames.map(name => `
             <label style="display:flex; align-items:center; gap:5px; font-size:0.82rem; cursor:pointer;">
                 <input type="checkbox" class="es-team-check" value="${name}" ${checkedTeam.includes(name) ? 'checked' : ''}> ${name}
@@ -4300,7 +4369,8 @@
         removeBtn.style.display = entries.length > 1 ? 'block' : 'none';
         removeBtn.onclick = () => removeScheduleDay(jobId, date);
 
-        document.getElementById('esFullEditLink').onclick = () => { closeEditScheduleModal(); editJob(jobId); switchScreen('entry'); };
+        document.getElementById('esFullEditLink').onclick = () => requestFullEdit(jobId);
+        editScheduleSnap = scheduleEditorState();
         document.getElementById('editScheduleModal').style.display = 'flex';
     }
     function closeEditScheduleModal() { document.getElementById('editScheduleModal').style.display = 'none'; }
@@ -4323,7 +4393,7 @@
 
     async function saveEditSchedule() {
         const idx = savedJobs.findIndex(j => j.id === editScheduleJobId);
-        if (idx === -1) return;
+        if (idx === -1) return false;
         const newDate = document.getElementById('editScheduleDayLabel').value;
         const newTime = document.getElementById('esTime').value;
         const newTeam = Array.from(document.querySelectorAll('.es-team-check:checked')).map(cb => cb.value);
@@ -4331,17 +4401,20 @@
         // Drop the entry being edited, then add it back at (possibly) its new date —
         // this both handles "just changed the time/team" and "moved this day elsewhere"
         // without ever touching this job's OTHER scheduled days.
+        const backup = JSON.parse(JSON.stringify(savedJobs[idx]));
+        const original = getScheduleEntries(savedJobs[idx]).find(e => e.date === editScheduleOrigDate) || {};
         const entries = getScheduleEntries(savedJobs[idx]).filter(e => e.date !== editScheduleOrigDate);
-        entries.push({ date: newDate, time: newTime, team: newTeam, dayOrder: 0 });
+        entries.push({ ...original, date: newDate, time: newTime, team: newTeam, dayOrder: 0 });
         savedJobs[idx].dailySchedule = entries;
         savedJobs[idx].lastEditedBy = currentUserEmail;
         try {
             await saveSavedJobsData();
             logActivity('edit', savedJobs[idx].clientName, t('activityScheduleUpdated') + ` ${newDate} ${newTime} (${newTeam.join(', ')})`);
-        } catch (e) { alert(t('alertJobSaveFailed')); return; }
+        } catch (e) { savedJobs[idx] = backup; alert(t('alertJobSaveFailed')); return false; }
         closeEditScheduleModal();
         renderWeeklyBoard();
         refreshGuideIfOpen();
+        return true;
     }
 
     function openQuickScheduleModal(dateStr) {
