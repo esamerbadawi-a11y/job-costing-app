@@ -813,6 +813,27 @@
     </div>
 </div>
 
+<div id="aiReminderModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10001; justify-content:center; align-items:center;" onclick="if(event.target===this) closeAiReminder();">
+    <div class="tg-modal-box" style="max-width:540px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:12px; gap:10px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.1rem;">✨ <span data-i18n="aiReminderBtn"></span></h2>
+            <button class="danger" onclick="closeAiReminder()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+        <div id="aiReminderJob" style="font-weight:700; margin-bottom:10px; overflow-wrap:anywhere;"></div>
+        <div class="form-group"><label data-i18n="aiReminderLangLabel"></label>
+            <select id="aiReminderLang" onchange="onAiReminderLangChange()"><option value="en">English</option><option value="ar">العربية</option></select></div>
+        <div id="aiReminderStatus" class="note-box" style="margin-bottom:10px;"></div>
+        <textarea id="aiReminderText" dir="auto" rows="7" oninput="refreshAiReminderButtons(false)" style="margin-bottom:10px;"></textarea>
+        <div class="ag-actions">
+            <button id="aiSendWaBtn" class="success" onclick="sendAiReminder('whatsapp')" data-i18n="aiSendWhatsApp"></button>
+            <button id="aiSendSmsBtn" class="secondary" onclick="sendAiReminder('sms')" data-i18n="aiSendSms"></button>
+            <button id="aiCopyBtn" class="secondary" onclick="copyAiReminder()" data-i18n="aiCopyBtn"></button>
+            <button id="aiTemplateBtn" class="warning" onclick="useTemplateReminder('aiTemplateNote')" data-i18n="aiUseTemplateBtn"></button>
+            <button id="aiRetryBtn" class="secondary" onclick="regenerateAiReminder()" data-i18n="aiRetryBtn"></button>
+        </div>
+    </div>
+</div>
+
 <div id="sendMethodModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center;" onclick="if(event.target===this) closeSendMethodModal();">
     <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:85%; max-width:320px; padding:20px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
         <h3 style="color:#38bdf8; margin:0 0 14px; font-size:1rem; text-align:center;" data-i18n="sendMethodTitle"></h3>
@@ -1329,6 +1350,22 @@
         unsavedSaveOpen: { ar: 'احفظ وافتح الشغلانة', en: 'Save and open the job' },
         unsavedOpenNoSave: { ar: 'افتح من غير حفظ', en: 'Open without saving' },
         unsavedBack: { ar: 'رجوع', en: 'Go back' },
+        aiReminderLangLabel: { ar: 'لغة الرسالة:', en: 'Message language:' },
+        aiWriting: { ar: '✨ الـ AI بيكتب الرسالة...', en: '✨ The AI is writing the message...' },
+        aiReady: { ar: 'الرسالة جاهزة. راجعها وعدّل فيها لو عايز قبل ما تبعتها.', en: 'Message ready. Review it and edit it if you like before sending.' },
+        aiSendWhatsApp: { ar: '📱 واتساب', en: '📱 WhatsApp' },
+        aiSendSms: { ar: '💬 رسالة SMS', en: '💬 SMS' },
+        aiCopyBtn: { ar: '📋 نسخ', en: '📋 Copy' },
+        aiCopied: { ar: 'اتنسخت الرسالة', en: 'Message copied' },
+        aiCopyFailed: { ar: 'مقدرش ينسخ. اضغط مطولًا على النص وانسخه بإيدك.', en: 'Could not copy. Long-press the text and copy it yourself.' },
+        aiUseTemplateBtn: { ar: 'رسالة جاهزة (من غير AI)', en: 'Ready-made message (no AI)' },
+        aiRetryBtn: { ar: '🔄 جرّب الـ AI تاني', en: '🔄 Try the AI again' },
+        aiNoKeyNote: { ar: 'مفيش مفتاح AI، فدي رسالة جاهزة تقدر تعدّل فيها.', en: 'There is no AI key, so this is a ready-made message you can edit.' },
+        aiTemplateNote: { ar: 'رسالة جاهزة (من غير AI). عدّل فيها زي ما تحب.', en: 'Ready-made message (no AI). Edit it as you like.' },
+        aiTimeoutMsg: { ar: 'ما ردّش في الوقت المناسب. اتأكد من النت وجرّب تاني.', en: 'did not respond in time. Check your internet and try again.' },
+        aiStageSdk: { ar: 'تحميل مكتبة الـ AI', en: 'Loading the AI library' },
+        aiStageModel: { ar: 'رد الـ AI', en: 'AI response' },
+        aiEmptyMsg: { ar: 'رجع رد فاضي', en: 'returned an empty answer' },
         agendaTitle: { ar: 'شغل النهارده', en: "Today's Work" },
         agendaScheduledToday: { ar: '📅 ميعاده النهارده', en: '📅 Scheduled today' },
         agendaRunning: { ar: '🔧 شغّالة النهارده (من غير ميعاد محدد)', en: '🔧 In progress today (no visit set)' },
@@ -2561,61 +2598,132 @@
     // automatically runs it through the AI cleanup — handy while out on-site.
     // Crafts a polite, situation-appropriate payment reminder (tone shifts with how
     // overdue it is) and opens WhatsApp with it ready to send to the client.
+    // ---------- AI calls: never hang silently ----------
+    const GEMINI_MODEL = 'gemini-3.6-flash';
+    let AI_TIMEOUT_MS = 45000;
+
+    function withTimeout(promise, ms, stageKey) {
+        let timer;
+        const limit = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`[${t(stageKey)}] ${t('aiTimeoutMsg')}`)), ms); });
+        return Promise.race([promise, limit]).finally(() => clearTimeout(timer));
+    }
+    // One place that talks to the AI. If it fails or takes too long, the error says WHICH step (loading the library, or the model's answer).
+    async function aiGenerate(apiKey, contents) {
+        const fail = (e, stageKey) => { const m = (e && e.message) ? e.message : String(e); return new Error(m.startsWith('[') ? m : `[${t(stageKey)}] ${m}`); };
+        let ai;
+        try { ai = await withTimeout(getGenAIClient(apiKey), AI_TIMEOUT_MS, 'aiStageSdk'); } catch (e) { throw fail(e, 'aiStageSdk'); }
+        let response;
+        try { response = await withTimeout(ai.models.generateContent({ model: GEMINI_MODEL, contents }), AI_TIMEOUT_MS, 'aiStageModel'); } catch (e) { throw fail(e, 'aiStageModel'); }
+        const text = response && response.text;
+        if (!text) throw new Error(`[${t('aiStageModel')}] ${t('aiEmptyMsg')}`);
+        return text.trim();
+    }
+
+    // ---------- AI payment reminder: a window that shows progress, the message (editable) and the send buttons ----------
+    let aiReminderCtx = null;
+
+    function buildReminderPrompt(job, rem, daysOverdue, lang) {
+        const long = daysOverdue && daysOverdue > 14;
+        if (lang === 'ar') return `اكتب رسالة تذكير بدفعة متأخرة، مهذبة ومختصرة (2-4 جمل)، للعميل ${job.clientName}، بخصوص شغلانة "${job.clientDescription || 'صيانة'}"، المبلغ المتبقي $${rem.toFixed(2)}${daysOverdue ? `، ومتأخر عن الموعد بـ ${daysOverdue} يوم` : ''}. النبرة تتناسب مع ${long ? 'تأخير طويل نسبيًا لكن لسه محترمة' : 'تذكير ودّي بسيط'}. من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`;
+        return `Write a polite, concise (2-4 sentence) payment reminder to client ${job.clientName}, regarding a "${job.clientDescription || 'service'}" job, outstanding balance $${rem.toFixed(2)}${daysOverdue ? `, ${daysOverdue} days past the follow-up date` : ''}. Tone should be ${long ? 'a bit firmer given the longer delay, but still respectful' : 'a gentle, friendly nudge'}. No preamble or headers, just the message.`;
+    }
+    // The same message without AI, so the reminder can always be sent.
+    function buildFallbackReminder(job, rem, daysOverdue, lang) {
+        const what = (job.clientDescription || '').split('\n')[0].slice(0, 80).trim();
+        const amount = '$' + rem.toFixed(2);
+        const long = daysOverdue && daysOverdue > 14;
+        if (lang === 'ar') return `أهلاً، معاك AHA Handyman. تذكير ودّي بالمبلغ المتبقي ${amount}${what ? ' عن ' + what : ''}${daysOverdue ? `، وعدّى ${daysOverdue} يوم على موعد المتابعة` : ''}. ${long ? 'ياريت نرتب السداد في أقرب وقت.' : 'ياريت تبلغنا إمتى نقدر نستلمه.'} شكرًا لتعاونك.`;
+        return `Hello, this is AHA Handyman. A friendly reminder about the remaining balance of ${amount}${what ? ' for ' + what : ''}${daysOverdue ? `, now ${daysOverdue} days past the follow-up date` : ''}. ${long ? 'Please arrange payment as soon as you can.' : 'Please let us know when we can expect it.'} Thank you!`;
+    }
+
+    function setAiReminderStatus(kind, text) {
+        const el = document.getElementById('aiReminderStatus');
+        el.textContent = text;
+        el.style.borderColor = kind === 'error' ? 'var(--danger)' : (kind === 'ok' ? 'var(--success)' : 'var(--accent)');
+    }
+    function refreshAiReminderButtons(busy) {
+        const has = !!document.getElementById('aiReminderText').value.trim();
+        ['aiSendWaBtn', 'aiSendSmsBtn', 'aiCopyBtn'].forEach(id => { document.getElementById(id).disabled = busy || !has; });
+        document.getElementById('aiRetryBtn').disabled = !!busy;
+    }
+
     async function sendAiPaymentReminder(jobId) {
         const job = savedJobs.find(j => j.id === jobId);
         if (!job) return;
-        const apiKey = getGeminiApiKey();
-        if (!apiKey) return;
-
         const rem = jobRemaining(job);
         let daysOverdue = null;
         if (job.followUpDate) {
             const diff = Math.floor((new Date() - new Date(job.followUpDate + 'T00:00:00')) / 86400000);
             if (diff > 0) daysOverdue = diff;
         }
-        const digits = (job.clientPhone || '').replace(/[^+\d]/g, '');
-
-        // Ask the send method FIRST, in this same tab, so nothing ever happens on a
-        // separate tab the user isn't looking at.
-        document.getElementById('sendMethodWhatsAppBtn').onclick = async () => {
-            closeSendMethodModal();
-            // Opening the tab must happen synchronously inside this click — doing it
-            // after the AI call finishes gets silently blocked as a "popup".
-            const popup = window.open('', '_blank');
-            if (popup) popup.document.write(currentLang === 'ar' ? 'جاري تجهيز الرسالة...' : 'Preparing your message...');
-            const resultText = await generateReminderMessage(job, rem, daysOverdue, apiKey);
-            if (!resultText) { if (popup) popup.close(); return; }
-            const waLink = digits ? `https://wa.me/${digits}?text=${encodeURIComponent(resultText)}` : `https://wa.me/?text=${encodeURIComponent(resultText)}`;
-            if (popup) popup.location.href = waLink; else window.open(waLink, '_blank');
-        };
-        document.getElementById('sendMethodSmsBtn').onclick = async () => {
-            closeSendMethodModal();
-            const resultText = await generateReminderMessage(job, rem, daysOverdue, apiKey);
-            if (!resultText) return;
-            const smsLink = digits ? `sms:${digits}&body=${encodeURIComponent(resultText)}` : `sms:&body=${encodeURIComponent(resultText)}`;
-            window.location.href = smsLink;
-        };
-        document.getElementById('sendMethodModal').style.display = 'flex';
+        aiReminderCtx = { job, rem, daysOverdue, apiKey: getGeminiApiKey(), run: 0, mode: 'ai' };
+        document.getElementById('aiReminderLang').value = currentLang === 'ar' ? 'ar' : 'en';
+        document.getElementById('aiReminderJob').textContent = `${job.clientName || ''} — $${rem.toFixed(2)}`;
+        document.getElementById('aiReminderText').value = '';
+        document.getElementById('aiReminderModal').style.display = 'flex';
+        if (!aiReminderCtx.apiKey) { useTemplateReminder('aiNoKeyNote'); return; }   // no key: don't leave the user stuck
+        await regenerateAiReminder();
     }
 
-    // Runs the actual AI call; returns the message text, or null (after alerting) on failure.
-    async function generateReminderMessage(job, rem, daysOverdue, apiKey) {
+    async function regenerateAiReminder() {
+        const c = aiReminderCtx;
+        if (!c) return;
+        if (!c.apiKey) { c.apiKey = getGeminiApiKey(); if (!c.apiKey) { useTemplateReminder('aiNoKeyNote'); return; } }
+        c.mode = 'ai';
+        const myRun = ++c.run;
+        setAiReminderStatus('busy', t('aiWriting'));
+        refreshAiReminderButtons(true);
         try {
-            const ai = await getGenAIClient(apiKey);
-            const promptText = currentLang === 'ar'
-                ? `اكتب رسالة تذكير بدفعة متأخرة، مهذبة ومختصرة (2-4 جمل)، للعميل ${job.clientName}، بخصوص شغلانة "${job.clientDescription || 'صيانة'}"، المبلغ المتبقي $${rem.toFixed(2)}${daysOverdue ? `، ومتأخر عن الموعد بـ ${daysOverdue} يوم` : ''}. النبرة تتناسب مع ${daysOverdue && daysOverdue > 14 ? 'تأخير طويل نسبيًا لكن لسه محترمة' : 'تذكير ودّي بسيط'}. من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`
-                : `Write a polite, concise (2-4 sentence) payment reminder to client ${job.clientName}, regarding a "${job.clientDescription || 'service'}" job, outstanding balance $${rem.toFixed(2)}${daysOverdue ? `, ${daysOverdue} days past the follow-up date` : ''}. Tone should be ${daysOverdue && daysOverdue > 14 ? 'a bit firmer given the longer delay, but still respectful' : 'a gentle, friendly nudge'}. No preamble or headers, just the message.`;
-
-            const response = await ai.models.generateContent({ model: 'gemini-3.6-flash', contents: promptText });
-            const resultText = response && response.text;
-            if (!resultText) throw new Error('empty response');
-            return resultText.trim();
+            const text = await aiGenerate(c.apiKey, buildReminderPrompt(c.job, c.rem, c.daysOverdue, document.getElementById('aiReminderLang').value));
+            if (myRun !== c.run || aiReminderCtx !== c) return;   // closed, or a newer request took over
+            document.getElementById('aiReminderText').value = text;
+            setAiReminderStatus('ok', t('aiReady'));
         } catch (err) {
+            if (myRun !== c.run || aiReminderCtx !== c) return;
             const msg = (err && err.message) ? err.message : String(err);
-            if (/401|403|UNAUTHENTICATED|PERMISSION|API key/i.test(msg)) { try { localStorage.removeItem('geminiApiKey'); } catch (e) {} }
-            alert(t('alertAiFailed') + ' (' + msg + ')');
-            return null;
+            if (/401|403|UNAUTHENTICATED|PERMISSION|API key/i.test(msg)) { try { localStorage.removeItem('geminiApiKey'); } catch (e) {} c.apiKey = null; }
+            setAiReminderStatus('error', t('alertAiFailed') + ' (' + msg + ')');
         }
+        refreshAiReminderButtons(false);
+    }
+
+    function useTemplateReminder(noteKey) {
+        const c = aiReminderCtx;
+        if (!c) return;
+        c.run++; c.mode = 'template';   // cancels any AI request still running
+        document.getElementById('aiReminderText').value = buildFallbackReminder(c.job, c.rem, c.daysOverdue, document.getElementById('aiReminderLang').value);
+        setAiReminderStatus('ok', t(noteKey));
+        refreshAiReminderButtons(false);
+    }
+    function onAiReminderLangChange() {
+        const c = aiReminderCtx;
+        if (!c) return;
+        if (c.mode === 'template') useTemplateReminder('aiTemplateNote'); else regenerateAiReminder();
+    }
+
+    // The buttons open WhatsApp / Messages directly from the tap, so the phone never blocks them as pop-ups.
+    function openExternal(url, newTab) { if (newTab) window.open(url, '_blank'); else window.location.href = url; }
+    function sendAiReminder(kind) {
+        const c = aiReminderCtx;
+        const text = document.getElementById('aiReminderText').value.trim();
+        if (!c || !text) return;
+        let digits = normalizePhone(c.job.clientPhone);
+        if (digits.length === 10) digits = '1' + digits;   // US number typed without the country code
+        const enc = encodeURIComponent(text);
+        if (kind === 'whatsapp') openExternal(digits ? `https://wa.me/${digits}?text=${enc}` : `https://wa.me/?text=${enc}`, true);
+        else openExternal(digits ? `sms:${digits}&body=${enc}` : `sms:&body=${enc}`, false);
+    }
+    async function copyAiReminder() {
+        const el = document.getElementById('aiReminderText');
+        let ok = false;
+        try { await Promise.race([navigator.clipboard.writeText(el.value), new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500))]); ok = true; }
+        catch (e) { el.select(); try { ok = document.execCommand('copy'); } catch (e2) { ok = false; } }   // older phones / no permission: try the classic way
+        showToast(t(ok ? 'aiCopied' : 'aiCopyFailed'));
+    }
+    function closeAiReminder() {
+        if (aiReminderCtx) aiReminderCtx.run++;
+        aiReminderCtx = null;
+        document.getElementById('aiReminderModal').style.display = 'none';
     }
 
     function startVoiceScope(fieldId = 'clientDescription', btnId = 'voiceScopeBtn', aiBtnId = 'aiScopeBtn', instructionId = 'aiInstructionInput') {
@@ -2660,17 +2768,11 @@
             const dataUrl = await compressImageToBase64(file);
             const base64Data = dataUrl.split(',')[1];
 
-            const ai = await getGenAIClient(apiKey);
             const promptText = currentLang === 'ar'
                 ? 'اتفرج على الصورة دي لموقع شغل صيانة/مقاولات، واكتب وصف نقاط مختصر وواضح لإيه المطلوب عمله (تصليحات، دهانات، إلخ) بناءً على اللي شايفه. من غير مقدمات.'
                 : "Look at this handyman/contracting job-site photo and write a short, clear bullet-point description of what work appears to be needed, based on what you see. No preamble.";
 
-            const response = await ai.models.generateContent({
-                model: 'gemini-3.6-flash',
-                contents: [{ inlineData: { mimeType: 'image/jpeg', data: base64Data } }, { text: promptText }]
-            });
-            const resultText = response && response.text;
-            if (!resultText) throw new Error('empty response');
+            const resultText = await aiGenerate(apiKey, [{ inlineData: { mimeType: 'image/jpeg', data: base64Data } }, { text: promptText }]);
 
             const field = document.getElementById(fieldId);
             field.value = (field.value.trim() ? field.value.trim() + '\n\n' : '') + resultText.trim();
@@ -2702,8 +2804,6 @@
         btn.disabled = true; btn.innerHTML = '⏳ ...';
 
         try {
-            const ai = await getGenAIClient(apiKey);
-
             const instructionField = document.getElementById(instructionId);
             const customInstruction = instructionField ? instructionField.value.trim() : '';
             const defaultInstructionAr = 'حوّل الملاحظات دي بتاعة شغلانة صيانة/مقاولات لوصف نقاط واضح ومختصر ومرتب للشغل المطلوب';
@@ -2713,10 +2813,7 @@
                 ? `${instruction}. حافظ على نفس لغة النص الأصلي، من غير مقدمات: ${current}`
                 : `${instruction}. Keep the same language as the original text, no preamble: ${current}`;
 
-            const response = await ai.models.generateContent({ model: 'gemini-3.6-flash', contents: promptText });
-            const resultText = response && response.text;
-            if (!resultText) throw new Error('empty response');
-            field.value = resultText.trim();
+            field.value = await aiGenerate(apiKey, promptText);
         } catch (err) {
             const msg = (err && err.message) ? err.message : String(err);
             if (/401|403|UNAUTHENTICATED|PERMISSION|API key/i.test(msg)) { try { localStorage.removeItem('geminiApiKey'); } catch (e) {} }
