@@ -101,6 +101,9 @@
         input[type="date"]::-webkit-calendar-picker-indicator, input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
         body.light-theme input[type="date"]::-webkit-calendar-picker-indicator, body.light-theme input[type="time"]::-webkit-calendar-picker-indicator { filter: none; }
         textarea { resize: vertical; min-height: 65px; }
+        /* iPhone Safari draws date/time boxes natively and ignores our box sizing, so they came out wider than the box they sit in (by their own padding) and stuck out of the card. Remove the native box so they obey the layout like every other field. */
+        input[type="date"], input[type="time"] { -webkit-appearance: none; appearance: none; box-sizing: border-box; display: block; width: 100%; min-width: 0; max-width: 100%; min-height: 40px; text-align: start; }
+        input[type="date"]::-webkit-date-and-time-value, input[type="time"]::-webkit-date-and-time-value { text-align: start; min-height: 1.2em; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
         button { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -1300,6 +1303,10 @@
         twOver: { ar: 'زيادة {c} عن المستحق', en: '{c} more than the dues' },
         guideManualNote: { ar: 'حسب الأسابيع المسجلة على الشغلانة', en: 'By the weeks entered on the job' },
         presetLastWeekBtn: { ar: 'الأسبوع اللي فات', en: 'Last week' },
+        guideJobsTitleAll: { ar: 'كل شغلاناته (من غير فلتر تاريخ)', en: 'All his jobs (no date filter)' },
+        guidePaymentsTitleAll: { ar: 'كل دفعاته (من غير فلتر تاريخ)', en: 'All his payments (no date filter)' },
+        guideLegacyPaid: { ar: 'مكتوب جوه الشغلانة: مدفوع {a} (مش محسوب)', en: 'Job says paid {a} (not counted)' },
+        guideLegacyTotal: { ar: 'تنبيه: الشغلانات دي مكتوب جواها إن الفني اتدفع له {a} (خانة قديمة). الرقم ده مش داخل في "المدفوع" لأن المدفوع بيتحسب من دفعات 💵 بس. لو الفلوس دي اتدفعت فعلًا، سجّلها بزرار 💵 عشان الباقي يبقى صح.', en: 'Note: these jobs say the technician was paid {a} (an old field). It is NOT part of "Paid", because Paid only counts 💵 payments. If that money really was paid, record it with the 💵 button so the remaining balance is right.' },
         agendaTitle: { ar: 'شغل النهارده', en: "Today's Work" },
         agendaScheduledToday: { ar: '📅 ميعاده النهارده', en: '📅 Scheduled today' },
         agendaRunning: { ar: '🔧 شغّالة النهارده (من غير ميعاد محدد)', en: '🔧 In progress today (no visit set)' },
@@ -2240,6 +2247,8 @@
     // ---------- Weekly amounts typed on the job (per technician) ----------
     // A technician on a job may carry an optional list of weeks: [{weekStart: Monday, amount}].
     // When it exists the Guide uses EXACTLY these amounts per week: no splitting by schedule days, so the number can never drift.
+    // THE week used by every "This Week" button: Monday to Sunday. offset: 0 = the week that contains dateStr, -1 = the one before, +1 = the next.
+    function weekOf(dateStr, offset) { const mon = addDaysISO(mondayOf(dateStr), 7 * (offset || 0)); return { start: mon, end: addDaysISO(mon, 6) }; }
     function mondayOf(dateStr) { const d = new Date(dateStr + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return isoDate(d); }
     function ltrAmt(v) { return `<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">$${parseVal(v).toFixed(2)}</span>`; }
 
@@ -2367,10 +2376,8 @@
         // so the pay) be settled one week at a time instead.
         const thisWeekOnly = confirm(t('confirmCountThisWeekOnly'));
         if (thisWeekOnly) {
-            const today = new Date();
-            const weekStart = new Date(today); weekStart.setDate(today.getDate() - today.getDay());
-            const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6);
-            const weekStartStr = isoDate(weekStart), weekEndStr = isoDate(weekEnd);
+            const thisWeek = weekOf(isoDate(new Date()));
+            const weekStartStr = thisWeek.start, weekEndStr = thisWeek.end;
             myDates = myDates.filter(d => d >= weekStartStr && d <= weekEndStr);
             if (myDates.length === 0) { alert(t('alertNoDaysThisWeekForTech')); return; }
         }
@@ -4635,15 +4642,9 @@
 
     // Week starts on Monday.
     function getWeekRange(offset) {
-        const today = new Date();
-        const start = new Date(today);
-        start.setDate(today.getDate() + 1 + (offset * 7)); // window always starts tomorrow, shifting by 7 days per offset
+        const w = weekOf(isoDate(new Date()), offset);
         const days = [];
-        for (let i = 0; i < 7; i++) {
-            const d = new Date(start);
-            d.setDate(start.getDate() + i);
-            days.push(d);
-        }
+        for (let i = 0; i < 7; i++) days.push(new Date(addDaysISO(w.start, i) + 'T00:00:00'));   // Mon .. Sun
         return days;
     }
 
@@ -4754,7 +4755,7 @@
         }
 
         const days = getWeekRange(weeklyBoardOffset);
-        document.getElementById('weeklyRangeLabel').textContent = `${isoDate(days[0])} → ${isoDate(days[6])}`;
+        document.getElementById('weeklyRangeLabel').textContent = `${isoDate(days[0])} → ${isoDate(days[days.length - 1])}`;
 
         let html = '';
         days.forEach(d => {
@@ -4839,10 +4840,8 @@
         const toEl = document.getElementById('filterDateTo');
         const today = new Date();
         if (preset === 'week') {
-            // A trailing 7-day range (rather than "since Sunday") avoids a real bug: on a
-            // Sunday itself, "since Sunday" collapsed to just that single day.
-            const start = new Date(today); start.setDate(today.getDate() - 6);
-            fromEl.value = isoDate(start); toEl.value = isoDate(today);
+            const w = weekOf(isoDate(today));   // Monday to Sunday of this week
+            fromEl.value = w.start; toEl.value = w.end;
         }
         filterJobs();
     }
@@ -4850,8 +4849,8 @@
     function shiftGuideWeek(dir) {
         const fromEl = document.getElementById('guideDateFrom'), toEl = document.getElementById('guideDateTo');
         const base = mondayOf(fromEl.value || isoDate(new Date()));
-        const start = addDaysISO(base, 7 * dir);
-        fromEl.value = start; toEl.value = addDaysISO(start, 6);
+        const w = weekOf(base, dir);
+        fromEl.value = w.start; toEl.value = w.end;
         renderTechGuideContent();
     }
 
@@ -4864,9 +4863,8 @@
             fromEl.value = iso(today); toEl.value = iso(today);
         } else if (preset === 'week' || preset === 'lastweek') {
             // Weeks run Monday to Sunday (the whole week, so a Monday never collapses to a single day).
-            const thisMonday = mondayOf(iso(today));
-            const start = preset === 'week' ? thisMonday : addDaysISO(thisMonday, -7);
-            fromEl.value = start; toEl.value = addDaysISO(start, 6);
+            const w = weekOf(iso(today), preset === 'week' ? 0 : -1);
+            fromEl.value = w.start; toEl.value = w.end;
         } else {
             fromEl.value = ''; toEl.value = '';
         }
@@ -4893,7 +4891,7 @@
                     const manualDues = round2(counted.reduce((s, w) => s + parseVal(w.amount), 0));
                     if (!stats[tech.name]) stats[tech.name] = { dues: 0, jobs: [] };
                     stats[tech.name].dues += manualDues;
-                    stats[tech.name].jobs.push({ job, tech, dues: manualDues, fullDues, fraction: 1, daysIn: 0, daysAll: 0, dates: [], manual: true, weeks: counted });
+                    stats[tech.name].jobs.push({ job, tech, dues: manualDues, fullDues, fraction: 1, daysIn: 0, daysAll: 0, dates: [], manual: true, weeks: counted, legacyPaid: parseVal(tech.paid) });
                     return;
                 }
                 let fraction = 1, daysIn = 0, daysAll = 0, dates = [];
@@ -4907,7 +4905,7 @@
                 }
                 if (!stats[tech.name]) stats[tech.name] = { dues: 0, jobs: [] };
                 stats[tech.name].dues += fullDues * fraction;
-                stats[tech.name].jobs.push({ job, tech, dues: fullDues * fraction, fullDues, fraction, daysIn, daysAll, dates });
+                stats[tech.name].jobs.push({ job, tech, dues: fullDues * fraction, fullDues, fraction, daysIn, daysAll, dates, legacyPaid: parseVal(tech.paid) });
             });
         });
         return stats;
@@ -4948,13 +4946,16 @@
         const s = stats[name];
         const jobs = s ? s.jobs.slice().sort((a, b) => (a.job.startDate || '').localeCompare(b.job.startDate || '')) : [];
         const pays = techPaymentsInPeriod(name, dateFrom, dateTo).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+        const noDates = !dateFrom && !dateTo;
+        const legacyTotal = round2(jobs.reduce((s, j) => s + (j.legacyPaid || 0), 0));
         let h = '<div class="tg-detail">';
-        h += `<h4>${t('guideJobsTitle')} (${jobs.length})</h4>`;
+        if (legacyTotal > 0) h += `<div class="note-box" style="margin-bottom:10px;">${t('guideLegacyTotal').replace('{a}', ltrAmt(legacyTotal))}</div>`;
+        h += `<h4>${t(noDates ? 'guideJobsTitleAll' : 'guideJobsTitle')} (${jobs.length})</h4>`;
         if (jobs.length === 0) h += `<div class="tg-empty">${t('guideNoJobsInPeriod')}</div>`;
         jobs.forEach(j => {
-            h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(j.job.startDate || '')}</span><span class="tg-d-main"><strong>${escHtml(j.job.clientName || '')}</strong> <small style="color:var(--text-muted);">${techTypeLabel(j.tech.type)}</small>${j.manual ? `<div class="ag-meta" style="color:#34d399;">📆 ${t('guideManualNote')}: ${j.weeks.map(w => escHtml(w.weekStart) + ' ' + ltrAmt(w.amount)).join(' · ')}</div>` : ''}${j.fraction < 0.9999 ? `<div class="ag-meta" style="color:#fbbf24;">${t('guideProrateNote').replace('{a}', j.daysIn).replace('{b}', j.daysAll).replace('{full}', '<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">$' + j.fullDues.toFixed(2) + '</span>')}</div>` : ''}${j.fraction < 0.9999 ? `<div class="ag-meta">${t('guideEditDaysHint')}</div><div class="ag-actions">${j.dates.map(d => { const inside = (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo); return `<button class="secondary" onclick="openEditScheduleModal('${jsArg(j.job.id)}', '${jsArg(d)}')" style="${inside ? '' : 'opacity:0.65;'}">📅 ${escHtml(d)}${inside ? '' : ' ' + t('guideOutsidePeriod')}</button>`; }).join('')}</div>` : ''}</span><strong style="color:#fbbf24;">$${j.dues.toFixed(2)}</strong></div>`;
+            h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(j.job.startDate || '')}</span><span class="tg-d-main"><strong>${escHtml(j.job.clientName || '')}</strong> <small style="color:var(--text-muted);">${techTypeLabel(j.tech.type)}</small>${j.manual ? `<div class="ag-meta" style="color:#34d399;">📆 ${t('guideManualNote')}: ${j.weeks.map(w => escHtml(w.weekStart) + ' ' + ltrAmt(w.amount)).join(' · ')}</div>` : ''}${j.fraction < 0.9999 ? `<div class="ag-meta" style="color:#fbbf24;">${t('guideProrateNote').replace('{a}', j.daysIn).replace('{b}', j.daysAll).replace('{full}', '<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">$' + j.fullDues.toFixed(2) + '</span>')}</div>` : ''}${j.fraction < 0.9999 ? `<div class="ag-meta">${t('guideEditDaysHint')}</div><div class="ag-actions">${j.dates.map(d => { const inside = (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo); return `<button class="secondary" onclick="openEditScheduleModal('${jsArg(j.job.id)}', '${jsArg(d)}')" style="${inside ? '' : 'opacity:0.65;'}">📅 ${escHtml(d)}${inside ? '' : ' ' + t('guideOutsidePeriod')}</button>`; }).join('')}</div>` : ''}${j.legacyPaid > 0 ? `<div class="ag-meta">${t('guideLegacyPaid').replace('{a}', ltrAmt(j.legacyPaid))}</div>` : ''}</span><strong style="color:#fbbf24;">$${j.dues.toFixed(2)}</strong></div>`;
         });
-        h += `<h4 style="margin-top:14px;">${t('guidePaymentsTitle')} (${pays.length})</h4>`;
+        h += `<h4 style="margin-top:14px;">${t(noDates ? 'guidePaymentsTitleAll' : 'guidePaymentsTitle')} (${pays.length})</h4>`;
         if (pays.length === 0) h += `<div class="tg-empty">${t('guideNoPaymentsInPeriod')}</div>`;
         pays.forEach(p => {
             h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(p.date || '')}</span><span class="tg-d-main">${escHtml(p.note || '')}</span><strong style="color:#34d399;">$${parseVal(p.amount).toFixed(2)}</strong><button class="secondary" onclick="openTechPaymentEdit('${jsArg(p.at || '')}')" style="padding:3px 9px; font-size:0.72rem;">${t('editBtn')}</button><button class="danger" onclick="deleteTechPayment('${escJs(p.at || '')}')" style="padding:3px 9px; font-size:0.72rem;">${t('deleteBtn')}</button></div>`;
