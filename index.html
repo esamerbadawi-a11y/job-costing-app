@@ -150,6 +150,9 @@
         #screenEntry.job-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 10000; overflow-y: auto; -webkit-overflow-scrolling: touch; max-width: none !important; margin: 0 !important; padding: 12px; background: rgba(0,0,0,0.78); }
         #screenEntry.job-overlay > .card { max-width: 720px; margin: 8px auto 40px; }
         #screenEntry.job-overlay > .overlay-only { display: flex; justify-content: flex-end; max-width: 720px; margin: 0 auto; position: sticky; top: 0; z-index: 3; padding-bottom: 4px; }
+        .note-field-row { display: flex; gap: 8px; align-items: flex-start; }
+        .note-field-row textarea { flex: 1; min-height: 60px; }
+        .note-field-row button { white-space: nowrap; padding: 8px 12px; font-size: 0.78rem; }
         /* ---- "Jobs Today?" sheet, postpone / hand-over ---- */
         .ag-section-title { color: #38bdf8; font-weight: 700; font-size: 0.9rem; margin: 14px 0 6px; }
         .ag-date { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 4px; }
@@ -247,6 +250,7 @@
                     <button class="secondary" onclick="toggleTheme()" id="themeToggleBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
                     <button class="secondary" onclick="resetGeminiApiKey()" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;" data-i18n="resetAiKeyBtn"></button>
                     <button class="danger" onclick="doLogout()" data-i18n="logoutBtn" style="width:100%; border-radius:0; text-align:start; padding:10px 14px;"></button>
+                    <div style="padding:8px 14px; font-size:0.7rem; color:var(--text-muted); text-align:start; border-top:1px solid var(--border-color);"><span data-i18n="appVersionLabel"></span> <span id="appVersionValue" dir="ltr"></span></div>
                 </div>
             </div>
 
@@ -884,6 +888,14 @@
         <div class="form-group"><label data-i18n="lblScheduledTime"></label><input type="time" id="qsTime"></div>
 
         <div class="form-group">
+            <label data-i18n="qsNoteLabel"></label>
+            <div class="note-field-row">
+                <textarea id="qsNote" data-i18n-ph="phScopeNote"></textarea>
+                <button type="button" class="secondary" onclick="useJobScopeFor('qs')" data-i18n="useJobScopeBtn"></button>
+            </div>
+        </div>
+
+        <div class="form-group">
             <label data-i18n="qsTeamLabel"></label>
             <div id="qsTeamCheckboxes" style="display:flex; flex-wrap:wrap; gap:8px; background:var(--panel-bg); border:1px solid var(--border-color); border-radius:8px; padding:10px;"></div>
         </div>
@@ -954,6 +966,14 @@
         </div>
 
         <div class="form-group"><label data-i18n="lblScheduledTime"></label><input type="time" id="esTime"></div>
+        <div class="form-group">
+            <label data-i18n="qsNoteLabel"></label>
+            <div class="note-field-row">
+                <textarea id="esNote" data-i18n-ph="phScopeNote"></textarea>
+                <button type="button" class="secondary" onclick="useJobScopeFor('es')" data-i18n="useJobScopeBtn"></button>
+            </div>
+        </div>
+
         <div class="form-group">
             <label data-i18n="qsTeamLabel"></label>
             <div id="esTeamCheckboxes" style="display:flex; flex-wrap:wrap; gap:8px; background:var(--panel-bg); border:1px solid var(--border-color); border-radius:8px; padding:10px;"></div>
@@ -1366,6 +1386,12 @@
         aiStageSdk: { ar: 'تحميل مكتبة الـ AI', en: 'Loading the AI library' },
         aiStageModel: { ar: 'رد الـ AI', en: 'AI response' },
         aiEmptyMsg: { ar: 'رجع رد فاضي', en: 'returned an empty answer' },
+        appVersionLabel: { ar: 'الإصدار:', en: 'Version:' },
+        qsNoteLabel: { ar: 'شغل اليوم ده (اختياري)', en: "This visit's work (optional)" },
+        phScopeNote: { ar: 'سيب الخانة فاضية عشان يتبعت وصف الشغلانة زي ما هو، أو اكتب هنا إيه المطلوب بالظبط في اليوم ده', en: "Leave empty to send the job's own description, or write exactly what's needed on this visit" },
+        useJobScopeBtn: { ar: '📋 هات وصف الشغلانة', en: '📋 Use job description' },
+        alertPickJobFirst: { ar: 'اختار الشغلانة الأول.', en: 'Pick the job first.' },
+        alertJobHasNoScope: { ar: 'الشغلانة دي لسه مفيهاش وصف شغل مكتوب.', en: 'This job has no description written yet.' },
         agendaTitle: { ar: 'شغل النهارده', en: "Today's Work" },
         agendaScheduledToday: { ar: '📅 ميعاده النهارده', en: '📅 Scheduled today' },
         agendaRunning: { ar: '🔧 شغّالة النهارده (من غير ميعاد محدد)', en: '🔧 In progress today (no visit set)' },
@@ -1715,6 +1741,9 @@
     // Must be declared BEFORE the first applyLanguage() call below, which reads it (otherwise: a
     // "before initialization" error in the console on every page load).
     let debtBannerDismissed = false;
+    // Shown at the bottom of the user menu, so you can tell in one second whether the phone is running the latest upload.
+    const APP_VERSION = '2026-09-21.4';
+    safeCall(() => { document.getElementById('appVersionValue').textContent = APP_VERSION; });
     let currentReceipts = [];
     let currentMaterialEntries = [];
     const LEDGERS = {
@@ -1800,6 +1829,7 @@
             <div class="ag-line">${when}<strong>${escHtml(job.clientName || '')}</strong>${postponed}</div>
             ${(addr || phone) ? `<div class="ag-meta">${[addr, phone].filter(Boolean).join(' &nbsp; ')}</div>` : ''}
             ${entry ? `<div class="ag-meta" style="color:#38bdf8;">${t('weeklyTechsLabel')} ${team ? escHtml(team) : t('agendaNoTeam')}</div>` : ''}
+            ${entry && entry.note ? `<div class="ag-meta">🔧 ${escHtml(entry.note)}</div>` : ''}
             ${agendaActionsHtml(job, entry ? entry.date : '')}
         </div>`;
     }
@@ -2032,7 +2062,8 @@
         const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // default 1-hour block
         const fmt = dt => `${dt.getFullYear()}${String(dt.getMonth()+1).padStart(2,'0')}${String(dt.getDate()).padStart(2,'0')}T${String(dt.getHours()).padStart(2,'0')}${String(dt.getMinutes()).padStart(2,'0')}00`;
         const teamNames = (entry.team || []).join(', ');
-        const desc = [job.clientAddress || '', teamNames ? `${t('weeklyTechsLabel')} ${teamNames}` : ''].filter(Boolean).join('\\n');
+        const scopeText = (entry.note && entry.note.trim()) ? entry.note.trim() : job.clientDescription;
+        const desc = [job.clientAddress || '', teamNames ? `${t('weeklyTechsLabel')} ${teamNames}` : '', scopeText || ''].filter(Boolean).join('\\n');
 
         const ics = [
             'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Job Costing App//EN', 'BEGIN:VEVENT',
@@ -4422,12 +4453,12 @@
     // What the day editor looks like right now, to tell whether something was changed and not saved.
     function scheduleEditorState() {
         return { date: document.getElementById('editScheduleDayLabel').value, time: document.getElementById('esTime').value,
-                 team: [...document.querySelectorAll('.es-team-check:checked')].map(c => c.value).sort().join('|') };
+                 note: document.getElementById('esNote').value, team: [...document.querySelectorAll('.es-team-check:checked')].map(c => c.value).sort().join('|') };
     }
     function scheduleEditorDirty() {
         if (!editScheduleSnap) return false;
         const now = scheduleEditorState();
-        return now.date !== editScheduleSnap.date || now.time !== editScheduleSnap.time || now.team !== editScheduleSnap.team;
+        return now.date !== editScheduleSnap.date || now.time !== editScheduleSnap.time || now.note !== editScheduleSnap.note || now.team !== editScheduleSnap.team;
     }
     function goFullEdit(jobId) { closeEditScheduleModal(); openJobOverlay(jobId); }
     function requestFullEdit(jobId) {
@@ -4453,6 +4484,7 @@
         document.getElementById('editScheduleClientLabel').textContent = job.clientName || '';
         document.getElementById('editScheduleDayLabel').value = entry.date || '';
         document.getElementById('esTime').value = entry.time || '';
+        document.getElementById('esNote').value = entry.note || '';
 
         const checkedTeam = entry.team || [];
         const names = ['SAMER', 'MOHAMED', ...getUniqueRegisteredTechnicians(), ...checkedTeam];
@@ -4493,6 +4525,7 @@
         if (idx === -1) return false;
         const newDate = document.getElementById('editScheduleDayLabel').value;
         const newTime = document.getElementById('esTime').value;
+        const newNote = document.getElementById('esNote').value.trim();
         const newTeam = Array.from(document.querySelectorAll('.es-team-check:checked')).map(cb => cb.value);
 
         // Drop the entry being edited, then add it back at (possibly) its new date —
@@ -4501,7 +4534,7 @@
         const backup = JSON.parse(JSON.stringify(savedJobs[idx]));
         const original = getScheduleEntries(savedJobs[idx]).find(e => e.date === editScheduleOrigDate) || {};
         const entries = getScheduleEntries(savedJobs[idx]).filter(e => e.date !== editScheduleOrigDate);
-        entries.push({ ...original, date: newDate, time: newTime, team: newTeam, dayOrder: 0 });
+        entries.push({ ...original, date: newDate, time: newTime, team: newTeam, note: newNote, dayOrder: 0 });
         savedJobs[idx].dailySchedule = entries;
         savedJobs[idx].lastEditedBy = currentUserEmail;
         try {
@@ -4514,6 +4547,22 @@
         return true;
     }
 
+    // Fills a visit's note from the job's own Scope of Work — the person can still edit or clear it afterwards.
+    // 'qs' = Quick Schedule (job picked from the dropdown); 'es' = the day editor (job already known).
+    function useJobScopeFor(which) {
+        let job = null;
+        if (which === 'qs') {
+            if (quickScheduleMode !== 'existing') { alert(t('alertPickJobFirst')); return; }
+            job = savedJobs.find(j => j.id === document.getElementById('qsExistingJobSelect').value);
+        } else {
+            job = savedJobs.find(j => j.id === editScheduleJobId);
+        }
+        if (!job) { alert(t('alertPickJobFirst')); return; }
+        if (!job.clientDescription) { alert(t('alertJobHasNoScope')); return; }
+        document.getElementById(which === 'qs' ? 'qsNote' : 'esNote').value = job.clientDescription;
+        // Copying the scope into the day editor is a change like any other, so the unsaved-changes check (which compares values) still catches it.
+    }
+
     function openQuickScheduleModal(dateStr) {
         quickScheduleDay = dateStr;
         quickScheduleMode = 'new';
@@ -4522,6 +4571,7 @@
         document.getElementById('qsClientAddress').value = '';
         document.getElementById('qsAddressAutocompleteList').style.display = 'none';
         document.getElementById('qsTime').value = '';
+        document.getElementById('qsNote').value = '';
 
         // Existing-job dropdown: any job not yet marked "done".
         const sel = document.getElementById('qsExistingJobSelect');
@@ -4553,6 +4603,7 @@
 
     async function saveQuickSchedule() {
         const time = document.getElementById('qsTime').value;
+        const note = document.getElementById('qsNote').value.trim();
         const team = Array.from(document.querySelectorAll('.qs-team-check:checked')).map(cb => cb.value);
 
         if (quickScheduleMode === 'new') {
@@ -4567,7 +4618,7 @@
                 clientDescription: '',
                 startDate: quickScheduleDay,
                 endDate: quickScheduleDay,
-                dailySchedule: [{ date: quickScheduleDay, time, team, dayOrder: 0 }],
+                dailySchedule: [{ date: quickScheduleDay, time, team, note, dayOrder: 0 }],
                 totalRevenue: 0, amountReceived: 0, amountRemaining: 0,
                 followUpDate: '', materialCost: 0, extraExpenses: 0,
                 expenseItems: [], technicians: [],
@@ -4586,7 +4637,7 @@
             // Adds/updates just THIS day's entry — a job already scheduled on other days
             // (maybe with a different tech) keeps those days untouched. The job's official
             // record date (startDate, used in Log & Reports) is never touched either.
-            upsertScheduleEntry(savedJobs[idx], quickScheduleDay, time, team);
+            upsertScheduleEntry(savedJobs[idx], quickScheduleDay, time, team, note);
             savedJobs[idx].lastEditedBy = currentUserEmail;
             try {
                 await saveSavedJobsData();
@@ -4793,11 +4844,11 @@
 
     // Adds or updates (for the same date) one day's entry, without touching any other day
     // already scheduled for this job.
-    function upsertScheduleEntry(job, date, time, team) {
+    function upsertScheduleEntry(job, date, time, team, note) {
         const entries = getScheduleEntries(job).map(e => ({ ...e })); // clone, since getScheduleEntries may synthesize from legacy fields
         const idx = entries.findIndex(e => e.date === date);
-        if (idx !== -1) { entries[idx].time = time; entries[idx].team = team; }
-        else { entries.push({ date, time, team, dayOrder: entries.filter(e => e.date === date).length }); }
+        if (idx !== -1) { entries[idx].time = time; entries[idx].team = team; entries[idx].note = note; }
+        else { entries.push({ date, time, team, note, dayOrder: entries.filter(e => e.date === date).length }); }
         job.dailySchedule = entries;
         // Keep the legacy fields roughly in sync too, so anything not yet updated to read
         // dailySchedule (e.g. an older cached page) still shows something reasonable.
@@ -4855,6 +4906,7 @@
                     <div>${timeLabel}<strong>${job.clientName || ''}</strong>${isOverdue ? ` <span style="color:#f87171; font-size:0.72rem; font-weight:700;">⚠️ ${t('overdueLabel')}</span>` : ''}</div>
                     <div style="font-size:0.78rem; color:var(--text-muted);">${job.clientAddress ? `<a href="#" onclick="event.preventDefault(); event.stopPropagation(); showMapChoice('${job.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${job.clientAddress}</a>` : ''}${showAllPendingMode ? ' — ' + (entry.date || t('noDateSet')) : ''}</div>
                     <div style="font-size:0.78rem; color:#38bdf8;">${t('weeklyTechsLabel')} ${teamNames}</div>
+                    ${entry.note ? `<div style="font-size:0.76rem; color:var(--text-muted); margin-top:2px;">🔧 ${entry.note}</div>` : ''}
                     ${entry.postponedFrom ? `<span class="ag-badge">⏭ ${t('postponedFromLabel')} ${entry.postponedFrom}</span>` : ''}
                 </div>
                 <div style="display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px; align-self:center; max-width:170px;">
@@ -4997,7 +5049,8 @@
                 if (job.clientAddress) msg += `📍 ${job.clientAddress}\n`;
                 msg += `⏰ ${timeLine}\n`;
                 if (teamNames) msg += `👤 ${teamNames}\n`;
-                if (job.clientDescription) msg += `🔧 ${job.clientDescription}\n`;
+                const scopeText = (entry.note && entry.note.trim()) ? entry.note.trim() : job.clientDescription;
+                if (scopeText) msg += `🔧 ${scopeText}\n`;
                 msg += '\n';
             });
         });
