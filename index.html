@@ -168,6 +168,8 @@
         .chip-row button { padding: 6px 12px; font-size: 0.78rem; }
         #toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 90px; max-width: 92%; background: #059669; color: #fff; padding: 10px 18px; border-radius: 12px; font-weight: 700; font-size: 0.85rem; box-shadow: 0 8px 20px rgba(0,0,0,0.4); z-index: 10002; display: none; text-align: center; }
         /* ---- Dated client payments / material invoices (job form) ---- */
+        .tms-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 0.82rem; border-top: 1px solid var(--border-color); }
+        .tms-row:first-of-type { border-top: none; }
         .ledger-add-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
         .lg-field { display: flex; flex-direction: column; gap: 3px; }
         .lg-field > span { font-size: 0.72rem; color: var(--text-muted); font-weight: 600; }
@@ -615,6 +617,19 @@
                         <button type="button" onclick="addTechnician()" style="background: #0ea5e9; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem;">
                             <span data-i18n="addTechBtn"></span>
                         </button>
+                    </div>
+                    <div class="filters-bar no-print" style="margin-bottom:12px;">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="filterDateFromLabel"></label>
+                            <input type="date" id="techPeriodFrom" onchange="renderTechnicians()" style="min-width:130px;">
+                        </div>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="filterDateToLabel"></label>
+                            <input type="date" id="techPeriodTo" onchange="renderTechnicians()" style="min-width:130px;">
+                        </div>
+                        <button class="secondary" onclick="setTechPeriod('week')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetWeekBtn"></button>
+                        <button class="secondary" onclick="setTechPeriod('lastweek')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetLastWeekBtn"></button>
+                        <button class="secondary" onclick="setTechPeriod('clear')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
                     </div>
                     <div id="techniciansContainer"></div>
                 </div>
@@ -1401,6 +1416,15 @@
         reimbHint: { ar: 'المبلغ ده بيتضاف على أجر الفني، ويتخصم من نصيب الشركة — منفصل تمامًا عن خانة "تكلفة الخامات" اللي بتتشرى بفلوس الشغلانة.', en: "This is added to the technician's pay and comes out of the company's share — kept completely separate from \"Material Cost\", which is materials paid from the job's own money." },
         reimbTotal: { ar: 'الإجمالي المرتجع له', en: 'Total reimbursed to him' },
         materialsShort: { ar: 'مواد', en: 'materials' },
+        tmsTitle: { ar: '💰 حساب الفني', en: "💰 Technician's Account" },
+        tmsPeriodNote: { ar: 'في الفترة {a} → {b}', en: 'In the period {a} → {b}' },
+        tmsNoPeriodNote: { ar: 'إجمالي كل الوقت (من غير فترة محددة)', en: 'All-time total (no period selected)' },
+        tmsDueAll: { ar: 'مستحقه في كل شغلاناته:', en: 'His due across all his jobs:' },
+        tmsPaidAll: { ar: 'المدفوع له:', en: 'Paid to him:' },
+        tmsRemainingAll: { ar: 'الباقي له:', en: 'Remaining owed to him:' },
+        tmsMultiJobNote: { ar: 'الرقم ده شامل {n} شغلانة اشتغل فيها في نفس الفترة، مش الشغلانة دي بس.', en: 'This figure covers {n} job(s) he worked in this same period, not just this job.' },
+        tmsMoneyBaseNote: { ar: 'القاعدة: مستلم {recv} فترة − خامات {mat} = {base} × {pct}%', en: 'Base: received {recv} this period − materials {mat} = {base} × {pct}%' },
+        tmsOverlapWarn: { ar: 'الفني ده متجدول في نفس اليوم على شغلانة تانية كمان — تأكد إنك مش بتحسبله نفس اليوم مرتين:', en: "This technician is also scheduled on another job the same day — make sure you're not counting that day for him twice:" },
         agendaTitle: { ar: 'شغل النهارده', en: "Today's Work" },
         agendaScheduledToday: { ar: '📅 ميعاده النهارده', en: '📅 Scheduled today' },
         agendaRunning: { ar: '🔧 شغّالة النهارده (من غير ميعاد محدد)', en: '🔧 In progress today (no visit set)' },
@@ -2284,6 +2308,53 @@
         return received - material;
     }
 
+    function setTechPeriod(preset) {
+        const fromEl = document.getElementById('techPeriodFrom'), toEl = document.getElementById('techPeriodTo');
+        if (preset === 'clear') { fromEl.value = ''; toEl.value = ''; }
+        else { const w = weekOf(isoDate(new Date()), preset === 'week' ? 0 : -1); fromEl.value = w.start; toEl.value = w.end; }
+        renderTechnicians();
+    }
+
+    // Everything the money-status box needs for one technician: his due (this job, and across all his jobs),
+    // what he's been paid, and what's left — all for whichever period is picked above (or all-time if none).
+    function techMoneyStatus(tech, jobId) {
+        const dateFrom = document.getElementById('techPeriodFrom').value;
+        const dateTo = document.getElementById('techPeriodTo').value;
+        const stats = techStatsWithLiveJob(dateFrom, dateTo);
+        const s = stats[tech.name];
+        const jobsForName = s ? s.jobs : [];
+        const thisJobEntry = jobsForName.find(j => j.job.id === jobId);
+        const paidAllJobs = techPaymentsInPeriod(tech.name, dateFrom, dateTo).reduce((sum, p) => sum + parseVal(p.amount), 0);
+        const dueAllJobs = s ? s.dues : 0;
+        return {
+            hasPeriod: !!(dateFrom || dateTo), dateFrom, dateTo,
+            dueThisJob: thisJobEntry ? thisJobEntry.dues : 0,
+            dueAllJobs, paidAllJobs, remainingAllJobs: round2(dueAllJobs - paidAllJobs),
+            jobsCount: jobsForName.length, detail: thisJobEntry
+        };
+    }
+
+    function techMoneyStatusHtml(tech, index) {
+        if (!tech.name) return '';
+        const jobId = document.getElementById('editingJobId').value || '__unsaved__';
+        const ms = techMoneyStatus(tech, jobId);
+        const overlaps = jobId !== '__unsaved__' ? techScheduleOverlaps(tech.name, jobId) : [];
+        let html = '<div class="ledger-box tms-box" style="margin-top:12px;">';
+        html += `<div class="ledger-title">${t('tmsTitle')}</div>`;
+        html += `<div class="ag-meta" style="margin-bottom:4px;">${ms.hasPeriod ? t('tmsPeriodNote').replace('{a}', escHtml(ms.dateFrom || '…')).replace('{b}', escHtml(ms.dateTo || '…')) : t('tmsNoPeriodNote')}</div>`;
+        html += `<div class="tms-row"><span>${t('tmsDueAll')}</span><strong style="color:#fbbf24;">${ltrAmt(ms.dueAllJobs)}</strong></div>`;
+        html += `<div class="tms-row"><span>${t('tmsPaidAll')}</span><strong style="color:#34d399;">${ltrAmt(ms.paidAllJobs)}</strong></div>`;
+        html += `<div class="tms-row"><span>${t('tmsRemainingAll')}</span><strong style="color:${ms.remainingAllJobs > 0.005 ? '#f87171' : '#94a3b8'};">${ltrAmt(ms.remainingAllJobs)}</strong></div>`;
+        if (ms.jobsCount > 1) html += `<div class="ag-meta" style="margin-top:4px;">${t('tmsMultiJobNote').replace('{n}', ms.jobsCount)}</div>`;
+        if (ms.detail && ms.detail.isPercentPeriod) {
+            html += `<div class="ag-meta" style="margin-top:4px; color:#38bdf8;">${t('tmsMoneyBaseNote').replace('{recv}', ltrAmt(ms.detail.periodRecv)).replace('{mat}', ltrAmt(ms.detail.periodMat)).replace('{base}', ltrAmt(ms.detail.periodBase)).replace('{pct}', ms.detail.pct)}</div>`;
+        }
+        if (overlaps.length > 0) {
+            html += `<div class="ledger-warn" style="margin-top:8px;">⚠️ ${t('tmsOverlapWarn')}<br>` + overlaps.map(o => `📅 ${escHtml(o.date)} — ${escHtml(o.jobName)}`).join('<br>') + `</div>`;
+        }
+        return html + '</div>';
+    }
+
     function renderTechnicians() {
         const container = document.getElementById('techniciansContainer');
         container.innerHTML = '';
@@ -2293,9 +2364,13 @@
         }
         const registeredTechs = getUniqueRegisteredTechnicians();
 
+        const periodOn = !!(document.getElementById('techPeriodFrom').value || document.getElementById('techPeriodTo').value);
         technicians.forEach((tech, index) => {
             if (!tech.type) { tech.type = 'نسبة مخصصة'; if (tech.customPercent === undefined) tech.customPercent = 50; }
             const dues = calculateTechDues(tech);
+            const periodMs = periodOn && tech.name ? techMoneyStatus(tech, document.getElementById('editingJobId').value || '__unsaved__') : null;
+            const periodReimb = periodMs ? (periodMs.detail ? periodMs.detail.reimbSum : 0) : 0;
+            const displayWage = periodMs ? round2(periodMs.dueThisJob - periodReimb) : dues;
             const isCustom = tech.type === 'نسبة مخصصة';
 
             const card = document.createElement('div');
@@ -2340,12 +2415,13 @@
                     <div>
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblDue')}</label>
                         <div class="tech-dues-display" style="background: #11141d; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; text-align: center; font-size: 0.85rem; color: #38bdf8; font-weight: 700;">
-                            ${techDuesLineHtml(dues, techReimbTotal(tech))}
+                            ${techDuesLineHtml(displayWage, periodMs ? periodReimb : techReimbTotal(tech))}
                         </div>
                     </div>
                 </div>
                 ${techWeeksPanelHtml(tech, index, dues)}
                 ${techReimbPanelHtml(tech, index)}
+                ${techMoneyStatusHtml(tech, index)}
             `;
             container.appendChild(card);
         });
@@ -2602,12 +2678,23 @@
         const dues = calculateTechDues(tech);
         const card = document.getElementById(`techcard-${index}`);
         if (!card) return;
+        const periodOn = !!(document.getElementById('techPeriodFrom').value || document.getElementById('techPeriodTo').value);
+        const periodMs = periodOn && tech.name ? techMoneyStatus(tech, document.getElementById('editingJobId').value || '__unsaved__') : null;
+        const periodReimb = periodMs ? (periodMs.detail ? periodMs.detail.reimbSum : 0) : 0;
+        const displayWage = periodMs ? round2(periodMs.dueThisJob - periodReimb) : dues;
         const display = card.querySelector('.tech-dues-display');
         if (display) {
-            display.innerHTML = techDuesLineHtml(dues, techReimbTotal(tech));
+            display.innerHTML = techDuesLineHtml(displayWage, periodMs ? periodReimb : techReimbTotal(tech));
         }
         const wsum = card.querySelector('.tw-summary');
         if (wsum) wsum.innerHTML = techWeeksSummaryHtml(tech, dues);
+        // A targeted swap (not a full renderTechnicians()) so typing in the Rate/Days field never loses its
+        // cursor position or focus mid-keystroke.
+        const tmsBox = card.querySelector('.tms-box');
+        const freshTms = techMoneyStatusHtml(tech, index);
+        if (tmsBox && freshTms) tmsBox.outerHTML = freshTms;
+        else if (tmsBox) tmsBox.remove();
+        else if (freshTms) card.insertAdjacentHTML('beforeend', freshTms);
     }
 
     function calculate() { technicians.forEach((t, i) => updateTechCardDues(i)); }
@@ -5195,6 +5282,74 @@
     // The Technicians Guide table AND the printed technician report both use it, so they can never disagree.
     // With a date range set, a job's dues are prorated by the share of the technician's scheduled days
     // on that job that fall inside the range. What they were PAID comes only from the dated 💵 payments.
+    // ---------- Percentage dues from the money actually received in a period, not the job's whole total ----------
+    function isPercentType(type) { return type === 'فني لوحده (%60)' || type === 'نسبة (50%)' || type === 'نسبة مخصصة'; }
+    function percentOf(tech) {
+        if (tech.type === 'فني لوحده (%60)') return 0.6;
+        if (tech.type === 'نسبة (50%)') return 0.5;
+        return (tech.customPercent !== undefined ? parseVal(tech.customPercent) : 50) / 100;
+    }
+    function inRangeSum(arr, dateFrom, dateTo) {
+        return round2((arr || []).filter(e => (!dateFrom || e.date >= dateFrom) && (!dateTo || e.date <= dateTo)).reduce((s, e) => s + parseVal(e.amount), 0));
+    }
+    // The base for a percentage technician's pay IN A GIVEN PERIOD: only the client payments and material
+    // invoices actually DATED inside that period (never the job's running totals, and never an undated legacy
+    // amount, exactly like the dated ledgers already work). If materials outspend receipts that period, the
+    // base is zero for that period — it is not carried into the next one.
+    function percentBaseForPeriod(job, dateFrom, dateTo) {
+        const recv = inRangeSum(job.receipts, dateFrom, dateTo);
+        const mat = inRangeSum(job.materialEntries, dateFrom, dateTo);
+        return Math.max(0, round2(recv - mat));
+    }
+
+    // A stand-in for the job currently open in the form, built from what's on screen right now (not yet
+    // saved). Lets the money-status panel and the Guide-identical stats function react as you type, without
+    // needing a second copy of the calculation logic.
+    function currentEditingJobSnapshot() {
+        const id = document.getElementById('editingJobId').value;
+        const original = id ? savedJobs.find(j => j.id === id) : null;
+        return {
+            id: id || '__unsaved__',
+            amountReceived: parseVal(document.getElementById('amountReceived').value),
+            materialCost: parseVal(document.getElementById('materialCost').value),
+            extraExpenses: parseVal(document.getElementById('extraExpenses').value),
+            receipts: currentReceipts,
+            materialEntries: currentMaterialEntries,
+            technicians: technicians,
+            clientName: document.getElementById('clientName').value,
+            dailySchedule: original ? original.dailySchedule : [],
+            scheduledDate: original ? original.scheduledDate : undefined,
+            assignedTeam: original ? original.assignedTeam : undefined,
+            scheduledTime: original ? original.scheduledTime : undefined,
+            startDate: original ? original.startDate : document.getElementById('startDate').value,
+            endDate: original ? original.endDate : document.getElementById('endDate').value
+        };
+    }
+    // Runs computeTechPeriodStats with the OPEN job replaced by its live, unsaved state — so the job screen's
+    // panel and the Technicians Guide always agree, because they run through the exact same function.
+    function techStatsWithLiveJob(dateFrom, dateTo) {
+        const snap = currentEditingJobSnapshot();
+        const backup = savedJobs;
+        savedJobs = backup.filter(j => j.id !== snap.id).concat([snap]);
+        try { return computeTechPeriodStats(dateFrom, dateTo); }
+        finally { savedJobs = backup; }
+    }
+    // Days this technician is scheduled on THIS job that collide with a day he's also scheduled on another
+    // job — the usual sign that a daily/fixed amount is about to be counted for the same day twice.
+    function techScheduleOverlaps(techName, thisJobId) {
+        if (!thisJobId || !techName) return [];
+        const thisJob = savedJobs.find(j => j.id === thisJobId);
+        if (!thisJob) return [];
+        const myDates = new Set(getScheduleEntries(thisJob).filter(e => (e.team || []).includes(techName)).map(e => e.date));
+        if (myDates.size === 0) return [];
+        const hits = [];
+        savedJobs.forEach(job => {
+            if (job.id === thisJobId) return;
+            getScheduleEntries(job).forEach(e => { if ((e.team || []).includes(techName) && myDates.has(e.date)) hits.push({ date: e.date, jobName: job.clientName || '', jobId: job.id }); });
+        });
+        return hits.sort((a, b) => a.date.localeCompare(b.date));
+    }
+
     function computeTechPeriodStats(dateFrom, dateTo) {
         const hasDateFilter = !!(dateFrom || dateTo);
         const stats = {};
@@ -5214,6 +5369,21 @@
                     if (!stats[tech.name]) stats[tech.name] = { dues: 0, jobs: [] };
                     stats[tech.name].dues += manualDues;
                     stats[tech.name].jobs.push({ job, tech, dues: manualDues, fullDues, fraction: 1, daysIn: 0, daysAll: 0, dates: [], manual: true, weeks: counted, legacyPaid: parseVal(tech.paid), reimbSum, reimbEntries });
+                    return;
+                }
+                // Percentage technicians: with a period picked, pay follows the DATED client money for that
+                // period (not the schedule) — see percentBaseForPeriod. Without a period, or for any other
+                // pay type, dues still follow the schedule days as before.
+                if (hasDateFilter && isPercentType(tech.type)) {
+                    const periodRecv = inRangeSum(job.receipts, dateFrom, dateTo);
+                    const periodMat = inRangeSum(job.materialEntries, dateFrom, dateTo);
+                    const periodBase = Math.max(0, round2(periodRecv - periodMat));
+                    const pct = percentOf(tech);
+                    const wageDues = round2(periodBase * pct);
+                    if (wageDues <= 0.005 && reimbSum <= 0.005) return;
+                    if (!stats[tech.name]) stats[tech.name] = { dues: 0, jobs: [] };
+                    stats[tech.name].dues += wageDues + reimbSum;
+                    stats[tech.name].jobs.push({ job, tech, dues: round2(wageDues + reimbSum), fullDues, isPercentPeriod: true, periodRecv, periodMat, periodBase, pct: Math.round(pct * 100), legacyPaid: parseVal(tech.paid), reimbSum, reimbEntries });
                     return;
                 }
                 let fraction = 1, daysIn = 0, daysAll = 0, dates = [];
@@ -5278,7 +5448,7 @@
         h += `<h4>${t(noDates ? 'guideJobsTitleAll' : 'guideJobsTitle')} (${jobs.length})</h4>`;
         if (jobs.length === 0) h += `<div class="tg-empty">${t('guideNoJobsInPeriod')}</div>`;
         jobs.forEach(j => {
-            h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(j.job.startDate || '')}</span><span class="tg-d-main"><strong>${escHtml(j.job.clientName || '')}</strong> <small style="color:var(--text-muted);">${techTypeLabel(j.tech.type)}</small>${j.manual ? `<div class="ag-meta" style="color:#34d399;">📆 ${t('guideManualNote')}: ${j.weeks.map(w => escHtml(w.weekStart) + ' ' + ltrAmt(w.amount)).join(' · ')}</div>` : ''}${j.fraction < 0.9999 ? `<div class="ag-meta" style="color:#fbbf24;">${t('guideProrateNote').replace('{a}', j.daysIn).replace('{b}', j.daysAll).replace('{full}', '<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">$' + j.fullDues.toFixed(2) + '</span>')}</div>` : ''}${j.fraction < 0.9999 ? `<div class="ag-meta">${t('guideEditDaysHint')}</div><div class="ag-actions">${j.dates.map(d => { const inside = (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo); return `<button class="secondary" onclick="openEditScheduleModal('${jsArg(j.job.id)}', '${jsArg(d)}')" style="${inside ? '' : 'opacity:0.65;'}">📅 ${escHtml(d)}${inside ? '' : ' ' + t('guideOutsidePeriod')}</button>`; }).join('')}</div>` : ''}${j.legacyPaid > 0 ? `<div class="ag-meta">${t('guideLegacyPaid').replace('{a}', ltrAmt(j.legacyPaid))}</div>` : ''}${j.reimbEntries && j.reimbEntries.length > 0 ? `<div class="ag-meta" style="color:#fb923c;">🧾 ${t('reimbTitle')}: ${j.reimbEntries.map(e => escHtml(e.date) + ' ' + ltrAmt(e.amount)).join(' · ')}</div>` : ''}</span><strong style="color:#fbbf24;">$${j.dues.toFixed(2)}</strong></div>`;
+            h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(j.job.startDate || '')}</span><span class="tg-d-main"><strong>${escHtml(j.job.clientName || '')}</strong> <small style="color:var(--text-muted);">${techTypeLabel(j.tech.type)}</small>${j.manual ? `<div class="ag-meta" style="color:#34d399;">📆 ${t('guideManualNote')}: ${j.weeks.map(w => escHtml(w.weekStart) + ' ' + ltrAmt(w.amount)).join(' · ')}</div>` : ''}${j.isPercentPeriod ? `<div class="ag-meta" style="color:#38bdf8;">${t('tmsMoneyBaseNote').replace('{recv}', ltrAmt(j.periodRecv)).replace('{mat}', ltrAmt(j.periodMat)).replace('{base}', ltrAmt(j.periodBase)).replace('{pct}', j.pct)}</div>` : ''}${(!j.isPercentPeriod && j.fraction < 0.9999) ? `<div class="ag-meta" style="color:#fbbf24;">${t('guideProrateNote').replace('{a}', j.daysIn).replace('{b}', j.daysAll).replace('{full}', '<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">$' + j.fullDues.toFixed(2) + '</span>')}</div>` : ''}${(!j.isPercentPeriod && j.fraction < 0.9999) ? `<div class="ag-meta">${t('guideEditDaysHint')}</div><div class="ag-actions">${j.dates.map(d => { const inside = (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo); return `<button class="secondary" onclick="openEditScheduleModal('${jsArg(j.job.id)}', '${jsArg(d)}')" style="${inside ? '' : 'opacity:0.65;'}">📅 ${escHtml(d)}${inside ? '' : ' ' + t('guideOutsidePeriod')}</button>`; }).join('')}</div>` : ''}${j.legacyPaid > 0 ? `<div class="ag-meta">${t('guideLegacyPaid').replace('{a}', ltrAmt(j.legacyPaid))}</div>` : ''}${j.reimbEntries && j.reimbEntries.length > 0 ? `<div class="ag-meta" style="color:#fb923c;">🧾 ${t('reimbTitle')}: ${j.reimbEntries.map(e => escHtml(e.date) + ' ' + ltrAmt(e.amount)).join(' · ')}</div>` : ''}</span><strong style="color:#fbbf24;">$${j.dues.toFixed(2)}</strong></div>`;
         });
         h += `<h4 style="margin-top:14px;">${t(noDates ? 'guidePaymentsTitleAll' : 'guidePaymentsTitle')} (${pays.length})</h4>`;
         if (pays.length === 0) h += `<div class="tg-empty">${t('guideNoPaymentsInPeriod')}</div>`;
