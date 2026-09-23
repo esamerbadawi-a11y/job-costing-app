@@ -256,10 +256,13 @@
                 </div>
             </div>
 
+            <button class="secondary" onclick="openGlobalSearch()" style="align-self:center;" title="🔍">🔍</button>
+
             <div style="position:relative; align-self:center;">
                 <button class="secondary" onclick="toggleGroupMenu('reports')" id="reportsMenuTrigger" data-i18n="reportsMenuBtn"></button>
                 <div id="reportsMenuDropdown" style="display:none; position:absolute; top:110%; inset-inline-start:0; background:var(--card-dark); border:1px solid var(--border-color); border-radius:10px; box-shadow:0 10px 25px rgba(0,0,0,0.4); min-width:200px; z-index:1000; overflow:hidden;">
                     <button class="secondary" onclick="openTechGuideModal()" data-i18n="guideBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
+<button class="secondary" onclick="openWeeklyPayScreen()" data-i18n="weeklyPayBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px; color:#34d399;"></button>
                     <button class="secondary" onclick="openExpenseReportModal()" data-i18n="expenseReportBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
                     <button class="secondary" id="activityLogBtnEl" style="display:none; width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;" onclick="openActivityLogModal()" data-i18n="activityLogBtn"></button>
                     <button class="secondary" onclick="openPartnerAccountModal()" data-i18n="partnerAccountBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
@@ -477,6 +480,7 @@
                 </div>
                 <div class="no-print" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
                     <button class="secondary" style="background: #0284c7; color: white;" onclick="printSelectedJobs()" data-i18n="printBtn"></button>
+                    <button class="success" onclick="markSelectedAsDone()" data-i18n="markDoneBtn"></button>
                     <button class="warning" id="undoDeleteBtn" onclick="undoLastDelete()" style="display: none;">
                         <span data-i18n="undoPrefix"></span> (<span id="undoCount">0</span>)
                     </button>
@@ -617,6 +621,11 @@
                         <button type="button" onclick="addTechnician()" style="background: #0ea5e9; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem;">
                             <span data-i18n="addTechBtn"></span>
                         </button>
+                    </div>
+                    <div class="ag-meta" style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:10px;">
+                        <span>🟡 <span data-i18n="legendWage"></span></span>
+                        <span>🟠 <span data-i18n="legendMaterials"></span></span>
+                        <span>🟣 <span data-i18n="legendDaily"></span></span>
                     </div>
                     <div class="filters-bar no-print" style="margin-bottom:12px;">
                         <div style="display:flex; align-items:center; gap:6px;">
@@ -921,6 +930,17 @@
         </div>
 
         <button class="success" style="width:100%; padding:11px;" onclick="saveQuickSchedule()" data-i18n="qsSaveBtn"></button>
+    </div>
+</div>
+
+<div id="globalSearchModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10001; justify-content:center; align-items:flex-start;" onclick="if(event.target===this) closeGlobalSearch();">
+    <div class="tg-modal-box" style="max-width:520px; margin-top:8vh;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.1rem;">🔍 <span data-i18n="gsTitle"></span></h2>
+            <button class="danger" onclick="closeGlobalSearch()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+        <input type="text" id="globalSearchInput" oninput="renderGlobalSearch()" data-i18n-ph="gsPlaceholder" style="margin-bottom:12px;">
+        <div id="globalSearchResults"></div>
     </div>
 </div>
 
@@ -1435,6 +1455,30 @@
         jobPeriodMat: { ar: 'الخامات في الفترة:', en: 'Materials this period:' },
         jobPeriodTechDues: { ar: 'مستحق الفنيين في الفترة:', en: "Technicians' dues this period:" },
         jobPeriodNet: { ar: 'الصافي:', en: 'Net:' },
+        markDoneBtn: { ar: '✅ علّم كخلص', en: '✅ Mark as Done' },
+        alertAllAlreadyDone: { ar: 'الشغلانات المحددة كلها خلص بالفعل.', en: 'All the selected jobs are already marked done.' },
+        confirmMarkDone: { ar: 'تعلّم {n} شغلانة كـ"خلص"؟', en: 'Mark {n} job(s) as "Done"?' },
+        activityMarkedDone: { ar: 'اتعلّمت كخلص (تحديد جماعي)', en: 'Marked as Done (bulk action)' },
+        toastMarkedDone: { ar: 'اتعلّمت {n} شغلانة كخلص', en: '{n} job(s) marked as Done' },
+        weeklyPayBtn: { ar: '💰 دفعات الأسبوع ده', en: "💰 This Week's Payments" },
+        agendaWeeklyDue: { ar: '💰 فنيين مستحقين الأسبوع ده', en: '💰 Technicians Owed Money This Week' },
+        agendaNoWeeklyDue: { ar: 'مفيش حد مستحقله حاجة الأسبوع ده.', en: 'Nobody is owed anything this week.' },
+        payBtn: { ar: 'دفع', en: 'Pay' },
+        advancedOptionsTitle: { ar: 'خيارات متقدمة', en: 'Advanced Options' },
+        advancedOptionsHelp: { ar: 'هنا توزيع الأجر على الأسابيع يدويًا (لو عايز تثبّت رقم لكل أسبوع بنفسك)، وتسجيل مواد اشتراها الفني بنفسه وتترد له. معظم الوقت مش محتاجها.', en: "This is where you type a fixed amount per week yourself, or record materials the technician paid for himself and is owed back. Most of the time you won't need these." },
+        legendWage: { ar: 'أصفر = أجر الفني', en: 'Yellow = technician wage' },
+        legendMaterials: { ar: 'برتقالي = مواد اشتراها بنفسه', en: 'Orange = materials he bought himself' },
+        legendDaily: { ar: 'بنفسجي = موزّع على الأيام', en: 'Purple = allocated by day' },
+        twHelp: { ar: 'اكتب هنا مبلغ ثابت تحدده بنفسك لأسبوع معين، بدل ما البرنامج يحسبه تلقائي. مفيد لو عايز تثبّت رقم اتفقتوا عليه.', en: "Type a fixed amount for a specific week yourself, instead of letting the app calculate it. Useful when you've agreed on a specific figure." },
+        reimbHelp: { ar: 'لو الفني اشترى خامات بفلوسه الخاصة، سجّلها هنا عشان تترد له فوق أجره — منفصلة عن خانة \"تكلفة الخامات\" اللي بتتشرى بفلوس الشغلانة.', en: "If the technician bought materials with his own money, record it here so it's added on top of his wage — separate from the job's own \"Material Cost\" field." },
+        dailyAllocHelp: { ar: 'لو سعر يومه ثابت (زي 200$) وشغال أكتر من شغلانة في نفس اليوم، وزّع نصيب كل شغلانة هنا بدل ما يتحسب له سعر اليوم مرتين.', en: "If his day rate is fixed (like $200) and he worked more than one job the same day, split each job's share here instead of counting his day rate twice." },
+        tmsHelp: { ar: 'ده مستحق الفني والمدفوع له والباقي، شامل كل شغلاناته في نفس الفترة المحددة فوق — مش الشغلانة دي بس.', en: "This is the technician's due, paid, and remaining — across ALL his jobs in the period selected above, not just this one." },
+        gsTitle: { ar: 'بحث', en: 'Search' },
+        gsPlaceholder: { ar: 'دوّر باسم العميل، رقم الهاتف، العنوان، أو اسم الفني...', en: 'Search by client name, phone, address, or technician name...' },
+        gsJobs: { ar: 'شغلانات', en: 'Jobs' },
+        gsTechnicians: { ar: 'فنيين', en: 'Technicians' },
+        gsContacts: { ar: 'جهات اتصال', en: 'Contacts' },
+        gsNoResults: { ar: 'مفيش نتايج.', en: 'No results.' },
         agendaTitle: { ar: 'شغل النهارده', en: "Today's Work" },
         agendaScheduledToday: { ar: '📅 ميعاده النهارده', en: '📅 Scheduled today' },
         agendaRunning: { ar: '🔧 شغّالة النهارده (من غير ميعاد محدد)', en: '🔧 In progress today (no visit set)' },
@@ -1902,8 +1946,89 @@
             html += `<div class="ag-section-title">${t('agendaTomorrow')} (${tomorrowItems.length})</div>`;
             html += tomorrowItems.map(p => agendaItemHtml(p.job, p.entry)).join('');
         }
+        const wd = weeklyDueTechnicians();
+        html += `<div class="ag-section-title">${t('agendaWeeklyDue')} (${wd.rows.length})</div>`;
+        if (wd.rows.length === 0) html += `<div class="tg-empty">${t('agendaNoWeeklyDue')}</div>`;
+        wd.rows.forEach(r => {
+            html += `<div class="ag-item">
+                <div class="ag-line"><strong>${escHtml(r.name)}</strong></div>
+                <div class="ag-meta">${t('tmsRemainingAll')} <strong style="color:#f87171;">${ltrAmt(r.remaining)}</strong></div>
+                <div class="ag-actions">
+                    <button class="secondary" style="background:#7c3aed;" onclick="closeAgendaModal(); openTechGuideModal(); setGuideDateRange('week'); showTechDetails('${jsArg(r.name)}');">🔎 ${t('guideDetailsBtn')}</button>
+                    <button class="secondary" style="background:#0ea5e9;" onclick="closeAgendaModal(); openTechPaymentPrompt('${jsArg(r.name)}');">💵 ${t('payBtn')}</button>
+                </div>
+            </div>`;
+        });
         html += `<div style="margin-top:14px;"><button class="secondary" onclick="openWeeklyAllPending()">${t('showAllPendingBtn')}</button></div>`;
         container.innerHTML = html;
+    }
+
+    // Every technician who's still owed something for the current week (Mon-Sun), most owed first —
+    // the "who do I need to pay" picture in one place.
+    function weeklyDueTechnicians() {
+        const w = weekOf(isoDate(new Date()));
+        const stats = computeTechPeriodStats(w.start, w.end);
+        const rows = Object.keys(stats).map(name => {
+            const due = round2(stats[name].dues);
+            const paid = round2(techPaymentsInPeriod(name, w.start, w.end).reduce((s, p) => s + parseVal(p.amount), 0));
+            return { name, due, paid, remaining: round2(due - paid) };
+        }).filter(r => r.remaining > 0.005).sort((a, b) => b.remaining - a.remaining);
+        return { week: w, rows };
+    }
+
+    // One click to the exact thing you need most often: who's owed money this week, ready to pay.
+    function openWeeklyPayScreen() { openTechGuideModal(); setGuideDateRange('week'); }
+
+    // ---------- One search box across jobs, technicians and contacts ----------
+    function openGlobalSearch() {
+        document.getElementById('globalSearchModal').style.display = 'flex';
+        const input = document.getElementById('globalSearchInput');
+        input.value = '';
+        document.getElementById('globalSearchResults').innerHTML = '';
+        setTimeout(() => input.focus(), 60);
+    }
+    function closeGlobalSearch() { document.getElementById('globalSearchModal').style.display = 'none'; }
+
+    function renderGlobalSearch() {
+        const q = document.getElementById('globalSearchInput').value.trim().toLowerCase();
+        const box = document.getElementById('globalSearchResults');
+        if (!q) { box.innerHTML = ''; return; }
+        let html = '';
+
+        const jobs = savedJobs.filter(j => (j.clientName || '').toLowerCase().includes(q) || (j.clientPhone || '').toLowerCase().includes(q) || (j.clientAddress || '').toLowerCase().includes(q)).slice(0, 8);
+        if (jobs.length > 0) {
+            html += `<div class="ag-section-title">${t('gsJobs')} (${jobs.length})</div>`;
+            jobs.forEach(j => {
+                html += `<div class="ag-item" style="cursor:pointer;" onclick="closeGlobalSearch(); openJobOverlay('${jsArg(j.id)}');">
+                    <div class="ag-line"><strong>${escHtml(j.clientName || '')}</strong></div>
+                    <div class="ag-meta">${escHtml(j.clientPhone || '')}${j.clientPhone && j.clientAddress ? ' — ' : ''}${escHtml(j.clientAddress || '')}</div>
+                </div>`;
+            });
+        }
+
+        const techNames = getUniqueRegisteredTechnicians().filter(n => n.toLowerCase().includes(q) || (technicianPhones[n] || '').toLowerCase().includes(q)).slice(0, 8);
+        if (techNames.length > 0) {
+            html += `<div class="ag-section-title">${t('gsTechnicians')} (${techNames.length})</div>`;
+            techNames.forEach(n => {
+                html += `<div class="ag-item" style="cursor:pointer;" onclick="closeGlobalSearch(); openTechGuideModal(); showTechDetails('${jsArg(n)}');">
+                    <div class="ag-line"><strong>${escHtml(n)}</strong></div>
+                    ${technicianPhones[n] ? `<div class="ag-meta">${escHtml(technicianPhones[n])}</div>` : ''}
+                </div>`;
+            });
+        }
+
+        const cons = contacts.filter(c => [c.name, c.phone, c.email, c.address].some(f => (f || '').toLowerCase().includes(q))).slice(0, 8);
+        if (cons.length > 0) {
+            html += `<div class="ag-section-title">${t('gsContacts')} (${cons.length})</div>`;
+            cons.forEach(c => {
+                html += `<div class="ag-item" style="cursor:pointer;" onclick="closeGlobalSearch(); switchScreen('contacts'); document.getElementById('contactsSearchInput').value='${jsArg(c.name || '')}'; renderContacts();">
+                    <div class="ag-line"><strong>${escHtml(c.name || '')}</strong></div>
+                    <div class="ag-meta">${escHtml(c.phone || '')}</div>
+                </div>`;
+            });
+        }
+
+        box.innerHTML = html || `<div class="tg-empty">${t('gsNoResults')}</div>`;
     }
 
     function openAgendaModal() { document.getElementById('agendaModal').style.display = 'flex'; renderAgendaContent(); }
@@ -2350,7 +2475,7 @@
         const entries = (tech.dailyAlloc || []).slice().sort((a, b) => a.date.localeCompare(b.date));
         const rows = entries.map(e => `<div class="ledger-row"><input type="date" value="${escHtml(e.date)}" onchange="setTechDailyDate(${index}, '${jsArg(e.id)}', this.value)"><strong style="color:#a78bfa;">${ltrAmt(e.amount)}</strong><span class="ledger-note">${escHtml(e.note)}</span><button type="button" class="ledger-del" onclick="removeTechDaily(${index}, '${jsArg(e.id)}')">🗑</button></div>`).join('');
         return `<details class="tw-box" ${entries.length > 0 ? 'open' : ''} style="margin-top:12px;">
-            <summary style="cursor:pointer; font-size:0.78rem; font-weight:700; color:var(--text-muted);">${t('dailyAllocTitle')}</summary>
+            <summary style="cursor:pointer; font-size:0.78rem; font-weight:700; color:var(--text-muted); display:flex; align-items:center; gap:6px;">${t('dailyAllocTitle')} <button type="button" onclick="event.stopPropagation(); alert(t('dailyAllocHelp'));" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:0 2px;">❓</button></summary>
             <div class="ag-meta" style="margin:6px 0;">${t('dailyAllocHint')}</div>
             ${rows}
             <div class="ledger-add-row" style="margin-top:8px;">
@@ -2394,7 +2519,7 @@
         const ms = techMoneyStatus(tech, jobId);
         const overlaps = jobId !== '__unsaved__' ? techScheduleOverlaps(tech.name, jobId) : [];
         let html = '<div class="ledger-box tms-box" style="margin-top:12px;">';
-        html += `<div class="ledger-title">${t('tmsTitle')}</div>`;
+        html += `<div class="ledger-title" style="display:flex; align-items:center; gap:6px;">${t('tmsTitle')} <button type="button" onclick="alert(t('tmsHelp'));" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:0 2px;">❓</button></div>`;
         html += `<div class="ag-meta" style="margin-bottom:4px;">${ms.hasPeriod ? t('tmsPeriodNote').replace('{a}', escHtml(ms.dateFrom || '…')).replace('{b}', escHtml(ms.dateTo || '…')) : t('tmsNoPeriodNote')}</div>`;
         html += `<div class="tms-row"><span>${t('tmsDueAll')}</span><strong style="color:#fbbf24;">${ltrAmt(ms.dueAllJobs)}</strong></div>`;
         html += `<div class="tms-row"><span>${t('tmsPaidAll')}</span><strong style="color:#34d399;">${ltrAmt(ms.paidAllJobs)}</strong></div>`;
@@ -2505,8 +2630,11 @@
                         </div>
                     </div>
                 </div>
-                ${techWeeksPanelHtml(tech, index, dues)}
-                ${techReimbPanelHtml(tech, index)}
+                <details class="tw-box" style="margin-top:12px;" ${((tech.weeks || []).length > 0 || (tech.materialReimbursements || []).length > 0) ? 'open' : ''}>
+                    <summary style="cursor:pointer; font-size:0.78rem; font-weight:700; color:var(--text-muted); display:flex; align-items:center; gap:6px;">⚙️ ${t('advancedOptionsTitle')} <button type="button" onclick="event.stopPropagation(); alert(t('advancedOptionsHelp'));" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:0 2px;">❓</button></summary>
+                    ${techWeeksPanelHtml(tech, index, dues)}
+                    ${techReimbPanelHtml(tech, index)}
+                </details>
                 ${techMoneyStatusHtml(tech, index)}
             `;
             container.appendChild(card);
@@ -2536,7 +2664,7 @@
         const weeks = (tech.weeks || []).slice().sort((a, b) => a.weekStart.localeCompare(b.weekStart));
         const rows = weeks.map(w => `<div class="ledger-row"><span style="min-width:170px;">${escHtml(w.weekStart)} → ${addDaysISO(w.weekStart, 6)}</span><strong style="color:#fbbf24;">${ltrAmt(w.amount)}</strong><button type="button" class="ledger-del" style="margin-inline-start:auto;" onclick="removeTechWeek(${index}, '${jsArg(w.weekStart)}')">🗑</button></div>`).join('');
         return `<details class="tw-box" ${weeks.length > 0 ? 'open' : ''} style="margin-top:12px;">
-            <summary style="cursor:pointer; font-size:0.78rem; font-weight:700; color:var(--text-muted);">${t('twTitle')}</summary>
+            <summary style="cursor:pointer; font-size:0.78rem; font-weight:700; color:var(--text-muted); display:flex; align-items:center; gap:6px;">${t('twTitle')} <button type="button" onclick="event.stopPropagation(); alert(t('twHelp'));" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:0 2px;">❓</button></summary>
             <div class="ag-meta" style="margin:6px 0;">${t('twHint')}</div>
             ${rows}
             <div class="ledger-add-row" style="margin-top:8px;">
@@ -2596,7 +2724,7 @@
         const rows = entries.map(e => `<div class="ledger-row"><input type="date" value="${escHtml(e.date)}" onchange="setTechReimbDate(${index}, '${jsArg(e.id)}', this.value)"><strong style="color:#fb923c;">${ltrAmt(e.amount)}</strong><span class="ledger-note">${escHtml(e.note)}</span><button type="button" class="ledger-del" onclick="removeTechReimb(${index}, '${jsArg(e.id)}')">🗑</button></div>`).join('');
         const total = techReimbTotal(tech);
         return `<details class="tw-box" ${entries.length > 0 ? 'open' : ''} style="margin-top:12px;">
-            <summary style="cursor:pointer; font-size:0.78rem; font-weight:700; color:var(--text-muted);">${t('reimbTitle')}</summary>
+            <summary style="cursor:pointer; font-size:0.78rem; font-weight:700; color:var(--text-muted); display:flex; align-items:center; gap:6px;">${t('reimbTitle')} <button type="button" onclick="event.stopPropagation(); alert(t('reimbHelp'));" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:0 2px;">❓</button></summary>
             <div class="ag-meta" style="margin:6px 0;">${t('reimbHint')}</div>
             ${rows}
             <div class="ledger-add-row" style="margin-top:8px;">
@@ -3783,6 +3911,26 @@
         await saveSavedJobsData();
         logActivity('delete', deletedClientName);
         refreshAllViews();
+    }
+
+    async function markSelectedAsDone() {
+        if (selectedJobIds.size === 0) { alert(t('alertSelectOneToDeleteReport')); return; }
+        const ids = [...selectedJobIds];
+        const targets = savedJobs.filter(j => ids.includes(String(j.id)) && j.jobStatus !== 'خلص');
+        if (targets.length === 0) { alert(t('alertAllAlreadyDone')); return; }
+        if (!confirm(t('confirmMarkDone').replace('{n}', targets.length))) return;
+        const backup = JSON.parse(JSON.stringify(savedJobs));
+        targets.forEach(j => { j.jobStatus = 'خلص'; j.lastEditedBy = currentUserEmail; });
+        try {
+            await saveSavedJobsData();
+            logActivity('edit', targets.map(j => j.clientName).join(', '), t('activityMarkedDone'));
+        } catch (err) {
+            savedJobs = backup;
+            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            return;
+        }
+        refreshAllViews();
+        showToast(t('toastMarkedDone').replace('{n}', targets.length));
     }
 
     async function deleteSelectedJobsReport() {
