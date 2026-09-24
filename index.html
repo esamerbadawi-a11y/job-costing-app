@@ -2573,6 +2573,20 @@
         return `<div class="due-note ag-meta" style="margin-top:4px; color:#38bdf8;">${t('tmsMoneyBaseNote').replace('{recv}', ltrAmt(d.periodRecv)).replace('{mat}', ltrAmt(d.periodMat)).replace('{base}', ltrAmt(d.periodBase)).replace('{pct}', d.pct)}</div>`;
     }
 
+    // The one place to actually move money: opens the SAME payment list used everywhere else (the
+    // Guide, the "This Week" dashboard) — a technician has exactly one running list of payments,
+    // whichever screen you record it from, so it can never be paid twice for the same thing by mistake.
+    function techPayRowHtml(tech, index) {
+        if (!tech.name) return '';
+        const jobId = document.getElementById('editingJobId').value || '__unsaved__';
+        const ms = techMoneyStatus(tech, jobId);
+        return `<div style="display:flex; align-items:center; gap:10px; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border-color); flex-wrap:wrap;">
+            <button type="button" class="secondary" style="background:#0ea5e9; color:#fff; white-space:nowrap;" onclick="openTechPaymentPrompt('${jsArg(tech.name)}')">💵 ${t('payBtn')}</button>
+            <span class="ag-meta">${t('tmsPaidAll')} <strong style="color:#34d399;">${ltrAmt(ms.paidAllJobs)}</strong></span>
+            <span class="ag-meta">${t('tmsRemainingAll')} <strong style="color:${ms.remainingAllJobs > 0.005 ? '#f87171' : '#94a3b8'};">${ltrAmt(ms.remainingAllJobs)}</strong></span>
+        </div>`;
+    }
+
     function techOverlapWarningHtml(tech, index) {
         if (!tech.name) return '';
         const jobId = document.getElementById('editingJobId').value || '__unsaved__';
@@ -2698,6 +2712,7 @@
                     </div>
                 </div>
                 ${techDueNoteHtml(periodMs)}
+                ${techPayRowHtml(tech, index)}
                 ${techDailyPanelHtml(tech, index, dues)}
                 <details class="tw-box" style="margin-top:12px;" ${((tech.weeks || []).length > 0 || (tech.materialReimbursements || []).length > 0) ? 'open' : ''}>
                     <summary style="cursor:pointer; font-size:0.78rem; font-weight:700; color:var(--text-muted); display:flex; align-items:center; gap:6px;">⚙️ ${t('advancedOptionsTitle')} <button type="button" onclick="event.stopPropagation(); alert(t('advancedOptionsHelp'));" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:0 2px;">❓</button></summary>
@@ -4854,6 +4869,7 @@
             }
             closeTechPaymentModal();
             renderTechGuideContent();
+            safeCall(renderTechnicians);
             return;
         }
 
@@ -4863,6 +4879,7 @@
             await TECH_PAYMENTS_DOC.set({ entries: techPayments });
             closeTechPaymentModal();
             renderTechGuideContent();
+            safeCall(renderTechnicians);
         } catch (err) {
             techPayments = techPayments.filter(x => x !== entry);   // the save failed: don't keep a payment that was never stored
             alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
@@ -5771,6 +5788,7 @@
             alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
         }
         renderTechGuideContent();
+        safeCall(renderTechnicians);
     }
 
     // Everything about ONE technician in the selected period: the jobs behind his dues, and his payments.
@@ -5785,7 +5803,7 @@
         h += `<h4>${t(noDates ? 'guideJobsTitleAll' : 'guideJobsTitle')} (${jobs.length})</h4>`;
         if (jobs.length === 0) h += `<div class="tg-empty">${t('guideNoJobsInPeriod')}</div>`;
         jobs.forEach(j => {
-            h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(j.job.startDate || '')}</span><span class="tg-d-main"><button type="button" onclick="openJobOverlay('${jsArg(j.job.id)}')" style="background:none; border:none; padding:0; margin:0; font:inherit; font-weight:700; color:#38bdf8; text-decoration:underline; cursor:pointer;">${escHtml(j.job.clientName || '')}</button> <small style="color:var(--text-muted);">${techTypeLabel(j.tech.type)}</small>${j.manual ? `<div class="ag-meta" style="color:#34d399;">📆 ${t('guideManualNote')}: ${j.weeks.map(w => escHtml(w.weekStart) + ' ' + ltrAmt(w.amount)).join(' · ')}</div>` : ''}${j.dailyManual ? `<div class="ag-meta" style="color:#a78bfa;">📅 ${t('dailyAllocNote')}: ${j.dailyEntries.map(e => escHtml(e.date) + ' ' + ltrAmt(e.amount)).join(' · ')}</div>` : ''}${j.isPercentPeriod ? `<div class="ag-meta" style="color:#38bdf8;">${t('tmsMoneyBaseNote').replace('{recv}', ltrAmt(j.periodRecv)).replace('{mat}', ltrAmt(j.periodMat)).replace('{base}', ltrAmt(j.periodBase)).replace('{pct}', j.pct)}</div>` : ''}${(!j.isPercentPeriod && !j.dailyManual && j.fraction < 0.9999) ? `<div class="ag-meta" style="color:#fbbf24;">${t('guideProrateNote').replace('{a}', j.daysIn).replace('{b}', j.daysAll).replace('{full}', '<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">$' + j.fullDues.toFixed(2) + '</span>')}</div>` : ''}${(!j.isPercentPeriod && !j.dailyManual && j.fraction < 0.9999) ? `<div class="ag-meta">${t('guideEditDaysHint')}</div><div class="ag-actions">${j.dates.filter(d => (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo)).sort().map(d => `<button class="secondary" onclick="openEditScheduleModal('${jsArg(j.job.id)}', '${jsArg(d)}')">📅 ${escHtml(d)}</button>`).join('')}</div>` : ''}${j.legacyPaid > 0 ? `<div class="ag-meta">${t('guideLegacyPaid').replace('{a}', ltrAmt(j.legacyPaid))}</div>` : ''}${j.reimbEntries && j.reimbEntries.length > 0 ? `<div class="ag-meta" style="color:#fb923c;">🧾 ${t('reimbTitle')}: ${j.reimbEntries.map(e => escHtml(e.date) + ' ' + ltrAmt(e.amount)).join(' · ')}</div>` : ''}</span><strong style="color:#fbbf24;">$${j.dues.toFixed(2)}</strong></div>`;
+            h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(j.job.startDate || '')}</span><span class="tg-d-main"><button type="button" onclick="openJobOverlay('${jsArg(j.job.id)}')" style="background:none; border:none; padding:0; margin:0; font:inherit; font-weight:700; color:#38bdf8; text-decoration:underline; cursor:pointer;">${escHtml(j.job.clientName || '')}</button> <small style="color:var(--text-muted);">${techTypeLabel(j.tech.type)}</small>${j.manual ? `<div class="ag-meta" style="color:#34d399;">📆 ${t('guideManualNote')}: ${j.weeks.map(w => `<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${escHtml(w.weekStart)} $${parseVal(w.amount).toFixed(2)}</span>`).join(' · ')}</div>` : ''}${j.dailyManual ? `<div class="ag-meta" style="color:#a78bfa;">📅 ${t('dailyAllocNote')}: ${j.dailyEntries.map(e => `<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${escHtml(e.date)} $${parseVal(e.amount).toFixed(2)}</span>`).join(' · ')}</div>` : ''}${j.isPercentPeriod ? `<div class="ag-meta" style="color:#38bdf8;">${t('tmsMoneyBaseNote').replace('{recv}', ltrAmt(j.periodRecv)).replace('{mat}', ltrAmt(j.periodMat)).replace('{base}', ltrAmt(j.periodBase)).replace('{pct}', j.pct)}</div>` : ''}${(!j.isPercentPeriod && !j.dailyManual && j.fraction < 0.9999) ? `<div class="ag-meta" style="color:#fbbf24;">${t('guideProrateNote').replace('{a}', j.daysIn).replace('{b}', j.daysAll).replace('{full}', '<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">$' + j.fullDues.toFixed(2) + '</span>')}</div>` : ''}${(!j.isPercentPeriod && !j.dailyManual && j.fraction < 0.9999) ? `<div class="ag-meta">${t('guideEditDaysHint')}</div><div class="ag-actions">${j.dates.filter(d => (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo)).sort().map(d => `<button class="secondary" onclick="openEditScheduleModal('${jsArg(j.job.id)}', '${jsArg(d)}')">📅 ${escHtml(d)}</button>`).join('')}</div>` : ''}${j.legacyPaid > 0 ? `<div class="ag-meta">${t('guideLegacyPaid').replace('{a}', ltrAmt(j.legacyPaid))}</div>` : ''}${j.reimbEntries && j.reimbEntries.length > 0 ? `<div class="ag-meta" style="color:#fb923c;">🧾 ${t('reimbTitle')}: ${j.reimbEntries.map(e => `<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${escHtml(e.date)} $${parseVal(e.amount).toFixed(2)}</span>`).join(' · ')}</div>` : ''}</span><strong style="color:#fbbf24;">$${j.dues.toFixed(2)}</strong></div>`;
         });
         h += `<h4 style="margin-top:14px;">${t(noDates ? 'guidePaymentsTitleAll' : 'guidePaymentsTitle')} (${pays.length})</h4>`;
         if (pays.length === 0) h += `<div class="tg-empty">${t('guideNoPaymentsInPeriod')}</div>`;
