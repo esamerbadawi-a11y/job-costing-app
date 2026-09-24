@@ -2611,6 +2611,27 @@
         </div>`;
     }
 
+    // What the "Due ($)" box on the job screen itself shows. For a fixed/daily/hourly technician this
+    // is deliberately literal — rate × days as typed, live, with no schedule-based splitting — because
+    // that splitting made sense for a WEEKLY REPORT (the Guide) but looked like broken arithmetic sitting
+    // right under the Days field on the job's own screen. A manual override (a day-by-day amount, or a
+    // typed week) still wins in full when one exists. Percentage technicians are unaffected: their pay
+    // already follows the period's own received money by design, not the Days field.
+    function techCardDisplayDue(tech, jobId) {
+        if (isPercentType(tech.type)) {
+            const ms = techMoneyStatus(tech, jobId);
+            const reimb = ms.detail ? ms.detail.reimbSum : 0;
+            return { wage: round2(ms.dueThisJob - reimb), reimb, periodMs: ms };
+        }
+        const dailyEntries = (tech.dailyAlloc || []).filter(e => e && e.date);
+        const weekEntries = (tech.weeks || []).filter(w => w && w.weekStart);
+        let wage;
+        if (dailyEntries.length > 0) wage = round2(dailyEntries.reduce((s, e) => s + parseVal(e.amount), 0));
+        else if (weekEntries.length > 0) wage = round2(weekEntries.reduce((s, w) => s + parseVal(w.amount), 0));
+        else wage = calculateTechDues(tech);
+        return { wage, reimb: techReimbTotal(tech), periodMs: null };
+    }
+
     function renderTechnicians() {
         document.getElementById('jobPeriodNetBox').innerHTML = jobPeriodNetHtml();
         const container = document.getElementById('techniciansContainer');
@@ -2624,9 +2645,10 @@
         technicians.forEach((tech, index) => {
             if (!tech.type) { tech.type = 'نسبة مخصصة'; if (tech.customPercent === undefined) tech.customPercent = 50; }
             const dues = calculateTechDues(tech);
-            const periodMs = tech.name ? techMoneyStatus(tech, document.getElementById('editingJobId').value || '__unsaved__') : null;   // always period-aware: with no period picked, this already equals the whole-job total (or the sum of any day/week overrides)
-            const periodReimb = periodMs ? (periodMs.detail ? periodMs.detail.reimbSum : 0) : 0;
-            const displayWage = periodMs ? round2(periodMs.dueThisJob - periodReimb) : dues;
+            const cardDue = tech.name ? techCardDisplayDue(tech, document.getElementById('editingJobId').value || '__unsaved__') : null;
+            const periodMs = cardDue ? cardDue.periodMs : null;
+            const periodReimb = cardDue ? cardDue.reimb : 0;
+            const displayWage = cardDue ? cardDue.wage : dues;
             const isCustom = tech.type === 'نسبة مخصصة';
 
             const card = document.createElement('div');
@@ -2939,9 +2961,10 @@
         const dues = calculateTechDues(tech);
         const card = document.getElementById(`techcard-${index}`);
         if (!card) return;
-        const periodMs = tech.name ? techMoneyStatus(tech, document.getElementById('editingJobId').value || '__unsaved__') : null;   // always period-aware: with no period picked, this already equals the whole-job total (or the sum of any day/week overrides)
-        const periodReimb = periodMs ? (periodMs.detail ? periodMs.detail.reimbSum : 0) : 0;
-        const displayWage = periodMs ? round2(periodMs.dueThisJob - periodReimb) : dues;
+        const cardDue = tech.name ? techCardDisplayDue(tech, document.getElementById('editingJobId').value || '__unsaved__') : null;
+        const periodMs = cardDue ? cardDue.periodMs : null;
+        const periodReimb = cardDue ? cardDue.reimb : 0;
+        const displayWage = cardDue ? cardDue.wage : dues;
         const display = card.querySelector('.tech-dues-display');
         if (display) {
             display.innerHTML = techDuesLineHtml(displayWage, periodMs ? periodReimb : techReimbTotal(tech));
