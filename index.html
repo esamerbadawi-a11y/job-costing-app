@@ -1438,7 +1438,7 @@
         reimbTotal: { ar: 'الإجمالي المرتجع له', en: 'Total reimbursed to him' },
         materialsShort: { ar: 'مواد', en: 'materials' },
         tmsTitle: { ar: '💰 حساب الفني', en: "💰 Technician's Account" },
-        tmsPeriodNote: { ar: 'في الفترة {a} → {b}', en: 'In the period {a} → {b}' },
+        tmsPeriodNote: { ar: 'في الفترة {range}', en: 'In the period {range}' },
         tmsNoPeriodNote: { ar: 'إجمالي كل الوقت (من غير فترة محددة)', en: 'All-time total (no period selected)' },
         tmsDueAll: { ar: 'مستحقه في كل شغلاناته:', en: 'His due across all his jobs:' },
         tmsPaidAll: { ar: 'المدفوع له:', en: 'Paid to him:' },
@@ -1921,7 +1921,7 @@
         const phone = job.clientPhone ? `<a href="#" onclick="event.preventDefault(); showPhoneChoice('${jsArg(job.clientPhone)}');">📞 <span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${escHtml(job.clientPhone)}</span></a>` : '';
         const addr = job.clientAddress ? `<a href="#" onclick="event.preventDefault(); showMapChoice('${jsArg(job.clientAddress)}');">📍 ${escHtml(job.clientAddress)}</a>` : '';
         const postponed = (entry && entry.postponedFrom) ? `<span class="ag-badge">⏭ ${t('postponedFromLabel')} ${escHtml(entry.postponedFrom)}</span>` : '';
-        const when = entry ? `<span class="ag-time">${entry.time ? escHtml(entry.time) : t('agendaNoTime')}</span>` : `<span class="ag-time">${escHtml(job.startDate)} → ${escHtml(job.endDate || job.startDate)}</span>`;
+        const when = entry ? `<span class="ag-time">${entry.time ? escHtml(entry.time) : t('agendaNoTime')}</span>` : `<span class="ag-time">${ltrRange(job.startDate, job.endDate || job.startDate)}</span>`;
         return `<div class="ag-item">
             <div class="ag-line">${when}<strong>${escHtml(job.clientName || '')}</strong>${postponed}</div>
             ${(addr || phone) ? `<div class="ag-meta">${[addr, phone].filter(Boolean).join(' &nbsp; ')}</div>` : ''}
@@ -2603,7 +2603,7 @@
         const net = round2(periodRecv - periodMat - techDuesSum);
         return `<div class="ledger-box" style="margin-bottom:12px;">
             <div class="ledger-title">${t('jobPeriodNetTitle')}</div>
-            <div class="ag-meta" style="margin-bottom:4px;">${t('tmsPeriodNote').replace('{a}', escHtml(dateFrom || '…')).replace('{b}', escHtml(dateTo || '…'))}</div>
+            <div class="ag-meta" style="margin-bottom:4px;">${t('tmsPeriodNote').replace('{range}', ltrRange(dateFrom || '…', dateTo || '…'))}</div>
             <div class="tms-row"><span>${t('jobPeriodRecv')}</span><strong style="color:#34d399;">${ltrAmt(periodRecv)}</strong></div>
             <div class="tms-row"><span>${t('jobPeriodMat')}</span><strong style="color:#f87171;">${ltrAmt(periodMat)}</strong></div>
             <div class="tms-row"><span>${t('jobPeriodTechDues')}</span><strong style="color:#fbbf24;">${ltrAmt(techDuesSum)}</strong></div>
@@ -2717,6 +2717,7 @@
     function weekOf(dateStr, offset) { const mon = addDaysISO(mondayOf(dateStr), 7 * (offset || 0)); return { start: mon, end: addDaysISO(mon, 6) }; }
     function mondayOf(dateStr) { const d = new Date(dateStr + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return isoDate(d); }
     function ltrAmt(v) { return `<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">$${parseVal(v).toFixed(2)}</span>`; }
+    function ltrRange(a, b) { return `<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${escHtml(a)} → ${escHtml(b)}</span>`; }
 
     function techWeeksSummaryHtml(tech, dues) {
         const weeks = tech.weeks || [];
@@ -2731,7 +2732,7 @@
 
     function techWeeksPanelHtml(tech, index, dues) {
         const weeks = (tech.weeks || []).slice().sort((a, b) => a.weekStart.localeCompare(b.weekStart));
-        const rows = weeks.map(w => `<div class="ledger-row"><span style="min-width:170px;">${escHtml(w.weekStart)} → ${addDaysISO(w.weekStart, 6)}</span><strong style="color:#fbbf24;">${ltrAmt(w.amount)}</strong><button type="button" class="ledger-del" style="margin-inline-start:auto;" onclick="removeTechWeek(${index}, '${jsArg(w.weekStart)}')">🗑</button></div>`).join('');
+        const rows = weeks.map(w => `<div class="ledger-row"><span style="min-width:170px;">${ltrRange(w.weekStart, addDaysISO(w.weekStart, 6))}</span><strong style="color:#fbbf24;">${ltrAmt(w.amount)}</strong><button type="button" class="ledger-del" style="margin-inline-start:auto;" onclick="removeTechWeek(${index}, '${jsArg(w.weekStart)}')">🗑</button></div>`).join('');
         return `<details class="tw-box" ${weeks.length > 0 ? 'open' : ''} style="margin-top:12px;">
             <summary style="cursor:pointer; font-size:0.78rem; font-weight:700; color:var(--text-muted); display:flex; align-items:center; gap:6px;">${t('twTitle')} <button type="button" onclick="event.stopPropagation(); alert(t('twHelp'));" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:0 2px;">❓</button></summary>
             <div class="ag-meta" style="margin:6px 0;">${t('twHint')}</div>
@@ -5351,6 +5352,16 @@
 
     // Week starts on Monday.
     function getWeekRange(offset) {
+        // The board is a day-to-day planning tool: "This Week" (offset 0) is a fixed 7-day window
+        // starting TOMORROW — today's own work already has its place in the "Jobs Today?" sheet, so the
+        // board is for what's coming next. Any other week (Last Week, or one reached with the arrows) is
+        // a full calendar week, Monday..Sunday, for looking back or planning further ahead.
+        if (offset === 0) {
+            const start = addDaysISO(isoDate(new Date()), 1);
+            const days = [];
+            for (let i = 0; i < 7; i++) days.push(new Date(addDaysISO(start, i) + 'T00:00:00'));
+            return days;
+        }
         const w = weekOf(isoDate(new Date()), offset);
         const days = [];
         for (let i = 0; i < 7; i++) days.push(new Date(addDaysISO(w.start, i) + 'T00:00:00'));   // Mon .. Sun
@@ -5468,7 +5479,7 @@
         }
 
         const days = getWeekRange(weeklyBoardOffset);
-        document.getElementById('weeklyRangeLabel').textContent = `${isoDate(days[0])} → ${isoDate(days[days.length - 1])}`;
+        document.getElementById('weeklyRangeLabel').innerHTML = ltrRange(isoDate(days[0]), isoDate(days[days.length - 1]));
 
         let html = '';
         days.forEach(d => {
