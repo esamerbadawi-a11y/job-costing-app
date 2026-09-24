@@ -1983,7 +1983,17 @@
     function openWeeklyPayScreen() { openTechGuideModal(); setGuideDateRange('week'); }
 
     // ---------- One search box across jobs, technicians and contacts ----------
+    // These share the same full-screen overlay style and z-index; if two ever ended up open at once
+    // (e.g. one opened without the other being closed first), the later one in the page would sit on
+    // top and silently swallow every tap meant for the one underneath — including a job's name link.
+    // Every one of them closes all the others first, so that can never happen.
+    const TOP_LEVEL_MODAL_IDS = ['techGuideModal', 'expenseReportModal', 'activityLogModal', 'partnerAccountModal', 'companyAccountModal', 'agendaModal', 'globalSearchModal'];
+    function closeOtherTopModals(exceptId) {
+        TOP_LEVEL_MODAL_IDS.forEach(id => { if (id !== exceptId) { const el = document.getElementById(id); if (el) el.style.display = 'none'; } });
+    }
+
     function openGlobalSearch() {
+        closeOtherTopModals('globalSearchModal');
         document.getElementById('globalSearchModal').style.display = 'flex';
         const input = document.getElementById('globalSearchInput');
         input.value = '';
@@ -2034,7 +2044,7 @@
         box.innerHTML = html || `<div class="tg-empty">${t('gsNoResults')}</div>`;
     }
 
-    function openAgendaModal() { document.getElementById('agendaModal').style.display = 'flex'; renderAgendaContent(); }
+    function openAgendaModal() { closeOtherTopModals('agendaModal'); document.getElementById('agendaModal').style.display = 'flex'; renderAgendaContent(); }
     function closeAgendaModal() { document.getElementById('agendaModal').style.display = 'none'; }
     function openWeeklyAllPending() {
         closeAgendaModal();
@@ -4239,13 +4249,13 @@
         doc.save("AHA_PM_STATEMENT.pdf");
     }
 
-    function openTechGuideModal() { document.getElementById('techGuideModal').style.display = 'flex'; renderTechGuideContent(); }
+    function openTechGuideModal() { closeOtherTopModals('techGuideModal'); document.getElementById('techGuideModal').style.display = 'flex'; renderTechGuideContent(); }
     function closeTechGuideModal() { document.getElementById('techGuideModal').style.display = 'none'; }
 
-    function openExpenseReportModal() { document.getElementById('expenseReportModal').style.display = 'flex'; renderExpenseReportContent(); }
+    function openExpenseReportModal() { closeOtherTopModals('expenseReportModal'); document.getElementById('expenseReportModal').style.display = 'flex'; renderExpenseReportContent(); }
     function closeExpenseReportModal() { document.getElementById('expenseReportModal').style.display = 'none'; }
 
-    function openActivityLogModal() { document.getElementById('activityLogModal').style.display = 'flex'; renderActivityLogContent(); }
+    function openActivityLogModal() { closeOtherTopModals('activityLogModal'); document.getElementById('activityLogModal').style.display = 'flex'; renderActivityLogContent(); }
     function closeActivityLogModal() { document.getElementById('activityLogModal').style.display = 'none'; }
 
     const ACTIVITY_ACTION_KEYS = { add: 'activityAdded', edit: 'activityEdited', delete: 'activityDeleted' };
@@ -4286,6 +4296,7 @@
     }
 
     function openCompanyAccountModal() {
+        closeOtherTopModals('companyAccountModal');
         document.getElementById('companyAccountModal').style.display = 'flex';
         document.getElementById('companyExpenseDate').value = isoDate(new Date());
         const catSelect = document.getElementById('companyExpenseCategory');
@@ -4389,6 +4400,7 @@
     }
 
     function openPartnerAccountModal() {
+        closeOtherTopModals('partnerAccountModal');
         document.getElementById('partnerAccountModal').style.display = 'flex';
         document.getElementById('withdrawalDate').value = isoDate(new Date());
         renderPartnerAccountContent();
