@@ -2513,27 +2513,23 @@
         renderTechnicians();
     }
 
-    function techMoneyStatusHtml(tech, index) {
+    // The full "who owes what across every job" picture belongs in the Technicians Guide, not here —
+    // showing it on a single job's screen made it look like this job's own number, which it never was.
+    // This job screen keeps only what IS specific to it: a warning if this technician is booked on
+    // another job the very same day (so his flat day rate doesn't quietly get counted twice).
+    function techDueNoteHtml(periodMs) {
+        if (!periodMs || !periodMs.detail || !periodMs.detail.isPercentPeriod) return '';
+        const d = periodMs.detail;
+        return `<div class="due-note ag-meta" style="margin-top:4px; color:#38bdf8;">${t('tmsMoneyBaseNote').replace('{recv}', ltrAmt(d.periodRecv)).replace('{mat}', ltrAmt(d.periodMat)).replace('{base}', ltrAmt(d.periodBase)).replace('{pct}', d.pct)}</div>`;
+    }
+
+    function techOverlapWarningHtml(tech, index) {
         if (!tech.name) return '';
         const jobId = document.getElementById('editingJobId').value || '__unsaved__';
-        const ms = techMoneyStatus(tech, jobId);
         const overlaps = jobId !== '__unsaved__' ? techScheduleOverlaps(tech.name, jobId) : [];
-        let html = '<div class="ledger-box tms-box" style="margin-top:12px;">';
-        html += `<div class="ledger-title" style="display:flex; align-items:center; gap:6px;">${t('tmsTitle')} <button type="button" onclick="alert(t('tmsHelp'));" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:0 2px;">❓</button></div>`;
-        html += `<div class="ag-meta" style="margin-bottom:4px;">${ms.hasPeriod ? t('tmsPeriodNote').replace('{a}', escHtml(ms.dateFrom || '…')).replace('{b}', escHtml(ms.dateTo || '…')) : t('tmsNoPeriodNote')}</div>`;
-        html += `<div class="tms-row"><span>${t('tmsDueAll')}</span><strong style="color:#fbbf24;">${ltrAmt(ms.dueAllJobs)}</strong></div>`;
-        html += `<div class="tms-row"><span>${t('tmsPaidAll')}</span><strong style="color:#34d399;">${ltrAmt(ms.paidAllJobs)}</strong></div>`;
-        html += `<div class="tms-row"><span>${t('tmsRemainingAll')}</span><strong style="color:${ms.remainingAllJobs > 0.005 ? '#f87171' : '#94a3b8'};">${ltrAmt(ms.remainingAllJobs)}</strong></div>`;
-        if (ms.jobsCount > 1) html += `<div class="ag-meta" style="margin-top:4px;">${t('tmsMultiJobNote').replace('{n}', ms.jobsCount)}</div>`;
-        if (ms.detail && ms.detail.isPercentPeriod) {
-            html += `<div class="ag-meta" style="margin-top:4px; color:#38bdf8;">${t('tmsMoneyBaseNote').replace('{recv}', ltrAmt(ms.detail.periodRecv)).replace('{mat}', ltrAmt(ms.detail.periodMat)).replace('{base}', ltrAmt(ms.detail.periodBase)).replace('{pct}', ms.detail.pct)}</div>`;
-        }
-        if (overlaps.length > 0) {
-            html += `<div class="ledger-warn" style="margin-top:8px;">⚠️ ${t('tmsOverlapWarn')}<br>` +
-                overlaps.map(o => `📅 ${escHtml(o.date)} — ${escHtml(o.jobName)}` + (o.otherAmount > 0.005 ? ` (${ltrAmt(o.otherAmount)})` : ` (${t('tmsOverlapNoAmount')})`)).join('<br>') + `</div>`;
-        }
-        html += techDailyPanelHtml(tech, index);
-        return html + '</div>';
+        if (overlaps.length === 0) return '';
+        return `<div class="ledger-warn" style="margin-top:12px;">⚠️ ${t('tmsOverlapWarn')}<br>` +
+            overlaps.map(o => `📅 ${escHtml(o.date)} — ${escHtml(o.jobName)}` + (o.otherAmount > 0.005 ? ` (${ltrAmt(o.otherAmount)})` : ` (${t('tmsOverlapNoAmount')})`)).join('<br>') + `</div>`;
     }
 
     // The job's own bottom line for the picked period: money received minus materials minus every
@@ -2630,12 +2626,14 @@
                         </div>
                     </div>
                 </div>
+                ${techDueNoteHtml(periodMs)}
                 <details class="tw-box" style="margin-top:12px;" ${((tech.weeks || []).length > 0 || (tech.materialReimbursements || []).length > 0) ? 'open' : ''}>
                     <summary style="cursor:pointer; font-size:0.78rem; font-weight:700; color:var(--text-muted); display:flex; align-items:center; gap:6px;">⚙️ ${t('advancedOptionsTitle')} <button type="button" onclick="event.stopPropagation(); alert(t('advancedOptionsHelp'));" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:0 2px;">❓</button></summary>
                     ${techWeeksPanelHtml(tech, index, dues)}
                     ${techReimbPanelHtml(tech, index)}
                 </details>
-                ${techMoneyStatusHtml(tech, index)}
+                ${techDailyPanelHtml(tech, index)}
+                ${techOverlapWarningHtml(tech, index)}
             `;
             container.appendChild(card);
         });
@@ -2900,15 +2898,13 @@
         if (display) {
             display.innerHTML = techDuesLineHtml(displayWage, periodMs ? periodReimb : techReimbTotal(tech));
         }
+        const existingNote = card.querySelector('.due-note');
+        const freshNote = techDueNoteHtml(periodMs);
+        if (existingNote && freshNote) existingNote.outerHTML = freshNote;
+        else if (existingNote) existingNote.remove();
+        else if (freshNote && display) display.insertAdjacentHTML('afterend', freshNote);
         const wsum = card.querySelector('.tw-summary');
         if (wsum) wsum.innerHTML = techWeeksSummaryHtml(tech, dues);
-        // A targeted swap (not a full renderTechnicians()) so typing in the Rate/Days field never loses its
-        // cursor position or focus mid-keystroke.
-        const tmsBox = card.querySelector('.tms-box');
-        const freshTms = techMoneyStatusHtml(tech, index);
-        if (tmsBox && freshTms) tmsBox.outerHTML = freshTms;
-        else if (tmsBox) tmsBox.remove();
-        else if (freshTms) card.insertAdjacentHTML('beforeend', freshTms);
         const netBox = document.getElementById('jobPeriodNetBox');
         if (netBox) netBox.innerHTML = jobPeriodNetHtml();
     }
