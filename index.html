@@ -1448,6 +1448,8 @@
         tmsOverlapWarn: { ar: 'الفني ده متجدول في نفس اليوم على شغلانة تانية كمان — تأكد إنك مش بتحسبله نفس اليوم مرتين:', en: "This technician is also scheduled on another job the same day — make sure you're not counting that day for him twice:" },
         dailyAllocTitle: { ar: '📅 توزيع المبلغ على الأيام (اختياري)', en: '📅 Amount per day (optional)' },
         dailyAllocHint: { ar: 'سعره اليوم الواحد ثابت ومضمون، سواء اشتغل شغلانة واحدة أو أكتر في نفس اليوم. اكتب هنا نصيب الشغلانة دي من يوم بعينه، وقسّم الباقي على شغلاناته التانية في نفس اليوم لو حصل.', en: "His day rate is fixed and guaranteed, whether he worked one job or several that day. Enter this job's share of a given day here, and split the rest across his other jobs that same day if there were any." },
+        dailyQuickPickHint: { ar: 'دوس على يوم اشتغله عشان يتحط التاريخ لوحده، وبعدين اكتب المبلغ بس:', en: 'Tap a day he worked to fill the date for you, then just type the amount:' },
+        dailyQuickPickNone: { ar: 'مفيش أيام مجدولة له في لوحة الأسبوع على الشغلانة دي لسه. جدوله الأول، أو اكتب التاريخ بإيدك تحت.', en: "He has no scheduled days on this job's Weekly Board yet. Schedule him first, or type the date by hand below." },
         dailyAllocNote: { ar: 'موزّع على الأيام', en: 'Allocated by day' },
         tmsOverlapNoAmount: { ar: 'مقسمش هناك', en: 'not itemized there' },
         jobPeriodNetTitle: { ar: '📊 صافي الشغلانة في الفترة دي', en: "📊 This Job's Net for the Period" },
@@ -2470,14 +2472,38 @@
     }
 
     // ---------- Fixed/daily/hourly pay: split his flat day rate across the jobs he worked that day ----------
+    // The days he's actually scheduled for on THIS job (from the Weekly Board) — tapping one
+    // fills the date for you, so you never have to remember or type it by hand.
+    function techScheduledDatesFor(techName) {
+        const jobId = document.getElementById('editingJobId').value;
+        const job = jobId ? savedJobs.find(j => j.id === jobId) : null;
+        if (!job || !techName) return [];
+        return [...new Set(getScheduleEntries(job).filter(e => (e.team || []).includes(techName)).map(e => e.date))].sort();
+    }
+    function pickTechDailyDate(index, date) {
+        const dateEl = document.getElementById(`da-date-${index}`);
+        if (!dateEl) return;
+        dateEl.value = date;
+        const amtEl = document.getElementById(`da-amt-${index}`);
+        if (amtEl) { amtEl.focus(); amtEl.select(); }
+    }
+
     function techDailyPanelHtml(tech, index) {
         if (isPercentType(tech.type)) return '';   // percentage pay already follows the period's own money
         const entries = (tech.dailyAlloc || []).slice().sort((a, b) => a.date.localeCompare(b.date));
         const rows = entries.map(e => `<div class="ledger-row"><input type="date" value="${escHtml(e.date)}" onchange="setTechDailyDate(${index}, '${jsArg(e.id)}', this.value)"><strong style="color:#a78bfa;">${ltrAmt(e.amount)}</strong><span class="ledger-note">${escHtml(e.note)}</span><button type="button" class="ledger-del" onclick="removeTechDaily(${index}, '${jsArg(e.id)}')">🗑</button></div>`).join('');
+        const scheduledDates = techScheduledDatesFor(tech.name);
+        const allocatedDates = new Set(entries.map(e => e.date));
+        const chipsHtml = scheduledDates.length > 0 ? `
+            <div class="ag-meta" style="margin:8px 0 4px;">${t('dailyQuickPickHint')}</div>
+            <div class="chip-row">
+                ${scheduledDates.map(d => `<button type="button" class="secondary" style="${allocatedDates.has(d) ? 'opacity:0.55;' : ''}" onclick="pickTechDailyDate(${index}, '${jsArg(d)}')">📅 ${escHtml(d)}${allocatedDates.has(d) ? ' ✓' : ''}</button>`).join('')}
+            </div>` : `<div class="ag-meta" style="margin:8px 0 4px;">${t('dailyQuickPickNone')}</div>`;
         return `<details class="tw-box" ${entries.length > 0 ? 'open' : ''} style="margin-top:12px;">
             <summary style="cursor:pointer; font-size:0.78rem; font-weight:700; color:var(--text-muted); display:flex; align-items:center; gap:6px;">${t('dailyAllocTitle')} <button type="button" onclick="event.stopPropagation(); alert(t('dailyAllocHelp'));" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:0 2px;">❓</button></summary>
             <div class="ag-meta" style="margin:6px 0;">${t('dailyAllocHint')}</div>
             ${rows}
+            ${chipsHtml}
             <div class="ledger-add-row" style="margin-top:8px;">
                 <div class="lg-field lg-date"><span>${t('lblReceiptDate')}</span><input type="date" id="da-date-${index}" value="${isoDate(new Date())}"></div>
                 <div class="lg-field lg-amt"><span>${t('lblAmountShort')}</span><input type="text" inputmode="decimal" id="da-amt-${index}" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); addTechDaily(${index});}"></div>
