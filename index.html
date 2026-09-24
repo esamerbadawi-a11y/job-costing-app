@@ -1448,7 +1448,8 @@
         tmsOverlapWarn: { ar: 'الفني ده متجدول في نفس اليوم على شغلانة تانية كمان — تأكد إنك مش بتحسبله نفس اليوم مرتين:', en: "This technician is also scheduled on another job the same day — make sure you're not counting that day for him twice:" },
         dailyAllocTitle: { ar: '📅 توزيع المبلغ على الأيام (اختياري)', en: '📅 Amount per day (optional)' },
         dailyAllocHint: { ar: 'سعره اليوم الواحد ثابت ومضمون، سواء اشتغل شغلانة واحدة أو أكتر في نفس اليوم. اكتب هنا نصيب الشغلانة دي من يوم بعينه، وقسّم الباقي على شغلاناته التانية في نفس اليوم لو حصل.', en: "His day rate is fixed and guaranteed, whether he worked one job or several that day. Enter this job's share of a given day here, and split the rest across his other jobs that same day if there were any." },
-        dailyQuickPickHint: { ar: 'دوس على يوم اشتغله عشان يتحط التاريخ لوحده، وبعدين اكتب المبلغ بس:', en: 'Tap a day he worked to fill the date for you, then just type the amount:' },
+        dailyDateColLabel: { ar: 'أي يوم في الأسبوع', en: 'Any day in the week' },
+        dailyAmountColLabel: { ar: 'المبلغ ($)', en: 'Amount ($)' },
         dailyQuickPickNone: { ar: 'مفيش أيام مجدولة له في لوحة الأسبوع على الشغلانة دي لسه. جدوله الأول، أو اكتب التاريخ بإيدك تحت.', en: "He has no scheduled days on this job's Weekly Board yet. Schedule him first, or type the date by hand below." },
         dailyAllocNote: { ar: 'موزّع على الأيام', en: 'Allocated by day' },
         tmsOverlapNoAmount: { ar: 'مقسمش هناك', en: 'not itemized there' },
@@ -2488,40 +2489,53 @@
         if (amtEl) { amtEl.focus(); amtEl.select(); }
     }
 
-    function techDailyPanelHtml(tech, index) {
+    // How much of his (schedule-based) due has been assigned to specific days so far — same idea,
+    // and same wording pattern, as the weeks summary above.
+    function techDailySummaryHtml(tech, dues) {
+        const entries = tech.dailyAlloc || [];
+        if (entries.length === 0) return '';
+        const alloc = round2(entries.reduce((s, e) => s + parseVal(e.amount), 0));
+        const diff = round2(dues - alloc);
+        let txt = t('twSummary').replace('{a}', ltrAmt(alloc)).replace('{b}', ltrAmt(dues));
+        if (diff > 0.005) txt += ' — ' + t('twRemainder').replace('{c}', ltrAmt(diff));
+        else if (diff < -0.005) txt += ' — ⚠️ ' + t('twOver').replace('{c}', ltrAmt(Math.abs(diff)));
+        return txt;
+    }
+
+    // Part of the technician's own row now (not a collapsed extra) — this is the field he uses for
+    // every daily/fixed/hourly technician, every week: pick a day he actually worked (from the Weekly
+    // Board) or type one, type what that day is worth, and it's taken straight off what's due to him.
+    function techDailyPanelHtml(tech, index, dues) {
         if (isPercentType(tech.type)) return '';   // percentage pay already follows the period's own money
         const entries = (tech.dailyAlloc || []).slice().sort((a, b) => a.date.localeCompare(b.date));
-        const rows = entries.map(e => `<div class="ledger-row"><input type="date" value="${escHtml(e.date)}" onchange="setTechDailyDate(${index}, '${jsArg(e.id)}', this.value)"><strong style="color:#a78bfa;">${ltrAmt(e.amount)}</strong><span class="ledger-note">${escHtml(e.note)}</span><button type="button" class="ledger-del" onclick="removeTechDaily(${index}, '${jsArg(e.id)}')">🗑</button></div>`).join('');
+        const rows = entries.map(e => `<div class="ledger-row"><input type="date" value="${escHtml(e.date)}" onchange="setTechDailyDate(${index}, '${jsArg(e.id)}', this.value)"><strong style="color:#a78bfa;">${ltrAmt(e.amount)}</strong>${e.note ? `<span class="ledger-note">${escHtml(e.note)}</span>` : '<span class="ledger-note"></span>'}<button type="button" class="ledger-del" onclick="removeTechDaily(${index}, '${jsArg(e.id)}')">🗑</button></div>`).join('');
         const scheduledDates = techScheduledDatesFor(tech.name);
         const allocatedDates = new Set(entries.map(e => e.date));
         const chipsHtml = scheduledDates.length > 0 ? `
-            <div class="ag-meta" style="margin:8px 0 4px;">${t('dailyQuickPickHint')}</div>
-            <div class="chip-row">
+            <div class="chip-row" style="margin-bottom:8px;">
                 ${scheduledDates.map(d => `<button type="button" class="secondary" style="${allocatedDates.has(d) ? 'opacity:0.55;' : ''}" onclick="pickTechDailyDate(${index}, '${jsArg(d)}')">📅 ${escHtml(d)}${allocatedDates.has(d) ? ' ✓' : ''}</button>`).join('')}
-            </div>` : `<div class="ag-meta" style="margin:8px 0 4px;">${t('dailyQuickPickNone')}</div>`;
-        return `<details class="tw-box" ${entries.length > 0 ? 'open' : ''} style="margin-top:12px;">
-            <summary style="cursor:pointer; font-size:0.78rem; font-weight:700; color:var(--text-muted); display:flex; align-items:center; gap:6px;">${t('dailyAllocTitle')} <button type="button" onclick="event.stopPropagation(); alert(t('dailyAllocHelp'));" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:0 2px;">❓</button></summary>
-            <div class="ag-meta" style="margin:6px 0;">${t('dailyAllocHint')}</div>
-            ${rows}
+            </div>` : `<div class="ag-meta" style="margin-bottom:8px;">${t('dailyQuickPickNone')}</div>`;
+        return `<div style="margin-top:12px; padding-top:12px; border-top:1px dashed var(--border-color);">
+            <div style="display:flex; align-items:center; gap:6px; font-size:0.78rem; font-weight:700; color:var(--text-muted); margin-bottom:8px;">${t('dailyAllocTitle')} <button type="button" onclick="alert(t('dailyAllocHelp'));" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:0 2px;">❓</button></div>
             ${chipsHtml}
-            <div class="ledger-add-row" style="margin-top:8px;">
-                <div class="lg-field lg-date"><span>${t('lblReceiptDate')}</span><input type="date" id="da-date-${index}" value="${isoDate(new Date())}"></div>
-                <div class="lg-field lg-amt"><span>${t('lblAmountShort')}</span><input type="text" inputmode="decimal" id="da-amt-${index}" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); addTechDaily(${index});}"></div>
-                <div class="lg-field lg-note"><span>${t('lblNoteShort')}</span><input type="text" id="da-note-${index}" onkeydown="if(event.key==='Enter'){event.preventDefault(); addTechDaily(${index});}"></div>
-                <button type="button" class="ledger-plus" onclick="addTechDaily(${index})">+</button>
+            <div style="display:grid; grid-template-columns: 1fr 1fr 40px; gap:10px; align-items:end;">
+                <div><label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('dailyDateColLabel')}</label><input type="date" id="da-date-${index}" value="${isoDate(new Date())}" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%;"></div>
+                <div><label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('dailyAmountColLabel')}</label><input type="text" inputmode="decimal" id="da-amt-${index}" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); addTechDaily(${index});}" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; text-align: center;"></div>
+                <button type="button" class="ledger-plus" onclick="addTechDaily(${index})" style="align-self:end;">+</button>
             </div>
-        </details>`;
+            ${rows ? `<div style="margin-top:8px;">${rows}</div>` : ''}
+            <div class="daily-summary ag-meta" style="margin-top:6px;">${techDailySummaryHtml(tech, dues)}</div>
+        </div>`;
     }
     function addTechDaily(index) {
         const tech = technicians[index];
         if (!tech) return;
         const date = document.getElementById(`da-date-${index}`).value;
         const amt = round2(parseVal(document.getElementById(`da-amt-${index}`).value));
-        const note = document.getElementById(`da-note-${index}`).value.trim();
         if (amt <= 0) { alert(t('alertWithdrawalAmountRequired')); return; }
         if (!date) { alert(t('alertPickDate')); return; }
         tech.dailyAlloc = tech.dailyAlloc || [];
-        tech.dailyAlloc.push({ id: newLedgerId(), date, amount: amt, note });
+        tech.dailyAlloc.push({ id: newLedgerId(), date, amount: amt, note: '' });
         renderTechnicians();
     }
     function removeTechDaily(index, id) {
@@ -2597,11 +2611,10 @@
         }
         const registeredTechs = getUniqueRegisteredTechnicians();
 
-        const periodOn = !!(document.getElementById('techPeriodFrom').value || document.getElementById('techPeriodTo').value);
         technicians.forEach((tech, index) => {
             if (!tech.type) { tech.type = 'نسبة مخصصة'; if (tech.customPercent === undefined) tech.customPercent = 50; }
             const dues = calculateTechDues(tech);
-            const periodMs = periodOn && tech.name ? techMoneyStatus(tech, document.getElementById('editingJobId').value || '__unsaved__') : null;
+            const periodMs = tech.name ? techMoneyStatus(tech, document.getElementById('editingJobId').value || '__unsaved__') : null;   // always period-aware: with no period picked, this already equals the whole-job total (or the sum of any day/week overrides)
             const periodReimb = periodMs ? (periodMs.detail ? periodMs.detail.reimbSum : 0) : 0;
             const displayWage = periodMs ? round2(periodMs.dueThisJob - periodReimb) : dues;
             const isCustom = tech.type === 'نسبة مخصصة';
@@ -2653,12 +2666,12 @@
                     </div>
                 </div>
                 ${techDueNoteHtml(periodMs)}
+                ${techDailyPanelHtml(tech, index, dues)}
                 <details class="tw-box" style="margin-top:12px;" ${((tech.weeks || []).length > 0 || (tech.materialReimbursements || []).length > 0) ? 'open' : ''}>
                     <summary style="cursor:pointer; font-size:0.78rem; font-weight:700; color:var(--text-muted); display:flex; align-items:center; gap:6px;">⚙️ ${t('advancedOptionsTitle')} <button type="button" onclick="event.stopPropagation(); alert(t('advancedOptionsHelp'));" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:0 2px;">❓</button></summary>
                     ${techWeeksPanelHtml(tech, index, dues)}
                     ${techReimbPanelHtml(tech, index)}
                 </details>
-                ${techDailyPanelHtml(tech, index)}
                 ${techOverlapWarningHtml(tech, index)}
             `;
             container.appendChild(card);
@@ -2916,8 +2929,7 @@
         const dues = calculateTechDues(tech);
         const card = document.getElementById(`techcard-${index}`);
         if (!card) return;
-        const periodOn = !!(document.getElementById('techPeriodFrom').value || document.getElementById('techPeriodTo').value);
-        const periodMs = periodOn && tech.name ? techMoneyStatus(tech, document.getElementById('editingJobId').value || '__unsaved__') : null;
+        const periodMs = tech.name ? techMoneyStatus(tech, document.getElementById('editingJobId').value || '__unsaved__') : null;   // always period-aware: with no period picked, this already equals the whole-job total (or the sum of any day/week overrides)
         const periodReimb = periodMs ? (periodMs.detail ? periodMs.detail.reimbSum : 0) : 0;
         const displayWage = periodMs ? round2(periodMs.dueThisJob - periodReimb) : dues;
         const display = card.querySelector('.tech-dues-display');
@@ -2931,6 +2943,8 @@
         else if (freshNote && display) display.insertAdjacentHTML('afterend', freshNote);
         const wsum = card.querySelector('.tw-summary');
         if (wsum) wsum.innerHTML = techWeeksSummaryHtml(tech, dues);
+        const dsum = card.querySelector('.daily-summary');
+        if (dsum) dsum.innerHTML = techDailySummaryHtml(tech, dues);
         const netBox = document.getElementById('jobPeriodNetBox');
         if (netBox) netBox.innerHTML = jobPeriodNetHtml();
     }
