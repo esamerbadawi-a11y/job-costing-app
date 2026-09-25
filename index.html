@@ -671,16 +671,29 @@
                         <div>
                             <label data-i18n="splitRatioS"></label>
                             <input type="text" inputmode="decimal" id="splitRatioS" value="40" oninput="updateSplitRatioTotal()">
+                            <div id="splitRatioSDollar" style="margin-top:4px; font-weight:700; color:#34d399;"></div>
                         </div>
                         <div>
                             <label data-i18n="splitRatioM"></label>
                             <input type="text" inputmode="decimal" id="splitRatioM" value="40" oninput="updateSplitRatioTotal()">
+                            <div id="splitRatioMDollar" style="margin-top:4px; font-weight:700; color:#34d399;"></div>
                         </div>
                         <div>
                             <label data-i18n="splitRatioCompany"></label>
                             <input type="text" inputmode="decimal" id="splitRatioCompany" value="20" oninput="updateSplitRatioTotal()">
+                            <div id="splitRatioCompanyDollar" style="margin-top:4px; font-weight:700; color:#34d399;"></div>
                         </div>
                     </div>
+
+                    <div style="margin-top:14px; padding-top:12px; border-top:1px dashed var(--border-color);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <span style="font-size:0.85rem; font-weight:700; color:var(--text-muted);" data-i18n="profitPartnersTitle"></span>
+                            <button type="button" class="secondary" style="padding:6px 12px; font-size:0.78rem;" onclick="addProfitPartner()">+ <span data-i18n="profitPartnerAddBtn"></span></button>
+                        </div>
+                        <div class="ag-meta" style="margin-bottom:8px;" data-i18n="profitPartnersHint"></div>
+                        <div id="profitPartnersContainer"></div>
+                    </div>
+
                     <div id="splitRatioTotalDisplay" style="margin-top:10px; text-align:end; font-size:0.9rem;"></div>
                 </div>
 
@@ -1521,6 +1534,11 @@
         errSplitRatioSum: { ar: 'مجموع نسب توزيع الأرباح {total}%، لازم يكون 100% بالظبط', en: 'Profit split percentages add up to {total}%, they must total exactly 100%' },
         thShareS: { ar: 'حصة S', en: 'S Share' },
         thShareM: { ar: 'حصة M', en: 'M Share' },
+        profitPartnersTitle: { ar: 'شركاء إضافيون (اختياري)', en: 'Additional Partners (optional)' },
+        profitPartnersHint: { ar: 'حساب هذه الشغلانة بس، مش مجمّع مع شغلانات تانية — لو الشخص ده شريك دايم زي S أو M، قولّي عشان نعمله حساب شامل زيهم.', en: "Calculated for this job only, not aggregated with other jobs — if this person is a permanent partner like S or M, tell me so we can give them a full account like theirs." },
+        profitPartnerAddBtn: { ar: 'إضافة شريك', en: 'Add Partner' },
+        profitPartnerNamePh: { ar: 'اسم الشريك', en: 'Partner name' },
+        errUnnamedPartner: { ar: 'فيه شريك إضافي ليه نسبة من غير ما تكتب اسمه', en: 'An additional partner has a percentage but no name' },
         agendaTitle: { ar: 'شغل النهارده', en: "Today's Work" },
         agendaScheduledToday: { ar: '📅 ميعاده النهارده', en: '📅 Scheduled today' },
         agendaRunning: { ar: '🔧 شغّالة النهارده (من غير ميعاد محدد)', en: '🔧 In progress today (no visit set)' },
@@ -3553,8 +3571,13 @@
         const rS = parseVal(jobData.splitRatio && jobData.splitRatio.s);
         const rM = parseVal(jobData.splitRatio && jobData.splitRatio.m);
         const rC = parseVal(jobData.splitRatio && jobData.splitRatio.company);
-        if (rS < 0 || rM < 0 || rC < 0) errors.push(t('errNegSplitRatio'));
-        else if (Math.abs(rS + rM + rC - 100) > 0.01) errors.push(t('errSplitRatioSum').replace('{total}', round2(rS + rM + rC)));
+        const extras = jobData.extraPartners || [];
+        const extraSum = extras.reduce((s, p) => s + parseVal(p.percent), 0);
+        let anyNegExtra = false, anyUnnamedExtra = false;
+        extras.forEach(p => { if (parseVal(p.percent) < 0) anyNegExtra = true; if (parseVal(p.percent) > 0.005 && !String(p.name || '').trim()) anyUnnamedExtra = true; });
+        if (rS < 0 || rM < 0 || rC < 0 || anyNegExtra) errors.push(t('errNegSplitRatio'));
+        else if (Math.abs(rS + rM + rC + extraSum - 100) > 0.01) errors.push(t('errSplitRatioSum').replace('{total}', round2(rS + rM + rC + extraSum)));
+        if (anyUnnamedExtra) errors.push(t('errUnnamedPartner'));
 
         return errors;
     }
@@ -3587,6 +3610,7 @@
             receipts: JSON.parse(JSON.stringify(currentReceipts)),
             materialEntries: JSON.parse(JSON.stringify(currentMaterialEntries)),
             splitRatio: { s: parseVal(document.getElementById('splitRatioS').value), m: parseVal(document.getElementById('splitRatioM').value), company: parseVal(document.getElementById('splitRatioCompany').value) },
+            extraPartners: JSON.parse(JSON.stringify(profitPartners)),
             createdBy: currentUserEmail,
             lastEditedBy: currentUserEmail
         };
@@ -3648,7 +3672,8 @@
         document.getElementById('splitRatioS').value = '40';
         document.getElementById('splitRatioM').value = '40';
         document.getElementById('splitRatioCompany').value = '20';
-        updateSplitRatioTotal();
+        profitPartners = [];
+        renderProfitPartners();
         document.getElementById('crmClientInfoBox').style.display = 'none';
         document.getElementById('clientAutocompleteList').style.display = 'none';
         document.getElementById('addressAutocompleteList').style.display = 'none';
@@ -3666,14 +3691,53 @@
         document.getElementById('cancelEditBtn').style.display = 'none';
     }
 
+    // The whole job form's own live money picture, reused for the profit-split $ preview: what's left
+    // after technicians and materials — same base used by jobNet() once the job is saved.
+    function liveNetForSplit() {
+        const received = parseVal(document.getElementById('amountReceived').value);
+        const materials = parseVal(document.getElementById('materialCost').value);
+        let techDues = 0;
+        technicians.forEach(tech => { techDues += calculateTechDues(tech) + techReimbTotal(tech); });
+        return round2(received - materials - techDues);
+    }
     function updateSplitRatioTotal() {
         const s = parseVal(document.getElementById('splitRatioS').value);
         const m = parseVal(document.getElementById('splitRatioM').value);
         const c = parseVal(document.getElementById('splitRatioCompany').value);
-        const total = round2(s + m + c);
+        const extraTotal = round2(profitPartners.reduce((sum, p) => sum + parseVal(p.percent), 0));
+        const total = round2(s + m + c + extraTotal);
         const ok = Math.abs(total - 100) < 0.01;
         document.getElementById('splitRatioTotalDisplay').innerHTML =
             `${t('splitRatioTotalLabel')} <strong style="color:${ok ? '#34d399' : '#f87171'};">${total}%</strong>` + (ok ? '' : ` ⚠️ ${t('splitRatioMustBe100')}`);
+
+        const net = liveNetForSplit();
+        const expenses = parseVal(document.getElementById('extraExpenses').value);
+        document.getElementById('splitRatioSDollar').textContent = '$' + round2(net * s / 100).toFixed(2);
+        document.getElementById('splitRatioMDollar').textContent = '$' + round2(net * m / 100).toFixed(2);
+        document.getElementById('splitRatioCompanyDollar').textContent = '$' + round2(net * c / 100 - expenses).toFixed(2);
+        profitPartners.forEach((p, i) => {
+            const el = document.querySelector(`.profit-partner-dollar[data-idx="${i}"]`);
+            if (el) el.textContent = '$' + round2(net * parseVal(p.percent) / 100).toFixed(2);
+        });
+    }
+
+    // ---------- Extra partners: per-job only (no aggregate account, no withdrawal tracking — those stay
+    // exclusive to S and M) — an open-ended list, add as many as a job actually needs. ----------
+    let profitPartners = [];
+    function addProfitPartner(name = '', percent = 0) { profitPartners.push({ name, percent }); renderProfitPartners(); }
+    function removeProfitPartner(index) { profitPartners.splice(index, 1); renderProfitPartners(); }
+    function updateProfitPartner(index, field, value) { if (profitPartners[index]) profitPartners[index][field] = value; updateSplitRatioTotal(); }
+    function renderProfitPartners() {
+        const container = document.getElementById('profitPartnersContainer');
+        if (profitPartners.length === 0) { container.innerHTML = ''; updateSplitRatioTotal(); return; }
+        container.innerHTML = profitPartners.map((p, i) => `
+            <div class="ledger-row">
+                <input type="text" value="${escHtml(p.name)}" placeholder="${t('profitPartnerNamePh')}" oninput="updateProfitPartner(${i}, 'name', this.value)" style="flex:2; min-width:90px;">
+                <input type="text" inputmode="decimal" value="${escHtml(String(p.percent))}" oninput="updateProfitPartner(${i}, 'percent', this.value)" style="width:70px; text-align:center;">
+                <span class="profit-partner-dollar" data-idx="${i}" style="min-width:80px; text-align:end; color:#34d399; font-weight:700; align-self:center;"></span>
+                <button type="button" class="ledger-del" onclick="removeProfitPartner(${i})">🗑</button>
+            </div>`).join('');
+        updateSplitRatioTotal();
     }
 
     function jobRemaining(job) { return parseVal(job.totalRevenue) - parseVal(job.amountReceived); }
@@ -3683,7 +3747,7 @@
     function showJobQuickDetails(jobId) {
         const job = savedJobs.find(j => j.id === jobId);
         if (!job) return;
-        const { net, shareS, shareM, companyNet, ratio } = jobNet(job);
+        const { net, shareS, shareM, companyNet, ratio, extraShares } = jobNet(job);
         const rem = jobRemaining(job);
         const expensesTotal = (job.expenseItems && job.expenseItems.length > 0)
             ? job.expenseItems.reduce((sum, e) => sum + parseVal(e.amount), 0)
@@ -3717,6 +3781,7 @@
         lines.push('');
         lines.push(`${t('thNet')} $${net.toFixed(2)}`);
         lines.push(`S (${Math.round(ratio.s * 100)}%): $${shareS.toFixed(2)}  |  M (${Math.round(ratio.m * 100)}%): $${shareM.toFixed(2)}  |  ${t('statShareCompany')} (${Math.round(ratio.company * 100)}%): $${companyNet.toFixed(2)}`);
+        extraShares.filter(x => x.percent > 0.005).forEach(x => lines.push(`${x.name || '?'} (${Math.round(x.percent)}%): $${x.amount.toFixed(2)}`));
         alert(lines.join('\n'));
     }
 
@@ -3729,9 +3794,10 @@
     // (every job saved before this feature existed, or one where the fields were simply left at default).
     function jobSplitRatio(job) {
         const r = job.splitRatio;
+        const extraSum = (job.extraPartners || []).reduce((sum, p) => sum + parseVal(p.percent), 0);
         if (r) {
             const s = parseVal(r.s), m = parseVal(r.m), c = parseVal(r.company);
-            if (s >= 0 && m >= 0 && c >= 0 && Math.abs(s + m + c - 100) < 0.01) return { s: s / 100, m: m / 100, company: c / 100 };
+            if (s >= 0 && m >= 0 && c >= 0 && Math.abs(s + m + c + extraSum - 100) < 0.01) return { s: s / 100, m: m / 100, company: c / 100 };
         }
         return { s: 0.4, m: 0.4, company: 0.2 };
     }
@@ -3745,8 +3811,10 @@
         const expensesTotal = parseVal(job.extraExpenses);
         const companyGross = netForSplit * ratio.company;
         const companyNet = companyGross - expensesTotal;
-        const net = shareS + shareM + companyNet; // overall bottom line (= netForSplit - expensesTotal)
-        return { totalTechDues, net, shareS, shareM, companyGross, companyNet, expensesTotal, ratio };
+        const extraShares = (job.extraPartners || []).map(p => ({ name: p.name || '', percent: parseVal(p.percent), amount: round2(netForSplit * parseVal(p.percent) / 100) }));
+        const extraTotal = round2(extraShares.reduce((s, x) => s + x.amount, 0));
+        const net = shareS + shareM + companyNet + extraTotal; // overall bottom line (= netForSplit - expensesTotal)
+        return { totalTechDues, net, shareS, shareM, companyGross, companyNet, expensesTotal, ratio, extraShares, extraTotal };
     }
 
     let jobSortField = null;
@@ -3994,7 +4062,8 @@
         document.getElementById('splitRatioS').value = dupRatio.s;
         document.getElementById('splitRatioM').value = dupRatio.m;
         document.getElementById('splitRatioCompany').value = dupRatio.company;
-        updateSplitRatioTotal();
+        profitPartners = JSON.parse(JSON.stringify(job.extraPartners || []));
+        renderProfitPartners();
         renderLedgers(); // a duplicate starts with no dated entries: its copied material figure shows as undated
 
         technicians = JSON.parse(JSON.stringify(job.technicians || []));
@@ -4039,7 +4108,8 @@
         document.getElementById('splitRatioS').value = jobRatio.s;
         document.getElementById('splitRatioM').value = jobRatio.m;
         document.getElementById('splitRatioCompany').value = jobRatio.company;
-        updateSplitRatioTotal();
+        profitPartners = JSON.parse(JSON.stringify(job.extraPartners || []));
+        renderProfitPartners();
         currentReceipts = JSON.parse(JSON.stringify(job.receipts || []));
         currentMaterialEntries = JSON.parse(JSON.stringify(job.materialEntries || []));
         initLedgerDates(); renderLedgers();
