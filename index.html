@@ -429,8 +429,8 @@
         <div class="stat-card"><span data-i18n="statTotalMat"></span><strong id="statTotalMat" style="color: #f87171;">0.0</strong></div>
         <div class="stat-card"><span data-i18n="statTotalTech"></span><strong id="statTotalTech">0.0</strong></div>
         <div class="stat-card accent"><span data-i18n="statTotalNet"></span><strong id="statTotalNet">0.0</strong></div>
-        <div class="stat-card success"><span>S (40%)</span><strong id="statShareS">0.0</strong></div>
-        <div class="stat-card success"><span>M (40%)</span><strong id="statShareM">0.0</strong></div>
+        <div class="stat-card success"><span data-i18n="thShareS"></span><strong id="statShareS">0.0</strong></div>
+        <div class="stat-card success"><span data-i18n="thShareM"></span><strong id="statShareM">0.0</strong></div>
         <div class="stat-card warning"><span data-i18n="statShareCompany"></span><strong id="statShareCompany">0.0</strong></div>
         <div class="stat-card"><span data-i18n="statExtraExp"></span><strong id="statExtraExp" style="color: #f87171;">0.0</strong></div>
         <div class="stat-card success"><span data-i18n="statTotalReceived"></span><strong id="statTotalReceived" style="color:#34d399;">0.0</strong></div>
@@ -447,8 +447,8 @@
             <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="statTotalMat"></span><strong id="selTotalMat" style="display:block; font-size:1.1rem; color:#f87171;">0.0</strong></div>
             <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="statTotalTech"></span><strong id="selTotalTech" style="display:block; font-size:1.1rem; color:#fbbf24;">0.0</strong></div>
             <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="statTotalNet"></span><strong id="selTotalNet" style="display:block; font-size:1.1rem; color:#34d399;">0.0</strong></div>
-            <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);">S (40%)</span><strong id="selShareS" style="display:block; font-size:1.1rem; color:#38bdf8;">0.0</strong></div>
-            <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);">M (40%)</span><strong id="selShareM" style="display:block; font-size:1.1rem; color:#38bdf8;">0.0</strong></div>
+            <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="thShareS"></span><strong id="selShareS" style="display:block; font-size:1.1rem; color:#38bdf8;">0.0</strong></div>
+            <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="thShareM"></span><strong id="selShareM" style="display:block; font-size:1.1rem; color:#38bdf8;">0.0</strong></div>
             <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="statShareCompany"></span><strong id="selShareCompany" style="display:block; font-size:1.1rem; color:#fbbf24;">0.0</strong></div>
             <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="statExtraExp"></span><strong id="selExtraExp" style="display:block; font-size:1.1rem; color:#f87171;">0.0</strong></div>
             <div style="background: var(--card-dark); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);"><span style="font-size:0.75rem; color:var(--text-muted);" data-i18n="statActualRemaining"></span><strong id="selActualRemaining" style="display:block; font-size:1.1rem; color:#fbbf24;">0.0</strong></div>
@@ -504,8 +504,8 @@
                                 <th data-i18n="thExpenses"></th>
                                 <th data-i18n="thTechPay"></th>
                                 <th data-sort-field="net" onclick="sortTableBy('net')" style="cursor:pointer;"><span data-i18n="thNet"></span><span class="sort-arrow"></span></th>
-                                <th data-sort-field="shareS" onclick="sortTableBy('shareS')" style="cursor:pointer;">S (40%)<span class="sort-arrow"></span></th>
-                                <th data-sort-field="shareM" onclick="sortTableBy('shareM')" style="cursor:pointer;">M (40%)<span class="sort-arrow"></span></th>
+                                <th data-sort-field="shareS" onclick="sortTableBy('shareS')" style="cursor:pointer;" data-i18n="thShareS"></th>
+                                <th data-sort-field="shareM" onclick="sortTableBy('shareM')" style="cursor:pointer;" data-i18n="thShareM"></th>
                                 <th data-sort-field="companyNet" onclick="sortTableBy('companyNet')" style="cursor:pointer;"><span data-i18n="thCompany"></span><span class="sort-arrow"></span></th>
                                 <th class="no-print" data-i18n="thActions"></th>
                             </tr>
@@ -659,6 +659,29 @@
                         <span data-i18n="expenseTotalLabel"></span> <span id="expenseTotalDisplay">$0.00</span>
                     </div>
                     <input type="hidden" id="extraExpenses" value="0">
+                </div>
+
+                <div class="card" style="background: var(--panel-bg); padding: 16px; margin-top: 15px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="color: #f39c12; font-weight: bold; font-size: 1rem;" data-i18n="splitRatioTitle"></span>
+                        <button type="button" onclick="alert(t('splitRatioHelp'));" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.95rem; padding:0 2px;">❓</button>
+                    </div>
+                    <div class="ag-meta" style="margin-bottom:10px;" data-i18n="splitRatioHint"></div>
+                    <div class="grid-3">
+                        <div>
+                            <label data-i18n="splitRatioS"></label>
+                            <input type="text" inputmode="decimal" id="splitRatioS" value="40" oninput="updateSplitRatioTotal()">
+                        </div>
+                        <div>
+                            <label data-i18n="splitRatioM"></label>
+                            <input type="text" inputmode="decimal" id="splitRatioM" value="40" oninput="updateSplitRatioTotal()">
+                        </div>
+                        <div>
+                            <label data-i18n="splitRatioCompany"></label>
+                            <input type="text" inputmode="decimal" id="splitRatioCompany" value="20" oninput="updateSplitRatioTotal()">
+                        </div>
+                    </div>
+                    <div id="splitRatioTotalDisplay" style="margin-top:10px; text-align:end; font-size:0.9rem;"></div>
                 </div>
 
                 <div style="display: flex; gap: 8px;">
@@ -1074,8 +1097,8 @@
         cwTotalReceived: { ar: 'إجمالي المستلم من كل الشغلانات:', en: 'Total Received (All Jobs):' },
         cwMaterials: { ar: 'الخامات:', en: 'Materials:' },
         cwTechDues: { ar: 'مستحقات الفنيين:', en: 'Technician Dues:' },
-        cwShareS: { ar: 'نصيب S (40%):', en: 'S Share (40%):' },
-        cwShareM: { ar: 'نصيب M (40%):', en: 'M Share (40%):' },
+        cwShareS: { ar: 'نصيب S:', en: 'S Share:' },
+        cwShareM: { ar: 'نصيب M:', en: 'M Share:' },
         cwCompanyShare: { ar: 'نصيب الشركة (20%):', en: "Company's Share (20%):" },
         totalWithdrawnLabel: { ar: 'اتصرف له فعلاً:', en: 'Total Withdrawn:' },
         remainingBalanceLabel: { ar: 'الباقي له لسه:', en: 'Remaining Balance:' },
@@ -1109,7 +1132,7 @@
         statTotalMat: { ar: 'إجمالي الخامات', en: 'Total Materials' },
         statTotalTech: { ar: 'إجمالي الفنيين', en: 'Total Technicians' },
         statTotalNet: { ar: 'إجمالي الصافي', en: 'Total Net' },
-        statShareCompany: { ar: 'شركة (20%)', en: 'Company (20%)' },
+        statShareCompany: { ar: 'شركة', en: 'Company' },
         statExtraExp: { ar: 'مصروفات الشركة', en: 'Company Expenses' },
         statTotalReceived: { ar: '💵 إجمالي المستلم', en: '💵 Total Received' },
         statActualRemaining: { ar: '💰 الباقي فعليًا (بعد الفنيين والماتريال والمصاريف)', en: '💰 Actual Remaining (after techs, materials & expenses)' },
@@ -1486,6 +1509,18 @@
         gsTechnicians: { ar: 'فنيين', en: 'Technicians' },
         gsContacts: { ar: 'جهات اتصال', en: 'Contacts' },
         gsNoResults: { ar: 'مفيش نتايج.', en: 'No results.' },
+        splitRatioTitle: { ar: '💰 توزيع الأرباح لهذه الشغلانة', en: '💰 Profit Split for This Job' },
+        splitRatioHelp: { ar: 'افتراضيًا الشركة بتقسم الصافي (بعد الفنيين والخامات) 40% لك، 40% لشريكك، 20% للشركة. لو الشغلانة دي ليها اتفاق مختلف، غيّر النسب هنا — الشغلانات التانية مش بتتأثر خالص.', en: "By default the net (after technicians and materials) splits 40% to you, 40% to your partner, 20% to the company. If this job has a different arrangement, change the percentages here — no other job is affected." },
+        splitRatioHint: { ar: 'لازم مجموع الثلاث نسب يساوي 100%.', en: 'The three percentages must add up to 100%.' },
+        splitRatioS: { ar: 'نسبة S (%)', en: 'S Share (%)' },
+        splitRatioM: { ar: 'نسبة M (%)', en: 'M Share (%)' },
+        splitRatioCompany: { ar: 'نسبة الشركة (%)', en: 'Company Share (%)' },
+        splitRatioTotalLabel: { ar: 'الإجمالي:', en: 'Total:' },
+        splitRatioMustBe100: { ar: 'لازم يساوي 100%', en: 'must equal 100%' },
+        errNegSplitRatio: { ar: 'نسب توزيع الأرباح مينفعش تكون بالسالب', en: 'Profit split percentages cannot be negative' },
+        errSplitRatioSum: { ar: 'مجموع نسب توزيع الأرباح {total}%، لازم يكون 100% بالظبط', en: 'Profit split percentages add up to {total}%, they must total exactly 100%' },
+        thShareS: { ar: 'حصة S', en: 'S Share' },
+        thShareM: { ar: 'حصة M', en: 'M Share' },
         agendaTitle: { ar: 'شغل النهارده', en: "Today's Work" },
         agendaScheduledToday: { ar: '📅 ميعاده النهارده', en: '📅 Scheduled today' },
         agendaRunning: { ar: '🔧 شغّالة النهارده (من غير ميعاد محدد)', en: '🔧 In progress today (no visit set)' },
@@ -3515,6 +3550,12 @@
             if (parseVal(exp.amount) < 0) errors.push(`${t('errNegExpense')} — ${t('errRowLabel')} ${i + 1} (${expenseCatLabel(exp.category)})`);
         });
 
+        const rS = parseVal(jobData.splitRatio && jobData.splitRatio.s);
+        const rM = parseVal(jobData.splitRatio && jobData.splitRatio.m);
+        const rC = parseVal(jobData.splitRatio && jobData.splitRatio.company);
+        if (rS < 0 || rM < 0 || rC < 0) errors.push(t('errNegSplitRatio'));
+        else if (Math.abs(rS + rM + rC - 100) > 0.01) errors.push(t('errSplitRatioSum').replace('{total}', round2(rS + rM + rC)));
+
         return errors;
     }
 
@@ -3545,6 +3586,7 @@
             photos: JSON.parse(JSON.stringify(currentJobPhotos)),
             receipts: JSON.parse(JSON.stringify(currentReceipts)),
             materialEntries: JSON.parse(JSON.stringify(currentMaterialEntries)),
+            splitRatio: { s: parseVal(document.getElementById('splitRatioS').value), m: parseVal(document.getElementById('splitRatioM').value), company: parseVal(document.getElementById('splitRatioCompany').value) },
             createdBy: currentUserEmail,
             lastEditedBy: currentUserEmail
         };
@@ -3603,6 +3645,10 @@
         document.getElementById('followUpDate').value = '';
         document.getElementById('materialCost').value = 0;
         document.getElementById('extraExpenses').value = 0;
+        document.getElementById('splitRatioS').value = '40';
+        document.getElementById('splitRatioM').value = '40';
+        document.getElementById('splitRatioCompany').value = '20';
+        updateSplitRatioTotal();
         document.getElementById('crmClientInfoBox').style.display = 'none';
         document.getElementById('clientAutocompleteList').style.display = 'none';
         document.getElementById('addressAutocompleteList').style.display = 'none';
@@ -3620,6 +3666,16 @@
         document.getElementById('cancelEditBtn').style.display = 'none';
     }
 
+    function updateSplitRatioTotal() {
+        const s = parseVal(document.getElementById('splitRatioS').value);
+        const m = parseVal(document.getElementById('splitRatioM').value);
+        const c = parseVal(document.getElementById('splitRatioCompany').value);
+        const total = round2(s + m + c);
+        const ok = Math.abs(total - 100) < 0.01;
+        document.getElementById('splitRatioTotalDisplay').innerHTML =
+            `${t('splitRatioTotalLabel')} <strong style="color:${ok ? '#34d399' : '#f87171'};">${total}%</strong>` + (ok ? '' : ` ⚠️ ${t('splitRatioMustBe100')}`);
+    }
+
     function jobRemaining(job) { return parseVal(job.totalRevenue) - parseVal(job.amountReceived); }
 
     // A one-tap snapshot of everything financial about a single job — what's left to
@@ -3627,7 +3683,7 @@
     function showJobQuickDetails(jobId) {
         const job = savedJobs.find(j => j.id === jobId);
         if (!job) return;
-        const { net, shareS, shareM, companyNet } = jobNet(job);
+        const { net, shareS, shareM, companyNet, ratio } = jobNet(job);
         const rem = jobRemaining(job);
         const expensesTotal = (job.expenseItems && job.expenseItems.length > 0)
             ? job.expenseItems.reduce((sum, e) => sum + parseVal(e.amount), 0)
@@ -3660,24 +3716,37 @@
         }
         lines.push('');
         lines.push(`${t('thNet')} $${net.toFixed(2)}`);
-        lines.push(`S: $${shareS.toFixed(2)}  |  M: $${shareM.toFixed(2)}  |  ${t('statShareCompany')}: $${companyNet.toFixed(2)}`);
+        lines.push(`S (${Math.round(ratio.s * 100)}%): $${shareS.toFixed(2)}  |  M (${Math.round(ratio.m * 100)}%): $${shareM.toFixed(2)}  |  ${t('statShareCompany')} (${Math.round(ratio.company * 100)}%): $${companyNet.toFixed(2)}`);
         alert(lines.join('\n'));
     }
 
     // The 40/40/20 split happens on the profit BEFORE company operating expenses (gas, coffee,
     // rent, etc.) — those are the company's own overhead, so they come out of the company's 20%
     // share only. S and M's shares are never reduced by the company's spending.
+    // Every job carries its OWN split percentages (job.splitRatio = {s, m, company}), read fresh from
+    // that job's own data every time — never a shared/global setting — so changing one job's split can
+    // never affect another job's numbers. Falls back to the standard 40/40/20 for any job that has none
+    // (every job saved before this feature existed, or one where the fields were simply left at default).
+    function jobSplitRatio(job) {
+        const r = job.splitRatio;
+        if (r) {
+            const s = parseVal(r.s), m = parseVal(r.m), c = parseVal(r.company);
+            if (s >= 0 && m >= 0 && c >= 0 && Math.abs(s + m + c - 100) < 0.01) return { s: s / 100, m: m / 100, company: c / 100 };
+        }
+        return { s: 0.4, m: 0.4, company: 0.2 };
+    }
     function jobNet(job) {
         let totalTechDues = 0;
         (job.technicians || []).forEach(tech => { totalTechDues += calculateJobTechDuesWithReimbursement(tech, job.amountReceived, job.materialCost); });
         const netForSplit = parseVal(job.amountReceived) - parseVal(job.materialCost) - totalTechDues;
-        const shareS = netForSplit * 0.4;
-        const shareM = netForSplit * 0.4;
+        const ratio = jobSplitRatio(job);
+        const shareS = netForSplit * ratio.s;
+        const shareM = netForSplit * ratio.m;
         const expensesTotal = parseVal(job.extraExpenses);
-        const companyGross = netForSplit * 0.2;
+        const companyGross = netForSplit * ratio.company;
         const companyNet = companyGross - expensesTotal;
         const net = shareS + shareM + companyNet; // overall bottom line (= netForSplit - expensesTotal)
-        return { totalTechDues, net, shareS, shareM, companyGross, companyNet, expensesTotal };
+        return { totalTechDues, net, shareS, shareM, companyGross, companyNet, expensesTotal, ratio };
     }
 
     let jobSortField = null;
@@ -3742,7 +3811,7 @@
                 expenseDetailsText += `• ${label}: $${parseVal(item.amount).toFixed(2)}<br>`;
             });
 
-            const { net: netProfit, shareS, shareM, companyNet } = jobNet(job);
+            const { net: netProfit, shareS, shareM, companyNet, ratio: rowRatio } = jobNet(job);
             const rev = parseVal(job.totalRevenue);
             const rec = parseVal(job.amountReceived);
             const rem = jobRemaining(job);
@@ -3762,8 +3831,8 @@
                 <td data-label="${t('thExpenses')}" style="font-size:0.8rem;">${expenseDetailsText || '$' + parseVal(job.extraExpenses).toFixed(2)}</td>
                 <td data-label="${t('thTechPay')}" style="font-size:0.8rem;">${techDetailsText || t('noTechData')}</td>
                 <td data-label="${t('thNet')}" style="color:${netProfit < 0 ? '#f87171' : '#34d399'}; font-weight:700;">$${netProfit.toFixed(2)}</td>
-                <td data-label="S (40%)" style="color:#38bdf8;">$${shareS.toFixed(2)}</td>
-                <td data-label="M (40%)" style="color:#38bdf8;">$${shareM.toFixed(2)}</td>
+                <td data-label="${t('thShareS')}" style="color:#38bdf8;">$${shareS.toFixed(2)} <span style="color:var(--text-muted); font-size:0.72rem;">(${Math.round(rowRatio.s * 100)}%)</span></td>
+                <td data-label="${t('thShareM')}" style="color:#38bdf8;">$${shareM.toFixed(2)} <span style="color:var(--text-muted); font-size:0.72rem;">(${Math.round(rowRatio.m * 100)}%)</span></td>
                 <td data-label="${t('thCompany')}" style="color:#fbbf24;">$${companyNet.toFixed(2)}</td>
                 <td data-label="${t('thActions')}" class="no-print">
                     <button class="secondary" onclick="showJobQuickDetails('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#7c3aed;">ℹ️</button>
@@ -3921,6 +3990,11 @@
         document.getElementById('amountReceived').value = 0;
         calculateRemaining();
         document.getElementById('materialCost').value = job.materialCost || 0;
+        const dupRatio = job.splitRatio || { s: 40, m: 40, company: 20 };
+        document.getElementById('splitRatioS').value = dupRatio.s;
+        document.getElementById('splitRatioM').value = dupRatio.m;
+        document.getElementById('splitRatioCompany').value = dupRatio.company;
+        updateSplitRatioTotal();
         renderLedgers(); // a duplicate starts with no dated entries: its copied material figure shows as undated
 
         technicians = JSON.parse(JSON.stringify(job.technicians || []));
@@ -3961,6 +4035,11 @@
         document.getElementById('amountRemaining').value = job.amountRemaining || 0;
         document.getElementById('followUpDate').value = job.followUpDate || '';
         document.getElementById('materialCost').value = job.materialCost || 0;
+        const jobRatio = job.splitRatio || { s: 40, m: 40, company: 20 };
+        document.getElementById('splitRatioS').value = jobRatio.s;
+        document.getElementById('splitRatioM').value = jobRatio.m;
+        document.getElementById('splitRatioCompany').value = jobRatio.company;
+        updateSplitRatioTotal();
         currentReceipts = JSON.parse(JSON.stringify(job.receipts || []));
         currentMaterialEntries = JSON.parse(JSON.stringify(job.materialEntries || []));
         initLedgerDates(); renderLedgers();
@@ -4190,9 +4269,9 @@
 
     function exportData() {
         let csvRows = [];
-        csvRows.push(["Jobs #", "Date", "Customer", "Phone", "Address", "Description", "Contract", "Received", "Balance", "Materials", "Technicians", "Expenses Total", "Expenses Breakdown", "Status", "Net Profit", "S Share", "M Share", "Company Share"].join(","));
+        csvRows.push(["Jobs #", "Date", "Customer", "Phone", "Address", "Description", "Contract", "Received", "Balance", "Materials", "Technicians", "Expenses Total", "Expenses Breakdown", "Status", "Split Ratio (S/M/Co)", "Net Profit", "S Share", "M Share", "Company Share"].join(","));
         savedJobs.forEach((job, index) => {
-            const { net: netProfit, shareS, shareM, companyNet } = jobNet(job);
+            const { net: netProfit, shareS, shareM, companyNet, ratio: csvRatio } = jobNet(job);
             const techSummary = (job.technicians || []).map(tc => {
                 const wage = calculateJobTechDues(tc, job.amountReceived, job.materialCost);
                 const reimb = techReimbTotal(tc);
@@ -4204,6 +4283,7 @@
                 csvEscape(job.clientPhone || ''), csvEscape(job.clientAddress || ''), csvEscape(job.clientDescription || ''),
                 parseVal(job.totalRevenue).toFixed(2), parseVal(job.amountReceived).toFixed(2), jobRemaining(job).toFixed(2),
                 parseVal(job.materialCost).toFixed(2), csvEscape(techSummary), parseVal(job.extraExpenses).toFixed(2), csvEscape(expenseSummary), csvEscape(job.jobStatus || ''),
+                csvEscape(`${Math.round(csvRatio.s * 100)}/${Math.round(csvRatio.m * 100)}/${Math.round(csvRatio.company * 100)}`),
                 netProfit.toFixed(2), shareS.toFixed(2), shareM.toFixed(2), companyNet.toFixed(2)
             ];
             csvRows.push(rowData.join(","));
@@ -4248,14 +4328,15 @@
         doc.setFont("helvetica", "bold"); doc.setFontSize(16);
         doc.text("AHA - PM STATEMENT", 14, 15);
 
-        const headers = [["Jobs #", "Date", "Customer", "Address", "Contract", "Received", "Balance", "Materials", "Status", "Net Profit", "S (40%)", "M (40%)", "Company Net"]];
+        const headers = [["Jobs #", "Date", "Customer", "Address", "Contract", "Received", "Balance", "Materials", "Status", "Split (S/M/Co)", "Net Profit", "S Share", "M Share", "Company Net"]];
         const data = jobsList.map((job, index) => {
-            const { net: netProfit, shareS, shareM, companyNet } = jobNet(job);
+            const { net: netProfit, shareS, shareM, companyNet, ratio: pdfRatio } = jobNet(job);
             return [
                 "#" + (index + 1), job.startDate || '', job.clientName || '', job.clientAddress || '',
                 "$" + parseVal(job.totalRevenue).toFixed(2), "$" + parseVal(job.amountReceived).toFixed(2), "$" + jobRemaining(job).toFixed(2),
-                "$" + parseVal(job.materialCost).toFixed(2), statusLabel(job.jobStatus), "$" + netProfit.toFixed(2),
-                "$" + shareS.toFixed(2), "$" + shareM.toFixed(2), "$" + companyNet.toFixed(2)
+                "$" + parseVal(job.materialCost).toFixed(2), statusLabel(job.jobStatus),
+                `${Math.round(pdfRatio.s * 100)}/${Math.round(pdfRatio.m * 100)}/${Math.round(pdfRatio.company * 100)}`,
+                "$" + netProfit.toFixed(2), "$" + shareS.toFixed(2), "$" + shareM.toFixed(2), "$" + companyNet.toFixed(2)
             ];
         });
 
@@ -5967,7 +6048,7 @@
         let totalShareS = 0, totalShareM = 0;
         savedJobs.forEach(job => { const { shareS, shareM } = jobNet(job); totalShareS += shareS; totalShareM += shareM; });
         const msg = currentLang === 'ar'
-            ? `تقرير حصص الأرباح:\nحصة S (40%): $${totalShareS.toFixed(2)}\nحصة M (40%): $${totalShareM.toFixed(2)}`
+            ? `تقرير حصص الأرباح:\nحصة S: $${totalShareS.toFixed(2)}\nحصة M: $${totalShareM.toFixed(2)}`
             : `Profit Share Report:\nS Share (40%): $${totalShareS.toFixed(2)}\nM Share (40%): $${totalShareM.toFixed(2)}`;
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
     }
