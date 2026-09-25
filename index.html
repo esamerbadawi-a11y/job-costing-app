@@ -170,6 +170,9 @@
         /* ---- Dated client payments / material invoices (job form) ---- */
         .tms-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 0.82rem; border-top: 1px solid var(--border-color); }
         .tms-row:first-of-type { border-top: none; }
+        .drag-handle { cursor: grab; touch-action: none; padding: 4px 8px; margin-inline-end: 4px; color: var(--text-muted); font-size: 1.05rem; line-height: 1; user-select: none; border-radius: 6px; display: inline-block; }
+        .drag-handle:active { cursor: grabbing; background: rgba(255,255,255,0.08); }
+        .tech-card.card-dragging { opacity: 0.85; box-shadow: 0 10px 24px rgba(0,0,0,0.5); position: relative; z-index: 50; }
         .ledger-add-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
         .lg-field { display: flex; flex-direction: column; gap: 3px; }
         .lg-field > span { font-size: 0.72rem; color: var(--text-muted); font-weight: 600; }
@@ -1451,6 +1454,7 @@
         dailyDateColLabel: { ar: 'أي يوم في الأسبوع', en: 'Any day in the week' },
         dailyAmountColLabel: { ar: 'المبلغ ($)', en: 'Amount ($)' },
         dailyQuickPickNone: { ar: 'مفيش أيام مجدولة له في لوحة الأسبوع على الشغلانة دي لسه. جدوله الأول، أو اكتب التاريخ بإيدك تحت.', en: "He has no scheduled days on this job's Weekly Board yet. Schedule him first, or type the date by hand below." },
+        dragHandleHint: { ar: 'اسحب لترتيب الشغل في نفس اليوم', en: 'Drag to reorder jobs within this day' },
         dailyAllocNote: { ar: 'موزّع على الأيام', en: 'Allocated by day' },
         tmsOverlapNoAmount: { ar: 'مقسمش هناك', en: 'not itemized there' },
         jobPeriodNetTitle: { ar: '📊 صافي الشغلانة في الفترة دي', en: "📊 This Job's Net for the Period" },
@@ -5365,7 +5369,65 @@
 
     let weeklyBoardOffset = 0; // 0 = this week, -1 = previous week, +1 = next week
     let showAllPendingMode = false;
-    let dragJobId = null;
+    // ---------- Reordering jobs within a day: one small grip handle, using Pointer Events so the SAME
+    // code drags with a mouse, a finger, or a pen — unlike the old HTML5 drag-and-drop API this replaces,
+    // which only ever worked with a mouse and silently did nothing on a phone. ----------
+    let cardDragState = null;
+
+    function startCardDrag(event, jobId, dateStr) {
+        event.preventDefault();
+        const handle = event.currentTarget;
+        const card = handle.closest('.tech-card');
+        const container = card.parentElement;
+        if (!card || !container) return;
+        try { handle.setPointerCapture(event.pointerId); } catch (e) {}
+        cardDragState = { jobId, date: dateStr, card, container, pointerId: event.pointerId, moved: false };
+        card.classList.add('card-dragging');
+        document.addEventListener('pointermove', onCardDragMove);
+        document.addEventListener('pointerup', onCardDragEnd);
+        document.addEventListener('pointercancel', onCardDragEnd);
+    }
+    function onCardDragMove(event) {
+        if (!cardDragState) return;
+        event.preventDefault();
+        cardDragState.moved = true;
+        const { card, container } = cardDragState;
+        const y = event.clientY;
+        const siblings = [...container.querySelectorAll(':scope > .tech-card')].filter(el => el !== card);
+        let placed = false;
+        for (const sib of siblings) {
+            const rect = sib.getBoundingClientRect();
+            if (y < rect.top + rect.height / 2) { container.insertBefore(card, sib); placed = true; break; }
+        }
+        if (!placed) container.appendChild(card);
+    }
+    async function onCardDragEnd(event) {
+        if (!cardDragState) return;
+        const { card, container, date, moved } = cardDragState;
+        document.removeEventListener('pointermove', onCardDragMove);
+        document.removeEventListener('pointerup', onCardDragEnd);
+        document.removeEventListener('pointercancel', onCardDragEnd);
+        card.classList.remove('card-dragging');
+        cardDragState = null;
+        if (!moved) return;   // a tap on the handle with no real movement: nothing to save
+        const orderedJobIds = [...container.querySelectorAll(':scope > .tech-card')].map(el => el.dataset.jobId);
+        await persistDayOrder(date, orderedJobIds);
+    }
+    // Shared by the drag handle above: writes the day's new job order back to Firestore.
+    async function persistDayOrder(dateStr, orderedJobIds) {
+        const backup = JSON.parse(JSON.stringify(savedJobs));
+        orderedJobIds.forEach((jobId, i) => {
+            const jobIdx = savedJobs.findIndex(j => j.id === jobId);
+            if (jobIdx === -1) return;
+            const entries = getScheduleEntries(savedJobs[jobIdx]).map(e => ({ ...e }));
+            const entryIdx = entries.findIndex(e => e.date === dateStr);
+            if (entryIdx !== -1) { entries[entryIdx].dayOrder = i; savedJobs[jobIdx].dailySchedule = entries; }
+        });
+        try { await saveSavedJobsData(); }
+        catch (e) { savedJobs = backup; alert(t('alertJobSaveFailed') + ' (' + (e && e.message ? e.message : 'unknown error') + ')'); }
+        renderWeeklyBoard();
+    }
+
 
     // Week starts on Monday.
     function getWeekRange(offset) {
@@ -5415,14 +5477,11 @@
     function renderJobCard(job, entry, isOverdue) {
         const teamNames = (entry.team && entry.team.length > 0) ? entry.team.join(', ') : t('noTechsAdded');
         const timeLabel = entry.time ? `<span style="color:#fbbf24; font-weight:700;">${entry.time}</span> — ` : '';
-        return `<div class="tech-card" draggable="true" data-job-id="${job.id}"
-                ondragstart="dragJobId='${job.id}'; event.dataTransfer.effectAllowed='move';"
-                ondragover="event.preventDefault();"
-                ondrop="handleJobDrop(event, '${entry.date}', '${job.id}')"
-                style="margin-bottom:8px; padding:10px 14px; cursor:grab; ${isOverdue ? 'border-color:var(--danger); background:rgba(225,29,72,0.08);' : ''}">
+        return `<div class="tech-card" data-job-id="${job.id}" data-date="${entry.date}"
+                style="margin-bottom:8px; padding:10px 14px; ${isOverdue ? 'border-color:var(--danger); background:rgba(225,29,72,0.08);' : ''}">
             <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
                 <div>
-                    <div>${timeLabel}<strong>${job.clientName || ''}</strong>${isOverdue ? ` <span style="color:#f87171; font-size:0.72rem; font-weight:700;">⚠️ ${t('overdueLabel')}</span>` : ''}</div>
+                    <div><span class="drag-handle" title="${t('dragHandleHint')}" onpointerdown="startCardDrag(event, '${job.id}', '${entry.date}')">⠿</span>${timeLabel}<strong>${job.clientName || ''}</strong>${isOverdue ? ` <span style="color:#f87171; font-size:0.72rem; font-weight:700;">⚠️ ${t('overdueLabel')}</span>` : ''}</div>
                     <div style="font-size:0.78rem; color:var(--text-muted);">${job.clientAddress ? `<a href="#" onclick="event.preventDefault(); event.stopPropagation(); showMapChoice('${job.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${job.clientAddress}</a>` : ''}${showAllPendingMode ? ' — ' + (entry.date || t('noDateSet')) : ''}</div>
                     <div style="font-size:0.78rem; color:#38bdf8;">${t('weeklyTechsLabel')} ${teamNames}</div>
                     ${entry.note ? `<div style="font-size:0.76rem; color:var(--text-muted); margin-top:2px;">🔧 ${entry.note}</div>` : ''}
@@ -5436,34 +5495,6 @@
                 </div>
             </div>
         </div>`;
-    }
-
-    // Reassigns dayOrder for every (job, day) entry sharing the dropped-into day.
-    async function handleJobDrop(event, dateStr, targetJobId) {
-        event.preventDefault();
-        if (!dragJobId || dragJobId === targetJobId) return;
-        const activeJobs = savedJobs.filter(j => j.jobStatus !== 'خلص');
-        let pairs = [];
-        activeJobs.forEach(job => { getScheduleEntries(job).forEach(entry => { if (entry.date === dateStr) pairs.push({ job, entry }); }); });
-        pairs = sortDayEntries(pairs);
-        const draggedIndex = pairs.findIndex(p => p.job.id === dragJobId);
-        const targetIndex = pairs.findIndex(p => p.job.id === targetJobId);
-        if (draggedIndex === -1 || targetIndex === -1) return;
-
-        const reordered = [...pairs];
-        const [moved] = reordered.splice(draggedIndex, 1);
-        reordered.splice(targetIndex, 0, moved);
-        reordered.forEach((pair, i) => {
-            const jobIdx = savedJobs.findIndex(j => j.id === pair.job.id);
-            if (jobIdx === -1) return;
-            const entries = getScheduleEntries(savedJobs[jobIdx]).map(e => ({ ...e }));
-            const entryIdx = entries.findIndex(e => e.date === dateStr);
-            if (entryIdx !== -1) { entries[entryIdx].dayOrder = i; savedJobs[jobIdx].dailySchedule = entries; }
-        });
-
-        dragJobId = null;
-        try { await saveSavedJobsData(); } catch (e) { console.error(e); }
-        renderWeeklyBoard();
     }
 
     function renderWeeklyBoard() {
@@ -5513,7 +5544,7 @@
                         <button class="success" onclick="openQuickScheduleModal('${dateStr}')" style="padding:3px 10px; font-size:0.72rem;">+ ${t('qsAddBtn')}</button>
                     </div>
                 </div>
-                <div style="padding:10px 14px 4px;" ondragover="event.preventDefault();" ondrop="handleJobDrop(event, '${dateStr}', '${pairs[0] ? pairs[0].job.id : ''}')">`;
+                <div style="padding:10px 14px 4px;">`;
             if (pairs.length === 0) {
                 html += `<div style="padding:6px 0 10px; color:var(--text-muted); font-size:0.82rem;">${t('noJobsThisDay')}</div>`;
             } else {
