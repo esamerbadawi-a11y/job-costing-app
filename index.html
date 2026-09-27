@@ -314,7 +314,7 @@
                         <button class="secondary" onclick="goToLastWeek()" data-i18n="presetLastWeekBtn"></button>
                         <button class="secondary" onclick="shiftWeek(1)">▶</button>
                     </span>
-                    <button class="success" onclick="switchScreen('entry')" data-i18n="addJobQuickBtn"></button>
+                    <button class="success" onclick="openNewScheduleModal()" data-i18n="newScheduleBtn"></button>
                     <button class="secondary" style="background:#059669;" onclick="openSendScheduleModal()" data-i18n="sendScheduleBtn"></button>
                 </div>
             </div>
@@ -934,7 +934,10 @@
             <button class="danger" onclick="closeQuickScheduleModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
         </div>
 
-        <div id="quickScheduleDayLabel" style="color:#38bdf8; font-weight:700; margin-bottom:12px;"></div>
+        <div class="form-group" style="margin-bottom:12px;">
+            <label data-i18n="qsDateLabel"></label>
+            <input type="date" id="qsDateInput" style="max-width:220px;">
+        </div>
 
         <div style="display:flex; gap:8px; margin-bottom:14px;">
             <button class="secondary" id="qsModeNewBtn" onclick="setQuickScheduleMode('new')" style="flex:1;" data-i18n="qsNewJobTab"></button>
@@ -1196,6 +1199,8 @@
         alertNoDaysThisWeekForTech: { ar: 'الفني ده مالوش أي يوم مجدول الأسبوع ده.', en: 'This technician has no scheduled days this week.' },
         remindAdjustOtherJob: { ar: '⚠️ متنساش تظبط عدد أيام الفني ده يدويًا في شغلانة:', en: "⚠️ Don't forget to manually adjust this technician's days in:" },
         confirmRemoveDay: { ar: 'متأكد من شيل اليوم ده من جدول الشغلانة؟', en: "Remove this day from the job's schedule?" },
+        qsDateLabel: { ar: 'التاريخ:', en: 'Date:' },
+        newScheduleBtn: { ar: '+ جدولة جديدة', en: '+ New Schedule' },
         qsNewJobTab: { ar: 'شغلانة جديدة', en: 'New Job' },
         qsExistingJobTab: { ar: 'شغلانة موجودة', en: 'Existing Job' },
         qsPickExisting: { ar: 'اختار الشغلانة:', en: 'Pick the Job:' },
@@ -5227,9 +5232,12 @@
     }
 
     function openQuickScheduleModal(dateStr) {
-        quickScheduleDay = dateStr;
+        // dateStr may be blank (opened from the top-level "+ New Schedule" button rather than a
+        // specific day row) — default to tomorrow, and let the date input itself stay editable so
+        // the person can pick any day manually via the calendar.
+        quickScheduleDay = dateStr || addDaysISO(isoDate(new Date()), 1);
         quickScheduleMode = 'new';
-        document.getElementById('quickScheduleDayLabel').textContent = dateStr;
+        document.getElementById('qsDateInput').value = quickScheduleDay;
         document.getElementById('qsClientName').value = '';
         document.getElementById('qsClientAddress').value = '';
         document.getElementById('qsAddressAutocompleteList').style.display = 'none';
@@ -5256,6 +5264,11 @@
 
     function closeQuickScheduleModal() { document.getElementById('quickScheduleModal').style.display = 'none'; }
 
+    // Entry point for the Weekly Board's top-level "+ New Schedule" button — opens the same modal
+    // as clicking a specific day's "+ Add", but with no day pre-picked, so the calendar field is
+    // there to pick any date by hand instead of being tied to a row on the board.
+    function openNewScheduleModal() { openQuickScheduleModal(''); }
+
     function setQuickScheduleMode(mode) {
         quickScheduleMode = mode;
         document.getElementById('qsNewJobFields').style.display = mode === 'new' ? 'block' : 'none';
@@ -5265,6 +5278,9 @@
     }
 
     async function saveQuickSchedule() {
+        const pickedDate = document.getElementById('qsDateInput').value;
+        if (!pickedDate) { alert(t('alertPickDate')); return; }
+        quickScheduleDay = pickedDate;
         const time = document.getElementById('qsTime').value;
         const note = document.getElementById('qsNote').value.trim();
         const team = Array.from(document.querySelectorAll('.qs-team-check:checked')).map(cb => cb.value);
@@ -5586,17 +5602,22 @@
     function getWeekRange(offset) {
         // The board is a day-to-day planning tool: "This Week" (offset 0) is a fixed 7-day window
         // starting TOMORROW — today's own work already has its place in the "Jobs Today?" sheet, so the
-        // board is for what's coming next. Any other week (Last Week, or one reached with the arrows) is
-        // a full calendar week, Monday..Sunday, for looking back or planning further ahead.
-        if (offset === 0) {
-            const start = addDaysISO(isoDate(new Date()), 1);
-            const days = [];
-            for (let i = 0; i < 7; i++) days.push(new Date(addDaysISO(start, i) + 'T00:00:00'));
-            return days;
+        // board is for what's coming next. Every other offset tiles continuously from that same anchor
+        // (tomorrow going forward, yesterday going backward) in fixed 7-day blocks — so every date is
+        // reachable from exactly one offset via ◀/▶ or "Last Week", with only today itself left out
+        // (by design — that's "Jobs Today?"'s job). This replaced an earlier version where offsets other
+        // than 0 snapped to the calendar Monday..Sunday week, which left a gap between "today" and the
+        // start of the calendar week that no offset ever showed.
+        const today = isoDate(new Date());
+        let start;
+        if (offset >= 0) {
+            start = addDaysISO(addDaysISO(today, 1), 7 * offset);
+        } else {
+            const end = addDaysISO(addDaysISO(today, -1), 7 * (offset + 1));
+            start = addDaysISO(end, -6);
         }
-        const w = weekOf(isoDate(new Date()), offset);
         const days = [];
-        for (let i = 0; i < 7; i++) days.push(new Date(addDaysISO(w.start, i) + 'T00:00:00'));   // Mon .. Sun
+        for (let i = 0; i < 7; i++) days.push(new Date(addDaysISO(start, i) + 'T00:00:00'));
         return days;
     }
 
