@@ -4803,6 +4803,11 @@
                 { label: t('statShareCompany'), percent: ratio.company * 100, amount: companyNet },
                 ...extraShares.filter(x => x.percent > 0.005).map(x => ({ label: x.name || '?', percent: x.percent, amount: x.amount, mine: (x.name || '').trim() === name }))
             ];
+            // Everyone's cut of this one job, all on one line — same format as the job's own ℹ️ details popup.
+            const splitLine = rows.map(r => {
+                const seg = `${escHtml(r.label)} (${Math.round(r.percent)}%): ${ltrAmt(r.amount)}`;
+                return r.mine ? `<strong style="color:#34d399;">${seg}</strong>` : seg;
+            }).join('&nbsp;&nbsp;|&nbsp;&nbsp;');
             jobsHtml += `<div style="border:1px solid var(--border-color); border-radius:10px; padding:12px 14px; margin-bottom:12px;">
                 <div style="font-weight:700; color:#38bdf8; margin-bottom:6px;">${escHtml(job.clientName || '')}${job.startDate ? ' — ' + escHtml(job.startDate) : ''}</div>
                 <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:8px;">
@@ -4810,13 +4815,7 @@
                     ${t('thMaterials')} ${ltrAmt(job.materialCost)} &nbsp;|&nbsp;
                     ${t('qdTechBreakdown')} ${ltrAmt(totalTechDues)}
                 </div>
-                <table style="width:100%; border-collapse:collapse; font-size:0.8rem;"><tbody>
-                    ${rows.map(r => `<tr style="border-top:1px solid var(--border-color); ${r.mine ? 'background:rgba(52,211,153,0.12);' : ''}">
-                        <td style="padding:4px 6px;">${escHtml(r.label)}</td>
-                        <td style="padding:4px 6px; text-align:end; color:var(--text-muted);">${Math.round(r.percent)}%</td>
-                        <td style="padding:4px 6px; text-align:end; font-weight:700; color:#34d399;">${ltrAmt(r.amount)}</td>
-                    </tr>`).join('')}
-                </tbody></table>
+                <div style="font-size:0.82rem;">${splitLine}</div>
             </div>`;
         });
 
@@ -4852,22 +4851,33 @@
             const mine = extraShares.find(x => (x.name || '').trim() === name);
             grandTotal += mine ? mine.amount : 0;
 
-            if (y > 255) { doc.addPage(); y = 20; }
+            if (y > 250) { doc.addPage(); y = 20; }
             drawAutoText(`#${idx + 1}  ${job.clientName || ''}  ${job.startDate || ''}`, 14, y, 11, true);
             y += 6;
             doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
             doc.text(`Total: $${parseVal(job.totalRevenue).toFixed(2)}   Materials: $${parseVal(job.materialCost).toFixed(2)}   Technicians: $${totalTechDues.toFixed(2)}`, 14, y);
-            y += 4;
+            y += 6;
 
-            const headers = [['Who', '%', 'Amount']];
-            const bodyRows = [
-                ['S', Math.round(ratio.s * 100) + '%', '$' + shareS.toFixed(2)],
-                ['M', Math.round(ratio.m * 100) + '%', '$' + shareM.toFixed(2)],
-                ['Company', Math.round(ratio.company * 100) + '%', '$' + companyNet.toFixed(2)],
-                ...extraShares.filter(x => x.percent > 0.005).map(x => [x.name || '?', Math.round(x.percent) + '%', '$' + x.amount.toFixed(2)])
+            // Everyone's cut of this one job, all on one line — same format as the job's own ℹ️ details popup.
+            const splitParts = [
+                `S (${Math.round(ratio.s * 100)}%): $${shareS.toFixed(2)}`,
+                `M (${Math.round(ratio.m * 100)}%): $${shareM.toFixed(2)}`,
+                `Company (${Math.round(ratio.company * 100)}%): $${companyNet.toFixed(2)}`,
+                ...extraShares.filter(x => x.percent > 0.005).map(x => `${x.name || '?'} (${Math.round(x.percent)}%): $${x.amount.toFixed(2)}`)
             ];
-            doc.autoTable({ head: headers, body: bodyRows, startY: y, theme: 'grid', styles: { fontSize: 8, cellPadding: 2 }, margin: { left: 14, right: 14 } });
-            y = doc.lastAutoTable.finalY + 10;
+            const splitLine = splitParts.join('   |   ');
+            if (containsArabic(splitLine)) {
+                const img = textToImage(splitLine);
+                let w = 180, h = w / img.aspect;
+                if (h > 9) { h = 9; w = h * img.aspect; }
+                doc.addImage(img.dataUrl, 'PNG', 14, y, w, h);
+                y += h + 8;
+            } else {
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+                const wrapped = doc.splitTextToSize(splitLine, 180);
+                doc.text(wrapped, 14, y);
+                y += wrapped.length * 5 + 8;
+            }
         });
 
         if (jobs.length === 0) { doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.text(t('noJobsThisDay'), 14, y); y += 8; }
