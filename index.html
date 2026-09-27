@@ -269,6 +269,7 @@
                     <button class="secondary" onclick="openExpenseReportModal()" data-i18n="expenseReportBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
                     <button class="secondary" id="activityLogBtnEl" style="display:none; width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;" onclick="openActivityLogModal()" data-i18n="activityLogBtn"></button>
                     <button class="secondary" onclick="openPartnerAccountModal()" data-i18n="partnerAccountBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
+                    <button class="secondary" onclick="openPartnerReportModal()" data-i18n="partnerReportBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
                     <button class="secondary" onclick="openCompanyAccountModal()" data-i18n="companyAccountBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
                 </div>
             </div>
@@ -818,6 +819,25 @@
     </div>
 </div>
 
+<div id="partnerReportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:90%; max-width:700px; max-height:85vh; overflow-y:auto; padding:25px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.2rem;">🤝 <span data-i18n="partnerReportTitle"></span></h2>
+            <button class="danger" onclick="closePartnerReportModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:15px;">
+            <div class="form-group" style="flex:1; min-width:160px; margin-bottom:0;">
+                <label data-i18n="partnerReportPickLabel"></label>
+                <select id="partnerReportSelect" onchange="renderPartnerReportContent()"></select>
+            </div>
+            <button class="secondary" style="background:#f87171; color:#fff;" onclick="downloadPartnerReportPDF()" data-i18n="partnerReportDownloadBtn"></button>
+        </div>
+
+        <div id="partnerReportContent" style="font-size:0.85rem; line-height:1.6; color:var(--text-main);"></div>
+    </div>
+</div>
+
 <div id="companyAccountModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
     <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:90%; max-width:700px; max-height:85vh; overflow-y:auto; padding:25px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
@@ -1099,6 +1119,12 @@
         activityWho: { ar: 'مين', en: 'Who' },
         activityWhat: { ar: 'إيه', en: 'What' },
         partnerAccountBtn: { ar: '💰 حساب S و M', en: '💰 S & M Account' },
+        partnerReportBtn: { ar: '🤝 تقرير الشركاء', en: '🤝 Partner Report' },
+        partnerReportTitle: { ar: 'تقرير شريك عبر شغلاناته', en: "Partner Report Across Their Jobs" },
+        partnerReportPickLabel: { ar: 'اختار الشريك:', en: 'Pick the partner:' },
+        partnerReportDownloadBtn: { ar: '📄 تحميل PDF', en: '📄 Download PDF' },
+        partnerReportTotalLabel: { ar: 'الإجمالي المستحق له:', en: 'Total earned:' },
+        noExtraPartnersYet: { ar: 'لسه مفيش أي شريك إضافي مضاف في أي شغلانة.', en: 'No extra partners added to any job yet.' },
         companyAccountBtn: { ar: '🏢 حساب الشركة', en: '🏢 Company Account' },
         companyAccountTitle: { ar: 'حساب الشركة — الدخل والمصروفات العامة', en: 'Company Account — Income vs General Expenses' },
         addCompanyExpenseTitle: { ar: 'تسجيل مصروف عام', en: 'Record a General Expense' },
@@ -2050,7 +2076,7 @@
     // (e.g. one opened without the other being closed first), the later one in the page would sit on
     // top and silently swallow every tap meant for the one underneath — including a job's name link.
     // Every one of them closes all the others first, so that can never happen.
-    const TOP_LEVEL_MODAL_IDS = ['techGuideModal', 'expenseReportModal', 'activityLogModal', 'partnerAccountModal', 'companyAccountModal', 'agendaModal', 'globalSearchModal'];
+    const TOP_LEVEL_MODAL_IDS = ['techGuideModal', 'expenseReportModal', 'activityLogModal', 'partnerAccountModal', 'partnerReportModal', 'companyAccountModal', 'agendaModal', 'globalSearchModal'];
     function closeOtherTopModals(exceptId) {
         TOP_LEVEL_MODAL_IDS.forEach(id => { if (id !== exceptId) { const el = document.getElementById(id); if (el) el.style.display = 'none'; } });
     }
@@ -4704,6 +4730,122 @@
             }
         }
         container.innerHTML = html;
+    }
+
+    // ---------- Partner Report: a shareable, per-partner statement across every job that partner
+    // was added to as an "extra partner" — full transparency (job total, materials, technicians, then
+    // everyone's % and $ share), so it's ready to send to that partner directly. ----------
+    function getExtraPartnerNames() {
+        let names = new Set();
+        savedJobs.forEach(job => (job.extraPartners || []).forEach(p => { if (p.name && p.name.trim() && parseVal(p.percent) > 0.005) names.add(p.name.trim()); }));
+        return Array.from(names).sort();
+    }
+
+    function jobsForExtraPartner(name) {
+        return savedJobs.filter(job => (job.extraPartners || []).some(p => (p.name || '').trim() === name && parseVal(p.percent) > 0.005));
+    }
+
+    function openPartnerReportModal() {
+        closeOtherTopModals('partnerReportModal');
+        const sel = document.getElementById('partnerReportSelect');
+        const names = getExtraPartnerNames();
+        sel.innerHTML = names.length
+            ? names.map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('')
+            : `<option value="">${t('noExtraPartnersYet')}</option>`;
+        document.getElementById('partnerReportModal').style.display = 'flex';
+        renderPartnerReportContent();
+    }
+    function closePartnerReportModal() { document.getElementById('partnerReportModal').style.display = 'none'; }
+
+    function renderPartnerReportContent() {
+        const container = document.getElementById('partnerReportContent');
+        const name = document.getElementById('partnerReportSelect').value;
+        if (!name) { container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:15px;">${t('noExtraPartnersYet')}</p>`; return; }
+
+        const jobs = jobsForExtraPartner(name);
+        let partnerTotal = 0, jobsHtml = '';
+        jobs.forEach(job => {
+            const { shareS, shareM, companyNet, ratio, extraShares, totalTechDues } = jobNet(job);
+            const mine = extraShares.find(x => (x.name || '').trim() === name);
+            partnerTotal += mine ? mine.amount : 0;
+
+            const rows = [
+                { label: 'S', percent: ratio.s * 100, amount: shareS },
+                { label: 'M', percent: ratio.m * 100, amount: shareM },
+                { label: t('statShareCompany'), percent: ratio.company * 100, amount: companyNet },
+                ...extraShares.filter(x => x.percent > 0.005).map(x => ({ label: x.name || '?', percent: x.percent, amount: x.amount, mine: (x.name || '').trim() === name }))
+            ];
+            jobsHtml += `<div style="border:1px solid var(--border-color); border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+                <div style="font-weight:700; color:#38bdf8; margin-bottom:6px;">${escHtml(job.clientName || '')}${job.startDate ? ' — ' + escHtml(job.startDate) : ''}</div>
+                <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:8px;">
+                    ${t('qdTotalRevenue')} ${ltrAmt(job.totalRevenue)} &nbsp;|&nbsp;
+                    ${t('thMaterials')} ${ltrAmt(job.materialCost)} &nbsp;|&nbsp;
+                    ${t('qdTechBreakdown')} ${ltrAmt(totalTechDues)}
+                </div>
+                <table style="width:100%; border-collapse:collapse; font-size:0.8rem;"><tbody>
+                    ${rows.map(r => `<tr style="border-top:1px solid var(--border-color); ${r.mine ? 'background:rgba(52,211,153,0.12);' : ''}">
+                        <td style="padding:4px 6px;">${escHtml(r.label)}</td>
+                        <td style="padding:4px 6px; text-align:end; color:var(--text-muted);">${Math.round(r.percent)}%</td>
+                        <td style="padding:4px 6px; text-align:end; font-weight:700; color:#34d399;">${ltrAmt(r.amount)}</td>
+                    </tr>`).join('')}
+                </tbody></table>
+            </div>`;
+        });
+
+        container.innerHTML = (jobs.length === 0)
+            ? `<p style="text-align:center; color:var(--text-muted); padding:15px;">${t('noJobsThisDay')}</p>`
+            : jobsHtml + `<div style="text-align:end; font-size:1rem; font-weight:700; color:#34d399; padding-top:8px; border-top:2px solid var(--border-color);">${t('partnerReportTotalLabel')} ${ltrAmt(partnerTotal)}</div>`;
+    }
+
+    async function downloadPartnerReportPDF() {
+        const name = document.getElementById('partnerReportSelect').value;
+        if (!name) return;
+        if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
+        const { jsPDF } = window.jspdf;
+        let doc = new jsPDF('p', 'mm', 'a4');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
+        doc.text('AHA - Partner Report: ' + name, 14, 15);
+
+        const jobs = jobsForExtraPartner(name);
+        let y = 25, grandTotal = 0;
+        const drawAutoText = (text, x, yPos, size, bold) => {
+            if (containsArabic(text)) {
+                const img = textToImage(text || '');
+                const h = size * 0.5, w = h * img.aspect;
+                doc.addImage(img.dataUrl, 'PNG', x, yPos - h + 1, w, h);
+            } else {
+                doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(size);
+                doc.text(text || '', x, yPos);
+            }
+        };
+
+        jobs.forEach((job, idx) => {
+            const { shareS, shareM, companyNet, ratio, extraShares, totalTechDues } = jobNet(job);
+            const mine = extraShares.find(x => (x.name || '').trim() === name);
+            grandTotal += mine ? mine.amount : 0;
+
+            if (y > 255) { doc.addPage(); y = 20; }
+            drawAutoText(`#${idx + 1}  ${job.clientName || ''}  ${job.startDate || ''}`, 14, y, 11, true);
+            y += 6;
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+            doc.text(`Total: $${parseVal(job.totalRevenue).toFixed(2)}   Materials: $${parseVal(job.materialCost).toFixed(2)}   Technicians: $${totalTechDues.toFixed(2)}`, 14, y);
+            y += 4;
+
+            const headers = [['Who', '%', 'Amount']];
+            const bodyRows = [
+                ['S', Math.round(ratio.s * 100) + '%', '$' + shareS.toFixed(2)],
+                ['M', Math.round(ratio.m * 100) + '%', '$' + shareM.toFixed(2)],
+                ['Company', Math.round(ratio.company * 100) + '%', '$' + companyNet.toFixed(2)],
+                ...extraShares.filter(x => x.percent > 0.005).map(x => [x.name || '?', Math.round(x.percent) + '%', '$' + x.amount.toFixed(2)])
+            ];
+            doc.autoTable({ head: headers, body: bodyRows, startY: y, theme: 'grid', styles: { fontSize: 8, cellPadding: 2 }, margin: { left: 14, right: 14 } });
+            y = doc.lastAutoTable.finalY + 10;
+        });
+
+        if (jobs.length === 0) { doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.text(t('noJobsThisDay'), 14, y); y += 8; }
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+        doc.text(`Total for ${name}: $${grandTotal.toFixed(2)}`, 14, y);
+        doc.save(`AHA_Partner_Report_${name}.pdf`);
     }
 
     function renderExpenseReportContent() {
