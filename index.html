@@ -612,6 +612,7 @@
                         <button type="button" class="ledger-plus" onclick="addToMaterialCost()">+</button>
                     </div>
                     <div id="materialsLedger"></div>
+                    <input type="file" id="materialInvoicePhotoInput" accept="image/*" capture="environment" style="display:none;" onchange="onInvoicePhotoSelected(event)">
                 </div>
 
                 <div class="card" id="jobScheduleSummaryCard" style="background: var(--panel-bg); padding: 16px; margin-top: 15px; border: 1px solid var(--border-color); display:none;">
@@ -1439,6 +1440,10 @@
         lblNoteShort: { ar: 'ملاحظة', en: 'Note' },
         receiptsLedgerTitle: { ar: '🧾 دفعات العميل بتواريخها', en: '🧾 Client payments by date' },
         materialsLedgerTitle: { ar: '🧾 فواتير الخامات بتواريخها', en: '🧾 Material invoices by date' },
+        attachInvoiceBtn: { ar: '📎 ارفع صورة الفاتورة', en: '📎 Attach invoice photo' },
+        viewInvoiceBtn: { ar: 'شوف صورة الفاتورة', en: 'View invoice photo' },
+        removeInvoiceBtn: { ar: 'شيل صورة الفاتورة', en: 'Remove invoice photo' },
+        alertPhotoFailed: { ar: 'حصلت مشكلة في رفع الصورة، حاول تاني.', en: 'Something went wrong uploading the photo, try again.' },
         undatedLabel: { ar: 'مبلغ غير مؤرخ', en: 'Undated amount' },
         undatedHintReceipt: { ar: 'مبلغ قديم اتسجل من غير تاريخ. محسوب في الإجماليات، بس مش هيدخل في أي أسبوع لحد ما تحدد له تاريخ (ممكن تقسمه على أكتر من دفعة).', en: 'An older amount recorded without a date. It counts in the totals, but will not fall in any week until you give it a date (you can split it into several payments).' },
         undatedHintMaterial: { ar: 'مبلغ قديم اتسجل من غير تاريخ. محسوب في الإجماليات، بس مش هيدخل في أي أسبوع لحد ما تحدد له تاريخ الفاتورة (ممكن تقسمه على أكتر من فاتورة).', en: 'An older amount recorded without a date. It counts in the totals, but will not fall in any week until you give it an invoice date (you can split it into several invoices).' },
@@ -1936,7 +1941,7 @@
     let currentMaterialEntries = [];
     const LEDGERS = {
         receipt:  { totalId: 'amountReceived', boxId: 'receiptsLedger',  amtId: 'receiptAddAmount', dateId: 'receiptAddDate',    noteId: 'receiptAddNote', titleKey: 'receiptsLedgerTitle',  hintKey: 'undatedHintReceipt',  delKey: 'confirmDeleteReceipt',  dateLbl: 'lblReceiptDate', color: '#34d399' },
-        material: { totalId: 'materialCost',   boxId: 'materialsLedger', amtId: 'materialCostAdd',  dateId: 'materialInvoiceDate', noteId: 'materialNote',   titleKey: 'materialsLedgerTitle', hintKey: 'undatedHintMaterial', delKey: 'confirmDeleteMaterial', dateLbl: 'lblInvoiceDate', color: '#f87171' }
+        material: { totalId: 'materialCost',   boxId: 'materialsLedger', amtId: 'materialCostAdd',  dateId: 'materialInvoiceDate', noteId: 'materialNote',   titleKey: 'materialsLedgerTitle', hintKey: 'undatedHintMaterial', delKey: 'confirmDeleteMaterial', dateLbl: 'lblInvoiceDate', color: '#f87171', hasPhotoAttach: true }
     };
 
 
@@ -3477,10 +3482,15 @@
         if (entries.length > 0) {
             html += `<div class="ledger-title">${t(cfg.titleKey)}</div>`;
             entries.forEach(e => {
+                const photoHtml = !cfg.hasPhotoAttach ? '' : (e.photo
+                    ? `<img src="${e.photo}" onclick="viewInvoicePhoto('${kind}', '${e.id}')" title="${t('viewInvoiceBtn')}" style="width:28px; height:28px; object-fit:cover; border-radius:6px; cursor:pointer; border:1px solid var(--border-color);">
+                       <button type="button" class="ledger-del" title="${t('removeInvoiceBtn')}" onclick="removeInvoicePhoto('${kind}', '${e.id}')">✕📎</button>`
+                    : `<button type="button" class="secondary" title="${t('attachInvoiceBtn')}" onclick="triggerInvoicePhotoUpload('${kind}', '${e.id}')" style="padding:4px 8px; font-size:0.78rem;">📎</button>`);
                 html += `<div class="ledger-row">
                     <input type="date" value="${escHtml(e.date)}" onchange="setLedgerEntryDate('${kind}', '${e.id}', this.value)">
                     <strong style="color:${cfg.color};">$${parseVal(e.amount).toFixed(2)}</strong>
                     <span class="ledger-note">${escHtml(e.note)}</span>
+                    ${photoHtml}
                     <button type="button" class="ledger-del" onclick="removeLedgerEntry('${kind}', '${e.id}')">🗑</button>
                 </div>`;
             });
@@ -3548,6 +3558,41 @@
         if (!date) { alert(t('alertPickDate')); return; }
         if (amt > undated + 0.005) { alert(t('alertExceedsUndated') + ` ($${undated.toFixed(2)})`); return; }
         ledgerArr(kind).push({ id: newLedgerId(), date, amount: amt, note: '' });
+        renderLedger(kind);
+    }
+
+    // Attach a photo of the actual invoice/receipt to one dated ledger entry — stored the same way
+    // job/appointment photos already are (compressed to base64, right inside the record itself, since
+    // there's no Firebase Storage set up). Keeps each photo small on purpose: Firestore caps a whole
+    // document at 1MB, and this lives inside the job document alongside everything else on it.
+    let pendingInvoicePhotoTarget = null;
+    function triggerInvoicePhotoUpload(kind, id) {
+        pendingInvoicePhotoTarget = { kind, id };
+        document.getElementById('materialInvoicePhotoInput').click();
+    }
+    async function onInvoicePhotoSelected(event) {
+        const file = event.target.files && event.target.files[0];
+        const target = pendingInvoicePhotoTarget;
+        pendingInvoicePhotoTarget = null;
+        event.target.value = '';
+        if (!file || !target) return;
+        const e = ledgerArr(target.kind).find(x => x.id === target.id);
+        if (!e) return;
+        try {
+            e.photo = await compressImageToBase64(file);
+            renderLedger(target.kind);
+        } catch (err) { alert(t('alertPhotoFailed')); }
+    }
+    function viewInvoicePhoto(kind, id) {
+        const e = ledgerArr(kind).find(x => x.id === id);
+        if (!e || !e.photo) return;
+        const win = window.open('');
+        if (win) win.document.write(`<body style="margin:0; background:#000;"><img src="${e.photo}" style="max-width:100%; display:block; margin:0 auto;"></body>`);
+    }
+    function removeInvoicePhoto(kind, id) {
+        const e = ledgerArr(kind).find(x => x.id === id);
+        if (!e) return;
+        e.photo = null;
         renderLedger(kind);
     }
 
