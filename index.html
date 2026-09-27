@@ -692,6 +692,7 @@
                         </div>
                         <div class="ag-meta" style="margin-bottom:8px;" data-i18n="profitPartnersHint"></div>
                         <div id="profitPartnersContainer"></div>
+                        <datalist id="profitPartnerNamesList"></datalist>
                     </div>
 
                     <div id="splitRatioTotalDisplay" style="margin-top:10px; text-align:end; font-size:0.9rem;"></div>
@@ -3735,11 +3736,18 @@
     function removeProfitPartner(index) { profitPartners.splice(index, 1); renderProfitPartners(); }
     function updateProfitPartner(index, field, value) { if (profitPartners[index]) profitPartners[index][field] = value; updateSplitRatioTotal(); }
     function renderProfitPartners() {
+        // Name field suggests registered technicians via a <datalist> (native browser dropdown),
+        // but stays a free-text input — so an existing tech can be picked in one tap, while a
+        // partner who isn't a registered technician (e.g. a referral fee, a silent investor) can
+        // still just be typed in.
+        const namesListEl = document.getElementById('profitPartnerNamesList');
+        if (namesListEl) namesListEl.innerHTML = getUniqueRegisteredTechnicians().map(n => `<option value="${escHtml(n)}"></option>`).join('');
+
         const container = document.getElementById('profitPartnersContainer');
         if (profitPartners.length === 0) { container.innerHTML = ''; updateSplitRatioTotal(); return; }
         container.innerHTML = profitPartners.map((p, i) => `
             <div class="ledger-row">
-                <input type="text" value="${escHtml(p.name)}" placeholder="${t('profitPartnerNamePh')}" oninput="updateProfitPartner(${i}, 'name', this.value)" style="flex:2; min-width:90px;">
+                <input type="text" list="profitPartnerNamesList" value="${escHtml(p.name)}" placeholder="${t('profitPartnerNamePh')}" oninput="updateProfitPartner(${i}, 'name', this.value)" style="flex:2; min-width:90px;">
                 <input type="text" inputmode="decimal" value="${escHtml(String(p.percent))}" oninput="updateProfitPartner(${i}, 'percent', this.value)" style="width:70px; text-align:center;">
                 <span class="profit-partner-dollar" data-idx="${i}" style="min-width:80px; text-align:end; color:#34d399; font-weight:700; align-self:center;"></span>
                 <button type="button" class="ledger-del" onclick="removeProfitPartner(${i})">🗑</button>
