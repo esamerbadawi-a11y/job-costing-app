@@ -1525,6 +1525,8 @@
         dragHandleHint: { ar: 'اسحب لترتيب الشغل في نفس اليوم', en: 'Drag to reorder jobs within this day' },
         dailyAllocNote: { ar: 'موزّع على الأيام', en: 'Allocated by day' },
         tmsOverlapNoAmount: { ar: 'مقسمش هناك', en: 'not itemized there' },
+        dailyLockedTitle: { ar: 'محاسَب ليه فعلاً في {job} ({amt}) — التاريخ ده مقفول هنا', en: 'Already accounted for in {job} ({amt}) — this date is locked here' },
+        dailyLockedAlert: { ar: 'التاريخ ده محاسَب فيه الفني فعلاً في شغلانة "{job}" بمبلغ {amt}. مينفعش تضيفله مبلغ تاني في نفس اليوم هنا عشان ميتحسبش مرتين.', en: 'This technician is already accounted for on this date in job "{job}" for {amt}. You can\'t add another amount for the same day here — that would count it twice.' },
         jobPeriodNetTitle: { ar: '📊 صافي الشغلانة في الفترة دي', en: "📊 This Job's Net for the Period" },
         jobPeriodRecv: { ar: 'المستلم في الفترة:', en: 'Received this period:' },
         jobPeriodMat: { ar: 'الخامات في الفترة:', en: 'Materials this period:' },
@@ -2582,6 +2584,17 @@
         if (!job || !techName) return [];
         return [...new Set(getScheduleEntries(job).filter(e => (e.team || []).includes(techName)).map(e => e.date))].sort();
     }
+
+    // Dates where ANOTHER job has already put real money toward this technician's day rate — locked
+    // here (quick-pick chip disabled, manual entry blocked) so the same calendar day never gets paid
+    // twice by mistake. A day shared with another job that hasn't itemized an amount yet is NOT
+    // locked — that's exactly the "still free to add his remaining day here" case.
+    function techLockedDatesFor(tech, jobId) {
+        const map = new Map();
+        if (!tech || !tech.name || !jobId || jobId === '__unsaved__') return map;
+        techScheduleOverlaps(tech.name, jobId).forEach(o => { if (o.otherAmount > 0.005) map.set(o.date, o); });
+        return map;
+    }
     function pickTechDailyDate(index, date) {
         const dateEl = document.getElementById(`da-date-${index}`);
         if (!dateEl) return;
@@ -2608,13 +2621,22 @@
     // Board) or type one, type what that day is worth, and it's taken straight off what's due to him.
     function techDailyPanelHtml(tech, index, dues) {
         if (isPercentType(tech.type)) return '';   // percentage pay already follows the period's own money
+        const jobId = document.getElementById('editingJobId').value || '__unsaved__';
+        const lockedDates = techLockedDatesFor(tech, jobId);
         const entries = (tech.dailyAlloc || []).slice().sort((a, b) => a.date.localeCompare(b.date));
         const rows = entries.map(e => `<div class="ledger-row"><input type="date" value="${escHtml(e.date)}" onchange="setTechDailyDate(${index}, '${jsArg(e.id)}', this.value)"><strong style="color:#a78bfa;">${ltrAmt(e.amount)}</strong>${e.note ? `<span class="ledger-note">${escHtml(e.note)}</span>` : '<span class="ledger-note"></span>'}<button type="button" class="ledger-del" onclick="removeTechDaily(${index}, '${jsArg(e.id)}')">🗑</button></div>`).join('');
         const scheduledDates = techScheduledDatesFor(tech.name);
         const allocatedDates = new Set(entries.map(e => e.date));
         const chipsHtml = scheduledDates.length > 0 ? `
             <div class="chip-row" style="margin-bottom:8px;">
-                ${scheduledDates.map(d => `<button type="button" class="secondary" style="${allocatedDates.has(d) ? 'opacity:0.55;' : ''}" onclick="pickTechDailyDate(${index}, '${jsArg(d)}')">📅 ${escHtml(d)}${allocatedDates.has(d) ? ' ✓' : ''}</button>`).join('')}
+                ${scheduledDates.map(d => {
+                    const locked = lockedDates.get(d);
+                    if (locked) {
+                        const title = t('dailyLockedTitle').replace('{job}', locked.jobName).replace('{amt}', '$' + locked.otherAmount.toFixed(2));
+                        return `<button type="button" class="secondary" disabled title="${escHtml(title)}" style="opacity:0.4; cursor:not-allowed;">🔒 ${escHtml(d)}</button>`;
+                    }
+                    return `<button type="button" class="secondary" style="${allocatedDates.has(d) ? 'opacity:0.55;' : ''}" onclick="pickTechDailyDate(${index}, '${jsArg(d)}')">📅 ${escHtml(d)}${allocatedDates.has(d) ? ' ✓' : ''}</button>`;
+                }).join('')}
             </div>` : `<div class="ag-meta" style="margin-bottom:8px;">${t('dailyQuickPickNone')}</div>`;
         return `<div style="margin-top:12px; padding-top:12px; border-top:1px dashed var(--border-color);">
             <div style="display:flex; align-items:center; gap:6px; font-size:0.78rem; font-weight:700; color:var(--text-muted); margin-bottom:8px;">${t('dailyAllocTitle')} <button type="button" onclick="alert(t('dailyAllocHelp'));" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:0 2px;">❓</button></div>
@@ -2635,6 +2657,9 @@
         const amt = round2(parseVal(document.getElementById(`da-amt-${index}`).value));
         if (amt <= 0) { alert(t('alertWithdrawalAmountRequired')); return; }
         if (!date) { alert(t('alertPickDate')); return; }
+        const jobId = document.getElementById('editingJobId').value || '__unsaved__';
+        const locked = techLockedDatesFor(tech, jobId).get(date);
+        if (locked) { alert(t('dailyLockedAlert').replace('{job}', locked.jobName).replace('{amt}', '$' + locked.otherAmount.toFixed(2))); return; }
         tech.dailyAlloc = tech.dailyAlloc || [];
         tech.dailyAlloc.push({ id: newLedgerId(), date, amount: amt, note: '' });
         renderTechnicians();
@@ -2650,6 +2675,9 @@
         if (!tech) return;
         const e = (tech.dailyAlloc || []).find(x => x.id === id);
         if (!e) return;
+        const jobId = document.getElementById('editingJobId').value || '__unsaved__';
+        const locked = techLockedDatesFor(tech, jobId).get(value);
+        if (locked) { alert(t('dailyLockedAlert').replace('{job}', locked.jobName).replace('{amt}', '$' + locked.otherAmount.toFixed(2))); renderTechnicians(); return; }
         e.date = value;
         renderTechnicians();
     }
