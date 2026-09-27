@@ -2501,7 +2501,9 @@
     }
 
     function addTechnician(name = '', days = 1, paid = 0, type = 'نسبة مخصصة', rate = 0, customPercent = 50) {
-        technicians.push({ name, days, paid, type, rate, customPercent });
+        // New technician goes at the TOP of the list (not the bottom) so it's easy to see next to
+        // "Who Worked When" without scrolling past technicians already on the job.
+        technicians.unshift({ name, days, paid, type, rate, customPercent });
         renderTechnicians();
         calculate();
     }
