@@ -612,7 +612,7 @@
                         <button type="button" class="ledger-plus" onclick="addToMaterialCost()">+</button>
                     </div>
                     <div id="materialsLedger"></div>
-                    <input type="file" id="materialInvoicePhotoInput" accept="image/*" capture="environment" style="display:none;" onchange="onInvoicePhotoSelected(event)">
+                    <input type="file" id="materialInvoicePhotoInput" accept="image/*,application/pdf" style="display:none;" onchange="onInvoicePhotoSelected(event)">
                 </div>
 
                 <div class="card" id="jobScheduleSummaryCard" style="background: var(--panel-bg); padding: 16px; margin-top: 15px; border: 1px solid var(--border-color); display:none;">
@@ -1444,6 +1444,7 @@
         viewInvoiceBtn: { ar: 'شوف صورة الفاتورة', en: 'View invoice photo' },
         removeInvoiceBtn: { ar: 'شيل صورة الفاتورة', en: 'Remove invoice photo' },
         alertPhotoFailed: { ar: 'حصلت مشكلة في رفع الصورة، حاول تاني.', en: 'Something went wrong uploading the photo, try again.' },
+        alertPdfTooBig: { ar: 'ملف الـ PDF ده كبير أوي (أكبر من 700 كيلوبايت). صوّر الفاتورة بالكاميرا بدل ما ترفع الـ PDF، أو قلل حجمه الأول.', en: "This PDF is too large (over 700KB). Take a photo of the invoice instead of uploading the PDF, or shrink the file first." },
         undatedLabel: { ar: 'مبلغ غير مؤرخ', en: 'Undated amount' },
         undatedHintReceipt: { ar: 'مبلغ قديم اتسجل من غير تاريخ. محسوب في الإجماليات، بس مش هيدخل في أي أسبوع لحد ما تحدد له تاريخ (ممكن تقسمه على أكتر من دفعة).', en: 'An older amount recorded without a date. It counts in the totals, but will not fall in any week until you give it a date (you can split it into several payments).' },
         undatedHintMaterial: { ar: 'مبلغ قديم اتسجل من غير تاريخ. محسوب في الإجماليات، بس مش هيدخل في أي أسبوع لحد ما تحدد له تاريخ الفاتورة (ممكن تقسمه على أكتر من فاتورة).', en: 'An older amount recorded without a date. It counts in the totals, but will not fall in any week until you give it an invoice date (you can split it into several invoices).' },
@@ -3482,9 +3483,11 @@
         if (entries.length > 0) {
             html += `<div class="ledger-title">${t(cfg.titleKey)}</div>`;
             entries.forEach(e => {
+                const invoiceThumb = e.photoIsPdf
+                    ? `<span onclick="viewInvoicePhoto('${kind}', '${e.id}')" title="${t('viewInvoiceBtn')}" style="width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; font-size:0.7rem; font-weight:700; color:#f87171; border-radius:6px; cursor:pointer; border:1px solid var(--border-color); background:#1a1a1a;">PDF</span>`
+                    : `<img src="${e.photo}" onclick="viewInvoicePhoto('${kind}', '${e.id}')" title="${t('viewInvoiceBtn')}" style="width:28px; height:28px; object-fit:cover; border-radius:6px; cursor:pointer; border:1px solid var(--border-color);">`;
                 const photoHtml = !cfg.hasPhotoAttach ? '' : (e.photo
-                    ? `<img src="${e.photo}" onclick="viewInvoicePhoto('${kind}', '${e.id}')" title="${t('viewInvoiceBtn')}" style="width:28px; height:28px; object-fit:cover; border-radius:6px; cursor:pointer; border:1px solid var(--border-color);">
-                       <button type="button" class="ledger-del" title="${t('removeInvoiceBtn')}" onclick="removeInvoicePhoto('${kind}', '${e.id}')">✕📎</button>`
+                    ? `${invoiceThumb}<button type="button" class="ledger-del" title="${t('removeInvoiceBtn')}" onclick="removeInvoicePhoto('${kind}', '${e.id}')">✕📎</button>`
                     : `<button type="button" class="secondary" title="${t('attachInvoiceBtn')}" onclick="triggerInvoicePhotoUpload('${kind}', '${e.id}')" style="padding:4px 8px; font-size:0.78rem;">📎</button>`);
                 html += `<div class="ledger-row">
                     <input type="date" value="${escHtml(e.date)}" onchange="setLedgerEntryDate('${kind}', '${e.id}', this.value)">
@@ -3561,14 +3564,24 @@
         renderLedger(kind);
     }
 
-    // Attach a photo of the actual invoice/receipt to one dated ledger entry — stored the same way
-    // job/appointment photos already are (compressed to base64, right inside the record itself, since
-    // there's no Firebase Storage set up). Keeps each photo small on purpose: Firestore caps a whole
-    // document at 1MB, and this lives inside the job document alongside everything else on it.
+    // Attach a photo OR a PDF of the actual invoice/receipt to one dated ledger entry — stored the
+    // same way job/appointment photos already are (base64, right inside the record itself, since
+    // there's no Firebase Storage set up). Images get compressed first (they're the common case and
+    // compress well); a PDF is kept as-is (can't be resized the same way) but is capped in size so one
+    // invoice can't blow past Firestore's 1MB-per-document limit on its own.
+    const INVOICE_PDF_MAX_BYTES = 700 * 1024;
     let pendingInvoicePhotoTarget = null;
     function triggerInvoicePhotoUpload(kind, id) {
         pendingInvoicePhotoTarget = { kind, id };
         document.getElementById('materialInvoicePhotoInput').click();
+    }
+    function readFileAsDataURL(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
     }
     async function onInvoicePhotoSelected(event) {
         const file = event.target.files && event.target.files[0];
@@ -3579,20 +3592,35 @@
         const e = ledgerArr(target.kind).find(x => x.id === target.id);
         if (!e) return;
         try {
-            e.photo = await compressImageToBase64(file);
+            const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
+            if (isPdf) {
+                if (file.size > INVOICE_PDF_MAX_BYTES) { alert(t('alertPdfTooBig')); return; }
+                e.photo = await readFileAsDataURL(file);
+                e.photoIsPdf = true;
+            } else {
+                e.photo = await compressImageToBase64(file);
+                e.photoIsPdf = false;
+            }
             renderLedger(target.kind);
         } catch (err) { alert(t('alertPhotoFailed')); }
     }
     function viewInvoicePhoto(kind, id) {
         const e = ledgerArr(kind).find(x => x.id === id);
         if (!e || !e.photo) return;
+        if (e.photoIsPdf) { window.open(e.photo, '_blank'); return; }
         const win = window.open('');
-        if (win) win.document.write(`<body style="margin:0; background:#000;"><img src="${e.photo}" style="max-width:100%; display:block; margin:0 auto;"></body>`);
+        // A close (×) button in the corner — this tab has no browser chrome of its own on most
+        // phones, so without it there was no way back except the phone's own back gesture.
+        if (win) win.document.write(`<body style="margin:0; background:#000;">
+            <button onclick="window.close()" style="position:fixed; top:10px; inset-inline-end:10px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.9); color:#000; border:none; font-size:1.2rem; font-weight:700; cursor:pointer; z-index:10;">×</button>
+            <img src="${e.photo}" style="max-width:100%; display:block; margin:0 auto;">
+        </body>`);
     }
     function removeInvoicePhoto(kind, id) {
         const e = ledgerArr(kind).find(x => x.id === id);
         if (!e) return;
         e.photo = null;
+        e.photoIsPdf = false;
         renderLedger(kind);
     }
 
