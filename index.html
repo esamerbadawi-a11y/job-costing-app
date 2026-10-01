@@ -132,6 +132,8 @@
         .badge { padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; display: inline-block; }
         .badge.active { background: rgba(217, 119, 6, 0.2); color: #fbbf24; border: 1px solid rgba(217, 119, 6, 0.4); }
         .badge.completed { background: rgba(5, 150, 105, 0.2); color: #34d399; border: 1px solid rgba(5, 150, 105, 0.4); }
+        .badge.cancelled { background: rgba(220, 38, 38, 0.2); color: #f87171; border: 1px solid rgba(220, 38, 38, 0.4); }
+        tr.job-cancelled-row { opacity: 0.6; }
         .icon-svg { width: 16px; height: 16px; fill: currentColor; display: inline-block; vertical-align: middle; }
         .autocomplete-items { position: absolute; border: 1px solid var(--border-color); border-top: none; z-index: 99; top: 100%; left: 0; right: 0; background: #11141d; border-radius: 0 0 8px 8px; max-height: 180px; overflow-y: auto; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
         .autocomplete-items div { padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-main); }
@@ -466,6 +468,7 @@
                         <option value="" data-i18n="allStatuses"></option>
                         <option value="شغال" data-i18n="statusActiveShort"></option>
                         <option value="خلص" data-i18n="statusDoneShort"></option>
+                        <option value="ملغي" data-i18n="statusCancelledShort"></option>
                     </select>
                     <div style="display:flex; align-items:center; gap:6px;">
                         <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="filterDateFromLabel"></label>
@@ -551,6 +554,7 @@
                         <select id="jobStatus">
                             <option value="شغال" data-i18n="statusInProgress"></option>
                             <option value="خلص" data-i18n="statusCompleted"></option>
+                            <option value="ملغي" data-i18n="statusCancelled"></option>
                         </select>
                     </div>
                 </div>
@@ -1283,8 +1287,10 @@
         lblStatus: { ar: 'حالة المشروع:', en: 'Project Status:' },
         statusInProgress: { ar: 'قيد التنفيذ (شغال)', en: 'In Progress' },
         statusCompleted: { ar: 'تم الانتهاء (خلص)', en: 'Completed' },
+        statusCancelled: { ar: 'اتكنسل (ملغي)', en: 'Cancelled' },
         statusActiveShort: { ar: 'شغال', en: 'Active' },
         statusDoneShort: { ar: 'خلص', en: 'Done' },
+        statusCancelledShort: { ar: 'ملغي', en: 'Cancelled' },
         lblAddress: { ar: 'عنوان العميل / موقع العمل:', en: 'Client Address / Job Site:' },
         phAddress: { ar: 'أدخل عنوان العميل أو موقع العمل...', en: 'Enter client address or job site...' },
         lblDescription: { ar: 'وصف الشغلانة / تفاصيل العمل:', en: 'Job Description / Details:' },
@@ -1619,7 +1625,12 @@
     function t(key) { return (T[key] && T[key][currentLang]) || key; }
     const TECH_TYPE_KEYS = { 'نسبة مخصصة': 'typeCustom', 'فني لوحده (%60)': 'typeAlone60', 'نسبة (50%)': 'typeTogether50', 'مبلغ ثابت': 'typeFixed', 'باليومية': 'typeDaily', 'بالساعة': 'typeHourly' };
     function techTypeLabel(type) { return t(TECH_TYPE_KEYS[type] || 'typeCustom'); }
-    function statusLabel(status) { return status === 'خلص' ? t('statusDoneShort') : t('statusActiveShort'); }
+    function statusLabel(status) { return status === 'خلص' ? t('statusDoneShort') : (status === 'ملغي' ? t('statusCancelledShort') : t('statusActiveShort')); }
+    // A job counts as "active" (shows up in scheduling, the weekly board, today's banner, etc.)
+    // only while it's still in progress — both "خلص" (completed) and "ملغي" (cancelled) jobs
+    // stay out of those lists, but a cancelled job keeps all its data and stays visible, grayed
+    // out, in the Detailed Project Log itself.
+    function isJobActive(job) { return job.jobStatus !== 'خلص' && job.jobStatus !== 'ملغي'; }
 
     function toggleLanguage() {
         currentLang = currentLang === 'ar' ? 'en' : 'ar';
@@ -1993,12 +2004,12 @@
     // Visits scheduled on one day (Weekly Board entries), earliest first.
     function getAgendaForDay(dateStr) {
         const pairs = [];
-        savedJobs.filter(j => j.jobStatus !== 'خلص').forEach(job => getScheduleEntries(job).forEach(entry => { if (entry.date === dateStr) pairs.push({ job, entry }); }));
+        savedJobs.filter(isJobActive).forEach(job => getScheduleEntries(job).forEach(entry => { if (entry.date === dateStr) pairs.push({ job, entry }); }));
         return pairs.sort((a, b) => (a.entry.time || '99:99').localeCompare(b.entry.time || '99:99'));
     }
     // Unfinished jobs whose Start/End dates cover the day but that have NO visit set on the Weekly Board at all.
     function getRunningJobs(dateStr) {
-        return savedJobs.filter(job => job.jobStatus !== 'خلص' && !(job.dailySchedule && job.dailySchedule.length > 0)
+        return savedJobs.filter(job => isJobActive(job) && !(job.dailySchedule && job.dailySchedule.length > 0)
             && job.startDate && job.startDate <= dateStr && (job.endDate || job.startDate) >= dateStr
             && !getScheduleEntries(job).some(e => e.date === dateStr));
     }
@@ -2296,7 +2307,7 @@
             } catch (e) {}
         }
 
-        const activeJobs = savedJobs.filter(j => j.jobStatus !== 'خلص');
+        const activeJobs = savedJobs.filter(isJobActive);
         let pairs = [];
         activeJobs.forEach(job => { getScheduleEntries(job).forEach(entry => { if (entry.date === todayStr) pairs.push({ job, entry }); }); });
         if (pairs.length === 0) {
@@ -4011,6 +4022,9 @@
                 return jobSortDirection === 'asc' ? cmp : -cmp;
             });
         }
+        // A cancelled job keeps all its data in the log, but always sinks to the bottom of the
+        // list — under any sort column — so it never gets in the way of the active/done jobs.
+        jobsToRender = [...jobsToRender].sort((a, b) => (a.jobStatus === 'ملغي' ? 1 : 0) - (b.jobStatus === 'ملغي' ? 1 : 0));
 
         jobsToRender.forEach(job => {
             let techDetailsText = '';
@@ -4037,11 +4051,13 @@
             const tr = document.createElement('tr');
             tr.setAttribute('data-id', job.id);
             if (hasDebt) tr.className = 'has-debt';
+            if (job.jobStatus === 'ملغي') tr.className = (tr.className ? tr.className + ' ' : '') + 'job-cancelled-row';
 
+            const statusBadgeClass = job.jobStatus === 'خلص' ? 'completed' : (job.jobStatus === 'ملغي' ? 'cancelled' : 'active');
             tr.innerHTML = `
                 <td data-label="" style="text-align: center;"><input type="checkbox" class="job-checkbox" value="${job.id}" ${selectedJobIds.has(String(job.id)) ? 'checked' : ''} onchange="toggleJobSelection('${job.id}', this)"></td>
                 <td data-label="${t('thClient')}"><strong>${job.clientName}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.clientPhone ? `<a href="tel:${job.clientPhone.replace(/[^+\d]/g, '')}" style="color:#38bdf8; text-decoration:none;" onclick="event.stopPropagation();">📞 ${job.clientPhone}</a>` : ''}${job.clientPhone && job.clientAddress ? ' - ' : ''}${job.clientAddress ? `<a href="#" onclick="event.stopPropagation(); event.preventDefault(); showMapChoice('${job.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${job.clientAddress}</a>` : ''}</span>${hasDebt ? '<br><span class="debt-alert-badge">' + t('debtBadgePrefix') + ' $' + rem.toFixed(2) + '</span> <button onclick="event.stopPropagation(); sendAiPaymentReminder(\'' + job.id + '\');" style="background:linear-gradient(135deg,#7c3aed,#38bdf8); color:#fff; border:none; border-radius:6px; padding:2px 8px; font-size:0.68rem; font-weight:700; cursor:pointer;">✨ ' + t('aiReminderBtn') + '</button>' : ''}${isOverdue ? '<br><span class="debt-alert-badge" style="background:rgba(217,119,6,0.2); color:#fbbf24; border-color:rgba(217,119,6,0.4);">🔔 ' + t('reminderOverdueSuffix') + '</span>' : ''}</td>
-                <td data-label="${t('thDateStatus')}"><span class="badge ${job.jobStatus === 'خلص' ? 'completed' : 'active'}">${statusLabel(job.jobStatus)}</span><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.startDate || ''}</span></td>
+                <td data-label="${t('thDateStatus')}"><span class="badge ${statusBadgeClass}">${statusLabel(job.jobStatus)}</span><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.startDate || ''}</span></td>
                 <td data-label="${t('thAmounts')}" style="font-size: 0.82rem;">$${rev.toFixed(2)} / <span style="color:#34d399;">$${rec.toFixed(2)}</span> / <span style="color:#f87171; font-weight:700;">$${rem.toFixed(2)}</span></td>
                 <td data-label="${t('thMaterials')}" style="color:#f87171;">$${parseVal(job.materialCost).toFixed(2)}</td>
                 <td data-label="${t('thExpenses')}" style="font-size:0.8rem;">${expenseDetailsText || '$' + parseVal(job.extraExpenses).toFixed(2)}</td>
@@ -4302,7 +4318,7 @@
     async function markSelectedAsDone() {
         if (selectedJobIds.size === 0) { alert(t('alertSelectOneToDeleteReport')); return; }
         const ids = [...selectedJobIds];
-        const targets = savedJobs.filter(j => ids.includes(String(j.id)) && j.jobStatus !== 'خلص');
+        const targets = savedJobs.filter(j => ids.includes(String(j.id)) && isJobActive(j));
         if (targets.length === 0) { alert(t('alertAllAlreadyDone')); return; }
         if (!confirm(t('confirmMarkDone').replace('{n}', targets.length))) return;
         const backup = JSON.parse(JSON.stringify(savedJobs));
@@ -5513,7 +5529,7 @@
 
         // Existing-job dropdown: any job not yet marked "done".
         const sel = document.getElementById('qsExistingJobSelect');
-        const activeJobs = savedJobs.filter(j => j.jobStatus !== 'خلص');
+        const activeJobs = savedJobs.filter(isJobActive);
         sel.innerHTML = activeJobs.map(j => `<option value="${j.id}">${j.clientName || ''} (${effectiveScheduleDate(j) || t('noDateSet')})</option>`).join('')
             || `<option value="">${t('noJobsThisDay')}</option>`;
 
@@ -5942,7 +5958,7 @@
         const dayNamesAr = ['الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'];
         const dayNamesEn = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
         const dayNames = currentLang === 'ar' ? dayNamesAr : dayNamesEn;
-        const activeJobs = savedJobs.filter(j => j.jobStatus !== 'خلص');
+        const activeJobs = savedJobs.filter(isJobActive);
         const todayStr = isoDate(new Date());
 
         if (showAllPendingMode) {
@@ -6023,7 +6039,7 @@
         const dayNamesAr = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
         const dayNamesEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const dayNames = currentLang === 'ar' ? dayNamesAr : dayNamesEn;
-        const activeJobs = savedJobs.filter(j => j.jobStatus !== 'خلص');
+        const activeJobs = savedJobs.filter(isJobActive);
 
         let msg = (currentLang === 'ar' ? '📅 جدول الشغل:\n\n' : "📅 Work Schedule:\n\n");
         days.forEach(d => {
