@@ -3215,7 +3215,13 @@
         const photo = arr[index];
         if (!photo) return;
         const win = window.open('');
-        if (win) win.document.write(`<body style="margin:0; background:#000;"><img src="${photo.data}" style="max-width:100%; display:block; margin:0 auto;"></body>`);
+        // Same × close button as the invoice-photo viewer — this tab has no browser chrome of
+        // its own on most phones, so without it there was no way back except the phone's own
+        // back gesture.
+        if (win) win.document.write(`<body style="margin:0; background:#000;">
+            <button onclick="window.close()" style="position:fixed; top:10px; inset-inline-end:10px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.9); color:#000; border:none; font-size:1.2rem; font-weight:700; cursor:pointer; z-index:10;">×</button>
+            <img src="${photo.data}" style="max-width:100%; display:block; margin:0 auto;">
+        </body>`);
     }
 
     function removePhotoFromGallery(containerId, index) {
