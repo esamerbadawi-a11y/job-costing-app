@@ -694,7 +694,6 @@
                         </div>
                         <div class="ag-meta" style="margin-bottom:8px;" data-i18n="profitPartnersHint"></div>
                         <div id="profitPartnersContainer"></div>
-                        <datalist id="profitPartnerNamesList"></datalist>
                     </div>
 
                     <div id="splitRatioTotalDisplay" style="margin-top:10px; text-align:end; font-size:0.9rem;"></div>
@@ -1578,6 +1577,7 @@
         profitPartnersHint: { ar: 'حساب هذه الشغلانة بس، مش مجمّع مع شغلانات تانية — لو الشخص ده شريك دايم زي S أو M، قولّي عشان نعمله حساب شامل زيهم.', en: "Calculated for this job only, not aggregated with other jobs — if this person is a permanent partner like S or M, tell me so we can give them a full account like theirs." },
         profitPartnerAddBtn: { ar: 'إضافة شريك', en: 'Add Partner' },
         profitPartnerNamePh: { ar: 'اسم الشريك', en: 'Partner name' },
+        profitPartnerPickTitle: { ar: 'اختار من الفنيين المسجلين', en: 'Pick from registered technicians' },
         errUnnamedPartner: { ar: 'فيه شريك إضافي ليه نسبة من غير ما تكتب اسمه', en: 'An additional partner has a percentage but no name' },
         agendaTitle: { ar: 'شغل النهارده', en: "Today's Work" },
         agendaScheduledToday: { ar: '📅 ميعاده النهارده', en: '📅 Scheduled today' },
@@ -3862,19 +3862,25 @@
     function addProfitPartner(name = '', percent = 0) { profitPartners.push({ name, percent }); renderProfitPartners(); }
     function removeProfitPartner(index) { profitPartners.splice(index, 1); renderProfitPartners(); }
     function updateProfitPartner(index, field, value) { if (profitPartners[index]) profitPartners[index][field] = value; updateSplitRatioTotal(); }
+    // Picking a saved technician name from the 👤 dropdown fills the free-text field with it.
+    // (A plain <datalist> was tried first, but iOS Safari never shows datalist suggestions at
+    // all, so on iPhone nothing ever appeared — a real native <select> works everywhere.)
+    function pickProfitPartnerName(index, name) {
+        if (!name || !profitPartners[index]) return;
+        profitPartners[index].name = name;
+        renderProfitPartners();
+    }
     function renderProfitPartners() {
-        // Name field suggests registered technicians via a <datalist> (native browser dropdown),
-        // but stays a free-text input — so an existing tech can be picked in one tap, while a
-        // partner who isn't a registered technician (e.g. a referral fee, a silent investor) can
-        // still just be typed in.
-        const namesListEl = document.getElementById('profitPartnerNamesList');
-        if (namesListEl) namesListEl.innerHTML = getUniqueRegisteredTechnicians().map(n => `<option value="${escHtml(n)}"></option>`).join('');
-
         const container = document.getElementById('profitPartnersContainer');
         if (profitPartners.length === 0) { container.innerHTML = ''; updateSplitRatioTotal(); return; }
+        const registeredTechs = getUniqueRegisteredTechnicians();
         container.innerHTML = profitPartners.map((p, i) => `
             <div class="ledger-row">
-                <input type="text" list="profitPartnerNamesList" value="${escHtml(p.name)}" placeholder="${t('profitPartnerNamePh')}" oninput="updateProfitPartner(${i}, 'name', this.value)" style="flex:2; min-width:90px;">
+                <select onchange="pickProfitPartnerName(${i}, this.value); this.selectedIndex = 0;" title="${t('profitPartnerPickTitle')}" style="flex:0 0 38px; width:38px; padding:0 2px; text-align:center; background:#11141d; color:#fff; border:1px solid var(--border-color); border-radius:8px;">
+                    <option value="">👤</option>
+                    ${registeredTechs.map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('')}
+                </select>
+                <input type="text" value="${escHtml(p.name)}" placeholder="${t('profitPartnerNamePh')}" oninput="updateProfitPartner(${i}, 'name', this.value)" style="flex:2; min-width:90px;">
                 <input type="text" inputmode="decimal" value="${escHtml(String(p.percent))}" oninput="updateProfitPartner(${i}, 'percent', this.value)" style="width:70px; text-align:center;">
                 <span class="profit-partner-dollar" data-idx="${i}" style="min-width:80px; text-align:end; color:#34d399; font-weight:700; align-self:center;"></span>
                 <button type="button" class="ledger-del" onclick="removeProfitPartner(${i})">🗑</button>
