@@ -356,7 +356,7 @@
                     <button type="button" onclick="improveScopeWithAI('apptNote','apptAiScopeBtn','apptAiInstructionInput')" id="apptAiScopeBtn" style="background:linear-gradient(135deg,#7c3aed,#38bdf8); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">✨ <span data-i18n="aiScopeBtn"></span></button>
                     <button type="button" onclick="startVoiceScope('apptNote','apptVoiceScopeBtn','apptAiScopeBtn','apptAiInstructionInput')" id="apptVoiceScopeBtn" style="background:linear-gradient(135deg,#dc2626,#f97316); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">🎤 <span data-i18n="voiceScopeBtn"></span></button>
                     <button type="button" onclick="document.getElementById('apptPhotoInput').click()" id="apptPhotoBtn" style="background:linear-gradient(135deg,#0ea5e9,#0284c7); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">📷 <span data-i18n="photoScopeBtn"></span></button>
-                    <input type="file" id="apptPhotoInput" accept="image/*" capture="environment" style="display:none;" onchange="analyzePhotoForScope(event,'apptNote','apptPhotoBtn','apptPhotoGallery')">
+                    <input type="file" id="apptPhotoInput" accept="image/*" style="display:none;" onchange="analyzePhotoForScope(event,'apptNote','apptPhotoBtn','apptPhotoGallery')">
                 </div>
                 <div id="apptPhotoGallery" style="display:none; gap:8px; flex-wrap:wrap; margin-bottom:10px;"></div>
                 <div style="display:flex; gap:8px;">
@@ -573,7 +573,7 @@
                         <button type="button" onclick="improveScopeWithAI()" id="aiScopeBtn" style="background:linear-gradient(135deg,#7c3aed,#38bdf8); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">✨ <span data-i18n="aiScopeBtn"></span></button>
                         <button type="button" onclick="startVoiceScope()" id="voiceScopeBtn" style="background:linear-gradient(135deg,#dc2626,#f97316); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">🎤 <span data-i18n="voiceScopeBtn"></span></button>
                         <button type="button" onclick="document.getElementById('jobPhotoInput').click()" id="jobPhotoBtn" style="background:linear-gradient(135deg,#0ea5e9,#0284c7); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">📷 <span data-i18n="photoScopeBtn"></span></button>
-                        <input type="file" id="jobPhotoInput" accept="image/*" capture="environment" style="display:none;" onchange="analyzePhotoForScope(event,'clientDescription','jobPhotoBtn','jobPhotoGallery')">
+                        <input type="file" id="jobPhotoInput" accept="image/*" style="display:none;" onchange="analyzePhotoForScope(event,'clientDescription','jobPhotoBtn','jobPhotoGallery')">
                     </div>
                     <div id="jobPhotoGallery" style="display:none; gap:8px; flex-wrap:wrap; margin-top:6px;"></div>
                 </div>
