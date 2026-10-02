@@ -2511,22 +2511,31 @@
     let addressAutocompleteTimer = null;
     let addressRequestId = 0;
 
-    // Turns Nominatim's raw address parts into a clean, short label similar to
-    // "123 Main St, Tampa, FL 33601" instead of its long default display_name.
-    function formatAddressResult(r) {
-        const a = r.address || {};
-        const line1 = [a.house_number, a.road].filter(Boolean).join(' ') || a.road || a.neighbourhood || '';
-        const city = a.city || a.town || a.village || a.hamlet || a.suburb || '';
-        const stateZip = [a.state, a.postcode].filter(Boolean).join(' ');
-        const short = [line1, city, stateZip].filter(Boolean).join(', ');
-        return short || r.display_name;
+    // The Census Geocoder returns matches as "123 MAIN ST, TAMPA, FL, 33601" — all caps and,
+    // once this goes on a client invoice, that reads as shouting. This re-cases it to
+    // "123 Main St, Tampa, FL, 33601" while keeping the 2-letter state code uppercase and the
+    // ZIP digits untouched.
+    function formatCensusMatch(matchedAddress) {
+        const toTitle = s => s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+        const parts = (matchedAddress || '').split(',').map(p => p.trim());
+        if (parts.length === 4) {
+            const [street, city, state, zip] = parts;
+            return `${toTitle(street)}, ${toTitle(city)}, ${state.toUpperCase()}, ${zip}`;
+        }
+        return toTitle(matchedAddress || '');
     }
 
+    // Switched from Nominatim (OpenStreetMap) to the US Census Bureau's own geocoder — it's
+    // still free and needs no API key, but it's built from the US's official address reference
+    // database, so it gets house-number-level US addresses right far more often. The trade-off:
+    // it's an address-verification service, not a live typeahead, so it generally needs a fairly
+    // complete address (house number + street, at least) before it returns any match — a couple
+    // of letters alone usually won't return anything, same as before it would just show nothing.
     function onAddressInput(inputId, listId) {
         clearTimeout(addressAutocompleteTimer);
         const query = document.getElementById(inputId).value.trim();
         const listDiv = document.getElementById(listId);
-        if (query.length < 3) { listDiv.style.display = 'none'; listDiv.innerHTML = ''; return; }
+        if (query.length < 5) { listDiv.style.display = 'none'; listDiv.innerHTML = ''; return; }
 
         listDiv.innerHTML = `<div style="color:var(--text-muted); cursor:default; pointer-events:none;">${currentLang === 'ar' ? 'جاري البحث...' : 'Searching...'}</div>`;
         listDiv.style.display = 'block';
@@ -2534,23 +2543,29 @@
         const myRequestId = ++addressRequestId;
         addressAutocompleteTimer = setTimeout(async () => {
             try {
-                const url = `https://nominatim.openstreetmap.org/search?format=json&limit=8&addressdetails=1&countrycodes=us&accept-language=${currentLang}&q=${encodeURIComponent(query)}`;
+                const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(query)}&benchmark=Public_AR_Current&format=json`;
                 const res = await fetch(url);
-                const results = await res.json();
+                const data = await res.json();
                 if (myRequestId !== addressRequestId) return; // a newer keystroke already superseded this request
+                const matches = (data && data.result && data.result.addressMatches) || [];
                 listDiv.innerHTML = '';
-                if (!results || results.length === 0) { listDiv.style.display = 'none'; return; }
-                results.forEach(r => {
-                    const label = formatAddressResult(r);
+                if (matches.length === 0) { listDiv.style.display = 'none'; return; }
+                // The API can return the same standardized address twice (matched from both
+                // sides of a street's address range) — de-duplicate by the label shown.
+                const seen = new Set();
+                matches.forEach(m => {
+                    const label = formatCensusMatch(m.matchedAddress);
+                    if (!label || seen.has(label)) return;
+                    seen.add(label);
                     const item = document.createElement('div');
-                    item.innerHTML = `<span style="display:block;">${label}</span>${label !== r.display_name ? `<span style="display:block; font-size:0.7rem; color:var(--text-muted); margin-top:2px;">${r.display_name}</span>` : ''}`;
+                    item.textContent = label;
                     item.onclick = () => {
                         document.getElementById(inputId).value = label;
                         listDiv.style.display = 'none';
                     };
                     listDiv.appendChild(item);
                 });
-                listDiv.style.display = 'block';
+                listDiv.style.display = seen.size > 0 ? 'block' : 'none';
             } catch (e) { if (myRequestId === addressRequestId) listDiv.style.display = 'none'; }
         }, 350);
     }
