@@ -1397,6 +1397,16 @@
         invoiceTypeLabel: { ar: 'نوع المستند', en: 'Document Type' },
         invoiceTypeEstimate: { ar: 'عرض سعر', en: 'Estimate' },
         invoiceTypeProposal: { ar: 'مقترح', en: 'Proposal' },
+        invoiceTypeAdditionalWork: { ar: 'أعمال إضافية', en: 'Additional Work' },
+        invoiceAdditionalWorkTitle: { ar: 'فاتورة أعمال إضافية', en: 'Additional Work Invoice' },
+        invoiceAdditionalWorkSubtitle: { ar: 'أعمال إضافية وتعديلات ميدانية', en: 'Additional Work & Field Modifications' },
+        invoiceWorkPerformedHeader: { ar: 'الأعمال الإضافية المنفذة', en: 'Additional Work Performed' },
+        invoiceAdditionalBalanceDue: { ar: 'الرصيد الإضافي المستحق', en: 'Additional Balance Due' },
+        invoiceWorkNoteHeader: { ar: 'ملاحظة الأعمال الإضافية', en: 'Additional Work Note' },
+        invoiceTotalDueAmountLine: { ar: 'إجمالي المبلغ المستحق', en: 'Total Due Amount' },
+        invoiceAddCreditBtn: { ar: '+ إضافة خصم', en: '+ Add Credit' },
+        invoiceCreditNamePh: { ar: 'اسم الخصم', en: 'Credit name' },
+        invoiceClientLabel: { ar: 'العميل:', en: 'Client:' },
         invoiceAddressLabel: { ar: 'عنوان العمل', en: 'Project Address' },
         invoicePhoneLabel: { ar: 'التليفون', en: 'Phone' },
         invoiceScopeLabel: { ar: 'وصف الشغل', en: 'Scope' },
@@ -4920,7 +4930,7 @@
             invoiceNo: `AHA-${new Date().getFullYear()}-${seq}`,
             invoiceDate: isoDate(new Date()),
             items: defaultInvoiceItemsForJob(job),
-            creditAdjustment: 0,
+            credits: [], // each: { label: string, amount: number } — named deductions, e.g. "PVC Trim Credit — Not Installed"
             note: '',
             showPaymentMethod: false,
             paymentMethodText: t('invoicePaymentMethodPlaceholder'),
@@ -4957,6 +4967,27 @@
         updateInvoiceTotalsDisplay();
     }
 
+    // Named deduction/credit lines (e.g. "PVC Trim Credit — Not Installed: -$250.00"), each
+    // shown on its own row with its own label — replaces the old single generic "Credit/Adjustment"
+    // amount, which couldn't say what a deduction was actually for.
+    function addInvoiceCreditRow() {
+        if (!invoiceState) return;
+        invoiceState.credits.push({ label: '', amount: 0 });
+        renderInvoiceModalContent();
+    }
+
+    function removeInvoiceCreditRow(index) {
+        if (!invoiceState) return;
+        invoiceState.credits.splice(index, 1);
+        renderInvoiceModalContent();
+    }
+
+    function updateInvoiceCreditField(index, field, value) {
+        if (!invoiceState) return;
+        invoiceState.credits[index][field] = value;
+        updateInvoiceTotalsDisplay();
+    }
+
     function setInvoiceField(field, value) {
         if (!invoiceState) return;
         invoiceState[field] = value;
@@ -4973,10 +5004,15 @@
         return invoiceState.items.reduce((sum, it) => sum + parseVal(it.amount), 0);
     }
 
+    function invoiceCreditsTotal() {
+        if (!invoiceState) return 0;
+        return (invoiceState.credits || []).reduce((sum, c) => sum + parseVal(c.amount), 0);
+    }
+
     function updateInvoiceTotalsDisplay() {
         if (!invoiceState) return;
         const subtotal = invoiceSubtotal();
-        const credit = parseVal(invoiceState.creditAdjustment);
+        const credit = invoiceCreditsTotal();
         const totalDue = subtotal - credit;
         const subEl = document.getElementById('invSubtotalDisplay');
         const totalEl = document.getElementById('invTotalDueDisplay');
@@ -4987,6 +5023,7 @@
     function invoiceDocTypeDisplay(docType) {
         if (docType === 'ESTIMATE') return t('invoiceTypeEstimate');
         if (docType === 'PROPOSAL') return t('invoiceTypeProposal');
+        if (docType === 'ADDITIONAL_WORK') return t('invoiceAdditionalWorkTitle');
         return t('invoiceTitle');
     }
 
@@ -4996,17 +5033,23 @@
         const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
         if (!job) { container.innerHTML = ''; return; }
 
+        // "Additional Work" documents list discrete tasks, not quantities — matches the printed
+        // reference layout (Description + Amount only, no Qty column).
+        const hideQty = invoiceState.docType === 'ADDITIONAL_WORK';
+        const itemsGridCols = hideQty ? '1fr 110px 40px' : '1fr 70px 110px 40px';
+
         const itemsHtml = invoiceState.items.map((it, index) => `
             <div class="tech-card" style="margin-bottom:8px;">
-                <div style="display:grid; grid-template-columns: 1fr 70px 110px 40px; gap:10px; align-items:center;">
+                <div style="display:grid; grid-template-columns: ${itemsGridCols}; gap:10px; align-items:center;">
                     <div>
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColDesc')}</label>
                         <input type="text" value="${escHtml(it.desc)}" oninput="updateInvoiceItemField(${index}, 'desc', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
                     </div>
+                    ${hideQty ? '' : `
                     <div>
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColQty')}</label>
                         <input type="text" value="${escHtml(it.qty)}" onfocus="this.select()" oninput="updateInvoiceItemField(${index}, 'qty', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; text-align:center;">
-                    </div>
+                    </div>`}
                     <div>
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColAmount')}</label>
                         <input type="text" value="${it.amount !== undefined ? it.amount : ''}" onfocus="this.select()" oninput="updateInvoiceItemField(${index}, 'amount', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; text-align:center;">
@@ -5018,8 +5061,24 @@
             </div>
         `).join('');
 
+        const creditsHtml = (invoiceState.credits || []).map((c, index) => `
+            <div class="tech-card" style="margin-bottom:8px;">
+                <div style="display:grid; grid-template-columns: 1fr 110px 40px; gap:10px; align-items:center;">
+                    <div>
+                        <input type="text" value="${escHtml(c.label)}" placeholder="${t('invoiceCreditNamePh')}" oninput="updateInvoiceCreditField(${index}, 'label', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
+                    </div>
+                    <div>
+                        <input type="text" value="${c.amount !== undefined ? c.amount : ''}" onfocus="this.select()" oninput="updateInvoiceCreditField(${index}, 'amount', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; text-align:center;">
+                    </div>
+                    <div>
+                        <button type="button" onclick="removeInvoiceCreditRow(${index})" title="${t('invoiceRemoveItemBtn')}" style="background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid rgba(225,29,72,0.4); padding:9px 0; border-radius:8px; width:100%; cursor:pointer; font-size:14px;">✕</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
         const subtotal = invoiceSubtotal();
-        const credit = parseVal(invoiceState.creditAdjustment);
+        const credit = invoiceCreditsTotal();
         const totalDue = subtotal - credit;
 
         container.innerHTML = `
@@ -5030,6 +5089,7 @@
                         <option value="INVOICE" ${invoiceState.docType === 'INVOICE' ? 'selected' : ''}>${t('invoiceTitle')}</option>
                         <option value="ESTIMATE" ${invoiceState.docType === 'ESTIMATE' ? 'selected' : ''}>${t('invoiceTypeEstimate')}</option>
                         <option value="PROPOSAL" ${invoiceState.docType === 'PROPOSAL' ? 'selected' : ''}>${t('invoiceTypeProposal')}</option>
+                        <option value="ADDITIONAL_WORK" ${invoiceState.docType === 'ADDITIONAL_WORK' ? 'selected' : ''}>${t('invoiceTypeAdditionalWork')}</option>
                     </select>
                 </div>
                 <div>
@@ -5053,14 +5113,14 @@
             <div id="invoiceItemsContainer">${itemsHtml}</div>
             <button type="button" class="secondary" onclick="addInvoiceItemRow()" style="padding:6px 14px; font-size:0.8rem; margin-bottom:16px;">${t('invoiceAddItemBtn')}</button>
 
+            <h3 style="color:#38bdf8; font-size:0.95rem; margin-bottom:10px;">${t('invoiceCreditLabel')}</h3>
+            <div id="invoiceCreditsContainer">${creditsHtml}</div>
+            <button type="button" class="secondary" onclick="addInvoiceCreditRow()" style="padding:6px 14px; font-size:0.8rem; margin-bottom:16px;">${t('invoiceAddCreditBtn')}</button>
+
             <div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
                 <div style="width:280px; font-size:0.85rem;">
                     <div style="display:flex; justify-content:space-between; padding:4px 0;">
                         <span>${t('invoiceSubtotalLabel')}</span><span id="invSubtotalDisplay">$${subtotal.toFixed(2)}</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; gap:10px;">
-                        <span>${t('invoiceCreditLabel')}</span>
-                        <input type="text" value="${invoiceState.creditAdjustment}" onfocus="this.select()" oninput="setInvoiceField('creditAdjustment', this.value); updateInvoiceTotalsDisplay();" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:6px 10px; border-radius:8px; width:100px; text-align:center;">
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center; background:#2C6B45; color:#fff; border-radius:8px; padding:8px 12px; margin-top:6px; font-weight:700;">
                         <span>${t('invoiceTotalDueLabel')}</span><span id="invTotalDueDisplay">$${totalDue.toFixed(2)}</span>
@@ -5106,9 +5166,11 @@
         const win = window.open('', '_blank');
         if (!win) { alert(t('alertSelectOneToPrint')); return; }
 
+        const isAdditionalWork = invoiceState.docType === 'ADDITIONAL_WORK';
         const subtotal = invoiceSubtotal();
-        const credit = parseVal(invoiceState.creditAdjustment);
-        const totalDue = subtotal - credit;
+        const credits = invoiceState.credits || [];
+        const creditsTotal = invoiceCreditsTotal();
+        const totalDue = subtotal - creditsTotal;
         const accent = '#2C6B45';
         const companyName = companyProfile.name || 'Affordable Handyman Approach';
         const companyTagline = companyProfile.tagline || '';
@@ -5116,19 +5178,97 @@
         const footerLine = [...(companyProfile.phones || []), companyProfile.email].filter(Boolean).join('  |  ');
         const footerParts = [footerLine, companyProfile.website].filter(Boolean).join('   &bull;   ');
 
+        // "Additional Work" lists discrete tasks (Description + Amount only, no # or Qty columns,
+        // per the agreed reference layout); every other document type keeps the original 4-column
+        // table (#, Description, Qty, Amount) completely unchanged.
+        const itemsGridCols = isAdditionalWork ? '1fr 100px' : '40px 1fr 70px 100px';
         const itemsRowsHtml = invoiceState.items.map((it, i) => {
             const bg = i % 2 === 1 ? 'background:#F6F1E8;' : '';
-            return `<div style="display:grid; grid-template-columns: 40px 1fr 70px 100px; gap:10px; padding:10px 12px; font-size:12.5px; border-bottom:1px solid #E7E1D6; ${bg}">
-                <div>${i + 1}</div><div>${escHtml(it.desc)}</div><div style="text-align:center;">${escHtml(it.qty || '')}</div><div style="text-align:right;">$${parseVal(it.amount).toFixed(2)}</div>
-            </div>`;
+            const cells = isAdditionalWork
+                ? `<div>${escHtml(it.desc)}</div><div style="text-align:right;">$${parseVal(it.amount).toFixed(2)}</div>`
+                : `<div>${i + 1}</div><div>${escHtml(it.desc)}</div><div style="text-align:center;">${escHtml(it.qty || '')}</div><div style="text-align:right;">$${parseVal(it.amount).toFixed(2)}</div>`;
+            return `<div style="display:grid; grid-template-columns: ${itemsGridCols}; gap:10px; padding:10px 12px; font-size:12.5px; border-bottom:1px solid #E7E1D6; ${bg}">${cells}</div>`;
         }).join('');
+        const itemsHeaderCells = isAdditionalWork
+            ? `<div>${escHtml(t('invoiceColDesc')).toUpperCase()}</div><div style="text-align:right;">${escHtml(t('invoiceColAmount')).toUpperCase()}</div>`
+            : `<div>${escHtml(t('invoiceColNum'))}</div><div>${escHtml(t('invoiceColDesc')).toUpperCase()}</div><div style="text-align:center;">${escHtml(t('invoiceColQty')).toUpperCase()}</div><div style="text-align:right;">${escHtml(t('invoiceColAmount')).toUpperCase()}</div>`;
+
+        // Each named deduction gets its own row (e.g. "PVC Trim Credit — Not Installed: -$250.00")
+        // instead of the old single generic "Credit/Adjustment" amount.
+        const creditsRowsHtml = credits.map(c => `<div style="display:flex; justify-content:space-between; padding:6px 0; color:#B5432E;"><span>${escHtml(c.label || t('invoiceCreditLabel'))}</span><span>-$${parseVal(c.amount).toFixed(2)}</span></div>`).join('');
 
         const paymentMethodRow = invoiceState.showPaymentMethod ? `<div style="font-size:11.5px; color:#6B6257;"><b>${t('invoicePaymentMethodToggle')}:</b> ${escHtml(invoiceState.paymentMethodText)}</div>` : '';
         const followUpRow = invoiceState.showFollowUp ? `<div style="font-size:11.5px; color:#6B6257;"><b>${t('invoiceFollowUpToggle')}:</b> ${escHtml(invoiceState.followUpText)}</div>` : '';
         const validityRow = invoiceState.showValidity ? `<div style="display:flex; justify-content:flex-end;"><div style="font-size:11px; color:#6B6257; font-style:italic; width:300px; text-align:right;">${escHtml(invoiceState.validityText)}</div></div>` : '';
-        const noteBox = invoiceState.note ? `<div style="background:#F6F1E8; border:1px dashed ${accent}; border-radius:6px; padding:14px 16px;"><div style="font-weight:700; font-size:11.5px; letter-spacing:0.5px; margin-bottom:6px; color:${accent};">${escHtml(t('invoiceNoteLabel')).toUpperCase()}</div><div style="font-size:12.5px; line-height:1.7; color:#3A332B;">${escHtml(invoiceState.note).replace(/\n/g, '<br>')}</div></div>` : '';
+        const noteHeaderText = isAdditionalWork ? t('invoiceWorkNoteHeader') : t('invoiceNoteLabel');
+        const noteBox = invoiceState.note ? `<div style="background:#F6F1E8; border:1px dashed ${accent}; border-radius:6px; padding:14px 16px;"><div style="font-weight:700; font-size:11.5px; letter-spacing:0.5px; margin-bottom:6px; color:${accent};">${escHtml(noteHeaderText).toUpperCase()}</div><div style="font-size:12.5px; line-height:1.7; color:#3A332B;">${escHtml(invoiceState.note).replace(/\n/g, '<br>')}</div></div>` : '';
         const logoHeaderHtml = companyLogo ? `<img src="${companyLogo}" style="width:70px; height:70px; object-fit:contain; flex-shrink:0;">` : '';
         const watermarkHtml = companyLogo ? `<img src="${companyLogo}" style="position:absolute; top:50%; left:50%; width:560px; height:560px; transform:translate(-50%,-50%); opacity:0.06; pointer-events:none;">` : '';
+
+        // Title block: "Additional Work" gets a centered title + subtitle (matching the reference
+        // design); every other type keeps its original right-aligned title + invoice#/date block.
+        const titleBlockHtml = isAdditionalWork
+            ? `<div style="text-align:center; margin-top:2px;">
+                 <div class="ui" style="font-size:26px; font-weight:700; letter-spacing:1.5px; color:#241F1A;">${escHtml(t('invoiceAdditionalWorkTitle')).toUpperCase()}</div>
+                 <div class="ui" style="font-size:12px; color:#6B6257; margin-top:2px;">${escHtml(t('invoiceAdditionalWorkSubtitle'))}</div>
+               </div>`
+            : `<div style="text-align:right;">
+                 <div class="ui" style="font-size:30px; font-weight:700; letter-spacing:2px; color:${accent};">${escHtml(invoiceDocTypeDisplay(invoiceState.docType)).toUpperCase()}</div>
+                 <div class="ui" style="font-size:12px; color:#6B6257; margin-top:4px;">${escHtml(t('invoiceNumberLbl'))}: <span style="color:#241F1A; font-weight:600;">${escHtml(invoiceState.invoiceNo)}</span></div>
+                 <div class="ui" style="font-size:12px; color:#6B6257;">${escHtml(t('invoiceDateLbl'))}: <span style="color:#241F1A; font-weight:600;">${escHtml(invoiceState.invoiceDate)}</span></div>
+               </div>`;
+
+        // Client/Scope info block: "Additional Work" uses the plain two-column text row from the
+        // reference (Client/Scope left, Invoice Type/Balance Due right, no address or phone line);
+        // every other type keeps the original layout with the big colored balance-due box.
+        const infoBlockHtml = isAdditionalWork
+            ? `<div style="display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:24px;">
+                 <div class="ui" style="font-size:13px; line-height:1.9;">
+                   <div><b>${escHtml(t('invoiceClientLabel'))}</b> ${escHtml(job.clientName)}</div>
+                   <div><b>${escHtml(t('invoiceScopeLabel'))}:</b> ${formatScopeHtml(job.clientDescription)}</div>
+                 </div>
+                 <div class="ui" style="font-size:13px; line-height:1.9;">
+                   <div><b>${escHtml(t('invoiceTypeLabel'))}:</b> ${escHtml(t('invoiceTypeAdditionalWork'))}</div>
+                   <div><b>${escHtml(t('invoiceBalanceDue'))}:</b> $${totalDue.toFixed(2)}</div>
+                 </div>
+               </div>`
+            : `<div style="display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:24px;">
+                 <div class="ui" style="font-size:13px; line-height:1.9;">
+                   <div><b>${escHtml(t('invoiceBillTo'))}</b> ${escHtml(job.clientName)}</div>
+                   <div><b>${escHtml(t('invoiceAddressLabel'))}:</b> ${escHtml(job.clientAddress || '')}</div>
+                   <div><b>${escHtml(t('invoicePhoneLabel'))}:</b> ${escHtml(job.clientPhone || '')}</div>
+                   <div><b>${escHtml(t('invoiceScopeLabel'))}:</b> ${formatScopeHtml(job.clientDescription)}</div>
+                 </div>
+                 <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
+                   <div style="background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 18px; text-align:center; min-width:200px;">
+                     <div class="ui" style="font-size:11px; letter-spacing:1px; opacity:0.9;">${escHtml(t('invoiceBalanceDue')).toUpperCase()}</div>
+                     <div class="ui" style="font-size:24px; font-weight:700;">$${totalDue.toFixed(2)}</div>
+                   </div>
+                   ${paymentMethodRow}
+                   ${followUpRow}
+                 </div>
+               </div>`;
+
+        const workPerformedHeaderHtml = isAdditionalWork ? `<div class="ui" style="font-weight:700; font-size:12px; letter-spacing:0.5px; color:#241F1A; margin-bottom:6px;">${escHtml(t('invoiceWorkPerformedHeader')).toUpperCase()}</div>` : '';
+
+        // Totals block: "Additional Work" shows Subtotal + each named credit + a highlighted
+        // "ADDITIONAL BALANCE DUE" row, full width under the table (matching the reference);
+        // every other type keeps its original narrow right-aligned box with the green total box.
+        const totalsBlockHtml = isAdditionalWork
+            ? `<div class="ui" style="width:100%; font-size:13px;">
+                 <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>${escHtml(t('invoiceSubtotalLabel'))}</span><span>$${subtotal.toFixed(2)}</span></div>
+                 ${creditsRowsHtml}
+                 <div style="display:flex; justify-content:space-between; align-items:center; background:#EFEAE0; border-radius:4px; padding:10px 14px; margin-top:6px; font-weight:700; font-size:14px;"><span>${escHtml(t('invoiceAdditionalBalanceDue')).toUpperCase()}</span><span>$${totalDue.toFixed(2)}</span></div>
+               </div>`
+            : `<div class="ui" style="width:300px; font-size:13px;">
+                 <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>${escHtml(t('invoiceSubtotalLabel'))}</span><span>$${subtotal.toFixed(2)}</span></div>
+                 ${creditsRowsHtml}
+                 <div style="display:flex; justify-content:space-between; align-items:center; background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 14px; margin-top:8px; font-weight:700; font-size:15px;"><span>${escHtml(t('invoiceTotalDueLabel')).toUpperCase()}</span><span>$${totalDue.toFixed(2)}</span></div>
+               </div>`;
+
+        const totalDueAmountLineHtml = isAdditionalWork
+            ? `<div style="text-align:right;"><span class="ui" style="font-size:15px; font-weight:700;">${escHtml(t('invoiceTotalDueAmountLine')).toUpperCase()}: $${totalDue.toFixed(2)}</span></div>`
+            : '';
 
         const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escHtml(invoiceState.invoiceNo)}</title>
 <style>
@@ -5148,49 +5288,30 @@
           ${companyTagline ? `<div class="ui" style="font-size:11px; color:${accent}; font-style:italic; margin-top:2px;">${escHtml(companyTagline)}</div>` : ''}
         </div>
       </div>
-      <div style="text-align:right;">
-        <div class="ui" style="font-size:30px; font-weight:700; letter-spacing:2px; color:${accent};">${escHtml(invoiceDocTypeDisplay(invoiceState.docType)).toUpperCase()}</div>
-        <div class="ui" style="font-size:12px; color:#6B6257; margin-top:4px;">${escHtml(t('invoiceNumberLbl'))}: <span style="color:#241F1A; font-weight:600;">${escHtml(invoiceState.invoiceNo)}</span></div>
-        <div class="ui" style="font-size:12px; color:#6B6257;">${escHtml(t('invoiceDateLbl'))}: <span style="color:#241F1A; font-weight:600;">${escHtml(invoiceState.invoiceDate)}</span></div>
-      </div>
+      ${isAdditionalWork ? '' : titleBlockHtml}
     </div>
+    ${isAdditionalWork ? titleBlockHtml : ''}
 
     <div style="height:2px; background:${accent};"></div>
 
-    <div style="display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:24px;">
-      <div class="ui" style="font-size:13px; line-height:1.9;">
-        <div><b>${escHtml(t('invoiceBillTo'))}</b> ${escHtml(job.clientName)}</div>
-        <div><b>${escHtml(t('invoiceAddressLabel'))}:</b> ${escHtml(job.clientAddress || '')}</div>
-        <div><b>${escHtml(t('invoicePhoneLabel'))}:</b> ${escHtml(job.clientPhone || '')}</div>
-        <div><b>${escHtml(t('invoiceScopeLabel'))}:</b> ${formatScopeHtml(job.clientDescription)}</div>
-      </div>
-      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
-        <div style="background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 18px; text-align:center; min-width:200px;">
-          <div class="ui" style="font-size:11px; letter-spacing:1px; opacity:0.9;">${escHtml(t('invoiceBalanceDue')).toUpperCase()}</div>
-          <div class="ui" style="font-size:24px; font-weight:700;">$${totalDue.toFixed(2)}</div>
-        </div>
-        ${paymentMethodRow}
-        ${followUpRow}
-      </div>
-    </div>
+    ${infoBlockHtml}
 
     <div style="margin-top:2px;">
-      <div class="ui" style="display:grid; grid-template-columns: 40px 1fr 70px 100px; gap:10px; background:${accent}; color:#FDFBF6; font-size:11px; font-weight:700; letter-spacing:0.5px; padding:10px 12px; border-radius:6px 6px 0 0;">
-        <div>${escHtml(t('invoiceColNum'))}</div><div>${escHtml(t('invoiceColDesc')).toUpperCase()}</div><div style="text-align:center;">${escHtml(t('invoiceColQty')).toUpperCase()}</div><div style="text-align:right;">${escHtml(t('invoiceColAmount')).toUpperCase()}</div>
+      ${workPerformedHeaderHtml}
+      <div class="ui" style="display:grid; grid-template-columns: ${itemsGridCols}; gap:10px; background:${accent}; color:#FDFBF6; font-size:11px; font-weight:700; letter-spacing:0.5px; padding:10px 12px; border-radius:6px 6px 0 0;">
+        ${itemsHeaderCells}
       </div>
       ${itemsRowsHtml}
     </div>
 
-    <div style="display:flex; justify-content:flex-end;">
-      <div class="ui" style="width:300px; font-size:13px;">
-        <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>${escHtml(t('invoiceSubtotalLabel'))}</span><span>$${subtotal.toFixed(2)}</span></div>
-        <div style="display:flex; justify-content:space-between; padding:6px 0; color:#B5432E;"><span>${escHtml(t('invoiceCreditLabel'))}</span><span>-$${credit.toFixed(2)}</span></div>
-        <div style="display:flex; justify-content:space-between; align-items:center; background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 14px; margin-top:8px; font-weight:700; font-size:15px;"><span>${escHtml(t('invoiceTotalDueLabel')).toUpperCase()}</span><span>$${totalDue.toFixed(2)}</span></div>
-      </div>
+    <div style="display:flex; justify-content:${isAdditionalWork ? 'stretch' : 'flex-end'};">
+      ${totalsBlockHtml}
     </div>
     ${validityRow}
 
     ${noteBox}
+
+    ${totalDueAmountLineHtml}
 
     <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:16px; gap:24px;">
       <div style="flex-grow:1;"><div style="border-bottom:1px solid #241F1A; height:36px;"></div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">Customer Approval</div></div>
