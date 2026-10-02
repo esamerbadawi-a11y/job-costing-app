@@ -4515,15 +4515,11 @@
         return { dataUrl: canvas.toDataURL('image/png'), aspect: w / h };
     }
 
-    async function downloadClientInvoicePDF(jobId) {
-        const job = savedJobs.find(j => j.id === jobId);
-        if (!job) return;
-        if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('p', 'mm', 'a4');
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const pageHeight = doc.internal.pageSize.getHeight();
-
+    // Draws the whole invoice into a given jsPDF doc and returns the Y position right after the
+    // last thing drawn. Used twice: once on a tall scratch page just to measure how much content
+    // there actually is, then again on a doc sized to exactly fit that — so a short invoice gets
+    // a short page instead of a mostly-empty full A4 sheet.
+    async function drawInvoiceContent(doc, job, pageWidth, pageHeight) {
         // Faint logo watermark, centered on the page — drawn FIRST so every line of text and
         // every table drawn after it lands visually on top of it.
         if (companyProfile.logo) {
@@ -4552,15 +4548,13 @@
             }
         };
 
-        // ---- Header: logo + company identity (left), "INVOICE" + date/number (right) ----
+        // ---- Header: logo + company name + address (left), "INVOICE" + date/number (right) ----
+        // Phone/email/website live in the footer instead — see below.
         if (companyProfile.logo) { try { doc.addImage(companyProfile.logo, 'PNG', 14, 10, 20, 20); } catch (e) {} }
         const textX = companyProfile.logo ? 38 : 14;
-        drawAutoText(companyProfile.name || 'AHA Handyman Approach', textX, 18, 14, true);
+        drawAutoText(companyProfile.name || 'Affordable Handyman Approach', textX, 18, 14, true);
         let infoY = 24;
         if (companyProfile.address) { drawAutoText(companyProfile.address, textX, infoY, 9, false); infoY += 5; }
-        const contactLine = [...(companyProfile.phones || []), companyProfile.email].filter(Boolean).join('   |   ');
-        if (contactLine) { drawAutoText(contactLine, textX, infoY, 9, false); infoY += 5; }
-        if (companyProfile.website) { drawAutoText(companyProfile.website, textX, infoY, 9, false); infoY += 5; }
 
         drawAutoText('INVOICE', pageWidth - 14, 18, 16, true, 'right');
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
@@ -4597,8 +4591,41 @@
             }
         });
 
+        y = doc.lastAutoTable.finalY + 14;
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(140, 140, 140);
-        doc.text('Thank you for your business!', 14, doc.internal.pageSize.getHeight() - 15);
+        doc.text('Thank you for your business!', pageWidth / 2, y, { align: 'center' });
+        y += 10;
+
+        // ---- Footer: contact info, right after the content — not pinned to a fixed page
+        // bottom, which is what let a short invoice leave half an empty page below it. ----
+        const footerLine = [...(companyProfile.phones || []), companyProfile.email].filter(Boolean).join('  |  ');
+        const footerParts = [footerLine, companyProfile.website].filter(Boolean).join('   ');
+        if (footerParts) {
+            doc.setDrawColor(225, 225, 225); doc.line(14, y, pageWidth - 14, y);
+            y += 6;
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(120, 120, 120);
+            doc.text(footerParts, pageWidth / 2, y, { align: 'center' });
+            y += 6;
+        }
+
+        return y;
+    }
+
+    async function downloadClientInvoicePDF(jobId) {
+        const job = savedJobs.find(j => j.id === jobId);
+        if (!job) return;
+        if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
+        const { jsPDF } = window.jspdf;
+        const PAGE_WIDTH = 210; // mm, standard A4 width — only the height is ever trimmed
+
+        // Pass 1: draw on a generously tall scratch page purely to measure real content height.
+        const measureDoc = new jsPDF({ unit: 'mm', format: [PAGE_WIDTH, 400] });
+        const contentEndY = await drawInvoiceContent(measureDoc, job, PAGE_WIDTH, 400);
+
+        // Pass 2: the real, final page — exactly tall enough for that content plus a margin.
+        const finalHeight = Math.max(contentEndY + 10, 120); // 120mm floor so it never looks cramped
+        const doc = new jsPDF({ unit: 'mm', format: [PAGE_WIDTH, finalHeight] });
+        await drawInvoiceContent(doc, job, PAGE_WIDTH, finalHeight);
 
         window.open(doc.output('bloburl'), '_blank');
     }
