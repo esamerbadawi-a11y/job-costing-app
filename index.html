@@ -4553,10 +4553,20 @@
 
     async function printSelectedJobs() {
         if (selectedJobIds.size === 0) { alert(t('alertSelectOneToPrint')); return; }
+        // Opened synchronously, before the async PDF build below, so phones don't treat the
+        // eventual window.open() as popup-blocker-worthy (see downloadClientInvoicePDF for why).
+        const pdfWindow = window.open('', '_blank');
         const selectedJobs = savedJobs.filter(j => selectedJobIds.has(String(j.id)));
         const doc = await buildJobsPdfDoc(selectedJobs);
         doc.autoPrint();
-        window.open(doc.output('bloburl'), '_blank');
+        const url = doc.output('bloburl');
+        if (pdfWindow && !pdfWindow.closed) {
+            pdfWindow.location.href = url;
+        } else {
+            const a = document.createElement('a');
+            a.href = url; a.download = 'AHA_Jobs.pdf';
+            document.body.appendChild(a); a.click(); a.remove();
+        }
     }
 
     // A client-facing invoice — deliberately shows ONLY what the client should see: company
@@ -4703,6 +4713,17 @@
     async function downloadClientInvoicePDF(jobId) {
         const job = savedJobs.find(j => j.id === jobId);
         if (!job) return;
+
+        // Open the tab RIGHT NOW, synchronously, while this is still a direct response to the
+        // tap — mobile browsers (iOS Safari above all) only allow window.open() without it being
+        // silently blocked during the actual click; everything below this line is async (image
+        // loads, font readiness), so calling window.open() only once all that finishes — which is
+        // how this used to work — reads to the phone as an open with NO tap behind it at all, and
+        // it gets blocked with no error and no message, which is exactly what looked like "the
+        // button doesn't work" on a phone even though it worked fine on desktop.
+        const pdfWindow = window.open('', '_blank');
+        if (pdfWindow) { try { pdfWindow.document.title = t('invoiceTitle'); } catch (e) {} }
+
         if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
         const { jsPDF } = window.jspdf;
         const PAGE_WIDTH = 210; // mm, standard A4 width — only the height is ever trimmed
@@ -4716,7 +4737,17 @@
         const doc = new jsPDF({ unit: 'mm', format: [PAGE_WIDTH, finalHeight] });
         await drawInvoiceContent(doc, job, PAGE_WIDTH, finalHeight);
 
-        window.open(doc.output('bloburl'), '_blank');
+        const url = doc.output('bloburl');
+        if (pdfWindow && !pdfWindow.closed) {
+            pdfWindow.location.href = url;
+        } else {
+            // The tab was blocked (or the user's browser otherwise refused it) even on the
+            // synchronous open above — fall back to a plain download link so the invoice is
+            // still reachable instead of just silently going nowhere.
+            const a = document.createElement('a');
+            a.href = url; a.download = `invoice_${String(job.id).slice(-8)}.pdf`;
+            document.body.appendChild(a); a.click(); a.remove();
+        }
     }
 
     // Builds and opens a print-ready report for a single technician: every job they
