@@ -1005,6 +1005,7 @@
         <div class="ag-actions">
             <button id="aiSendWaBtn" class="success" onclick="sendAiReminder('whatsapp')" data-i18n="aiSendWhatsApp"></button>
             <button id="aiSendSmsBtn" class="secondary" onclick="sendAiReminder('sms')" data-i18n="aiSendSms"></button>
+            <button id="aiSendEmailBtn" class="secondary" onclick="sendAiReminder('email')" data-i18n="aiSendEmail"></button>
             <button id="aiCopyBtn" class="secondary" onclick="copyAiReminder()" data-i18n="aiCopyBtn"></button>
             <button id="aiTemplateBtn" class="warning" onclick="useTemplateReminder('aiTemplateNote')" data-i18n="aiUseTemplateBtn"></button>
             <button id="aiRetryBtn" class="secondary" onclick="regenerateAiReminder()" data-i18n="aiRetryBtn"></button>
@@ -1654,6 +1655,7 @@
         aiReady: { ar: 'الرسالة جاهزة. راجعها وعدّل فيها لو عايز قبل ما تبعتها.', en: 'Message ready. Review it and edit it if you like before sending.' },
         aiSendWhatsApp: { ar: '📱 واتساب', en: '📱 WhatsApp' },
         aiSendSms: { ar: '💬 رسالة SMS', en: '💬 SMS' },
+        aiSendEmail: { ar: '✉️ إيميل', en: '✉️ Email' },
         aiCopyBtn: { ar: '📋 نسخ', en: '📋 Copy' },
         aiCopied: { ar: 'اتنسخت الرسالة', en: 'Message copied' },
         aiCopyFailed: { ar: 'مقدرش ينسخ. اضغط مطولًا على النص وانسخه بإيدك.', en: 'Could not copy. Long-press the text and copy it yourself.' },
@@ -1661,6 +1663,10 @@
         aiRetryBtn: { ar: '🔄 جرّب الـ AI تاني', en: '🔄 Try the AI again' },
         aiNoKeyNote: { ar: 'مفيش مفتاح AI، فدي رسالة جاهزة تقدر تعدّل فيها.', en: 'There is no AI key, so this is a ready-made message you can edit.' },
         aiTemplateNote: { ar: 'رسالة جاهزة (من غير AI). عدّل فيها زي ما تحب.', en: 'Ready-made message (no AI). Edit it as you like.' },
+        alertJobHasNoEmail: { ar: 'الشغلانة دي معندهاش إيميل عميل محفوظ.', en: 'This job has no client email saved.' },
+        emailThankYouSubject: { ar: 'شكرًا لتعاملك مع AHA Handyman', en: 'Thank You - AHA Handyman' },
+        emailReminderSubject: { ar: 'تذكير بالدفع - AHA Handyman', en: 'Payment Reminder - AHA Handyman' },
+        invoiceSendMsgBtn: { ar: '✉️ ابعت رسالة للعميل', en: '✉️ Send Client Message' },
         aiTimeoutMsg: { ar: 'ما ردّش في الوقت المناسب. اتأكد من النت وجرّب تاني.', en: 'did not respond in time. Check your internet and try again.' },
         aiStageSdk: { ar: 'تحميل مكتبة الـ AI', en: 'Loading the AI library' },
         aiStageModel: { ar: 'رد الـ AI', en: 'AI response' },
@@ -3531,6 +3537,16 @@
         if (lang === 'ar') return `أهلاً، معاك AHA Handyman. تذكير ودّي بالمبلغ المتبقي ${amount}${what ? ' عن ' + what : ''}${daysOverdue ? `، وعدّى ${daysOverdue} يوم على موعد المتابعة` : ''}. ${long ? 'ياريت نرتب السداد في أقرب وقت.' : 'ياريت تبلغنا إمتى نقدر نستلمه.'} شكرًا لتعاونك.`;
         return `Hello, this is AHA Handyman. A friendly reminder about the remaining balance of ${amount}${what ? ' for ' + what : ''}${daysOverdue ? `, now ${daysOverdue} days past the follow-up date` : ''}. ${long ? 'Please arrange payment as soon as you can.' : 'Please let us know when we can expect it.'} Thank you!`;
     }
+    function buildThankYouPrompt(job, lang) {
+        if (lang === 'ar') return `اكتب رسالة شكر مهذبة ومختصرة (2-3 جمل) للعميل ${job.clientName}، بعد ما خلّص سداد فاتورة شغلانة "${job.clientDescription || 'الصيانة'}" بالكامل. اشكره على التعامل وثقته في AHA Handyman. من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`;
+        return `Write a polite, concise (2-3 sentence) thank-you message to client ${job.clientName}, now that they've fully paid for the "${job.clientDescription || 'service'}" job. Thank them for their business and trust in AHA Handyman. No preamble or headers, just the message.`;
+    }
+    // The same message without AI, so the thank-you note can always be sent.
+    function buildFallbackThankYou(job, lang) {
+        const what = (job.clientDescription || '').split('\n')[0].slice(0, 80).trim();
+        if (lang === 'ar') return `أهلاً ${job.clientName || ''}، معاك AHA Handyman. شكرًا جزيلاً على سداد فاتورة${what ? ' ' + what : ''} بالكامل، وعلى ثقتك فينا. تشرفنا بخدمتك! 🙏`;
+        return `Hello ${job.clientName || ''}, this is AHA Handyman. Thank you so much for fully settling the invoice${what ? ' for ' + what : ''}, and for trusting us with your project. It was a pleasure working with you! 🙏`;
+    }
 
     function setAiReminderStatus(kind, text) {
         const el = document.getElementById('aiReminderStatus');
@@ -3539,7 +3555,7 @@
     }
     function refreshAiReminderButtons(busy) {
         const has = !!document.getElementById('aiReminderText').value.trim();
-        ['aiSendWaBtn', 'aiSendSmsBtn', 'aiCopyBtn'].forEach(id => { document.getElementById(id).disabled = busy || !has; });
+        ['aiSendWaBtn', 'aiSendSmsBtn', 'aiSendEmailBtn', 'aiCopyBtn'].forEach(id => { document.getElementById(id).disabled = busy || !has; });
         document.getElementById('aiRetryBtn').disabled = !!busy;
     }
 
@@ -3552,9 +3568,26 @@
             const diff = Math.floor((new Date() - new Date(job.followUpDate + 'T00:00:00')) / 86400000);
             if (diff > 0) daysOverdue = diff;
         }
-        aiReminderCtx = { job, rem, daysOverdue, apiKey: getGeminiApiKey(), run: 0, mode: 'ai' };
+        aiReminderCtx = { job, rem, daysOverdue, apiKey: getGeminiApiKey(), run: 0, mode: 'ai', msgKind: 'reminder' };
         document.getElementById('aiReminderLang').value = currentLang === 'ar' ? 'ar' : 'en';
         document.getElementById('aiReminderJob').textContent = `${job.clientName || ''} — $${rem.toFixed(2)}`;
+        document.getElementById('aiReminderText').value = '';
+        document.getElementById('aiReminderModal').style.display = 'flex';
+        if (!aiReminderCtx.apiKey) { useTemplateReminder('aiNoKeyNote'); return; }   // no key: don't leave the user stuck
+        await regenerateAiReminder();
+    }
+
+    // Sends a thank-you (paid in full) or payment-reminder (balance left) message for the invoice
+    // currently open in the Invoice modal — same AI-reminder modal/infra, different tone + an Email option.
+    async function sendInvoiceClientMessage() {
+        if (!invoiceState) return;
+        const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
+        if (!job) return;
+        const totalDue = invoiceSubtotal() - invoiceCreditsTotal();
+        const isPaid = totalDue <= 0;
+        aiReminderCtx = { job, rem: totalDue, daysOverdue: null, apiKey: getGeminiApiKey(), run: 0, mode: 'ai', msgKind: isPaid ? 'thankyou' : 'reminder' };
+        document.getElementById('aiReminderLang').value = currentLang === 'ar' ? 'ar' : 'en';
+        document.getElementById('aiReminderJob').textContent = `${job.clientName || ''} — $${totalDue.toFixed(2)}`;
         document.getElementById('aiReminderText').value = '';
         document.getElementById('aiReminderModal').style.display = 'flex';
         if (!aiReminderCtx.apiKey) { useTemplateReminder('aiNoKeyNote'); return; }   // no key: don't leave the user stuck
@@ -3570,7 +3603,9 @@
         setAiReminderStatus('busy', t('aiWriting'));
         refreshAiReminderButtons(true);
         try {
-            const text = await aiGenerate(c.apiKey, buildReminderPrompt(c.job, c.rem, c.daysOverdue, document.getElementById('aiReminderLang').value));
+            const lang = document.getElementById('aiReminderLang').value;
+            const prompt = c.msgKind === 'thankyou' ? buildThankYouPrompt(c.job, lang) : buildReminderPrompt(c.job, c.rem, c.daysOverdue, lang);
+            const text = await aiGenerate(c.apiKey, prompt);
             if (myRun !== c.run || aiReminderCtx !== c) return;   // closed, or a newer request took over
             document.getElementById('aiReminderText').value = text;
             setAiReminderStatus('ok', t('aiReady'));
@@ -3587,7 +3622,8 @@
         const c = aiReminderCtx;
         if (!c) return;
         c.run++; c.mode = 'template';   // cancels any AI request still running
-        document.getElementById('aiReminderText').value = buildFallbackReminder(c.job, c.rem, c.daysOverdue, document.getElementById('aiReminderLang').value);
+        const lang = document.getElementById('aiReminderLang').value;
+        document.getElementById('aiReminderText').value = c.msgKind === 'thankyou' ? buildFallbackThankYou(c.job, lang) : buildFallbackReminder(c.job, c.rem, c.daysOverdue, lang);
         setAiReminderStatus('ok', t(noteKey));
         refreshAiReminderButtons(false);
     }
@@ -3603,6 +3639,12 @@
         const c = aiReminderCtx;
         const text = document.getElementById('aiReminderText').value.trim();
         if (!c || !text) return;
+        if (kind === 'email') {
+            if (!c.job.clientEmail) { alert(t('alertJobHasNoEmail')); return; }
+            const subject = encodeURIComponent(t(c.msgKind === 'thankyou' ? 'emailThankYouSubject' : 'emailReminderSubject'));
+            openExternal(`mailto:${c.job.clientEmail}?subject=${subject}&body=${encodeURIComponent(text)}`, false);
+            return;
+        }
         let digits = normalizePhone(c.job.clientPhone);
         if (digits.length === 10) digits = '1' + digits;   // US number typed without the country code
         const enc = encodeURIComponent(text);
@@ -5269,6 +5311,7 @@
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button type="button" onclick="saveCurrentInvoice()" style="padding:10px 20px; font-size:0.9rem; background:#38bdf8; color:#0a0e17; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoiceSaveBtn')}</button>
                 <button type="button" onclick="printInvoice()" style="padding:10px 20px; font-size:0.9rem; background:#2C6B45; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoicePrintBtn')}</button>
+                <button type="button" onclick="sendInvoiceClientMessage()" style="padding:10px 20px; font-size:0.9rem; background:#7c3aed; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoiceSendMsgBtn')}</button>
             </div>
         `;
     }
