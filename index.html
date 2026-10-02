@@ -916,6 +916,10 @@
             <input type="text" id="companyProfileName">
         </div>
         <div class="form-group">
+            <label data-i18n="lblCompanyTagline"></label>
+            <input type="text" id="companyProfileTagline" data-i18n-ph="phCompanyTagline">
+        </div>
+        <div class="form-group">
             <label data-i18n="lblCompanyAddress"></label>
             <input type="text" id="companyProfileAddress">
         </div>
@@ -1966,7 +1970,7 @@
     // The company's own identity — name, logo and contact info — used to put a real header
     // on client-facing invoices/reports instead of generic text. One shared record, synced
     // the same way as everything else, so either partner can edit it.
-    let companyProfile = { name: '', logo: '', address: '', phones: [], email: '', taxId: '', website: '' };
+    let companyProfile = { name: '', logo: '', tagline: '', address: '', phones: [], email: '', taxId: '', website: '' };
     let companyProfileLoaded = false; // true once the first Firestore snapshot of it has arrived
     let companyProfilePhonesWorking = []; // the phone-number rows currently shown in the open form
 
@@ -2063,7 +2067,7 @@
             // form is auto-refreshed only on that FIRST arrival — never again afterwards, so a
             // partner's edit elsewhere can't silently wipe out text you're still typing.
             const wasLoaded = companyProfileLoaded;
-            companyProfile = doc.exists ? Object.assign({ name: '', logo: '', address: '', phones: [], email: '', taxId: '', website: '' }, doc.data()) : companyProfile;
+            companyProfile = doc.exists ? Object.assign({ name: '', logo: '', tagline: '', address: '', phones: [], email: '', taxId: '', website: '' }, doc.data()) : companyProfile;
             if (!Array.isArray(companyProfile.phones)) companyProfile.phones = companyProfile.phone ? [companyProfile.phone] : [];
             companyProfileLoaded = true;
             if (!wasLoaded && document.getElementById('companyProfileModal').style.display !== 'none') safeCall(renderCompanyProfileForm);
@@ -4610,13 +4614,14 @@
     // there actually is, then again on a doc sized to exactly fit that — so a short invoice gets
     // a short page instead of a mostly-empty full A4 sheet.
     async function drawInvoiceContent(doc, job, pageWidth, pageHeight) {
-        // Faint logo watermark, centered on the page — drawn FIRST so every line of text and
+        // Logo watermark, centered on the page — bigger and more visible than a typical faint
+        // letterhead mark (per the reference design), drawn FIRST so every line of text and
         // every table drawn after it lands visually on top of it.
         if (companyProfile.logo) {
             try {
-                const wm = await makeWatermarkImage(companyProfile.logo, 0.08);
-                let wmH = 150, wmW = wmH * wm.aspect;
-                if (wmW > pageWidth - 20) { wmW = pageWidth - 20; wmH = wmW / wm.aspect; }
+                const wm = await makeWatermarkImage(companyProfile.logo, 0.16);
+                let wmH = 190, wmW = wmH * wm.aspect;
+                if (wmW > pageWidth - 10) { wmW = pageWidth - 10; wmH = wmW / wm.aspect; }
                 doc.addImage(wm.dataUrl, 'PNG', (pageWidth - wmW) / 2, (pageHeight - wmH) / 2, wmW, wmH);
             } catch (e) {}
         }
@@ -4657,22 +4662,24 @@
                 // logo stretched into a 20x20 box is what looked "skewed" on the printed invoice.
                 const logoImg = await loadImageEl(companyProfile.logo);
                 const lw = logoImg.naturalWidth || logoImg.width || 1, lh = logoImg.naturalHeight || logoImg.height || 1;
-                const maxDim = 20;
+                const maxDim = 26;
                 if (lw >= lh) { logoW = maxDim; logoH = maxDim * (lh / lw); }
                 else { logoH = maxDim; logoW = maxDim * (lw / lh); }
                 doc.addImage(companyProfile.logo, 'PNG', 14, 10, logoW, logoH);
             } catch (e) {}
         }
-        const textX = companyProfile.logo ? 38 : 14;
-        drawAutoText(companyProfile.name || 'Affordable Handyman Approach', textX, 18, 14, true);
-        let infoY = 24;
+        const textX = companyProfile.logo ? 14 + logoW + 6 : 14;
+        drawAutoText(companyProfile.name || 'Affordable Handyman Approach', textX, 20, 15, true);
+        let infoY = 27;
         if (companyProfile.address) { drawAutoText(companyProfile.address, textX, infoY, 9, false); infoY += 5; }
 
-        drawAutoText(t('invoiceTitle'), pageWidth - 14, 18, 16, true, 'right');
-        drawAutoText(`${t('invoiceDateLbl')}: ${isoDate(new Date())}`, pageWidth - 14, 24, 9, false, 'right');
-        drawAutoText(`${t('invoiceNumberLbl')}: ${String(job.id).slice(-8)}`, pageWidth - 14, 29, 9, false, 'right');
+        // "INVOICE" as its own large, bold title (not squeezed next to the date/number), matching
+        // the reference design — the date and invoice number sit smaller underneath it.
+        drawAutoText(t('invoiceTitle'), pageWidth - 14, 20, 24, true, 'right');
+        drawAutoText(`${t('invoiceDateLbl')}: ${isoDate(new Date())}`, pageWidth - 14, 28, 9, false, 'right');
+        drawAutoText(`${t('invoiceNumberLbl')}: ${String(job.id).slice(-8)}`, pageWidth - 14, 33, 9, false, 'right');
 
-        let y = Math.max(infoY, 32) + 8;
+        let y = Math.max(infoY, 10 + logoH, 38) + 8;
         doc.setDrawColor(210, 210, 210); doc.line(14, y, pageWidth - 14, y);
         y += 10;
 
@@ -5077,6 +5084,7 @@
     function closeCompanyProfileModal() { document.getElementById('companyProfileModal').style.display = 'none'; }
     function renderCompanyProfileForm() {
         document.getElementById('companyProfileName').value = companyProfile.name || '';
+        document.getElementById('companyProfileTagline').value = companyProfile.tagline || '';
         document.getElementById('companyProfileAddress').value = companyProfile.address || '';
         document.getElementById('companyProfileEmail').value = companyProfile.email || '';
         document.getElementById('companyProfileTaxId').value = companyProfile.taxId || '';
