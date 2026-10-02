@@ -1410,6 +1410,8 @@
         invoiceClientLabel: { ar: 'العميل:', en: 'Client:' },
         invoiceSaveBtn: { ar: '💾 حفظ الفاتورة', en: '💾 Save Invoice' },
         invoiceSavedToast: { ar: 'اتحفظت الفاتورة', en: 'Invoice saved' },
+        alertInvoiceSaveNotConfirmed: { ar: 'الحفظ ظهر إنه نجح محليًا، بس لما اتأكدت من السيرفر الفاتورة مش موجودة فعليًا. جرب تحفظ تاني وانت متأكد إن النت شغال كويس.', en: "The save looked successful locally, but checking the server shows the invoice isn't actually there. Please try saving again with a stable internet connection." },
+        invoiceSavedOfflineToast: { ar: 'اتحفظت محليًا، وهتتزامن مع السيرفر أول ما النت يرجع.', en: 'Saved locally — it will sync to the server once you’re back online.' },
         invoiceSavedInvoicesTitle: { ar: 'الفواتير المحفوظة', en: 'Saved Invoices' },
         invoiceNoSavedInvoices: { ar: 'لسه مفيش فواتير محفوظة لشغلانة', en: 'No saved invoices yet' },
         invoiceLoadBtn: { ar: 'فتح', en: 'Load' },
@@ -5016,17 +5018,39 @@
         const snapshot = JSON.parse(JSON.stringify(invoiceState));
         delete snapshot.jobId; delete snapshot.savedId;
         const existingIdx = invoiceState.savedId ? job.savedInvoices.findIndex(inv => inv.id === invoiceState.savedId) : -1;
+        let targetId;
         if (existingIdx !== -1) {
+            targetId = job.savedInvoices[existingIdx].id;
             job.savedInvoices[existingIdx] = { ...job.savedInvoices[existingIdx], ...snapshot, savedAt: new Date().toISOString() };
         } else {
-            const newId = newLedgerId();
-            invoiceState.savedId = newId;
-            job.savedInvoices.push({ ...snapshot, id: newId, savedAt: new Date().toISOString() });
+            targetId = newLedgerId();
+            invoiceState.savedId = targetId;
+            job.savedInvoices.push({ ...snapshot, id: targetId, savedAt: new Date().toISOString() });
         }
         job.lastEditedBy = currentUserEmail;
         const activityText = `${t('activityInvoiceSaved')} ${invoiceState.invoiceNo}`;
         const ok = await persistJobChange(idx, backup, activityText);
-        if (ok) { showToast(t('invoiceSavedToast')); renderInvoiceModalContent(); }
+        if (!ok) return;   // persistJobChange already rolled back and alerted on failure
+
+        // A successful local write can still vanish if it never actually reached Firestore's
+        // server (dropped connection, backgrounded tab, etc.) before the user navigated away —
+        // so the "saved" toast is only shown once a direct server read confirms the invoice is
+        // really there, instead of trusting the local/cached write blindly.
+        try {
+            const serverDoc = await JOBS_DOC.get({ source: 'server' });
+            const serverJobs = (serverDoc.exists && serverDoc.data().jobs) ? serverDoc.data().jobs : [];
+            const serverJob = serverJobs.find(j => String(j.id) === String(invoiceState.jobId));
+            const confirmed = serverJob && (serverJob.savedInvoices || []).some(inv => inv.id === targetId);
+            if (!confirmed) { alert(t('alertInvoiceSaveNotConfirmed')); return; }
+        } catch (e) {
+            // Couldn't reach the server to verify (offline, etc.) — the write is still queued
+            // locally and will sync once back online, so say that plainly instead of claiming success.
+            showToast(t('invoiceSavedOfflineToast'));
+            renderInvoiceModalContent();
+            return;
+        }
+        showToast(t('invoiceSavedToast'));
+        renderInvoiceModalContent();
     }
 
     function loadSavedInvoice(savedId) {
