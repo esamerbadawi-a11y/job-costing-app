@@ -2965,6 +2965,7 @@
             `;
             container.appendChild(card);
         });
+        updateSplitRatioTotal();
     }
 
     // ---------- Weekly amounts typed on the job (per technician) ----------
@@ -3037,7 +3038,7 @@
     // exports, and the profit split) — NOT inside the wage formula itself, so one technician's personal
     // material purchase never changes what another technician earns on a percentage of the job.
     function calculateJobTechDuesWithReimbursement(tech, amountReceived, materialCost) {
-        return round2(calculateJobTechDues(tech, amountReceived, materialCost) + techReimbTotal(tech));
+        return round2(effectiveJobTechDue(tech, amountReceived, materialCost) + techReimbTotal(tech));
     }
     // The distinct "$100 + $50 materials = $150" line shown on the technician's own card.
     function techDuesLineHtml(dues, reimb) {
@@ -3114,6 +3115,23 @@
         if (tech.type === 'نسبة مخصصة') return base > 0 ? base * (customPercent / 100) : 0;
         if (tech.type === 'مبلغ ثابت') return rate;
         return rate * days;
+    }
+
+    // What a technician is ACTUALLY owed on this job — used everywhere real money is totaled
+    // (the saved profit split, the live split preview, job quick-details, the jobs table,
+    // CSV export). A day-by-day allocation (📅) or a typed week wins over the raw rate×days
+    // the same way the technician's own "Due" card already shows it — otherwise a tech paid
+    // via daily allocation (the system we use when he's on more than one job the same day)
+    // would look like he earned $0, and the job's net/profit-split would be overstated by
+    // his whole wage. calculateJobTechDues() itself stays untouched: it's still needed as the
+    // plain rate×days BASELINE that daily/weekly overrides are compared against elsewhere.
+    function effectiveJobTechDue(tech, amountReceived, materialCost) {
+        if (isPercentType(tech.type)) return calculateJobTechDues(tech, amountReceived, materialCost);
+        const dailyEntries = (tech.dailyAlloc || []).filter(e => e && e.date);
+        if (dailyEntries.length > 0) return round2(dailyEntries.reduce((s, e) => s + parseVal(e.amount), 0));
+        const weekEntries = (tech.weeks || []).filter(w => w && w.weekStart);
+        if (weekEntries.length > 0) return round2(weekEntries.reduce((s, w) => s + parseVal(w.amount), 0));
+        return calculateJobTechDues(tech, amountReceived, materialCost);
     }
 
     // Counts how many of this job's scheduled days actually included this technician,
@@ -3238,6 +3256,7 @@
         if (dsum) dsum.innerHTML = techDailySummaryHtml(tech, dues);
         const netBox = document.getElementById('jobPeriodNetBox');
         if (netBox) netBox.innerHTML = jobPeriodNetHtml();
+        updateSplitRatioTotal();
     }
 
     function calculate() { technicians.forEach((t, i) => updateTechCardDues(i)); }
@@ -3955,7 +3974,7 @@
         const received = parseVal(document.getElementById('amountReceived').value);
         const materials = parseVal(document.getElementById('materialCost').value);
         let techDues = 0;
-        technicians.forEach(tech => { techDues += calculateTechDues(tech) + techReimbTotal(tech); });
+        technicians.forEach(tech => { techDues += effectiveJobTechDue(tech, received, materials) + techReimbTotal(tech); });
         return round2(received - materials - techDues);
     }
     function updateSplitRatioTotal() {
@@ -4042,7 +4061,7 @@
             lines.push('  ' + t('noTechsAdded'));
         } else {
             job.technicians.forEach(tech => {
-                const wage = calculateJobTechDues(tech, job.amountReceived, job.materialCost);
+                const wage = effectiveJobTechDue(tech, job.amountReceived, job.materialCost);
                 const reimb = techReimbTotal(tech);
                 lines.push(`  ${tech.name || '?'} — ${t('qdDues')} $${wage.toFixed(2)}` + (reimb > 0.005 ? ` + $${reimb.toFixed(2)} ${t('materialsShort')} = $${round2(wage + reimb).toFixed(2)}` : ''));
                 (tech.weeks || []).slice().sort((a, b) => a.weekStart.localeCompare(b.weekStart)).forEach(w => lines.push(`      📆 ${w.weekStart} → ${addDaysISO(w.weekStart, 6)}: $${parseVal(w.amount).toFixed(2)}`));
@@ -4141,7 +4160,7 @@
         jobsToRender.forEach(job => {
             let techDetailsText = '';
             (job.technicians || []).forEach(tech => {
-                const wage = calculateJobTechDues(tech, job.amountReceived, job.materialCost);
+                const wage = effectiveJobTechDue(tech, job.amountReceived, job.materialCost);
                 const reimb = techReimbTotal(tech);
                 const totalDue = reimb > 0.005 ? ` $${round2(wage + reimb).toFixed(2)} ($${wage.toFixed(2)} + $${reimb.toFixed(2)} ${t('materialsShort')})` : ` $${wage.toFixed(2)}`;
                 techDetailsText += `• ${tech.name || 'Tech'} (${techTypeLabel(tech.type)}): ${t('techLineDue')}${totalDue}<br>`;
@@ -4762,7 +4781,7 @@
         savedJobs.forEach((job, index) => {
             const { net: netProfit, shareS, shareM, companyNet, ratio: csvRatio } = jobNet(job);
             const techSummary = (job.technicians || []).map(tc => {
-                const wage = calculateJobTechDues(tc, job.amountReceived, job.materialCost);
+                const wage = effectiveJobTechDue(tc, job.amountReceived, job.materialCost);
                 const reimb = techReimbTotal(tc);
                 return `${tc.name || 'Tech'}: $${round2(wage + reimb).toFixed(2)}` + (reimb > 0.005 ? ` (incl. $${reimb.toFixed(2)} materials)` : '');
             }).join(' | ');
