@@ -255,6 +255,7 @@
                 <div id="userMenuDropdown" style="display:none; position:absolute; top:110%; inset-inline-start:0; background:var(--card-dark); border:1px solid var(--border-color); border-radius:10px; box-shadow:0 10px 25px rgba(0,0,0,0.4); min-width:180px; z-index:1000; overflow:hidden;">
                     <button class="secondary" onclick="toggleLanguage()" id="langToggleBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;">عربي 🌐</button>
                     <button class="secondary" onclick="toggleTheme()" id="themeToggleBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
+                    <button class="secondary" onclick="toggleUserMenu(); openCompanyProfileModal();" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;" data-i18n="companyProfileBtn"></button>
                     <button class="secondary" onclick="resetGeminiApiKey()" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;" data-i18n="resetAiKeyBtn"></button>
                     <button class="danger" onclick="doLogout()" data-i18n="logoutBtn" style="width:100%; border-radius:0; text-align:start; padding:10px 14px;"></button>
                     <div style="padding:8px 14px; font-size:0.7rem; color:var(--text-muted); text-align:start; border-top:1px solid var(--border-color);"><span data-i18n="appVersionLabel"></span> <span id="appVersionValue" dir="ltr"></span></div>
@@ -876,6 +877,62 @@
     </div>
 </div>
 
+<div id="companyProfileModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:90%; max-width:520px; max-height:85vh; overflow-y:auto; padding:25px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.2rem;">🏢 <span data-i18n="companyProfileTitle"></span></h2>
+            <button class="danger" onclick="closeCompanyProfileModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+        <div class="ag-meta" style="margin-bottom:14px;" data-i18n="companyProfileHint"></div>
+
+        <div class="form-group">
+            <label data-i18n="lblCompanyLogo"></label>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div id="companyLogoPreviewWrap" style="width:72px; height:72px; border:1px dashed var(--border-color); border-radius:10px; display:flex; align-items:center; justify-content:center; overflow:hidden; background:var(--panel-bg); flex-shrink:0;">
+                    <img id="companyLogoPreview" src="" style="display:none; max-width:100%; max-height:100%; object-fit:contain;">
+                    <span id="companyLogoPlaceholder" style="font-size:1.6rem;">🏢</span>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                    <button type="button" class="secondary" onclick="document.getElementById('companyLogoInput').click()" style="padding:6px 12px; font-size:0.78rem;" data-i18n="uploadLogoBtn"></button>
+                    <button type="button" class="danger" id="removeLogoBtnEl" onclick="removeCompanyLogo()" style="display:none; padding:6px 12px; font-size:0.78rem;" data-i18n="removeLogoBtn"></button>
+                </div>
+                <input type="file" id="companyLogoInput" accept="image/*" style="display:none;" onchange="onCompanyLogoSelected(event)">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label data-i18n="lblCompanyName"></label>
+            <input type="text" id="companyProfileName">
+        </div>
+        <div class="form-group">
+            <label data-i18n="lblCompanyAddress"></label>
+            <input type="text" id="companyProfileAddress">
+        </div>
+        <div class="grid-2">
+            <div class="form-group">
+                <label data-i18n="lblCompanyPhone"></label>
+                <input type="text" id="companyProfilePhone">
+            </div>
+            <div class="form-group">
+                <label data-i18n="lblCompanyEmail"></label>
+                <input type="email" id="companyProfileEmail">
+            </div>
+        </div>
+        <div class="grid-2">
+            <div class="form-group">
+                <label data-i18n="lblCompanyTaxId"></label>
+                <input type="text" id="companyProfileTaxId">
+            </div>
+            <div class="form-group">
+                <label data-i18n="lblCompanyWebsite"></label>
+                <input type="text" id="companyProfileWebsite">
+            </div>
+        </div>
+
+        <button class="success" onclick="saveCompanyProfile()" style="width:100%; margin-top:8px;" data-i18n="saveCompanyProfileBtn"></button>
+    </div>
+</div>
+
 <div id="sendScheduleModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center;">
     <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:85%; max-width:380px; padding:20px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
         <h3 style="color:#38bdf8; margin:0 0 14px; font-size:1rem;" data-i18n="sendScheduleModalTitle"></h3>
@@ -1131,6 +1188,22 @@
         noExtraPartnersYet: { ar: 'لسه مفيش أي شريك إضافي مضاف في أي شغلانة.', en: 'No extra partners added to any job yet.' },
         companyAccountBtn: { ar: '🏢 حساب الشركة', en: '🏢 Company Account' },
         companyAccountTitle: { ar: 'حساب الشركة — الدخل والمصروفات العامة', en: 'Company Account — Income vs General Expenses' },
+        companyProfileBtn: { ar: '🏢 بيانات الشركة', en: '🏢 Company Profile' },
+        companyProfileTitle: { ar: 'بيانات الشركة', en: 'Company Profile' },
+        companyProfileHint: { ar: 'البيانات دي هتظهر على الفواتير والتقارير اللي بتطلع للعميل.', en: 'This info will appear on invoices and reports shown to clients.' },
+        lblCompanyLogo: { ar: 'لوجو الشركة', en: 'Company Logo' },
+        lblCompanyName: { ar: 'اسم الشركة', en: 'Company Name' },
+        lblCompanyAddress: { ar: 'عنوان الشركة', en: 'Company Address' },
+        lblCompanyPhone: { ar: 'تليفون الشركة', en: 'Company Phone' },
+        lblCompanyEmail: { ar: 'إيميل الشركة', en: 'Company Email' },
+        lblCompanyTaxId: { ar: 'رقم ضريبي/ترخيص (اختياري)', en: 'Tax ID / License # (optional)' },
+        lblCompanyWebsite: { ar: 'الموقع الإلكتروني (اختياري)', en: 'Website (optional)' },
+        uploadLogoBtn: { ar: '📤 رفع لوجو', en: '📤 Upload Logo' },
+        removeLogoBtn: { ar: '🗑 شيل اللوجو', en: '🗑 Remove Logo' },
+        saveCompanyProfileBtn: { ar: '💾 حفظ بيانات الشركة', en: '💾 Save Company Profile' },
+        alertCompanyProfileSaved: { ar: 'تم حفظ بيانات الشركة بنجاح.', en: 'Company profile saved successfully.' },
+        alertSaveFailed: { ar: 'حصل خطأ أثناء الحفظ، حاول تاني.', en: 'Something went wrong while saving, please try again.' },
+        invoiceBtn: { ar: 'فاتورة للعميل', en: 'Client Invoice' },
         addCompanyExpenseTitle: { ar: 'تسجيل مصروف عام', en: 'Record a General Expense' },
         companyExpenseNotePh: { ar: 'ملاحظة (اختياري)', en: 'Note (optional)' },
         partnerAccountTitle: { ar: 'حساب S و M — المستحق والمسحوب', en: 'S & M Account — Earned vs Withdrawn' },
@@ -1747,9 +1820,11 @@
     const COMPANY_EXPENSES_DOC = db.collection('jobCostingApp').doc('companyExpenses');
     const CONTACTS_DOC = db.collection('jobCostingApp').doc('contacts');
     const TECH_PAYMENTS_DOC = db.collection('jobCostingApp').doc('techPayments');
+    const COMPANY_PROFILE_DOC = db.collection('jobCostingApp').doc('companyProfile');
 
     async function saveSavedJobsData(){ await JOBS_DOC.set({ jobs: savedJobs }); }
     async function saveTechPhonesData(){ await TECHS_DOC.set({ phones: technicianPhones }); }
+    async function saveCompanyProfileData(){ await COMPANY_PROFILE_DOC.set(companyProfile); }
 
     let currentUserEmail = null;
     let editingApptId = '';
@@ -1854,6 +1929,10 @@
     let techPayments = [];
     let editingContactId = '';
     let onlyShowDebt = false;
+    // The company's own identity — name, logo and contact info — used to put a real header
+    // on client-facing invoices/reports instead of generic text. One shared record, synced
+    // the same way as everything else, so either partner can edit it.
+    let companyProfile = { name: '', logo: '', address: '', phone: '', email: '', taxId: '', website: '' };
 
     const EXCLUSIVE_PERCENT_TYPES = ['فني لوحده (%60)', 'نسبة (50%)'];
     const EXPENSE_CATEGORIES = ['بنزين / مواصلات', 'أكل ومشروبات', 'إيجار موقع/مكتب الشركة', 'صيانة عربية', 'أدوات ومعدات', 'تراخيص ورسوم', 'تأمين', 'دعاية وإعلان', 'أخرى'];
@@ -1938,6 +2017,11 @@
             techPayments = (doc.exists && doc.data().entries) ? doc.data().entries : [];
             if (document.getElementById('techGuideModal').style.display !== 'none') safeCall(renderTechGuideContent);
         }, err => console.error('Firestore tech payments sync error:', err));
+
+        COMPANY_PROFILE_DOC.onSnapshot(doc => {
+            companyProfile = doc.exists ? Object.assign({ name: '', logo: '', address: '', phone: '', email: '', taxId: '', website: '' }, doc.data()) : companyProfile;
+            if (document.getElementById('companyProfileModal').style.display !== 'none') safeCall(renderCompanyProfileForm);
+        }, err => console.error('Firestore company profile sync error:', err));
 
         safeCall(updateUndoButtonUI);
         safeCall(() => switchScreen('log'));
@@ -2095,7 +2179,7 @@
     // (e.g. one opened without the other being closed first), the later one in the page would sit on
     // top and silently swallow every tap meant for the one underneath — including a job's name link.
     // Every one of them closes all the others first, so that can never happen.
-    const TOP_LEVEL_MODAL_IDS = ['techGuideModal', 'expenseReportModal', 'activityLogModal', 'partnerAccountModal', 'partnerReportModal', 'companyAccountModal', 'agendaModal', 'globalSearchModal'];
+    const TOP_LEVEL_MODAL_IDS = ['techGuideModal', 'expenseReportModal', 'activityLogModal', 'partnerAccountModal', 'partnerReportModal', 'companyAccountModal', 'companyProfileModal', 'agendaModal', 'globalSearchModal'];
     function closeOtherTopModals(exceptId) {
         TOP_LEVEL_MODAL_IDS.forEach(id => { if (id !== exceptId) { const el = document.getElementById(id); if (el) el.style.display = 'none'; } });
     }
@@ -4074,6 +4158,7 @@
                 <td data-label="${t('thCompany')}" style="color:#fbbf24;">$${companyNet.toFixed(2)}</td>
                 <td data-label="${t('thActions')}" class="no-print">
                     <button class="secondary" onclick="showJobQuickDetails('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#7c3aed;">ℹ️</button>
+                    <button class="secondary" onclick="downloadClientInvoicePDF('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#0ea5e9;" title="${t('invoiceBtn')}">🧾</button>
                     <button class="secondary" onclick="editJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem;">${t('editBtn')}</button>
                     <button class="secondary" onclick="duplicateJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#0284c7;">${t('duplicateBtn')}</button>
                     <button class="danger" onclick="deleteJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem;">${t('deleteBtn')}</button>
@@ -4381,6 +4466,86 @@
         window.open(doc.output('bloburl'), '_blank');
     }
 
+    // A client-facing invoice — deliberately shows ONLY what the client should see: company
+    // identity, the client's own name/job-site address, and the three headline numbers (total,
+    // paid, balance due). It never includes technician pay, material cost, the profit split, or
+    // internal job notes — all of that stays in the internal reports (ℹ️, Partner Report, etc.).
+    async function downloadClientInvoicePDF(jobId) {
+        const job = savedJobs.find(j => j.id === jobId);
+        if (!job) return;
+        if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+        const pageWidth = doc.internal.pageSize.getWidth();
+
+        // Arabic text has no glyphs in jsPDF's built-in fonts, so (like every other PDF export
+        // in this app) Arabic strings are rendered to a canvas image and placed as an image.
+        const drawAutoText = (text, x, yPos, size, bold, align) => {
+            align = align || 'left';
+            if (containsArabic(text)) {
+                const img = textToImage(text || '');
+                const h = size * 0.5, w = h * img.aspect;
+                let drawX = x;
+                if (align === 'right') drawX = x - w;
+                else if (align === 'center') drawX = x - w / 2;
+                doc.addImage(img.dataUrl, 'PNG', drawX, yPos - h + 1, w, h);
+            } else {
+                doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(size);
+                doc.text(text || '', x, yPos, { align });
+            }
+        };
+
+        // ---- Header: logo + company identity (left), "INVOICE" + date/number (right) ----
+        if (companyProfile.logo) { try { doc.addImage(companyProfile.logo, 'PNG', 14, 10, 20, 20); } catch (e) {} }
+        const textX = companyProfile.logo ? 38 : 14;
+        drawAutoText(companyProfile.name || 'AHA Handyman Approach', textX, 18, 14, true);
+        let infoY = 24;
+        if (companyProfile.address) { drawAutoText(companyProfile.address, textX, infoY, 9, false); infoY += 5; }
+        const contactLine = [companyProfile.phone, companyProfile.email].filter(Boolean).join('   |   ');
+        if (contactLine) { drawAutoText(contactLine, textX, infoY, 9, false); infoY += 5; }
+        if (companyProfile.website) { drawAutoText(companyProfile.website, textX, infoY, 9, false); infoY += 5; }
+
+        drawAutoText('INVOICE', pageWidth - 14, 18, 16, true, 'right');
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+        doc.text(`Date: ${isoDate(new Date())}`, pageWidth - 14, 24, { align: 'right' });
+        doc.text(`Invoice #: ${String(job.id).slice(-8)}`, pageWidth - 14, 29, { align: 'right' });
+
+        let y = Math.max(infoY, 32) + 8;
+        doc.setDrawColor(210, 210, 210); doc.line(14, y, pageWidth - 14, y);
+        y += 10;
+
+        // ---- Bill To: client name + job site address only ----
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.text('Bill To:', 14, y);
+        y += 6;
+        drawAutoText(job.clientName || '', 14, y, 12, true); y += 6;
+        if (job.clientAddress) { drawAutoText(job.clientAddress, 14, y, 9, false); y += 5; }
+
+        // ---- The three numbers the client actually needs ----
+        const rev = parseVal(job.totalRevenue), rec = parseVal(job.amountReceived), rem = jobRemaining(job);
+        doc.autoTable({
+            startY: y + 8,
+            body: [
+                ['Total Amount', '$' + rev.toFixed(2)],
+                ['Amount Paid', '$' + rec.toFixed(2)],
+                ['Balance Due', '$' + rem.toFixed(2)],
+            ],
+            theme: 'plain',
+            styles: { fontSize: 11, cellPadding: 3 },
+            columnStyles: { 0: { fontStyle: 'bold' }, 1: { halign: 'right' } },
+            didParseCell: (d) => {
+                if (d.row.index === 2) {
+                    d.cell.styles.fontStyle = 'bold'; d.cell.styles.fontSize = 13;
+                    d.cell.styles.textColor = rem > 0.005 ? [220, 38, 38] : [5, 150, 105];
+                }
+            }
+        });
+
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(140, 140, 140);
+        doc.text('Thank you for your business!', 14, doc.internal.pageSize.getHeight() - 15);
+
+        window.open(doc.output('bloburl'), '_blank');
+    }
+
     // Builds and opens a print-ready report for a single technician: every job they
     // worked on, what they earned, what they were paid, and their running balance.
     async function printTechnicianReport(techName) {
@@ -4668,6 +4833,80 @@
         renderCompanyAccountContent();
     }
     function closeCompanyAccountModal() { document.getElementById('companyAccountModal').style.display = 'none'; }
+
+    // ---------- Company profile: name/logo/contact info shown on client-facing
+    // invoices and reports, instead of generic/blank headers. ----------
+    function openCompanyProfileModal() {
+        closeOtherTopModals('companyProfileModal');
+        document.getElementById('companyProfileModal').style.display = 'flex';
+        renderCompanyProfileForm();
+    }
+    function closeCompanyProfileModal() { document.getElementById('companyProfileModal').style.display = 'none'; }
+    function renderCompanyProfileForm() {
+        document.getElementById('companyProfileName').value = companyProfile.name || '';
+        document.getElementById('companyProfileAddress').value = companyProfile.address || '';
+        document.getElementById('companyProfilePhone').value = companyProfile.phone || '';
+        document.getElementById('companyProfileEmail').value = companyProfile.email || '';
+        document.getElementById('companyProfileTaxId').value = companyProfile.taxId || '';
+        document.getElementById('companyProfileWebsite').value = companyProfile.website || '';
+        const img = document.getElementById('companyLogoPreview');
+        const placeholder = document.getElementById('companyLogoPlaceholder');
+        const removeBtn = document.getElementById('removeLogoBtnEl');
+        if (companyProfile.logo) {
+            img.src = companyProfile.logo; img.style.display = 'block'; placeholder.style.display = 'none'; removeBtn.style.display = 'inline-block';
+        } else {
+            img.src = ''; img.style.display = 'none'; placeholder.style.display = 'block'; removeBtn.style.display = 'none';
+        }
+    }
+    // Logos keep their own compression step (separate from compressImageToBase64) so they stay
+    // PNG — a logo often has a transparent background, and converting to JPEG would flatten
+    // that to solid white.
+    function compressLogoToBase64(file, maxDim = 500) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const img = new Image();
+                img.onload = () => {
+                    let { width, height } = img;
+                    if (width > maxDim || height > maxDim) {
+                        if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+                        else { width = Math.round(width * maxDim / height); height = maxDim; }
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width; canvas.height = height;
+                    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/png'));
+                };
+                img.onerror = reject;
+                img.src = reader.result;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+    async function onCompanyLogoSelected(event) {
+        const file = event.target.files[0];
+        event.target.value = '';
+        if (!file) return;
+        try {
+            companyProfile.logo = await compressLogoToBase64(file);
+            renderCompanyProfileForm();
+        } catch (e) { alert(t('alertPhotoFailed')); }
+    }
+    function removeCompanyLogo() { companyProfile.logo = ''; renderCompanyProfileForm(); }
+    async function saveCompanyProfile() {
+        companyProfile.name = document.getElementById('companyProfileName').value.trim();
+        companyProfile.address = document.getElementById('companyProfileAddress').value.trim();
+        companyProfile.phone = document.getElementById('companyProfilePhone').value.trim();
+        companyProfile.email = document.getElementById('companyProfileEmail').value.trim();
+        companyProfile.taxId = document.getElementById('companyProfileTaxId').value.trim();
+        companyProfile.website = document.getElementById('companyProfileWebsite').value.trim();
+        try {
+            await saveCompanyProfileData();
+            alert(t('alertCompanyProfileSaved'));
+            closeCompanyProfileModal();
+        } catch (e) { alert(t('alertSaveFailed')); }
+    }
 
     async function saveCompanyExpense() {
         const category = document.getElementById('companyExpenseCategory').value;
