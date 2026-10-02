@@ -1835,6 +1835,15 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    // Lets the app show the LAST-KNOWN data instantly from a local on-device cache the moment
+    // the page opens, then quietly sync any real changes in the background — instead of every
+    // open/reopen staring at an empty screen until a fresh network round-trip for every single
+    // document finishes. Without this, "data takes a while to show up" after closing and
+    // reopening the app is expected behavior, not a bug: every reopen was a cold fetch over the
+    // network for everything, every time. Wrapped in a promise + catch because it can reject
+    // harmlessly (e.g. the browser has this app open in more than one tab at once, or an older
+    // browser doesn't support it) — in which case the app just falls back to its old behavior.
+    try { db.enablePersistence({ synchronizeTabs: true }).catch(err => console.warn('Firestore offline persistence not enabled:', err.code)); } catch (e) {}
     const auth = firebase.auth();
     const JOBS_DOC = db.collection('jobCostingApp').doc('savedJobs');
     const TECHS_DOC = db.collection('jobCostingApp').doc('technicianPhones');
