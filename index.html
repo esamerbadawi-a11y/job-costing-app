@@ -560,6 +560,17 @@
                     </div>
                 </div>
 
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label data-i18n="lblTenantName"></label>
+                        <input type="text" id="tenantName" data-i18n-ph="phTenantName">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="lblTenantPhone"></label>
+                        <input type="text" id="tenantPhone" placeholder="(555) 123-4567">
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label data-i18n="lblClientEmail"></label>
                     <input type="email" id="clientEmail" data-i18n-ph="apptEmailPh">
@@ -1357,6 +1368,9 @@
         lblClientName: { ar: 'اسم الشغلانة / العميل:', en: 'Job / Client Name:' },
         phClientName: { ar: 'أدخل اسم العميل أو المشروع', en: 'Enter client or project name' },
         lblPhone: { ar: 'رقم الهاتف:', en: 'Phone Number:' },
+        lblTenantName: { ar: 'اسم المستأجر/الساكن (اختياري):', en: 'Tenant/Occupant Name (optional):' },
+        phTenantName: { ar: 'لو العميل مش هو الساكن فعليًا في العنوان', en: "If the client isn't the one actually living at the address" },
+        lblTenantPhone: { ar: 'تلفون المستأجر/الساكن (اختياري):', en: 'Tenant/Occupant Phone (optional):' },
         lblClientEmail: { ar: 'إيميل العميل:', en: "Client's Email:" },
         lblStatus: { ar: 'حالة المشروع:', en: 'Project Status:' },
         statusInProgress: { ar: 'قيد التنفيذ (شغال)', en: 'In Progress' },
@@ -3868,6 +3882,8 @@
             id: editingId ? editingId : Date.now().toString() + Math.random().toString(36).substr(2, 5),
             clientName,
             clientPhone: document.getElementById('clientPhone').value.trim(),
+            tenantName: document.getElementById('tenantName').value.trim(),
+            tenantPhone: document.getElementById('tenantPhone').value.trim(),
             clientEmail: document.getElementById('clientEmail').value.trim(),
             jobStatus: document.getElementById('jobStatus').value,
             clientAddress: document.getElementById('clientAddress').value.trim(),
@@ -3933,6 +3949,8 @@
         document.getElementById('editingJobId').value = '';
         document.getElementById('clientName').value = '';
         document.getElementById('clientPhone').value = '';
+        document.getElementById('tenantName').value = '';
+        document.getElementById('tenantPhone').value = '';
         document.getElementById('clientEmail').value = '';
         document.getElementById('jobStatus').value = 'شغال';
         document.getElementById('clientAddress').value = '';
@@ -4046,6 +4064,7 @@
         let lines = [];
         lines.push(job.clientName || '');
         if (job.clientAddress) lines.push('📍 ' + job.clientAddress);
+        if (job.tenantName || job.tenantPhone) lines.push('🏠 ' + t('lblTenantName').replace(':', '') + ' ' + [job.tenantName, job.tenantPhone].filter(Boolean).join(' — '));
         lines.push('─────────────────');
         lines.push(t('qdScopeOfWork'));
         lines.push(job.clientDescription ? job.clientDescription : ('(' + t('qdNoScopeSet') + ')'));
@@ -4345,6 +4364,8 @@
 
         document.getElementById('clientName').value = job.clientName || '';
         document.getElementById('clientPhone').value = job.clientPhone || '';
+        document.getElementById('tenantName').value = job.tenantName || '';
+        document.getElementById('tenantPhone').value = job.tenantPhone || '';
         document.getElementById('clientEmail').value = job.clientEmail || '';
         document.getElementById('jobStatus').value = 'شغال'; // a duplicated job starts fresh, not already "done"
         document.getElementById('clientAddress').value = job.clientAddress || '';
@@ -4388,6 +4409,8 @@
         document.getElementById('editingJobId').value = job.id;
         document.getElementById('clientName').value = job.clientName || '';
         document.getElementById('clientPhone').value = job.clientPhone || '';
+        document.getElementById('tenantName').value = job.tenantName || '';
+        document.getElementById('tenantPhone').value = job.tenantPhone || '';
         document.getElementById('clientEmail').value = job.clientEmail || '';
         document.getElementById('jobStatus').value = job.jobStatus || 'شغال';
         document.getElementById('clientAddress').value = job.clientAddress || '';
