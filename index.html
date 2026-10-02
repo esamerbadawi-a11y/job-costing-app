@@ -5006,6 +5006,18 @@
         openInvoiceModal(invoiceState.jobId);
     }
 
+    // Pulls the job's own "Scope of Work" text into the invoice's Note field — the same
+    // "Use job description" action already offered when scheduling a visit (useJobScopeFor),
+    // now available here too since the invoice no longer shows that text on its own.
+    function useJobDescriptionForInvoice() {
+        if (!invoiceState) return;
+        const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
+        if (!job) return;
+        if (!job.clientDescription) { alert(t('alertJobHasNoScope')); return; }
+        invoiceState.note = job.clientDescription;
+        renderInvoiceModalContent();
+    }
+
     async function deleteSavedInvoice(savedId) {
         if (!invoiceState) return;
         const idx = savedJobs.findIndex(j => String(j.id) === String(invoiceState.jobId));
@@ -5247,7 +5259,10 @@
             </div>
 
             <div style="margin-bottom:18px;">
-                <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceNoteLabel')}</label>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <label style="font-size:0.75rem; color:var(--text-muted); display:block;">${t('invoiceNoteLabel')}</label>
+                    <button type="button" class="secondary" onclick="useJobDescriptionForInvoice()" style="padding:4px 10px; font-size:0.7rem;">${t('useJobScopeBtn')}</button>
+                </div>
                 <textarea rows="2" placeholder="${t('invoiceNotePlaceholder')}" oninput="setInvoiceField('note', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; resize:vertical;">${escHtml(invoiceState.note)}</textarea>
             </div>
 
