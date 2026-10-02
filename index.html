@@ -1371,6 +1371,16 @@
         lblTenantName: { ar: 'اسم المستأجر/الساكن (اختياري):', en: 'Tenant/Occupant Name (optional):' },
         phTenantName: { ar: 'لو العميل مش هو الساكن فعليًا في العنوان', en: "If the client isn't the one actually living at the address" },
         lblTenantPhone: { ar: 'تلفون المستأجر/الساكن (اختياري):', en: 'Tenant/Occupant Phone (optional):' },
+        addrNoMatches: { ar: 'مفيش عنوان مطابق — جرب تكتب أكمل (رقم المبنى + الشارع + المدينة)', en: 'No matching address — try typing more (house number + street + city)' },
+        addrSearchFailed: { ar: '⚠️ تعذر البحث عن العنوان (مشكلة اتصال) — جرب تاني', en: '⚠️ Address search failed (connection issue) — try again' },
+        invoiceTitle: { ar: 'فاتورة', en: 'INVOICE' },
+        invoiceDateLbl: { ar: 'التاريخ', en: 'Date' },
+        invoiceNumberLbl: { ar: 'رقم الفاتورة', en: 'Invoice #' },
+        invoiceBillTo: { ar: 'العميل:', en: 'Bill To:' },
+        invoiceTotalAmount: { ar: 'المبلغ الإجمالي', en: 'Total Amount' },
+        invoiceAmountPaid: { ar: 'المدفوع', en: 'Amount Paid' },
+        invoiceBalanceDue: { ar: 'المتبقي', en: 'Balance Due' },
+        invoiceThankYou: { ar: 'شكرًا لتعاملكم معنا!', en: 'Thank you for your business!' },
         lblClientEmail: { ar: 'إيميل العميل:', en: "Client's Email:" },
         lblStatus: { ar: 'حالة المشروع:', en: 'Project Status:' },
         statusInProgress: { ar: 'قيد التنفيذ (شغال)', en: 'In Progress' },
@@ -2557,10 +2567,15 @@
                 const FL_VIEWBOX = '-87.635,31.001,-79.974,24.396'; // left,top,right,bottom
                 const url = `https://nominatim.openstreetmap.org/search?format=json&limit=8&addressdetails=1&countrycodes=us&viewbox=${FL_VIEWBOX}&bounded=0&accept-language=${currentLang}&q=${encodeURIComponent(query)}`;
                 const res = await fetch(url);
+                if (!res.ok) throw new Error('Nominatim HTTP ' + res.status);
                 const results = await res.json();
                 if (myRequestId !== addressRequestId) return; // a newer keystroke already superseded this request
                 listDiv.innerHTML = '';
-                if (!results || results.length === 0) { listDiv.style.display = 'none'; return; }
+                if (!results || results.length === 0) {
+                    listDiv.innerHTML = `<div style="color:var(--text-muted); cursor:default; pointer-events:none;">${t('addrNoMatches')}</div>`;
+                    listDiv.style.display = 'block';
+                    return;
+                }
                 results.forEach(r => {
                     const label = formatAddressResult(r);
                     const item = document.createElement('div');
@@ -2572,7 +2587,13 @@
                     listDiv.appendChild(item);
                 });
                 listDiv.style.display = 'block';
-            } catch (e) { if (myRequestId === addressRequestId) listDiv.style.display = 'none'; }
+            } catch (e) {
+                console.error('Address search failed:', e);
+                if (myRequestId === addressRequestId) {
+                    listDiv.innerHTML = `<div style="color:#f87171; cursor:default; pointer-events:none;">${t('addrSearchFailed')}</div>`;
+                    listDiv.style.display = 'block';
+                }
+            }
         }, 350);
     }
 
@@ -2908,6 +2929,7 @@
         container.innerHTML = '';
         if (technicians.length === 0) {
             container.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 10px;">${t('noTechsAdded')}</div>`;
+            updateSplitRatioTotal();
             return;
         }
         const registeredTechs = getUniqueRegisteredTechnicians();
@@ -3967,14 +3989,21 @@
         document.getElementById('splitRatioS').value = '40';
         document.getElementById('splitRatioM').value = '40';
         document.getElementById('splitRatioCompany').value = '20';
+        // Clear every data array BEFORE any render call below — renderProfitPartners() and
+        // renderTechnicians() both recompute the profit-split $ preview live, and that preview
+        // reads the global `technicians`/`profitPartners` arrays directly. Rendering one before
+        // the other is cleared meant the split preview briefly mixed the OLD job's technicians
+        // with the ALREADY-reset (zeroed) amountReceived/materialCost fields — showing a bogus
+        // negative split for an instant (e.g. the old techs' daily-allocated pay with nothing to
+        // offset it, since day-allocated pay doesn't depend on amountReceived/materialCost at all).
         profitPartners = [];
+        technicians = [];
+        expenseItems = [];
         renderProfitPartners();
         document.getElementById('crmClientInfoBox').style.display = 'none';
         document.getElementById('clientAutocompleteList').style.display = 'none';
         document.getElementById('addressAutocompleteList').style.display = 'none';
-        technicians = [];
         renderTechnicians();
-        expenseItems = [];
         renderExpenseItems();
         currentJobPhotos = [];
         renderPhotoGallery(currentJobPhotos, 'jobPhotoGallery');
@@ -4592,50 +4621,68 @@
 
         // ---- Header: logo + company name + address (left), "INVOICE" + date/number (right) ----
         // Phone/email/website live in the footer instead — see below.
-        if (companyProfile.logo) { try { doc.addImage(companyProfile.logo, 'PNG', 14, 10, 20, 20); } catch (e) {} }
+        let logoW = 0, logoH = 0;
+        if (companyProfile.logo) {
+            try {
+                // Fit the logo inside a 20x20mm box WITHOUT forcing it square — a non-square
+                // logo stretched into a 20x20 box is what looked "skewed" on the printed invoice.
+                const logoImg = await loadImageEl(companyProfile.logo);
+                const lw = logoImg.naturalWidth || logoImg.width || 1, lh = logoImg.naturalHeight || logoImg.height || 1;
+                const maxDim = 20;
+                if (lw >= lh) { logoW = maxDim; logoH = maxDim * (lh / lw); }
+                else { logoH = maxDim; logoW = maxDim * (lw / lh); }
+                doc.addImage(companyProfile.logo, 'PNG', 14, 10, logoW, logoH);
+            } catch (e) {}
+        }
         const textX = companyProfile.logo ? 38 : 14;
         drawAutoText(companyProfile.name || 'Affordable Handyman Approach', textX, 18, 14, true);
         let infoY = 24;
         if (companyProfile.address) { drawAutoText(companyProfile.address, textX, infoY, 9, false); infoY += 5; }
 
-        drawAutoText('INVOICE', pageWidth - 14, 18, 16, true, 'right');
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
-        doc.text(`Date: ${isoDate(new Date())}`, pageWidth - 14, 24, { align: 'right' });
-        doc.text(`Invoice #: ${String(job.id).slice(-8)}`, pageWidth - 14, 29, { align: 'right' });
+        drawAutoText(t('invoiceTitle'), pageWidth - 14, 18, 16, true, 'right');
+        drawAutoText(`${t('invoiceDateLbl')}: ${isoDate(new Date())}`, pageWidth - 14, 24, 9, false, 'right');
+        drawAutoText(`${t('invoiceNumberLbl')}: ${String(job.id).slice(-8)}`, pageWidth - 14, 29, 9, false, 'right');
 
         let y = Math.max(infoY, 32) + 8;
         doc.setDrawColor(210, 210, 210); doc.line(14, y, pageWidth - 14, y);
         y += 10;
 
         // ---- Bill To: client name + job site address only ----
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.text('Bill To:', 14, y);
+        drawAutoText(t('invoiceBillTo'), 14, y, 10, true);
         y += 6;
         drawAutoText(job.clientName || '', 14, y, 12, true); y += 6;
         if (job.clientAddress) { drawAutoText(job.clientAddress, 14, y, 9, false); y += 5; }
 
-        // ---- The three numbers the client actually needs ----
+        // ---- The three numbers the client actually needs — drawn by hand (not autoTable) so
+        // the labels can render correctly in Arabic too (autoTable's own text engine has no
+        // Arabic glyphs; drawAutoText renders Arabic strings as an image instead). ----
         const rev = parseVal(job.totalRevenue), rec = parseVal(job.amountReceived), rem = jobRemaining(job);
-        doc.autoTable({
-            startY: y + 8,
-            body: [
-                ['Total Amount', '$' + rev.toFixed(2)],
-                ['Amount Paid', '$' + rec.toFixed(2)],
-                ['Balance Due', '$' + rem.toFixed(2)],
-            ],
-            theme: 'plain',
-            styles: { fontSize: 11, cellPadding: 3 },
-            columnStyles: { 0: { fontStyle: 'bold' }, 1: { halign: 'right' } },
-            didParseCell: (d) => {
-                if (d.row.index === 2) {
-                    d.cell.styles.fontStyle = 'bold'; d.cell.styles.fontSize = 13;
-                    d.cell.styles.textColor = rem > 0.005 ? [220, 38, 38] : [5, 150, 105];
-                }
+        const tableRows = [
+            [t('invoiceTotalAmount'), '$' + rev.toFixed(2), 11, false],
+            [t('invoiceAmountPaid'), '$' + rec.toFixed(2), 11, false],
+            [t('invoiceBalanceDue'), '$' + rem.toFixed(2), 13, true],
+        ];
+        y += 10;
+        doc.setDrawColor(230, 230, 230);
+        tableRows.forEach(([label, amount, size, isLast], i) => {
+            if (i > 0) { doc.line(14, y - 6, pageWidth - 14, y - 6); }
+            drawAutoText(label, 14, y, size, isLast, 'left');
+            if (isLast) {
+                const rgb = rem > 0.005 ? [220, 38, 38] : [5, 150, 105];
+                doc.setTextColor(rgb[0], rgb[1], rgb[2]);
+            } else {
+                doc.setTextColor(20, 20, 20);
             }
+            doc.setFont('helvetica', isLast ? 'bold' : 'normal'); doc.setFontSize(size);
+            doc.text(amount, pageWidth - 14, y, { align: 'right' });
+            doc.setTextColor(0, 0, 0);
+            y += size === 13 ? 11 : 9;
         });
+        y += 5;
 
-        y = doc.lastAutoTable.finalY + 14;
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(140, 140, 140);
-        doc.text('Thank you for your business!', pageWidth / 2, y, { align: 'center' });
+        drawAutoText(t('invoiceThankYou'), pageWidth / 2, y, 9, false, 'center');
+        doc.setTextColor(0, 0, 0);
         y += 10;
 
         // ---- Footer: contact info, right after the content — not pinned to a fixed page
