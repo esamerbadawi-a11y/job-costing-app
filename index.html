@@ -1407,6 +1407,16 @@
         invoiceAddCreditBtn: { ar: '+ إضافة خصم', en: '+ Add Credit' },
         invoiceCreditNamePh: { ar: 'اسم الخصم', en: 'Credit name' },
         invoiceClientLabel: { ar: 'العميل:', en: 'Client:' },
+        invoiceSaveBtn: { ar: '💾 حفظ الفاتورة', en: '💾 Save Invoice' },
+        invoiceSavedToast: { ar: 'اتحفظت الفاتورة', en: 'Invoice saved' },
+        invoiceSavedInvoicesTitle: { ar: 'الفواتير المحفوظة', en: 'Saved Invoices' },
+        invoiceNoSavedInvoices: { ar: 'لسه مفيش فواتير محفوظة لشغلانة', en: 'No saved invoices yet' },
+        invoiceLoadBtn: { ar: 'فتح', en: 'Load' },
+        invoiceDeleteSavedBtn: { ar: 'مسح', en: 'Delete' },
+        invoiceNewDraftBtn: { ar: '+ فاتورة جديدة', en: '+ New Invoice' },
+        confirmDeleteSavedInvoice: { ar: 'تمسح الفاتورة المحفوظة دي؟ مش هينفع ترجعها تاني.', en: "Delete this saved invoice? This can't be undone." },
+        activityInvoiceSaved: { ar: 'اتحفظت فاتورة:', en: 'Invoice saved:' },
+        activityInvoiceDeleted: { ar: 'اتمسحت فاتورة محفوظة:', en: 'Saved invoice deleted:' },
         invoiceAddressLabel: { ar: 'عنوان العمل', en: 'Project Address' },
         invoicePhoneLabel: { ar: 'التليفون', en: 'Phone' },
         invoiceScopeLabel: { ar: 'وصف الشغل', en: 'Scope' },
@@ -4913,9 +4923,9 @@
                 amount: parseVal(it.amount)
             }));
         }
-        // Left blank on purpose: the job's full "Scope of Work" text already shows in the Scope
-        // line above the table (via formatScopeHtml), so defaulting this to the same text made
-        // it print twice. You type a short line-item description here instead.
+        // Left blank on purpose: the job's "Scope of Work" field is often a long internal note,
+        // not a client-ready line-item description, so it's never auto-filled here — you type a
+        // short line-item description yourself. The invoice no longer shows the Scope text at all.
         return [{ desc: '', qty: '1', amount: parseVal(job.totalRevenue) }];
     }
 
@@ -4926,6 +4936,7 @@
         const seq = jobId.replace(/\D/g, '').slice(-4).padStart(4, '0') || '0001';
         invoiceState = {
             jobId,
+            savedId: null, // set once this draft has been saved (via saveCurrentInvoice) — lets "Save" update it in place instead of creating a duplicate
             docType: 'INVOICE',
             invoiceNo: `AHA-${new Date().getFullYear()}-${seq}`,
             invoiceDate: isoDate(new Date()),
@@ -4947,6 +4958,66 @@
     function closeInvoiceModal() {
         document.getElementById('invoiceModal').style.display = 'none';
         invoiceState = null;
+    }
+
+    // ---------- Saved invoices: a job can keep several (e.g. the original invoice plus a later
+    // "Additional Work" one) so you can reopen and reprint any of them without retyping the items.
+    // They live on the job itself (job.savedInvoices), persisted the same way every other job edit
+    // is — through persistJobChange/saveSavedJobsData — so they sync and survive a refresh.
+    async function saveCurrentInvoice() {
+        if (!invoiceState) return;
+        const idx = savedJobs.findIndex(j => String(j.id) === String(invoiceState.jobId));
+        if (idx === -1) return;
+        const job = savedJobs[idx];
+        const backup = JSON.parse(JSON.stringify(job));
+        if (!job.savedInvoices) job.savedInvoices = [];
+        const snapshot = JSON.parse(JSON.stringify(invoiceState));
+        delete snapshot.jobId; delete snapshot.savedId;
+        const existingIdx = invoiceState.savedId ? job.savedInvoices.findIndex(inv => inv.id === invoiceState.savedId) : -1;
+        if (existingIdx !== -1) {
+            job.savedInvoices[existingIdx] = { ...job.savedInvoices[existingIdx], ...snapshot, savedAt: new Date().toISOString() };
+        } else {
+            const newId = newLedgerId();
+            invoiceState.savedId = newId;
+            job.savedInvoices.push({ ...snapshot, id: newId, savedAt: new Date().toISOString() });
+        }
+        job.lastEditedBy = currentUserEmail;
+        const activityText = `${t('activityInvoiceSaved')} ${invoiceState.invoiceNo}`;
+        const ok = await persistJobChange(idx, backup, activityText);
+        if (ok) { showToast(t('invoiceSavedToast')); renderInvoiceModalContent(); }
+    }
+
+    function loadSavedInvoice(savedId) {
+        if (!invoiceState) return;
+        const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
+        if (!job) return;
+        const saved = (job.savedInvoices || []).find(inv => inv.id === savedId);
+        if (!saved) return;
+        const jobId = invoiceState.jobId;
+        invoiceState = JSON.parse(JSON.stringify(saved));
+        invoiceState.jobId = jobId;
+        invoiceState.savedId = saved.id;
+        if (!invoiceState.credits) invoiceState.credits = []; // older saved invoices, if any, predate the credits list
+        renderInvoiceModalContent();
+    }
+
+    function startNewInvoiceDraft() {
+        if (!invoiceState) return;
+        openInvoiceModal(invoiceState.jobId);
+    }
+
+    async function deleteSavedInvoice(savedId) {
+        if (!invoiceState) return;
+        const idx = savedJobs.findIndex(j => String(j.id) === String(invoiceState.jobId));
+        if (idx === -1) return;
+        if (!confirm(t('confirmDeleteSavedInvoice'))) return;
+        const job = savedJobs[idx];
+        const backup = JSON.parse(JSON.stringify(job));
+        job.savedInvoices = (job.savedInvoices || []).filter(inv => inv.id !== savedId);
+        job.lastEditedBy = currentUserEmail;
+        if (invoiceState.savedId === savedId) invoiceState.savedId = null; // keep editing it, just as an unsaved draft now
+        const ok = await persistJobChange(idx, backup, t('activityInvoiceDeleted'));
+        if (ok) renderInvoiceModalContent();
     }
 
     function addInvoiceItemRow() {
@@ -5081,7 +5152,36 @@
         const credit = invoiceCreditsTotal();
         const totalDue = subtotal - credit;
 
+        const savedInvoices = job.savedInvoices || [];
+        const savedListHtml = savedInvoices.length === 0
+            ? `<div style="font-size:0.8rem; color:var(--text-muted); padding:8px 0;">${t('invoiceNoSavedInvoices')}</div>`
+            : savedInvoices.map(inv => {
+                const invSubtotal = (inv.items || []).reduce((s, it) => s + parseVal(it.amount), 0);
+                const invCredits = (inv.credits || []).reduce((s, c) => s + parseVal(c.amount), 0);
+                const invTotal = invSubtotal - invCredits;
+                const isOpen = invoiceState.savedId === inv.id;
+                return `
+                <div class="tech-card" style="margin-bottom:6px; ${isOpen ? `border-color:#38bdf8;` : ''}">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <div style="font-size:0.8rem;">
+                            <b>${escHtml(invoiceDocTypeDisplay(inv.docType))}</b> — ${escHtml(inv.invoiceNo)} (${escHtml(inv.invoiceDate)})
+                            <span style="color:var(--text-muted);"> · $${invTotal.toFixed(2)}</span>
+                        </div>
+                        <div style="display:flex; gap:6px;">
+                            <button type="button" class="secondary" onclick="loadSavedInvoice('${inv.id}')" style="padding:5px 10px; font-size:0.75rem;">${t('invoiceLoadBtn')}</button>
+                            <button type="button" onclick="deleteSavedInvoice('${inv.id}')" style="padding:5px 10px; font-size:0.75rem; background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid rgba(225,29,72,0.4); border-radius:8px; cursor:pointer;">${t('invoiceDeleteSavedBtn')}</button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+
         container.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <h3 style="color:#38bdf8; font-size:0.95rem; margin:0;">${t('invoiceSavedInvoicesTitle')}</h3>
+                ${savedInvoices.length > 0 ? `<button type="button" class="secondary" onclick="startNewInvoiceDraft()" style="padding:5px 10px; font-size:0.75rem;">${t('invoiceNewDraftBtn')}</button>` : ''}
+            </div>
+            <div style="margin-bottom:16px;">${savedListHtml}</div>
+
             <div class="grid-3" style="margin-bottom:14px;">
                 <div>
                     <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceTypeLabel')}</label>
@@ -5106,7 +5206,6 @@
                 <div><b>${t('invoiceBillTo')}</b> ${escHtml(job.clientName)}</div>
                 <div><b>${t('invoiceAddressLabel')}:</b> ${escHtml(job.clientAddress || '')}</div>
                 <div><b>${t('invoicePhoneLabel')}:</b> ${escHtml(job.clientPhone || '')}</div>
-                <div><b>${t('invoiceScopeLabel')}:</b> ${formatScopeHtml(job.clientDescription)}</div>
             </div>
 
             <h3 style="color:#38bdf8; font-size:0.95rem; margin-bottom:10px;">${t('invoiceItemsTitle')}</h3>
@@ -5152,7 +5251,10 @@
                 <textarea rows="2" placeholder="${t('invoiceNotePlaceholder')}" oninput="setInvoiceField('note', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; resize:vertical;">${escHtml(invoiceState.note)}</textarea>
             </div>
 
-            <button type="button" onclick="printInvoice()" style="padding:10px 20px; font-size:0.9rem; background:#2C6B45; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoicePrintBtn')}</button>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button type="button" onclick="saveCurrentInvoice()" style="padding:10px 20px; font-size:0.9rem; background:#38bdf8; color:#0a0e17; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoiceSaveBtn')}</button>
+                <button type="button" onclick="printInvoice()" style="padding:10px 20px; font-size:0.9rem; background:#2C6B45; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoicePrintBtn')}</button>
+            </div>
         `;
     }
 
@@ -5225,7 +5327,6 @@
             ? `<div style="display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:24px;">
                  <div class="ui" style="font-size:13px; line-height:1.9;">
                    <div><b>${escHtml(t('invoiceClientLabel'))}</b> ${escHtml(job.clientName)}</div>
-                   <div><b>${escHtml(t('invoiceScopeLabel'))}:</b> ${formatScopeHtml(job.clientDescription)}</div>
                  </div>
                  <div class="ui" style="font-size:13px; line-height:1.9;">
                    <div><b>${escHtml(t('invoiceTypeLabel'))}:</b> ${escHtml(t('invoiceTypeAdditionalWork'))}</div>
@@ -5237,7 +5338,6 @@
                    <div><b>${escHtml(t('invoiceBillTo'))}</b> ${escHtml(job.clientName)}</div>
                    <div><b>${escHtml(t('invoiceAddressLabel'))}:</b> ${escHtml(job.clientAddress || '')}</div>
                    <div><b>${escHtml(t('invoicePhoneLabel'))}:</b> ${escHtml(job.clientPhone || '')}</div>
-                   <div><b>${escHtml(t('invoiceScopeLabel'))}:</b> ${formatScopeHtml(job.clientDescription)}</div>
                  </div>
                  <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
                    <div style="background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 18px; text-align:center; min-width:200px;">
