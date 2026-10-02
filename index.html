@@ -591,7 +591,7 @@
 
                 <div class="grid-3">
                     <div class="form-group"><label data-i18n="lblTotalRevenue"></label><input type="text" id="totalRevenue" value="0" onfocus="this.select()" oninput="calculateRemaining(); calculate();"></div>
-                    <div class="form-group"><label data-i18n="lblAmountReceived"></label><input type="text" id="amountReceived" value="0" onfocus="this.select()" oninput="calculateRemaining(); calculate(); renderLedger('receipt');"></div>
+                    <div class="form-group"><label data-i18n="lblAmountReceived"></label><input type="text" id="amountReceived" value="0" onfocus="this.select()" oninput="calculateRemaining(); calculate(); renderLedger('receipt'); updateSplitRatioTotal();"></div>
                     <div class="form-group"><label data-i18n="lblAmountRemaining"></label><input type="text" id="amountRemaining" value="0" readonly style="background: #1e293b; color: #f87171; font-weight: 700;"></div>
                 </div>
                 <div class="form-group" id="receiptAddBox">
@@ -608,7 +608,7 @@
 
                 <div class="form-group">
                     <label data-i18n="lblMaterialCost"></label>
-                    <input type="text" id="materialCost" value="0" onfocus="this.select()" oninput="calculate(); renderLedger('material');">
+                    <input type="text" id="materialCost" value="0" onfocus="this.select()" oninput="calculate(); renderLedger('material'); updateSplitRatioTotal();">
                     <div style="margin-top:8px; font-size:0.78rem; font-weight:600; color:var(--text-muted);" data-i18n="lblAddMaterial"></div>
                     <div class="ledger-add-row">
                         <div class="lg-field lg-amt"><span data-i18n="lblAmountShort"></span><input type="text" id="materialCostAdd" inputmode="decimal" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); addToMaterialCost();}"></div>
@@ -3668,7 +3668,7 @@
         const totalEl = document.getElementById(cfg.totalId);
         totalEl.value = round2(parseVal(totalEl.value) + amt).toFixed(2);
         amtEl.value = ''; noteEl.value = '';
-        calculateRemaining(); calculate(); renderLedgers();
+        calculateRemaining(); calculate(); renderLedgers(); updateSplitRatioTotal();
     }
     function addReceipt() { addLedgerEntry('receipt'); }
     function addToMaterialCost() { addLedgerEntry('material'); }
@@ -3683,7 +3683,7 @@
         const totalEl = document.getElementById(cfg.totalId);
         totalEl.value = Math.max(0, round2(parseVal(totalEl.value) - parseVal(arr[idx].amount))).toFixed(2);
         arr.splice(idx, 1);
-        calculateRemaining(); calculate(); renderLedgers();
+        calculateRemaining(); calculate(); renderLedgers(); updateSplitRatioTotal();
     }
 
     function setLedgerEntryDate(kind, id, value) {
