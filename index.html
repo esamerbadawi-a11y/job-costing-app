@@ -6099,10 +6099,12 @@ ${closeBtnHtml}
         const { jsPDF } = window.jspdf;
         let doc = new jsPDF('p', 'mm', 'a4');
         doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
-        doc.text('AHA - Partner Report:', 14, 15);
+        const titleText = 'AHA - Partner Report:';
+        doc.text(titleText, 14, 15);
         const nameImg = textToImage(name);
         const nameH = 7, nameW = nameH * nameImg.aspect;
-        doc.addImage(nameImg.dataUrl, 'PNG', 62, 10, nameW, nameH);
+        const nameX = 14 + doc.getTextWidth(titleText) + 4; // small gap after the title text
+        doc.addImage(nameImg.dataUrl, 'PNG', nameX, 10, nameW, nameH);
 
         const jobs = jobsForExtraPartner(name);
         const rows = [];
@@ -6154,11 +6156,13 @@ ${closeBtnHtml}
         const finalY = doc.lastAutoTable.finalY + 10;
         doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(0, 0, 0);
         if (containsArabic(name)) {
-            doc.text(`Total for`, 14, finalY);
+            const totalPrefix = `Total for`;
+            doc.text(totalPrefix, 14, finalY);
             const totalNameImg = textToImage(name);
             const totalNameH = 6, totalNameW = totalNameH * totalNameImg.aspect;
-            doc.addImage(totalNameImg.dataUrl, 'PNG', 32, finalY - totalNameH + 1.5, totalNameW, totalNameH);
-            doc.text(`: $${grandTotal.toFixed(2)}`, 32 + totalNameW, finalY);
+            const totalNameX = 14 + doc.getTextWidth(totalPrefix) + 3;
+            doc.addImage(totalNameImg.dataUrl, 'PNG', totalNameX, finalY - totalNameH + 1.5, totalNameW, totalNameH);
+            doc.text(`: $${grandTotal.toFixed(2)}`, totalNameX + totalNameW + 1, finalY);
         } else {
             doc.text(`Total for ${name}: $${grandTotal.toFixed(2)}`, 14, finalY);
         }
@@ -6264,10 +6268,12 @@ ${closeBtnHtml}
         const money = v => '$' + v.toFixed(2);
 
         doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
-        doc.text('AHA - Technician & Partner Report:', 14, 15);
+        const titleText = 'AHA - Technician & Partner Report:';
+        doc.text(titleText, 14, 15);
         const nameImg = textToImage(name);
         const nameH = 7, nameW = nameH * nameImg.aspect;
-        doc.addImage(nameImg.dataUrl, 'PNG', 92, 10, nameW, nameH);
+        const nameX = 14 + doc.getTextWidth(titleText) + 4; // small gap after the title text
+        doc.addImage(nameImg.dataUrl, 'PNG', nameX, 10, nameW, nameH);
 
         const drawArabicCells = function(cellData, arabicCols) {
             if (cellData.section !== 'body') return;
