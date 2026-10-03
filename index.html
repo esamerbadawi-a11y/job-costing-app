@@ -1063,6 +1063,7 @@
         <div id="jobPayClientLine" style="font-weight:700; margin-bottom:10px;"></div>
         <div id="jobPaySummaryBox" style="background:var(--panel-bg); border:1px solid var(--border-color); border-radius:10px; padding:10px 12px; margin-bottom:16px; font-size:0.82rem; line-height:1.7;"></div>
         <div id="jobPayTechList"></div>
+        <div id="jobPayPartnerList"></div>
         <div id="jobPaySplitBox" style="background:var(--panel-bg); border:1px solid var(--border-color); border-radius:10px; padding:12px 14px; margin-top:6px; font-size:0.84rem; line-height:1.8;"></div>
     </div>
 </div>
@@ -1681,10 +1682,12 @@
         jobPayDuesLabel: { ar: 'مستحقه من الشغلانة دي:', en: 'Dues on this job:' },
         jobPayPaidOnJobLabel: { ar: 'مدفوع له من الشغلانة دي:', en: 'Paid on this job:' },
         jobPayRemainingOnJobLabel: { ar: 'باقي له من الشغلانة دي:', en: 'Remaining on this job:' },
+        techPaySaveJobFirst: { ar: '💾 احفظ الشغلانة الأول عشان تقدر تسجل دفعة من فلوسها.', en: '💾 Save the job first so you can record a payment from its money.' },
         jobPayRecordBtn: { ar: '✅ تسجيل الدفعة', en: '✅ Record Payment' },
         jobPayReceivedLabel: { ar: 'المقبوض من العميل حتى الآن:', en: 'Received from client so far:' },
         jobPayMaterialsLabel: { ar: 'تكلفة الخامات:', en: 'Materials cost:' },
         jobPayTechPaidTotalLabel: { ar: 'إجمالي المدفوع للفنيين من الشغلانة دي:', en: 'Total paid to technicians on this job:' },
+        jobPayPartnersTitle: { ar: '🤝 الشركاء', en: '🤝 Partners' },
         jobPayCashAvailableLabel: { ar: 'الفلوس المتاحة للتقسيم دلوقتي:', en: 'Cash available to split right now:' },
         jobPayCashAvailableHint: { ar: '(المقبوض - الخامات - المدفوع للفنيين لحد دلوقتي، مش صافي ربح الشغلانة النهائي)', en: '(received − materials − technician payments so far — not the job\'s final net profit)' },
         alertAttachmentsSaveFailed: { ar: 'الشغلانة اتحفظت صح بكل أرقامها، بس الصور/المرفقات معلقة ومحفظتش. جرب تفتحها تاني وتحفظ من تاني.', en: "The job saved fine with all its numbers, but the photos/attachments didn't save. Try opening it again and saving once more." },
@@ -2388,7 +2391,6 @@
                 <div class="ag-meta">${t('tmsRemainingAll')} <strong style="color:#f87171;">${ltrAmt(r.remaining)}</strong></div>
                 <div class="ag-actions">
                     <button class="secondary" style="background:#7c3aed;" onclick="closeAgendaModal(); openTechGuideModal(); setGuideDateRange('week'); showTechDetails('${jsArg(r.name)}');">🔎 ${t('guideDetailsBtn')}</button>
-                    <button class="secondary" style="background:#0ea5e9;" onclick="closeAgendaModal(); openTechPaymentPrompt('${jsArg(r.name)}');">💵 ${t('payBtn')}</button>
                 </div>
             </div>`;
         });
@@ -3057,20 +3059,6 @@
         return `<div class="due-note ag-meta" style="margin-top:4px; color:#38bdf8;">${t('tmsMoneyBaseNote').replace('{recv}', ltrAmt(d.periodRecv)).replace('{mat}', ltrAmt(d.periodMat)).replace('{base}', ltrAmt(d.periodBase)).replace('{pct}', d.pct)}</div>`;
     }
 
-    // The one place to actually move money: opens the SAME payment list used everywhere else (the
-    // Guide, the "This Week" dashboard) — a technician has exactly one running list of payments,
-    // whichever screen you record it from, so it can never be paid twice for the same thing by mistake.
-    function techPayRowHtml(tech, index) {
-        if (!tech.name) return '';
-        const jobId = document.getElementById('editingJobId').value || '__unsaved__';
-        const ms = techMoneyStatus(tech, jobId);
-        return `<div style="display:flex; align-items:center; gap:10px; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border-color); flex-wrap:wrap;">
-            <button type="button" class="secondary" style="background:#0ea5e9; color:#fff; white-space:nowrap;" onclick="openTechPaymentPrompt('${jsArg(tech.name)}')">💵 ${t('payBtn')}</button>
-            <span class="ag-meta">${t('tmsPaidAll')} <strong style="color:#34d399;">${ltrAmt(ms.paidAllJobs)}</strong></span>
-            <span class="ag-meta">${t('tmsRemainingAll')} <strong style="color:${ms.remainingAllJobs > 0.005 ? '#f87171' : '#94a3b8'};">${ltrAmt(ms.remainingAllJobs)}</strong></span>
-        </div>`;
-    }
-
     function techOverlapWarningHtml(tech, index) {
         if (!tech.name) return '';
         const jobId = document.getElementById('editingJobId').value || '__unsaved__';
@@ -3197,7 +3185,6 @@
                     </div>
                 </div>
                 ${techDueNoteHtml(periodMs)}
-                ${techPayRowHtml(tech, index)}
                 ${techDailyPanelHtml(tech, index, dues)}
                 <details class="tw-box" style="margin-top:12px;" ${((tech.weeks || []).length > 0 || (tech.materialReimbursements || []).length > 0) ? 'open' : ''}>
                     <summary style="cursor:pointer; font-size:0.78rem; font-weight:700; color:var(--text-muted); display:flex; align-items:center; gap:6px;">⚙️ ${t('advancedOptionsTitle')} <button type="button" onclick="event.stopPropagation(); alert(t('advancedOptionsHelp'));" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:0 2px;">❓</button></summary>
@@ -6621,9 +6608,15 @@ ${closeBtnHtml}
     }
 
     let techPaymentName = '';
+    // Set only when the payment prompt is opened FROM a specific job's "💵 دفع" button — the
+    // resulting payment then gets tagged with that job's id, so the job screen's own paid/remaining
+    // (and the Job Pay / Tech & Partner reports) count it correctly. Opened from anywhere else
+    // (Technician Guide, Agenda, "This Week") it stays null — those are genuinely all-jobs payments.
+    let techPaymentJobId = null;
     let editingPaymentAt = '';
-    function openTechPaymentPrompt(name) {
+    function openTechPaymentPrompt(name, jobId) {
         editingPaymentAt = '';
+        techPaymentJobId = jobId || null;
         document.getElementById('techPaymentTitleEl').textContent = t('techPaymentTitle');
         techPaymentName = name;
         document.getElementById('techPaymentNameLabel').textContent = name;
@@ -6636,6 +6629,7 @@ ${closeBtnHtml}
         const p = techPayments.find(x => x.at === at);
         if (!p) return;
         editingPaymentAt = at;
+        techPaymentJobId = null; // editing an existing entry never re-tags which job it belongs to
         techPaymentName = p.name;
         document.getElementById('techPaymentTitleEl').textContent = t('techPaymentEditTitle');
         document.getElementById('techPaymentNameLabel').textContent = p.name;
@@ -6644,7 +6638,7 @@ ${closeBtnHtml}
         document.getElementById('techPaymentNote').value = p.note || '';
         document.getElementById('techPaymentModal').style.display = 'flex';
     }
-    function closeTechPaymentModal() { document.getElementById('techPaymentModal').style.display = 'none'; editingPaymentAt = ''; }
+    function closeTechPaymentModal() { document.getElementById('techPaymentModal').style.display = 'none'; editingPaymentAt = ''; techPaymentJobId = null; }
 
     async function saveTechPayment() {
         const amount = parseVal(document.getElementById('techPaymentAmount').value);
@@ -6672,12 +6666,18 @@ ${closeBtnHtml}
         }
 
         const entry = { name: techPaymentName, amount, date, note, by: currentUserEmail || '?', at: new Date().toISOString() };
+        if (techPaymentJobId) {
+            entry.jobId = techPaymentJobId;
+            const job = savedJobs.find(j => String(j.id) === String(techPaymentJobId));
+            if (job) entry.jobClientName = job.clientName || '';
+        }
         try {
             techPayments.unshift(entry);
             await TECH_PAYMENTS_DOC.set({ entries: techPayments });
             closeTechPaymentModal();
             renderTechGuideContent();
             safeCall(renderTechnicians);
+            safeCall(renderJobPayModalIfOpen);
         } catch (err) {
             techPayments = techPayments.filter(x => x !== entry);   // the save failed: don't keep a payment that was never stored
             alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
@@ -7728,6 +7728,45 @@ ${closeBtnHtml}
 
         document.getElementById('jobPayTechList').innerHTML = techRows;
 
+        // Partners get the exact same due/paid/remaining/record-a-payment treatment as technicians,
+        // using the SAME payments ledger (tagged by jobId + name) — it's just "money paid to a
+        // person for this job", whether that person is a technician or a profit-share partner.
+        const { extraShares } = jobNet(job);
+        const partnersList = (job.extraPartners || []).filter(p => parseVal(p.percent) > 0.005);
+        const partnerRows = partnersList.map((p, idx) => {
+            const share = extraShares.find(x => (x.name || '').trim() === (p.name || '').trim());
+            const due = share ? share.amount : 0;
+            const paidOnJob = techPaidOnJob(job.id, p.name || '');
+            const remainingOnJob = round2(due - paidOnJob);
+            const payments = techPaymentsForJob(job.id, p.name || '').slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+            const paymentsHtml = payments.map(pay => `
+                <div class="ledger-row" style="font-size:0.75rem;">
+                    <span>${escHtml(pay.date || '')}</span>
+                    <strong style="color:#34d399;">${ltrAmt(pay.amount)}</strong>
+                    <span class="ledger-note">${escHtml(pay.note || '')}</span>
+                    <button type="button" class="ledger-del" onclick="deleteTechPayment('${pay.at}')">🗑</button>
+                </div>`).join('');
+            return `
+                <div style="border:1px solid var(--border-color); border-radius:10px; padding:10px 12px; margin-bottom:10px;">
+                    <div style="font-weight:700; margin-bottom:6px;">🤝 ${escHtml(p.name || '?')} (${Math.round(parseVal(p.percent))}%)</div>
+                    <div style="font-size:0.8rem; display:flex; flex-wrap:wrap; gap:14px; margin-bottom:8px;">
+                        <span>${t('jobPayDuesLabel')} <strong style="color:#fbbf24;">${ltrAmt(due)}</strong></span>
+                        <span>${t('jobPayPaidOnJobLabel')} <strong style="color:#34d399;">${ltrAmt(paidOnJob)}</strong></span>
+                        <span>${t('jobPayRemainingOnJobLabel')} <strong style="color:${remainingOnJob > 0.005 ? '#f87171' : '#34d399'};">${ltrAmt(remainingOnJob)}</strong></span>
+                    </div>
+                    ${paymentsHtml}
+                    <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; align-items:center;">
+                        <input type="text" id="jobPayPartnerAmount-${idx}" placeholder="0" value="${remainingOnJob > 0.005 ? remainingOnJob.toFixed(2) : ''}" onfocus="this.select()" style="width:110px;">
+                        <input type="date" id="jobPayPartnerDate-${idx}" value="${isoDate(new Date())}" style="width:140px;">
+                        <input type="text" id="jobPayPartnerNote-${idx}" data-i18n-ph="companyExpenseNotePh" style="flex:1; min-width:120px;">
+                        <button class="success" style="padding:7px 12px; font-size:0.8rem;" onclick="addJobPartnerPayment('${idx}')" data-i18n="jobPayRecordBtn"></button>
+                    </div>
+                </div>`;
+        }).join('');
+        document.getElementById('jobPayPartnerList').innerHTML = partnersList.length
+            ? `<div style="font-weight:700; margin:14px 0 8px; color:#a78bfa;">${t('jobPayPartnersTitle')}</div>` + partnerRows
+            : '';
+
         totalPaidOnJobAllTechs = round2(totalPaidOnJobAllTechs);
         const cashAvailable = round2(received - parseVal(job.materialCost) - totalPaidOnJobAllTechs);
 
@@ -7778,6 +7817,29 @@ ${closeBtnHtml}
             renderJobPayModal();
             safeCall(renderTechGuideContent);
             safeCall(renderTechnicians);
+        } catch (err) {
+            techPayments = techPayments.filter(x => x !== entry);
+            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+        }
+    }
+
+    async function addJobPartnerPayment(idx) {
+        const job = savedJobs.find(j => String(j.id) === String(jobPayCurrentJobId));
+        if (!job) return;
+        const partnersList = (job.extraPartners || []).filter(p => parseVal(p.percent) > 0.005);
+        const partner = partnersList[idx];
+        if (!partner) return;
+        const amount = parseVal(document.getElementById(`jobPayPartnerAmount-${idx}`).value);
+        const date = document.getElementById(`jobPayPartnerDate-${idx}`).value || isoDate(new Date());
+        const note = document.getElementById(`jobPayPartnerNote-${idx}`).value.trim();
+        if (amount <= 0) { alert(t('alertWithdrawalAmountRequired')); return; }
+
+        const entry = { name: partner.name || '', amount, date, note, jobId: job.id, jobClientName: job.clientName || '', by: currentUserEmail || '?', at: new Date().toISOString() };
+        try {
+            techPayments.unshift(entry);
+            await TECH_PAYMENTS_DOC.set({ entries: techPayments });
+            logActivity('add', partner.name || '', `${t('guidePaymentsTitle')}: $${amount.toFixed(2)} (${job.clientName || ''})`);
+            renderJobPayModal();
         } catch (err) {
             techPayments = techPayments.filter(x => x !== entry);
             alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
@@ -7842,7 +7904,6 @@ ${closeBtnHtml}
                 <td data-label="${t('guideThRemainingInPeriod')}" style="color:${remainingInPeriod > 0 ? '#f87171' : '#94a3b8'}; font-weight:700;">$${remainingInPeriod.toFixed(2)}</td>
                 <td data-label="" class="tg-actions-cell"><div class="tg-actions">
                     <button class="secondary" onclick="showTechDetails('${jsArg(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#475569;">🔎 ${t('guideDetailsBtn')}</button>
-                    <button class="secondary" onclick="openTechPaymentPrompt('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#7c3aed;">💵</button>
                     <button class="secondary" onclick="sendWhatsAppTech('${escJs(name)}', '${escJs(rawPhone)}', ${dues})" style="padding:4px 8px; font-size:0.75rem; background:#059669;">${t('guideWhatsAppBtn')}</button>
                     <button class="secondary" onclick="printTechnicianReport('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#0ea5e9;">${t('printReportBtn')}</button>
                     <button class="secondary" onclick="openEditTechnicianModal('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#0284c7;">${t('editBtn')}</button>
