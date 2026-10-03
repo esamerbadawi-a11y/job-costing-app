@@ -872,7 +872,11 @@
             <button class="danger" onclick="closeTechPartnerReportModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
         </div>
 
-        <div style="display:flex; justify-content:flex-end; margin-bottom:15px;">
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:15px;">
+            <div class="form-group" style="flex:1; min-width:160px; margin-bottom:0;">
+                <label data-i18n="techPartnerSelectLabel"></label>
+                <select id="techPartnerReportSelect" onchange="renderTechPartnerReportContent()"></select>
+            </div>
             <button class="secondary" style="background:#f87171; color:#fff;" onclick="downloadTechPartnerReportPDF()" data-i18n="partnerReportDownloadBtn"></button>
         </div>
 
@@ -1240,12 +1244,17 @@
         partnerReportDownloadBtn: { ar: '📄 تحميل PDF', en: '📄 Download PDF' },
         partnerReportTotalLabel: { ar: 'الإجمالي المستحق له:', en: 'Total earned:' },
         techPartnerReportBtn: { ar: '👷🤝 تقرير الفني والشريك', en: '👷🤝 Tech & Partner Report' },
-        techPartnerReportTitle: { ar: 'الشغلانات اللي فيها فني وشريك مع بعض', en: 'Jobs With Both a Technician and a Partner' },
-        noTechPartnerJobs: { ar: 'مفيش شغلانات فيها فني وشريك مع بعض لحد دلوقتي.', en: 'No jobs with both a technician and a partner yet.' },
-        techPartnerColTech: { ar: 'الفني:', en: 'Technician:' },
-        techPartnerColPartners: { ar: 'الشريك:', en: 'Partner:' },
+        techPartnerReportTitle: { ar: 'تقرير الفني والشريك', en: 'Technician & Partner Report' },
+        noTechPartnerJobs: { ar: 'اختار اسم عشان تشوف شغلاناته.', en: 'Pick a name to see their jobs.' },
         techPartnerColPaid: { ar: 'المدفوع له (كل شغلاناته):', en: 'Paid (all his jobs):' },
         techPartnerColRemaining: { ar: 'الباقي له:', en: 'Remaining:' },
+        techPartnerSelectLabel: { ar: 'اختار الاسم (فني أو شريك)', en: 'Pick a name (technician or partner)' },
+        techPartnerNoNamesYet: { ar: 'مفيش أسماء فنيين أو شركاء مسجلة لحد دلوقتي', en: 'No technician or partner names recorded yet' },
+        techPartnerAsTechTitle: { ar: '👷 الشغلانات اللي اشتغل فيها كفني', en: '👷 Jobs worked as a technician' },
+        techPartnerAsPartnerTitle: { ar: '🤝 الشغلانات اللي هو شريك فيها', en: '🤝 Jobs where he\'s a partner' },
+        techPartnerNoTechJobs: { ar: 'مفيش شغلانات اشتغل فيها كفني.', en: 'No jobs worked as a technician.' },
+        techPartnerNoPartnerJobs: { ar: 'مفيش شغلانات هو شريك فيها.', en: 'No jobs as a partner.' },
+        techPartnerTotalLabel: { ar: 'الإجمالي (فني + شريك):', en: 'Total (technician + partner):' },
         noExtraPartnersYet: { ar: 'لسه مفيش أي شريك إضافي مضاف في أي شغلانة.', en: 'No extra partners added to any job yet.' },
         companyAccountBtn: { ar: '🏢 حساب الشركة', en: '🏢 Company Account' },
         companyAccountTitle: { ar: 'حساب الشركة — الدخل والمصروفات العامة', en: 'Company Account — Income vs General Expenses' },
@@ -6169,113 +6178,160 @@ ${closeBtnHtml}
         doc.save(`AHA_Partner_Report_${name}.pdf`);
     }
 
-    // ---------- Tech & Partner Report: every job that has BOTH a technician on it AND a partner
-    // share, so you can see where the two overlap — no picking a name, just the full crossover list. ----------
-    function jobHasTechAndPartner(job) {
-        const hasTech = (job.technicians || []).length > 0;
-        const hasPartner = (job.extraPartners || []).some(p => parseVal(p.percent) > 0.005);
-        return hasTech && hasPartner;
+    // ---------- Technician & Partner Report: pick ONE person, see every job he worked as a
+    // technician in one table and every job he's a profit-share partner in a second table —
+    // kept strictly separate so a job never shows two different numbers mixed in one row.
+    // Tech dues and partner share both come from the exact same math used everywhere else
+    // (calculateJobTechDuesWithReimbursement / jobNet's extraShares, which already deducts
+    // ALL technicians' dues + materials before splitting the partner percentage). ----------
+    function getAllTechAndPartnerNames() {
+        const names = new Set();
+        savedJobs.forEach(job => {
+            (job.technicians || []).forEach(t => { if (t.name && t.name.trim()) names.add(t.name.trim()); });
+            (job.extraPartners || []).forEach(p => { if (p.name && p.name.trim() && parseVal(p.percent) > 0.005) names.add(p.name.trim()); });
+        });
+        return Array.from(names).sort();
     }
-    function getJobsWithTechAndPartner() { return savedJobs.filter(jobHasTechAndPartner); }
-
-    // A technician's overall running balance across ALL his jobs (not just the tech+partner ones
-    // listed here) — same "dues minus payments logged with 💵" math the Technician Report and
-    // Technicians screen use, with no date filter so it's his true all-time balance.
-    function techOverallDuesPaidRemaining(name) {
-        const stats = computeTechPeriodStats('', '')[name];
-        const dues = stats ? stats.dues : 0;
-        const paid = round2(techPaymentsInPeriod(name, '', '').reduce((s, p) => s + parseVal(p.amount), 0));
-        return { dues: round2(dues), paid, remaining: round2(dues - paid) };
+    function jobsWhereTech(name) {
+        return savedJobs.filter(job => (job.technicians || []).some(t => (t.name || '').trim() === name));
     }
 
     function openTechPartnerReportModal() {
         closeOtherTopModals('techPartnerReportModal');
+        const sel = document.getElementById('techPartnerReportSelect');
+        const names = getAllTechAndPartnerNames();
+        sel.innerHTML = names.length
+            ? names.map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('')
+            : `<option value="">${t('techPartnerNoNamesYet')}</option>`;
         document.getElementById('techPartnerReportModal').style.display = 'flex';
         renderTechPartnerReportContent();
     }
     function closeTechPartnerReportModal() { document.getElementById('techPartnerReportModal').style.display = 'none'; }
 
-    function renderTechPartnerReportContent() {
-        const container = document.getElementById('techPartnerReportContent');
-        const jobs = getJobsWithTechAndPartner();
-        if (jobs.length === 0) { container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:15px;">${t('noTechPartnerJobs')}</p>`; return; }
-
-        container.innerHTML = jobs.map(job => {
+    // Shared by the on-screen view and the PDF: for one person, their two job lists plus the
+    // combined total/paid/remaining. Paid/remaining use the SAME payments ledger as everywhere
+    // else (not job-specific) — a payment can be made out of one job's money to settle dues
+    // that built up across several jobs, which is exactly how the weekly payout works in practice.
+    function techPartnerReportData(name) {
+        const techJobs = jobsWhereTech(name).map(job => {
+            const tech = (job.technicians || []).find(t => (t.name || '').trim() === name);
+            const dues = calculateJobTechDuesWithReimbursement(tech, job.amountReceived, job.materialCost);
+            return { job, dues };
+        });
+        const partnerJobs = jobsForExtraPartner(name).map(job => {
             const { extraShares } = jobNet(job);
-            const partners = extraShares.filter(x => x.percent > 0.005);
-            const partnersLine = partners.map(x => `${escHtml(x.name || '?')} (${Math.round(x.percent)}%): ${ltrAmt(x.amount)}`).join('&nbsp;&nbsp;|&nbsp;&nbsp;');
-            const techsLine = (job.technicians || []).map(tech => {
-                const dues = calculateJobTechDuesWithReimbursement(tech, job.amountReceived, job.materialCost);
-                const overall = techOverallDuesPaidRemaining(tech.name || '');
-                return `${escHtml(tech.name || '?')}: ${ltrAmt(dues)} <span style="color:var(--text-muted);">(${t('techPartnerColPaid')} ${ltrAmt(overall.paid)}, ${t('techPartnerColRemaining')} ${ltrAmt(overall.remaining)})</span>`;
-            }).join('<br>');
-            return `<div style="border:1px solid var(--border-color); border-radius:10px; padding:12px 14px; margin-bottom:12px;">
-                <div style="font-weight:700; color:#38bdf8; margin-bottom:6px;">${escHtml(job.clientName || '')}${job.startDate ? ' — ' + escHtml(job.startDate) : ''}</div>
-                <div style="font-size:0.78rem; margin-bottom:4px;"><span style="color:var(--text-muted);">${t('techPartnerColTech')}</span> ${techsLine}</div>
-                <div style="font-size:0.78rem;"><span style="color:var(--text-muted);">${t('techPartnerColPartners')}</span> ${partnersLine}</div>
-            </div>`;
-        }).join('');
+            const mine = extraShares.find(x => (x.name || '').trim() === name);
+            return { job, percent: mine ? mine.percent : 0, amount: mine ? mine.amount : 0 };
+        });
+        const techTotal = round2(techJobs.reduce((s, r) => s + r.dues, 0));
+        const partnerTotal = round2(partnerJobs.reduce((s, r) => s + r.amount, 0));
+        const combinedTotal = round2(techTotal + partnerTotal);
+        const paid = round2(techPaymentsInPeriod(name, '', '').reduce((s, p) => s + parseVal(p.amount), 0));
+        const remaining = round2(combinedTotal - paid);
+        return { techJobs, partnerJobs, techTotal, partnerTotal, combinedTotal, paid, remaining };
     }
 
-    // Same structured-table style as the Technician and Partner reports — one row per
-    // (job, technician) pair, with that job's partner split shown alongside.
+    function renderTechPartnerReportContent() {
+        const container = document.getElementById('techPartnerReportContent');
+        const name = document.getElementById('techPartnerReportSelect').value;
+        if (!name) { container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:15px;">${t('noTechPartnerJobs')}</p>`; return; }
+
+        const { techJobs, partnerJobs, combinedTotal, paid, remaining } = techPartnerReportData(name);
+
+        const techRowsHtml = techJobs.map(({ job, dues }) => `
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid var(--border-color);">
+                <span>${escHtml(job.clientName || '')}${job.startDate ? ' — ' + escHtml(job.startDate) : ''}</span>
+                <strong style="color:#fbbf24;">${ltrAmt(dues)}</strong>
+            </div>`).join('') || `<p style="color:var(--text-muted); padding:6px 0;">${t('techPartnerNoTechJobs')}</p>`;
+
+        const partnerRowsHtml = partnerJobs.map(({ job, percent, amount }) => `
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid var(--border-color);">
+                <span>${escHtml(job.clientName || '')}${job.startDate ? ' — ' + escHtml(job.startDate) : ''} (${Math.round(percent)}%)</span>
+                <strong style="color:#a78bfa;">${ltrAmt(amount)}</strong>
+            </div>`).join('') || `<p style="color:var(--text-muted); padding:6px 0;">${t('techPartnerNoPartnerJobs')}</p>`;
+
+        container.innerHTML = `
+            <div style="font-weight:700; font-size:1.05rem; color:#38bdf8; margin-bottom:12px;">${escHtml(name)}</div>
+            <div style="font-weight:700; margin-bottom:4px;">${t('techPartnerAsTechTitle')}</div>
+            ${techRowsHtml}
+            <div style="font-weight:700; margin:14px 0 4px;">${t('techPartnerAsPartnerTitle')}</div>
+            ${partnerRowsHtml}
+            <div style="margin-top:16px; padding-top:10px; border-top:2px solid var(--border-color); font-size:0.95rem; line-height:1.9;">
+                <div>${t('techPartnerTotalLabel')} <strong style="color:#34d399;">${ltrAmt(combinedTotal)}</strong></div>
+                <div>${t('techPartnerColPaid')} <strong>${ltrAmt(paid)}</strong></div>
+                <div>${t('techPartnerColRemaining')} <strong style="color:${remaining > 0.005 ? '#f87171' : '#34d399'};">${ltrAmt(remaining)}</strong></div>
+            </div>
+        `;
+    }
+
+    // Same structured-table style as the Technician and Partner reports: two separate grids
+    // (as-technician, as-partner) for the selected person, then one combined total/paid/remaining.
     async function downloadTechPartnerReportPDF() {
-        const jobs = getJobsWithTechAndPartner();
-        if (jobs.length === 0) { alert(t('noTechPartnerJobs')); return; }
+        const name = document.getElementById('techPartnerReportSelect').value;
+        if (!name) return;
+        const { techJobs, partnerJobs, combinedTotal, paid, remaining } = techPartnerReportData(name);
+        if (techJobs.length === 0 && partnerJobs.length === 0) { alert(t('noJobsThisDay')); return; }
         if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
         const { jsPDF } = window.jspdf;
         let doc = new jsPDF('p', 'mm', 'a4');
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
-        doc.text('AHA - Jobs With Technician & Partner', 14, 15);
-
-        const rows = [];
-        jobs.forEach(job => {
-            const { extraShares } = jobNet(job);
-            const partners = extraShares.filter(x => x.percent > 0.005);
-            const partnersText = partners.map(x => `${x.name || '?'} (${Math.round(x.percent)}%)`).join(', ');
-            const partnersShareTotal = round2(partners.reduce((s, x) => s + x.amount, 0));
-            (job.technicians || []).forEach(tech => {
-                const dues = calculateJobTechDuesWithReimbursement(tech, job.amountReceived, job.materialCost);
-                const overall = techOverallDuesPaidRemaining(tech.name || '');
-                rows.push({
-                    date: job.startDate || '', client: job.clientName || '',
-                    tech: tech.name || '', techDues: dues,
-                    partners: partnersText, partnerShare: partnersShareTotal,
-                    paid: overall.paid, remaining: overall.remaining
-                });
-            });
-        });
-
-        const headers = [["Date", "Client", "Technician", "Tech Dues", "Partner(s)", "Partner Share $", "Tech Paid (all-time)", "Tech Remaining"]];
         const money = v => '$' + v.toFixed(2);
-        const data = rows.map(r => [r.date, r.client, r.tech, money(r.techDues), r.partners, money(r.partnerShare), money(r.paid), money(r.remaining)]);
-        const TECH_PARTNER_ARABIC_COLS = [1, 2, 4]; // Client, Technician, Partner(s)
 
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
+        doc.text('AHA - Technician & Partner Report:', 14, 15);
+        const nameImg = textToImage(name);
+        const nameH = 7, nameW = nameH * nameImg.aspect;
+        doc.addImage(nameImg.dataUrl, 'PNG', 92, 10, nameW, nameH);
+
+        const drawArabicCells = function(cellData, arabicCols) {
+            if (cellData.section !== 'body') return;
+            if (!arabicCols.includes(cellData.column.index)) return;
+            const text = String(cellData.cell.raw ?? '');
+            if (!text || !containsArabic(text)) return;
+            doc.setFillColor(255, 255, 255);
+            doc.rect(cellData.cell.x, cellData.cell.y, cellData.cell.width, cellData.cell.height, 'F');
+            doc.setDrawColor(200, 200, 200);
+            doc.rect(cellData.cell.x, cellData.cell.y, cellData.cell.width, cellData.cell.height);
+            const img = textToImage(text);
+            const padding = 1;
+            let targetH = cellData.cell.height - padding * 2;
+            let targetW = targetH * img.aspect;
+            if (targetW > cellData.cell.width - padding * 2) { targetW = cellData.cell.width - padding * 2; targetH = targetW / img.aspect; }
+            const x = cellData.cell.x + (cellData.cell.width - targetW) / 2;
+            const y = cellData.cell.y + (cellData.cell.height - targetH) / 2;
+            doc.addImage(img.dataUrl, 'PNG', x, y, targetW, targetH);
+        };
+
+        let nextY = 24;
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(0, 0, 0);
+        doc.text('As Technician', 14, nextY);
         doc.autoTable({
-            head: headers, body: data, startY: 24, theme: 'grid',
-            styles: { fontSize: 8.5, cellPadding: 2, halign: 'center' },
+            head: [["Date", "Client", "Tech Dues"]],
+            body: techJobs.length ? techJobs.map(({ job, dues }) => [job.startDate || '', job.clientName || '', money(dues)]) : [['', '—', money(0)]],
+            startY: nextY + 3, theme: 'grid',
+            styles: { fontSize: 9, cellPadding: 2, halign: 'center' },
             headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-            didDrawCell: function(cellData) {
-                if (cellData.section !== 'body') return;
-                if (!TECH_PARTNER_ARABIC_COLS.includes(cellData.column.index)) return;
-                const text = String(cellData.cell.raw ?? '');
-                if (!text || !containsArabic(text)) return;
-                doc.setFillColor(255, 255, 255);
-                doc.rect(cellData.cell.x, cellData.cell.y, cellData.cell.width, cellData.cell.height, 'F');
-                doc.setDrawColor(200, 200, 200);
-                doc.rect(cellData.cell.x, cellData.cell.y, cellData.cell.width, cellData.cell.height);
-                const img = textToImage(text);
-                const padding = 1;
-                let targetH = cellData.cell.height - padding * 2;
-                let targetW = targetH * img.aspect;
-                if (targetW > cellData.cell.width - padding * 2) { targetW = cellData.cell.width - padding * 2; targetH = targetW / img.aspect; }
-                const x = cellData.cell.x + (cellData.cell.width - targetW) / 2;
-                const y = cellData.cell.y + (cellData.cell.height - targetH) / 2;
-                doc.addImage(img.dataUrl, 'PNG', x, y, targetW, targetH);
-            }
+            didDrawCell: cellData => drawArabicCells(cellData, [1])
         });
+        nextY = doc.lastAutoTable.finalY + 12;
 
-        doc.save('AHA_Tech_Partner_Report.pdf');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+        doc.text('As Partner', 14, nextY);
+        doc.autoTable({
+            head: [["Date", "Client", "Share %", "Partner Share $"]],
+            body: partnerJobs.length ? partnerJobs.map(({ job, percent, amount }) => [job.startDate || '', job.clientName || '', Math.round(percent) + '%', money(amount)]) : [['', '—', '', money(0)]],
+            startY: nextY + 3, theme: 'grid',
+            styles: { fontSize: 9, cellPadding: 2, halign: 'center' },
+            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+            didDrawCell: cellData => drawArabicCells(cellData, [1])
+        });
+        nextY = doc.lastAutoTable.finalY + 12;
+
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(0, 0, 0);
+        doc.text(`Total (technician + partner): ${money(combinedTotal)}`, 14, nextY);
+        doc.text(`Paid (all-time): ${money(paid)}`, 14, nextY + 7);
+        doc.text(`Remaining: ${money(remaining)}`, 14, nextY + 14);
+
+        doc.save(`AHA_Tech_Partner_Report_${name}.pdf`);
     }
 
     function renderExpenseReportContent() {
