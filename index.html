@@ -1678,6 +1678,7 @@
         jobPayTechPaidTotalLabel: { ar: 'إجمالي المدفوع للفنيين من الشغلانة دي:', en: 'Total paid to technicians on this job:' },
         jobPayCashAvailableLabel: { ar: 'الفلوس المتاحة للتقسيم دلوقتي:', en: 'Cash available to split right now:' },
         jobPayCashAvailableHint: { ar: '(المقبوض - الخامات - المدفوع للفنيين لحد دلوقتي، مش صافي ربح الشغلانة النهائي)', en: '(received − materials − technician payments so far — not the job\'s final net profit)' },
+        alertAttachmentsSaveFailed: { ar: 'الشغلانة اتحفظت صح بكل أرقامها، بس الصور/المرفقات معلقة ومحفظتش. جرب تفتحها تاني وتحفظ من تاني.', en: "The job saved fine with all its numbers, but the photos/attachments didn't save. Try opening it again and saving once more." },
         postponeTechWarn: { ar: 'تنبيه: الفني اللي معلّمه هنا هيتحسب له يوم شغل في اليوم ده، فمستحقه في الأسابيع هيتقسم على أيام الجدول.', en: 'Note: a technician you tick here is counted as working that day, so his dues get split across weeks by the schedule days.' },
         guideEditDaysHint: { ar: 'أيام الفني المجدولة على الشغلانة دي. دوس على يوم لو عايز تشيل الفني منه أو تعدّله:', en: "This technician's scheduled days on the job. Tap a day to remove him from it or edit it:" },
         guideOutsidePeriod: { ar: '(برّه الفترة)', en: '(outside period)' },
@@ -1975,6 +1976,67 @@
     const COMPANY_PROFILE_DOC = db.collection('jobCostingApp').doc('companyProfile');
 
     async function saveSavedJobsData(){ await JOBS_DOC.set({ jobs: savedJobs }); }
+
+    // Firestore caps a single document at 1MB, and base64 photos/PDF receipts embedded
+    // directly in each job were pushing the one shared "savedJobs" document over that
+    // cap (the actual error the user hit). Fix: each job's photo/receipt/material blobs
+    // live in their OWN small document instead, keyed by job id — every financial field
+    // (amounts, dates, split %) stays in the main document exactly as before, untouched,
+    // so no calculation anywhere is affected by this.
+    function jobAttachmentsDocRef(jobId) { return db.collection('jobCostingApp').doc('attachments_' + jobId); }
+
+    // Strips the heavy base64 blobs off a job object: returns a slim copy safe to store
+    // in the shared document, plus the blobs themselves (keyed by entry id so they can
+    // be matched back up later).
+    function splitJobAttachments(jobData) {
+        const photos = (jobData.photos || []).map(p => ({ ...p }));
+        const receiptPhotos = {};
+        const slimReceipts = (jobData.receipts || []).map(e => {
+            const slim = { ...e };
+            if (slim.photo) { receiptPhotos[e.id] = { photo: slim.photo, photoIsPdf: !!slim.photoIsPdf }; delete slim.photo; delete slim.photoIsPdf; }
+            return slim;
+        });
+        const materialPhotos = {};
+        const slimMaterials = (jobData.materialEntries || []).map(e => {
+            const slim = { ...e };
+            if (slim.photo) { materialPhotos[e.id] = { photo: slim.photo, photoIsPdf: !!slim.photoIsPdf }; delete slim.photo; delete slim.photoIsPdf; }
+            return slim;
+        });
+        const hasAttachments = photos.length > 0 || Object.keys(receiptPhotos).length > 0 || Object.keys(materialPhotos).length > 0;
+        const slimJob = { ...jobData, photos: [], receipts: slimReceipts, materialEntries: slimMaterials };
+        return { slimJob, attachments: { photos, receiptPhotos, materialPhotos }, hasAttachments };
+    }
+
+    async function saveJobAttachments(jobId, attachments) { await jobAttachmentsDocRef(jobId).set(attachments); }
+
+    // One-time, automatic cleanup: if any job already in Firestore still has photos/receipt
+    // PDFs embedded inline (saved before this fix), move them out to their own documents and
+    // re-save the now-slim main document. This is what actually recovers an account that's
+    // already stuck over the 1MB limit — nothing further for the user to do by hand.
+    let attachmentsMigrationAttempted = false;
+    async function migrateJobAttachmentsIfNeeded() {
+        if (attachmentsMigrationAttempted) return;
+        const needsMigration = savedJobs.some(j =>
+            (j.photos && j.photos.length > 0) ||
+            (j.receipts || []).some(e => e.photo) ||
+            (j.materialEntries || []).some(e => e.photo)
+        );
+        if (!needsMigration) return;
+        attachmentsMigrationAttempted = true;
+        try {
+            for (const job of savedJobs) {
+                const { slimJob, attachments, hasAttachments } = splitJobAttachments(job);
+                if (!hasAttachments) continue;
+                await saveJobAttachments(job.id, attachments);
+                Object.assign(job, slimJob);
+            }
+            await saveSavedJobsData();
+            console.log('Job photo/receipt attachments migrated out of the main jobs document.');
+        } catch (err) {
+            console.error('Attachments migration failed:', err);
+            attachmentsMigrationAttempted = false; // allow a retry on the next snapshot
+        }
+    }
     async function saveTechPhonesData(){ await TECHS_DOC.set({ phones: technicianPhones }); }
     async function saveCompanyProfileData(){ await COMPANY_PROFILE_DOC.set(companyProfile); }
 
@@ -2133,6 +2195,7 @@
             savedJobs = jobs;
             refreshAllViews();
             safeCall(checkDebtReminders);
+            migrateJobAttachmentsIfNeeded(); // manages its own errors; fire-and-forget
         }, err => console.error('Firestore jobs sync error:', err));
 
         TECHS_DOC.onSnapshot(doc => {
@@ -4153,20 +4216,24 @@
             if (!confirm(t('confirmOverpayment'))) { showToast(t('saveCancelledMsg')); return; }
         }
 
+        // Photos and any receipt/material-entry PDF go to their own per-job document, not into
+        // the shared savedJobs document — see splitJobAttachments() above.
+        const { slimJob, attachments, hasAttachments } = splitJobAttachments(jobData);
+
         let oldJobSnapshot = null;
         if (editingId) {
             const index = savedJobs.findIndex(j => j.id === editingId);
             if (index !== -1) {
                 oldJobSnapshot = JSON.parse(JSON.stringify(savedJobs[index]));
-                jobData.createdBy = savedJobs[index].createdBy || currentUserEmail;
-                if (savedJobs[index].assignedTeam !== undefined) jobData.assignedTeam = savedJobs[index].assignedTeam;
-                if (savedJobs[index].dayOrder !== undefined) jobData.dayOrder = savedJobs[index].dayOrder;
-                if (savedJobs[index].scheduledDate !== undefined) jobData.scheduledDate = savedJobs[index].scheduledDate;
-                if (savedJobs[index].dailySchedule !== undefined) jobData.dailySchedule = savedJobs[index].dailySchedule;
-                savedJobs[index] = jobData;
+                slimJob.createdBy = savedJobs[index].createdBy || currentUserEmail;
+                if (savedJobs[index].assignedTeam !== undefined) slimJob.assignedTeam = savedJobs[index].assignedTeam;
+                if (savedJobs[index].dayOrder !== undefined) slimJob.dayOrder = savedJobs[index].dayOrder;
+                if (savedJobs[index].scheduledDate !== undefined) slimJob.scheduledDate = savedJobs[index].scheduledDate;
+                if (savedJobs[index].dailySchedule !== undefined) slimJob.dailySchedule = savedJobs[index].dailySchedule;
+                savedJobs[index] = slimJob;
             }
         } else {
-            savedJobs.unshift(jobData);
+            savedJobs.unshift(slimJob);
         }
 
         try {
@@ -4175,6 +4242,10 @@
         } catch (err) {
             alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
             return;
+        }
+        if (hasAttachments) {
+            try { await saveJobAttachments(slimJob.id, attachments); }
+            catch (err) { alert(t('alertAttachmentsSaveFailed')); }
         }
         resetForm();
         refreshAllViews();
@@ -4624,7 +4695,7 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    function editJob(id) {
+    async function editJob(id) {
         id = String(id);
         const job = savedJobs.find(j => String(j.id) === id);
         if (!job) return;
@@ -4677,6 +4748,24 @@
         document.getElementById('cancelEditBtn').style.display = 'block';
         switchScreen('entry');
         window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        // Photos / receipt-PDFs now live in their own document (see splitJobAttachments) —
+        // the form above opens immediately with every financial field ready; the attached
+        // images fill in a moment later without blocking anything.
+        try {
+            const doc = await jobAttachmentsDocRef(id).get();
+            if (document.getElementById('editingJobId').value !== id) return; // user moved on already
+            if (doc.exists) {
+                const a = doc.data();
+                if (a.photos && a.photos.length) {
+                    currentJobPhotos = a.photos;
+                    renderPhotoGallery(currentJobPhotos, 'jobPhotoGallery');
+                }
+                if (a.receiptPhotos) currentReceipts.forEach(e => { const p = a.receiptPhotos[e.id]; if (p) { e.photo = p.photo; e.photoIsPdf = p.photoIsPdf; } });
+                if (a.materialPhotos) currentMaterialEntries.forEach(e => { const p = a.materialPhotos[e.id]; if (p) { e.photo = p.photo; e.photoIsPdf = p.photoIsPdf; } });
+                renderLedgers();
+            }
+        } catch (err) { console.error('Could not load job photos/attachments:', err); }
     }
 
     async function deleteJob(id) {
@@ -4690,6 +4779,7 @@
         await saveSavedJobsData();
         logActivity('delete', deletedClientName);
         refreshAllViews();
+        jobAttachmentsDocRef(id).delete().catch(() => {}); // best-effort; not critical if it fails
     }
 
     async function markSelectedAsDone() {
