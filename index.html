@@ -1729,6 +1729,8 @@
         emailThankYouSubject: { ar: 'شكرًا لتعاملك مع AHA Handyman', en: 'Thank You - AHA Handyman' },
         emailReminderSubject: { ar: 'تذكير بالدفع - AHA Handyman', en: 'Payment Reminder - AHA Handyman' },
         invoiceSendMsgBtn: { ar: '✉️ ابعت رسالة للعميل', en: '✉️ Send Client Message' },
+        invoicePaidBadge: { ar: '✅ مدفوعة بالكامل', en: '✅ PAID IN FULL' },
+        invoicePaidStamp: { ar: 'مدفوعة بالكامل', en: 'PAID IN FULL' },
         invoiceLoadingNote: { ar: 'بيتأكد من آخر نسخة محفوظة على السيرفر...', en: 'Checking the latest saved version on the server...' },
         invoiceScopeClarificationsTitle: { ar: 'توضيحات نطاق العمل', en: 'Scope Clarifications' },
         invoiceScopeClarification1: { ar: 'الشغل الموصوف فوق يشمل العمالة والمواد المذكورة؛ أي حاجة تانية مش داخلة.', en: 'Work described above includes labor and the materials listed; anything else is excluded.' },
@@ -5175,38 +5177,67 @@
     // "Additional Work" one) so you can reopen and reprint any of them without retyping the items.
     // They live on the job itself (job.savedInvoices), persisted the same way every other job edit
     // is — through persistJobChange/saveSavedJobsData — so they sync and survive a refresh.
+    // Saving an invoice used to read/modify/write the WHOLE shared jobs document straight from
+    // the in-memory `savedJobs` array. If anything else touched that same document in between
+    // (another open tab/device, or even this app's own realtime listener refreshing `savedJobs`
+    // out from under this function at just the wrong moment), that blind overwrite could silently
+    // wipe out the invoice that was just pushed onto it — it would show a "saved" toast, yet never
+    // really land. A Firestore transaction fixes this: it re-reads the document fresh from the
+    // server, applies only this one invoice change on top of THAT fresh copy, and writes it back
+    // atomically — if someone else wrote in between, Firestore retries the transaction instead of
+    // letting either side clobber the other.
     async function saveCurrentInvoice() {
         if (!invoiceState) return;
-        const idx = savedJobs.findIndex(j => String(j.id) === String(invoiceState.jobId));
-        if (idx === -1) return;
-        const job = savedJobs[idx];
-        const backup = JSON.parse(JSON.stringify(job));
-        if (!job.savedInvoices) job.savedInvoices = [];
+        const jobId = invoiceState.jobId;
         const snapshot = JSON.parse(JSON.stringify(invoiceState));
         delete snapshot.jobId; delete snapshot.savedId;
-        const existingIdx = invoiceState.savedId ? job.savedInvoices.findIndex(inv => inv.id === invoiceState.savedId) : -1;
-        let targetId;
-        if (existingIdx !== -1) {
-            targetId = job.savedInvoices[existingIdx].id;
-            job.savedInvoices[existingIdx] = { ...job.savedInvoices[existingIdx], ...snapshot, savedAt: new Date().toISOString() };
-        } else {
-            targetId = newLedgerId();
-            invoiceState.savedId = targetId;
-            job.savedInvoices.push({ ...snapshot, id: targetId, savedAt: new Date().toISOString() });
-        }
-        job.lastEditedBy = currentUserEmail;
-        const activityText = `${t('activityInvoiceSaved')} ${invoiceState.invoiceNo}`;
-        const ok = await persistJobChange(idx, backup, activityText);
-        if (!ok) return;   // persistJobChange already rolled back and alerted on failure
+        let targetId = invoiceState.savedId;
 
-        // A successful local write can still vanish if it never actually reached Firestore's
-        // server (dropped connection, backgrounded tab, etc.) before the user navigated away —
-        // so the "saved" toast is only shown once a direct server read confirms the invoice is
-        // really there, instead of trusting the local/cached write blindly.
+        try {
+            await db.runTransaction(async (tx) => {
+                const doc = await tx.get(JOBS_DOC);
+                const freshJobs = (doc.exists && doc.data().jobs) ? doc.data().jobs : [];
+                const idx = freshJobs.findIndex(j => String(j.id) === String(jobId));
+                if (idx === -1) throw new Error('job-not-found');
+                const job = freshJobs[idx];
+                if (!job.savedInvoices) job.savedInvoices = [];
+                const existingIdx = targetId ? job.savedInvoices.findIndex(inv => inv.id === targetId) : -1;
+                if (existingIdx !== -1) {
+                    job.savedInvoices[existingIdx] = { ...job.savedInvoices[existingIdx], ...snapshot, savedAt: new Date().toISOString() };
+                } else {
+                    targetId = newLedgerId();
+                    job.savedInvoices.push({ ...snapshot, id: targetId, savedAt: new Date().toISOString() });
+                }
+                job.lastEditedBy = currentUserEmail;
+                tx.set(JOBS_DOC, { jobs: freshJobs });
+            });
+        } catch (err) {
+            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            return;
+        }
+
+        // Transaction succeeded — mirror the same change onto the local in-memory copy so the
+        // screen is in sync immediately (the realtime listener will also confirm this shortly).
+        invoiceState.savedId = targetId;
+        const idxLocal = savedJobs.findIndex(j => String(j.id) === String(jobId));
+        if (idxLocal !== -1) {
+            const job = savedJobs[idxLocal];
+            if (!job.savedInvoices) job.savedInvoices = [];
+            const existingIdx = job.savedInvoices.findIndex(inv => inv.id === targetId);
+            if (existingIdx !== -1) job.savedInvoices[existingIdx] = { ...job.savedInvoices[existingIdx], ...snapshot, savedAt: new Date().toISOString() };
+            else job.savedInvoices.push({ ...snapshot, id: targetId, savedAt: new Date().toISOString() });
+            job.lastEditedBy = currentUserEmail;
+            logActivity('edit', job.clientName, `${t('activityInvoiceSaved')} ${invoiceState.invoiceNo}`);
+        }
+
+        // A successful write can still vanish if it never actually reached Firestore's server
+        // (dropped connection, backgrounded tab, etc.) before the user navigated away — so the
+        // "saved" toast is only shown once a direct server read confirms the invoice is really
+        // there, instead of trusting the local/cached write blindly.
         try {
             const serverDoc = await JOBS_DOC.get({ source: 'server' });
             const serverJobs = (serverDoc.exists && serverDoc.data().jobs) ? serverDoc.data().jobs : [];
-            const serverJob = serverJobs.find(j => String(j.id) === String(invoiceState.jobId));
+            const serverJob = serverJobs.find(j => String(j.id) === String(jobId));
             const confirmed = serverJob && (serverJob.savedInvoices || []).some(inv => inv.id === targetId);
             if (!confirmed) { alert(t('alertInvoiceSaveNotConfirmed')); return; }
         } catch (e) {
@@ -5332,8 +5363,10 @@
         const totalDue = subtotal - credit;
         const subEl = document.getElementById('invSubtotalDisplay');
         const totalEl = document.getElementById('invTotalDueDisplay');
+        const paidEl = document.getElementById('invPaidBadge');
         if (subEl) subEl.innerText = '$' + subtotal.toFixed(2);
         if (totalEl) totalEl.innerText = '$' + totalDue.toFixed(2);
+        if (paidEl) paidEl.style.display = totalDue <= 0 ? 'block' : 'none';
     }
 
     function invoiceDocTypeDisplay(docType) {
@@ -5469,6 +5502,7 @@
                     <div style="display:flex; justify-content:space-between; align-items:center; background:#2C6B45; color:#fff; border-radius:8px; padding:8px 12px; margin-top:6px; font-weight:700;">
                         <span>${t('invoiceTotalDueLabel')}</span><span id="invTotalDueDisplay">$${totalDue.toFixed(2)}</span>
                     </div>
+                    <div id="invPaidBadge" style="display:${totalDue <= 0 ? 'block' : 'none'}; text-align:center; color:#22c55e; font-weight:700; font-size:0.85rem; margin-top:8px; letter-spacing:0.5px;">${t('invoicePaidBadge')}</div>
                 </div>
             </div>
 
@@ -5522,6 +5556,7 @@
         const credits = invoiceState.credits || [];
         const creditsTotal = invoiceCreditsTotal();
         const totalDue = subtotal - creditsTotal;
+        const isPaid = totalDue <= 0;
         const accent = '#2C6B45';
         const companyName = companyProfile.name || 'Affordable Handyman Approach';
         const companyTagline = companyProfile.tagline || '';
@@ -5555,6 +5590,7 @@
         const noteBox = invoiceState.note ? `<div style="background:#F6F1E8; border:1px dashed ${accent}; border-radius:6px; padding:14px 16px;"><div style="font-weight:700; font-size:11.5px; letter-spacing:0.5px; margin-bottom:6px; color:${accent};">${escHtml(noteHeaderText).toUpperCase()}</div><div style="font-size:12.5px; line-height:1.7; color:#3A332B;">${escHtml(invoiceState.note).replace(/\n/g, '<br>')}</div></div>` : '';
         const logoHeaderHtml = companyLogo ? `<img src="${companyLogo}" style="width:70px; height:70px; object-fit:contain; flex-shrink:0;">` : '';
         const watermarkHtml = companyLogo ? `<img src="${companyLogo}" style="position:absolute; top:50%; left:50%; width:560px; height:560px; transform:translate(-50%,-50%); opacity:0.06; pointer-events:none;">` : '';
+        const paidStampHtml = isPaid ? `<div style="position:absolute; top:150px; right:70px; z-index:5; transform:rotate(-18deg); border:4px solid #16a34a; color:#16a34a; border-radius:10px; padding:6px 22px; font-family: Arial, Helvetica, sans-serif; font-weight:800; font-size:28px; letter-spacing:3px; opacity:0.6; pointer-events:none;">${escHtml(t('invoicePaidStamp')).toUpperCase()}</div>` : '';
 
         // Title block: "Additional Work" gets a centered title + subtitle (matching the reference
         // design); every other type keeps its original right-aligned title + invoice#/date block.
@@ -5579,7 +5615,7 @@
                  </div>
                  <div class="ui" style="font-size:13px; line-height:1.9;">
                    <div><b>${escHtml(t('invoiceTypeLabel'))}:</b> ${escHtml(t('invoiceTypeAdditionalWork'))}</div>
-                   <div><b>${escHtml(t('invoiceBalanceDue'))}:</b> $${totalDue.toFixed(2)}</div>
+                   <div><b>${escHtml(t('invoiceBalanceDue'))}:</b> $${totalDue.toFixed(2)}${isPaid ? ` — <span style="color:#16a34a; font-weight:700;">✅ ${escHtml(t('invoicePaidStamp')).toUpperCase()}</span>` : ''}</div>
                  </div>
                </div>`
             : `<div style="display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:24px;">
@@ -5593,6 +5629,7 @@
                    <div style="background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 18px; text-align:center; min-width:200px;">
                      <div class="ui" style="font-size:11px; letter-spacing:1px; opacity:0.9;">${escHtml(t('invoiceBalanceDue')).toUpperCase()}</div>
                      <div class="ui" style="font-size:24px; font-weight:700;">$${totalDue.toFixed(2)}</div>
+                     ${isPaid ? `<div class="ui" style="font-size:12px; font-weight:700; letter-spacing:1px; margin-top:4px;">✅ ${escHtml(t('invoicePaidStamp')).toUpperCase()}</div>` : ''}
                    </div>
                    ${paymentMethodRow}
                    ${followUpRow}
@@ -5610,7 +5647,7 @@
                  ${creditsRowsHtml}
                  <div style="display:flex; justify-content:space-between; align-items:center; background:#EFEAE0; border-radius:4px; padding:10px 14px; margin-top:6px; font-weight:700; font-size:14px;"><span>${escHtml(t('invoiceAdditionalBalanceDue')).toUpperCase()}</span><span>$${totalDue.toFixed(2)}</span></div>
                </div>`
-            : `<div class="ui" style="width:300px; font-size:13px;">
+            : `<div class="ui invoice-totals" style="width:300px; font-size:13px;">
                  <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>${escHtml(t('invoiceSubtotalLabel'))}</span><span>$${subtotal.toFixed(2)}</span></div>
                  ${creditsRowsHtml}
                  <div style="display:flex; justify-content:space-between; align-items:center; background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 14px; margin-top:8px; font-weight:700; font-size:15px;"><span>${escHtml(t('invoiceTotalDueLabel')).toUpperCase()}</span><span>$${totalDue.toFixed(2)}</span></div>
@@ -5637,18 +5674,27 @@
         const closeLabel = currentLang === 'ar' ? 'إغلاق' : 'Close';
         const closeBtnHtml = `<button type="button" class="no-print" onclick="window.close()" title="${closeLabel}" style="position:fixed; top:14px; right:14px; z-index:999; background:#241F1A; color:#fff; border:none; border-radius:50%; width:38px; height:38px; font-size:18px; line-height:1; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.35);">✕</button>`;
 
-        const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escHtml(invoiceState.invoiceNo)}</title>
+        const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escHtml(invoiceState.invoiceNo)}</title>
 <style>
   @page { size: letter; margin: 0; }
-  body{margin:0; font-family: Georgia, 'Times New Roman', serif; background:#FDFBF6;}
+  *{ -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+  html{ -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+  body{margin:0; font-family: Georgia, 'Times New Roman', serif; background:#FDFBF6; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; overflow-x:auto;}
   .ui{font-family: Arial, Helvetica, sans-serif;}
-  @media print { .no-print { display:none !important; } }
+  @media print { .no-print { display:none !important; } .invoice-page{ width:850px !important; } }
+  @media screen and (max-width: 900px) { .invoice-page{ width:100% !important; } }
+  @media screen and (max-width: 480px) {
+    .invoice-inner{ padding:22px 18px 20px 18px !important; }
+    .invoice-totals{ width:100% !important; max-width:100% !important; }
+  }
 </style></head><body>
 ${closeBtnHtml}
-<div style="position:relative; width:850px; min-height:1060px; margin:0 auto; background:#FDFBF6; color:#241F1A; overflow:hidden;">
+<div class="invoice-page" style="position:relative; width:850px; max-width:100%; min-height:1060px; margin:0 auto; background:#FDFBF6; color:#241F1A; overflow:hidden; box-sizing:border-box;">
   <div style="height:10px; background:#1A1A1A;"></div>
   ${watermarkHtml}
-  <div style="position:relative; z-index:1; width:100%; min-height:1060px; box-sizing:border-box; padding:36px 56px 30px 56px; display:flex; flex-direction:column; gap:16px;">
+  ${paidStampHtml}
+  <div class="invoice-inner" style="position:relative; z-index:1; width:100%; min-height:1060px; box-sizing:border-box; padding:36px 56px 30px 56px; display:flex; flex-direction:column; gap:16px;">
 
     <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:20px;">
       <div style="display:flex; gap:14px; align-items:center;">
