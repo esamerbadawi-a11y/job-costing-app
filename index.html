@@ -1050,6 +1050,19 @@
     </div>
 </div>
 
+<div id="jobPayModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:92%; max-width:620px; max-height:88vh; overflow-y:auto; padding:22px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.15rem;">💰 <span data-i18n="jobPayTitle"></span></h2>
+            <button class="danger" onclick="closeJobPayModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+        <div id="jobPayClientLine" style="font-weight:700; margin-bottom:10px;"></div>
+        <div id="jobPaySummaryBox" style="background:var(--panel-bg); border:1px solid var(--border-color); border-radius:10px; padding:10px 12px; margin-bottom:16px; font-size:0.82rem; line-height:1.7;"></div>
+        <div id="jobPayTechList"></div>
+        <div id="jobPaySplitBox" style="background:var(--panel-bg); border:1px solid var(--border-color); border-radius:10px; padding:12px 14px; margin-top:6px; font-size:0.84rem; line-height:1.8;"></div>
+    </div>
+</div>
+
 <div id="quickScheduleModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
     <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:90%; max-width:550px; max-height:85vh; overflow-y:auto; padding:25px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px;">
@@ -1654,6 +1667,17 @@
         guideDetailsBtn: { ar: 'تفاصيل', en: 'Details' },
         guideProrateNote: { ar: 'الحصة: {a} من {b} أيام على الشغلانة × {full}', en: 'Share: {a} of {b} scheduled days on the job × {full}' },
         techPaymentEditTitle: { ar: '✏️ تعديل دفعة فني', en: '✏️ Edit Technician Payment' },
+        jobPayBtn: { ar: 'دفع الفنيين من الشغلانة', en: 'Pay technicians from this job' },
+        jobPayTitle: { ar: 'دفع الفنيين وتسوية الشغلانة', en: 'Pay Technicians & Job Settlement' },
+        jobPayDuesLabel: { ar: 'مستحقه من الشغلانة دي:', en: 'Dues on this job:' },
+        jobPayPaidOnJobLabel: { ar: 'مدفوع له من الشغلانة دي:', en: 'Paid on this job:' },
+        jobPayRemainingOnJobLabel: { ar: 'باقي له من الشغلانة دي:', en: 'Remaining on this job:' },
+        jobPayRecordBtn: { ar: '✅ تسجيل الدفعة', en: '✅ Record Payment' },
+        jobPayReceivedLabel: { ar: 'المقبوض من العميل حتى الآن:', en: 'Received from client so far:' },
+        jobPayMaterialsLabel: { ar: 'تكلفة الخامات:', en: 'Materials cost:' },
+        jobPayTechPaidTotalLabel: { ar: 'إجمالي المدفوع للفنيين من الشغلانة دي:', en: 'Total paid to technicians on this job:' },
+        jobPayCashAvailableLabel: { ar: 'الفلوس المتاحة للتقسيم دلوقتي:', en: 'Cash available to split right now:' },
+        jobPayCashAvailableHint: { ar: '(المقبوض - الخامات - المدفوع للفنيين لحد دلوقتي، مش صافي ربح الشغلانة النهائي)', en: '(received − materials − technician payments so far — not the job\'s final net profit)' },
         postponeTechWarn: { ar: 'تنبيه: الفني اللي معلّمه هنا هيتحسب له يوم شغل في اليوم ده، فمستحقه في الأسابيع هيتقسم على أيام الجدول.', en: 'Note: a technician you tick here is counted as working that day, so his dues get split across weeks by the schedule days.' },
         guideEditDaysHint: { ar: 'أيام الفني المجدولة على الشغلانة دي. دوس على يوم لو عايز تشيل الفني منه أو تعدّله:', en: "This technician's scheduled days on the job. Tap a day to remove him from it or edit it:" },
         guideOutsidePeriod: { ar: '(برّه الفترة)', en: '(outside period)' },
@@ -2321,7 +2345,7 @@
     // (e.g. one opened without the other being closed first), the later one in the page would sit on
     // top and silently swallow every tap meant for the one underneath — including a job's name link.
     // Every one of them closes all the others first, so that can never happen.
-    const TOP_LEVEL_MODAL_IDS = ['techGuideModal', 'expenseReportModal', 'activityLogModal', 'partnerAccountModal', 'partnerReportModal', 'techPartnerReportModal', 'companyAccountModal', 'companyProfileModal', 'agendaModal', 'globalSearchModal', 'invoiceModal'];
+    const TOP_LEVEL_MODAL_IDS = ['techGuideModal', 'expenseReportModal', 'activityLogModal', 'partnerAccountModal', 'partnerReportModal', 'techPartnerReportModal', 'companyAccountModal', 'companyProfileModal', 'agendaModal', 'globalSearchModal', 'invoiceModal', 'jobPayModal'];
     function closeOtherTopModals(exceptId) {
         TOP_LEVEL_MODAL_IDS.forEach(id => { if (id !== exceptId) { const el = document.getElementById(id); if (el) el.style.display = 'none'; } });
     }
@@ -4438,6 +4462,7 @@
                 <td data-label="${t('thActions')}" class="no-print">
                     <button class="secondary" onclick="showJobQuickDetails('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#7c3aed;">ℹ️</button>
                     <button class="secondary" onclick="openInvoiceModal('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#0ea5e9;" title="${t('invoiceBtn')}">🧾</button>
+                    <button class="secondary" onclick="openJobPayModal('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#16a34a;" title="${t('jobPayBtn')}">💰</button>
                     <button class="secondary" onclick="editJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem;">${t('editBtn')}</button>
                     <button class="secondary" onclick="duplicateJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#0284c7;">${t('duplicateBtn')}</button>
                     <button class="danger" onclick="deleteJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem;">${t('deleteBtn')}</button>
@@ -7455,6 +7480,15 @@ ${closeBtnHtml}
             (!dateFrom || (p.date && p.date >= dateFrom)) && (!dateTo || (p.date && p.date <= dateTo)));
     }
 
+    // Payments tagged with a specific jobId (made from the job-screen "Pay" button) — lets us
+    // show "paid so far ON THIS JOB" per technician, separate from his all-time totals.
+    function techPaymentsForJob(jobId, name) {
+        return techPayments.filter(p => String(p.jobId) === String(jobId) && p.name === name);
+    }
+    function techPaidOnJob(jobId, name) {
+        return round2(techPaymentsForJob(jobId, name).reduce((s, p) => s + parseVal(p.amount), 0));
+    }
+
     function showTechDetails(name) {
         const sel = document.getElementById('guideTechFilter');
         sel.value = name;
@@ -7478,6 +7512,130 @@ ${closeBtnHtml}
         }
         renderTechGuideContent();
         safeCall(renderTechnicians);
+        safeCall(renderJobPayModalIfOpen);
+    }
+
+    function renderJobPayModalIfOpen() {
+        if (document.getElementById('jobPayModal').style.display === 'flex') renderJobPayModal();
+    }
+
+    // ===== Job-screen "Pay" modal: pay technicians out of THIS job's collected money, =====
+    // ===== then see what's left to split between company/partner by the job's ratio.  =====
+    let jobPayCurrentJobId = null;
+
+    function openJobPayModal(jobId) {
+        jobId = String(jobId);
+        const job = savedJobs.find(j => String(j.id) === jobId);
+        if (!job) return;
+        jobPayCurrentJobId = jobId;
+        closeOtherTopModals('jobPayModal');
+        document.getElementById('jobPayModal').style.display = 'flex';
+        renderJobPayModal();
+    }
+    function closeJobPayModal() {
+        document.getElementById('jobPayModal').style.display = 'none';
+        jobPayCurrentJobId = null;
+    }
+
+    function renderJobPayModal() {
+        const job = savedJobs.find(j => String(j.id) === String(jobPayCurrentJobId));
+        if (!job) { closeJobPayModal(); return; }
+
+        document.getElementById('jobPayClientLine').textContent = `${job.clientName || ''}${job.startDate ? ' — ' + job.startDate : ''}`;
+
+        const received = parseVal(job.amountReceived);
+        const technicians = job.technicians || [];
+
+        // Per-technician: full dues on this job, how much of that has already been paid
+        // FROM THIS JOB specifically (tagged payments), and what's left for this job.
+        let totalPaidOnJobAllTechs = 0;
+        const techRows = technicians.map((tech, idx) => {
+            const dues = calculateJobTechDuesWithReimbursement(tech, job.amountReceived, job.materialCost);
+            const paidOnJob = techPaidOnJob(job.id, tech.name || '');
+            totalPaidOnJobAllTechs += paidOnJob;
+            const remainingOnJob = round2(dues - paidOnJob);
+            const payments = techPaymentsForJob(job.id, tech.name || '').slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+            const paymentsHtml = payments.map(p => `
+                <div class="ledger-row" style="font-size:0.75rem;">
+                    <span>${escHtml(p.date || '')}</span>
+                    <strong style="color:#34d399;">${ltrAmt(p.amount)}</strong>
+                    <span class="ledger-note">${escHtml(p.note || '')}</span>
+                    <button type="button" class="ledger-del" onclick="deleteTechPayment('${p.at}')">🗑</button>
+                </div>`).join('');
+            return `
+                <div style="border:1px solid var(--border-color); border-radius:10px; padding:10px 12px; margin-bottom:10px;">
+                    <div style="font-weight:700; margin-bottom:6px;">👷 ${escHtml(tech.name || '?')}</div>
+                    <div style="font-size:0.8rem; display:flex; flex-wrap:wrap; gap:14px; margin-bottom:8px;">
+                        <span>${t('jobPayDuesLabel')} <strong style="color:#fbbf24;">${ltrAmt(dues)}</strong></span>
+                        <span>${t('jobPayPaidOnJobLabel')} <strong style="color:#34d399;">${ltrAmt(paidOnJob)}</strong></span>
+                        <span>${t('jobPayRemainingOnJobLabel')} <strong style="color:${remainingOnJob > 0.005 ? '#f87171' : '#34d399'};">${ltrAmt(remainingOnJob)}</strong></span>
+                    </div>
+                    ${paymentsHtml}
+                    <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; align-items:center;">
+                        <input type="text" id="jobPayAmount-${idx}" placeholder="0" value="${remainingOnJob > 0.005 ? remainingOnJob.toFixed(2) : ''}" onfocus="this.select()" style="width:110px;">
+                        <input type="date" id="jobPayDate-${idx}" value="${isoDate(new Date())}" style="width:140px;">
+                        <input type="text" id="jobPayNote-${idx}" data-i18n-ph="companyExpenseNotePh" style="flex:1; min-width:120px;">
+                        <button class="success" style="padding:7px 12px; font-size:0.8rem;" onclick="addJobTechPayment('${idx}')" data-i18n="jobPayRecordBtn"></button>
+                    </div>
+                </div>`;
+        }).join('') || `<p style="text-align:center; color:var(--text-muted); padding:10px;">${t('noTechData')}</p>`;
+
+        document.getElementById('jobPayTechList').innerHTML = techRows;
+
+        totalPaidOnJobAllTechs = round2(totalPaidOnJobAllTechs);
+        const cashAvailable = round2(received - parseVal(job.materialCost) - totalPaidOnJobAllTechs);
+
+        document.getElementById('jobPaySummaryBox').innerHTML = `
+            <div>${t('jobPayReceivedLabel')} <strong>${ltrAmt(received)}</strong></div>
+            <div>${t('jobPayMaterialsLabel')} <strong style="color:#f87171;">${ltrAmt(parseVal(job.materialCost))}</strong></div>
+            <div>${t('jobPayTechPaidTotalLabel')} <strong style="color:#34d399;">${ltrAmt(totalPaidOnJobAllTechs)}</strong></div>
+        `;
+
+        // What's left of the money collected so far (after materials + technicians already
+        // paid on this job) gets split by the job's usual ratio — this is "cash available
+        // right now", not the job's final total profit, so it supports weekly check-ins
+        // on a multi-week job instead of waiting for the job to fully close out.
+        const ratio = jobSplitRatio(job);
+        const shareS = round2(cashAvailable * ratio.s);
+        const shareM = round2(cashAvailable * ratio.m);
+        const companyShare = round2(cashAvailable * ratio.company);
+        const extraRows = (job.extraPartners || []).filter(p => parseVal(p.percent) > 0.005).map(p => {
+            const amt = round2(cashAvailable * parseVal(p.percent) / 100);
+            return `<div>${escHtml(p.name || '?')} (${Math.round(parseVal(p.percent))}%): <strong style="color:#a78bfa;">${ltrAmt(amt)}</strong></div>`;
+        }).join('');
+
+        document.getElementById('jobPaySplitBox').innerHTML = `
+            <div style="font-weight:700; margin-bottom:6px;">${t('jobPayCashAvailableLabel')} <span style="color:${cashAvailable < 0 ? '#f87171' : '#34d399'};">${ltrAmt(cashAvailable)}</span></div>
+            <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:8px;">${t('jobPayCashAvailableHint')}</div>
+            <div>${t('thShareS')} (${Math.round(ratio.s * 100)}%): <strong style="color:#38bdf8;">${ltrAmt(shareS)}</strong></div>
+            <div>${t('thShareM')} (${Math.round(ratio.m * 100)}%): <strong style="color:#38bdf8;">${ltrAmt(shareM)}</strong></div>
+            <div>${t('thCompany')} (${Math.round(ratio.company * 100)}%): <strong style="color:#fbbf24;">${ltrAmt(companyShare)}</strong></div>
+            ${extraRows}
+        `;
+    }
+
+    async function addJobTechPayment(idx) {
+        const job = savedJobs.find(j => String(j.id) === String(jobPayCurrentJobId));
+        if (!job) return;
+        const tech = (job.technicians || [])[idx];
+        if (!tech) return;
+        const amount = parseVal(document.getElementById(`jobPayAmount-${idx}`).value);
+        const date = document.getElementById(`jobPayDate-${idx}`).value || isoDate(new Date());
+        const note = document.getElementById(`jobPayNote-${idx}`).value.trim();
+        if (amount <= 0) { alert(t('alertWithdrawalAmountRequired')); return; }
+
+        const entry = { name: tech.name || '', amount, date, note, jobId: job.id, jobClientName: job.clientName || '', by: currentUserEmail || '?', at: new Date().toISOString() };
+        try {
+            techPayments.unshift(entry);
+            await TECH_PAYMENTS_DOC.set({ entries: techPayments });
+            logActivity('add', tech.name || '', `${t('guidePaymentsTitle')}: $${amount.toFixed(2)} (${job.clientName || ''})`);
+            renderJobPayModal();
+            safeCall(renderTechGuideContent);
+            safeCall(renderTechnicians);
+        } catch (err) {
+            techPayments = techPayments.filter(x => x !== entry);
+            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+        }
     }
 
     // Everything about ONE technician in the selected period: the jobs behind his dues, and his payments.
