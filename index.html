@@ -4258,6 +4258,11 @@
                 if (savedJobs[index].dayOrder !== undefined) slimJob.dayOrder = savedJobs[index].dayOrder;
                 if (savedJobs[index].scheduledDate !== undefined) slimJob.scheduledDate = savedJobs[index].scheduledDate;
                 if (savedJobs[index].dailySchedule !== undefined) slimJob.dailySchedule = savedJobs[index].dailySchedule;
+                // The edit form has no fields for saved invoices — it only knows the core job
+                // fields (name, amounts, technicians, etc). Rebuilding jobData from the form alone
+                // and replacing the whole job object with it was silently dropping every invoice
+                // ever saved for that job the moment ANY job field (like the amount) was edited.
+                if (savedJobs[index].savedInvoices !== undefined) slimJob.savedInvoices = savedJobs[index].savedInvoices;
                 savedJobs[index] = slimJob;
             }
         } else {
