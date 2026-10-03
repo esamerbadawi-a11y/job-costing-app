@@ -273,6 +273,7 @@
                     <button class="secondary" id="activityLogBtnEl" style="display:none; width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;" onclick="openActivityLogModal()" data-i18n="activityLogBtn"></button>
                     <button class="secondary" onclick="openPartnerAccountModal()" data-i18n="partnerAccountBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
                     <button class="secondary" onclick="openPartnerReportModal()" data-i18n="partnerReportBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
+                    <button class="secondary" onclick="openTechPartnerReportModal()" data-i18n="techPartnerReportBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
                     <button class="secondary" onclick="openCompanyAccountModal()" data-i18n="companyAccountBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
                 </div>
             </div>
@@ -480,7 +481,7 @@
                         <input type="date" id="filterDateTo" onchange="filterJobs()" style="min-width:130px;">
                     </div>
                     <button class="secondary" onclick="setLogDateRange('week')" style="padding: 8px 12px; font-size: 0.78rem;" data-i18n="presetWeekBtn"></button>
-                    <button class="secondary" onclick="setLogDateRange('last2weeks')" style="padding: 8px 12px; font-size: 0.78rem;" data-i18n="presetLast2WeeksBtn"></button>
+                    <button class="secondary" onclick="setLogDateRange('lastweek')" style="padding: 8px 12px; font-size: 0.78rem;" data-i18n="presetLastWeekBtn"></button>
                     <button class="secondary" onclick="clearDateFilter()" style="padding: 8px 12px; font-size: 0.78rem;" data-i18n="clearDateFilterBtn"></button>
                     <button class="warning" id="filterDebtBtn" onclick="toggleDebtFilter()" style="padding: 8px 12px; font-size: 0.78rem;" data-i18n="debtFilterOff"></button>
                     <button class="secondary" onclick="toggleSelectAll(true)" style="padding: 8px 12px; font-size: 0.78rem;" data-i18n="selectAllBtn"></button>
@@ -658,7 +659,7 @@
                             <input type="date" id="techPeriodTo" onchange="renderTechnicians()" style="min-width:130px;">
                         </div>
                         <button class="secondary" onclick="setTechPeriod('week')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetWeekBtn"></button>
-                        <button class="secondary" onclick="setTechPeriod('last2weeks')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetLast2WeeksBtn"></button>
+                        <button class="secondary" onclick="setTechPeriod('lastweek')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetLastWeekBtn"></button>
                         <button class="secondary" onclick="setTechPeriod('clear')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
                     </div>
                     <div id="jobPeriodNetBox"></div>
@@ -761,7 +762,7 @@
             <button class="secondary" onclick="setGuideDateRange('today')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetTodayBtn"></button>
             <button class="secondary" onclick="shiftGuideWeek(-1)" style="padding:6px 12px; font-size:0.75rem;">◀</button>
             <button class="secondary" onclick="setGuideDateRange('week')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetWeekBtn"></button>
-            <button class="secondary" onclick="setGuideDateRange('last2weeks')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetLast2WeeksBtn"></button>
+            <button class="secondary" onclick="setGuideDateRange('lastweek')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetLastWeekBtn"></button>
             <button class="secondary" onclick="shiftGuideWeek(1)" style="padding:6px 12px; font-size:0.75rem;">▶</button>
             <button class="secondary" onclick="setGuideDateRange('clear')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
             <div style="display:flex; align-items:center; gap:6px;">
@@ -861,6 +862,21 @@
         </div>
 
         <div id="partnerReportContent" style="font-size:0.85rem; line-height:1.6; color:var(--text-main);"></div>
+    </div>
+</div>
+
+<div id="techPartnerReportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:90%; max-width:700px; max-height:85vh; overflow-y:auto; padding:25px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.2rem;">👷🤝 <span data-i18n="techPartnerReportTitle"></span></h2>
+            <button class="danger" onclick="closeTechPartnerReportModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-bottom:15px;">
+            <button class="secondary" style="background:#f87171; color:#fff;" onclick="downloadTechPartnerReportPDF()" data-i18n="partnerReportDownloadBtn"></button>
+        </div>
+
+        <div id="techPartnerReportContent" style="font-size:0.85rem; line-height:1.6; color:var(--text-main);"></div>
     </div>
 </div>
 
@@ -1210,6 +1226,13 @@
         partnerReportPickLabel: { ar: 'اختار الشريك:', en: 'Pick the partner:' },
         partnerReportDownloadBtn: { ar: '📄 تحميل PDF', en: '📄 Download PDF' },
         partnerReportTotalLabel: { ar: 'الإجمالي المستحق له:', en: 'Total earned:' },
+        techPartnerReportBtn: { ar: '👷🤝 تقرير الفني والشريك', en: '👷🤝 Tech & Partner Report' },
+        techPartnerReportTitle: { ar: 'الشغلانات اللي فيها فني وشريك مع بعض', en: 'Jobs With Both a Technician and a Partner' },
+        noTechPartnerJobs: { ar: 'مفيش شغلانات فيها فني وشريك مع بعض لحد دلوقتي.', en: 'No jobs with both a technician and a partner yet.' },
+        techPartnerColTech: { ar: 'الفني:', en: 'Technician:' },
+        techPartnerColPartners: { ar: 'الشريك:', en: 'Partner:' },
+        techPartnerColPaid: { ar: 'المدفوع له (كل شغلاناته):', en: 'Paid (all his jobs):' },
+        techPartnerColRemaining: { ar: 'الباقي له:', en: 'Remaining:' },
         noExtraPartnersYet: { ar: 'لسه مفيش أي شريك إضافي مضاف في أي شغلانة.', en: 'No extra partners added to any job yet.' },
         companyAccountBtn: { ar: '🏢 حساب الشركة', en: '🏢 Company Account' },
         companyAccountTitle: { ar: 'حساب الشركة — الدخل والمصروفات العامة', en: 'Company Account — Income vs General Expenses' },
@@ -1642,7 +1665,6 @@
         twOver: { ar: 'زيادة {c} عن المستحق', en: '{c} more than the dues' },
         guideManualNote: { ar: 'حسب الأسابيع المسجلة على الشغلانة', en: 'By the weeks entered on the job' },
         presetLastWeekBtn: { ar: 'الأسبوع اللي فات', en: 'Last week' },
-        presetLast2WeeksBtn: { ar: 'آخر أسبوعين', en: 'Last 2 Weeks' },
         guideJobsTitleAll: { ar: 'كل شغلاناته (من غير فلتر تاريخ)', en: 'All his jobs (no date filter)' },
         guidePaymentsTitleAll: { ar: 'كل دفعاته (من غير فلتر تاريخ)', en: 'All his payments (no date filter)' },
         guideLegacyPaid: { ar: 'مكتوب جوه الشغلانة: مدفوع {a} (مش محسوب)', en: 'Job says paid {a} (not counted)' },
@@ -2299,7 +2321,7 @@
     // (e.g. one opened without the other being closed first), the later one in the page would sit on
     // top and silently swallow every tap meant for the one underneath — including a job's name link.
     // Every one of them closes all the others first, so that can never happen.
-    const TOP_LEVEL_MODAL_IDS = ['techGuideModal', 'expenseReportModal', 'activityLogModal', 'partnerAccountModal', 'partnerReportModal', 'companyAccountModal', 'companyProfileModal', 'agendaModal', 'globalSearchModal', 'invoiceModal'];
+    const TOP_LEVEL_MODAL_IDS = ['techGuideModal', 'expenseReportModal', 'activityLogModal', 'partnerAccountModal', 'partnerReportModal', 'techPartnerReportModal', 'companyAccountModal', 'companyProfileModal', 'agendaModal', 'globalSearchModal', 'invoiceModal'];
     function closeOtherTopModals(exceptId) {
         TOP_LEVEL_MODAL_IDS.forEach(id => { if (id !== exceptId) { const el = document.getElementById(id); if (el) el.style.display = 'none'; } });
     }
@@ -2788,14 +2810,18 @@
         return received - material;
     }
 
+    // Same step-back behavior as the Detailed Project Log's "Last week" button: each press goes
+    // one more week further back; "This week" or "Clear" resets the step.
+    let techLastWeekStep = 0;
     function setTechPeriod(preset) {
         const fromEl = document.getElementById('techPeriodFrom'), toEl = document.getElementById('techPeriodTo');
-        if (preset === 'clear') { fromEl.value = ''; toEl.value = ''; }
-        else if (preset === 'last2weeks') {
-            const w1 = weekOf(isoDate(new Date()), -2), w2 = weekOf(isoDate(new Date()), -1);
-            fromEl.value = w1.start; toEl.value = w2.end;
+        if (preset === 'clear') { fromEl.value = ''; toEl.value = ''; techLastWeekStep = 0; }
+        else if (preset === 'lastweek') {
+            techLastWeekStep += 1;
+            const w = weekOf(isoDate(new Date()), -techLastWeekStep);
+            fromEl.value = w.start; toEl.value = w.end;
         }
-        else { const w = weekOf(isoDate(new Date()), preset === 'week' ? 0 : -1); fromEl.value = w.start; toEl.value = w.end; }
+        else { techLastWeekStep = 0; const w = weekOf(isoDate(new Date()), 0); fromEl.value = w.start; toEl.value = w.end; }
         renderTechnicians();
     }
 
@@ -5952,6 +5978,9 @@ ${closeBtnHtml}
             : jobsHtml + `<div style="text-align:end; font-size:1rem; font-weight:700; color:#34d399; padding-top:8px; border-top:2px solid var(--border-color);">${t('partnerReportTotalLabel')} ${ltrAmt(partnerTotal)}</div>`;
     }
 
+    // Built the same way as the Technician Report: one clean autoTable grid (instead of
+    // manually-positioned free text), with Arabic cells (client names, the partner's own name)
+    // drawn as images the same way, since jsPDF's built-in fonts can't render Arabic text.
     async function downloadPartnerReportPDF() {
         const name = document.getElementById('partnerReportSelect').value;
         if (!name) return;
@@ -5959,59 +5988,179 @@ ${closeBtnHtml}
         const { jsPDF } = window.jspdf;
         let doc = new jsPDF('p', 'mm', 'a4');
         doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
-        doc.text('AHA - Partner Report: ' + name, 14, 15);
+        doc.text('AHA - Partner Report:', 14, 15);
+        const nameImg = textToImage(name);
+        const nameH = 7, nameW = nameH * nameImg.aspect;
+        doc.addImage(nameImg.dataUrl, 'PNG', 62, 10, nameW, nameH);
 
         const jobs = jobsForExtraPartner(name);
-        let y = 25, grandTotal = 0;
-        const drawAutoText = (text, x, yPos, size, bold) => {
-            if (containsArabic(text)) {
-                const img = textToImage(text || '');
-                const h = size * 0.5, w = h * img.aspect;
-                doc.addImage(img.dataUrl, 'PNG', x, yPos - h + 1, w, h);
-            } else {
-                doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(size);
-                doc.text(text || '', x, yPos);
-            }
-        };
-
-        jobs.forEach((job, idx) => {
-            const { shareS, shareM, companyNet, ratio, extraShares, totalTechDues } = jobNet(job);
+        const rows = [];
+        let grandTotal = 0;
+        jobs.forEach(job => {
+            const { extraShares, totalTechDues } = jobNet(job);
             const mine = extraShares.find(x => (x.name || '').trim() === name);
-            grandTotal += mine ? mine.amount : 0;
+            const myAmount = mine ? mine.amount : 0;
+            const myPercent = mine ? mine.percent : 0;
+            grandTotal += myAmount;
+            rows.push({
+                date: job.startDate || '', client: job.clientName || '',
+                total: parseVal(job.totalRevenue), materials: parseVal(job.materialCost),
+                tech: totalTechDues, percent: myPercent, share: myAmount
+            });
+        });
 
-            if (y > 250) { doc.addPage(); y = 20; }
-            drawAutoText(`#${idx + 1}  ${job.clientName || ''}  ${job.startDate || ''}`, 14, y, 11, true);
-            y += 6;
-            doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
-            doc.text(`Total: $${parseVal(job.totalRevenue).toFixed(2)}   Materials: $${parseVal(job.materialCost).toFixed(2)}   Technicians: $${totalTechDues.toFixed(2)}`, 14, y);
-            y += 6;
+        if (rows.length === 0) { alert(t('noJobsThisDay')); return; }
 
-            // Everyone's cut of this one job, all on one line — same format as the job's own ℹ️ details popup.
-            const splitParts = [
-                `S (${Math.round(ratio.s * 100)}%): $${shareS.toFixed(2)}`,
-                `M (${Math.round(ratio.m * 100)}%): $${shareM.toFixed(2)}`,
-                `Company (${Math.round(ratio.company * 100)}%): $${companyNet.toFixed(2)}`,
-                ...extraShares.filter(x => x.percent > 0.005).map(x => `${x.name || '?'} (${Math.round(x.percent)}%): $${x.amount.toFixed(2)}`)
-            ];
-            const splitLine = splitParts.join('   |   ');
-            if (containsArabic(splitLine)) {
-                const img = textToImage(splitLine);
-                let w = 180, h = w / img.aspect;
-                if (h > 9) { h = 9; w = h * img.aspect; }
-                doc.addImage(img.dataUrl, 'PNG', 14, y, w, h);
-                y += h + 8;
-            } else {
-                doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
-                const wrapped = doc.splitTextToSize(splitLine, 180);
-                doc.text(wrapped, 14, y);
-                y += wrapped.length * 5 + 8;
+        const headers = [["Date", "Client", "Job Total", "Materials", "Technicians", "Share %", "Share $"]];
+        const money = v => '$' + v.toFixed(2);
+        const data = rows.map(r => [r.date, r.client, money(r.total), money(r.materials), money(r.tech), Math.round(r.percent) + '%', money(r.share)]);
+        const PARTNER_REPORT_ARABIC_COLS = [1]; // Client
+
+        doc.autoTable({
+            head: headers, body: data, startY: 24, theme: 'grid',
+            styles: { fontSize: 9, cellPadding: 2, halign: 'center' },
+            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+            didDrawCell: function(cellData) {
+                if (cellData.section !== 'body') return;
+                if (!PARTNER_REPORT_ARABIC_COLS.includes(cellData.column.index)) return;
+                const text = String(cellData.cell.raw ?? '');
+                if (!text || !containsArabic(text)) return;
+                doc.setFillColor(255, 255, 255);
+                doc.rect(cellData.cell.x, cellData.cell.y, cellData.cell.width, cellData.cell.height, 'F');
+                doc.setDrawColor(200, 200, 200);
+                doc.rect(cellData.cell.x, cellData.cell.y, cellData.cell.width, cellData.cell.height);
+                const img = textToImage(text);
+                const padding = 1;
+                let targetH = cellData.cell.height - padding * 2;
+                let targetW = targetH * img.aspect;
+                if (targetW > cellData.cell.width - padding * 2) { targetW = cellData.cell.width - padding * 2; targetH = targetW / img.aspect; }
+                const x = cellData.cell.x + (cellData.cell.width - targetW) / 2;
+                const y = cellData.cell.y + (cellData.cell.height - targetH) / 2;
+                doc.addImage(img.dataUrl, 'PNG', x, y, targetW, targetH);
             }
         });
 
-        if (jobs.length === 0) { doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.text(t('noJobsThisDay'), 14, y); y += 8; }
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
-        doc.text(`Total for ${name}: $${grandTotal.toFixed(2)}`, 14, y);
+        const finalY = doc.lastAutoTable.finalY + 10;
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(0, 0, 0);
+        if (containsArabic(name)) {
+            doc.text(`Total for`, 14, finalY);
+            const totalNameImg = textToImage(name);
+            const totalNameH = 6, totalNameW = totalNameH * totalNameImg.aspect;
+            doc.addImage(totalNameImg.dataUrl, 'PNG', 32, finalY - totalNameH + 1.5, totalNameW, totalNameH);
+            doc.text(`: $${grandTotal.toFixed(2)}`, 32 + totalNameW, finalY);
+        } else {
+            doc.text(`Total for ${name}: $${grandTotal.toFixed(2)}`, 14, finalY);
+        }
         doc.save(`AHA_Partner_Report_${name}.pdf`);
+    }
+
+    // ---------- Tech & Partner Report: every job that has BOTH a technician on it AND a partner
+    // share, so you can see where the two overlap — no picking a name, just the full crossover list. ----------
+    function jobHasTechAndPartner(job) {
+        const hasTech = (job.technicians || []).length > 0;
+        const hasPartner = (job.extraPartners || []).some(p => parseVal(p.percent) > 0.005);
+        return hasTech && hasPartner;
+    }
+    function getJobsWithTechAndPartner() { return savedJobs.filter(jobHasTechAndPartner); }
+
+    // A technician's overall running balance across ALL his jobs (not just the tech+partner ones
+    // listed here) — same "dues minus payments logged with 💵" math the Technician Report and
+    // Technicians screen use, with no date filter so it's his true all-time balance.
+    function techOverallDuesPaidRemaining(name) {
+        const stats = computeTechPeriodStats('', '')[name];
+        const dues = stats ? stats.dues : 0;
+        const paid = round2(techPaymentsInPeriod(name, '', '').reduce((s, p) => s + parseVal(p.amount), 0));
+        return { dues: round2(dues), paid, remaining: round2(dues - paid) };
+    }
+
+    function openTechPartnerReportModal() {
+        closeOtherTopModals('techPartnerReportModal');
+        document.getElementById('techPartnerReportModal').style.display = 'flex';
+        renderTechPartnerReportContent();
+    }
+    function closeTechPartnerReportModal() { document.getElementById('techPartnerReportModal').style.display = 'none'; }
+
+    function renderTechPartnerReportContent() {
+        const container = document.getElementById('techPartnerReportContent');
+        const jobs = getJobsWithTechAndPartner();
+        if (jobs.length === 0) { container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:15px;">${t('noTechPartnerJobs')}</p>`; return; }
+
+        container.innerHTML = jobs.map(job => {
+            const { extraShares } = jobNet(job);
+            const partners = extraShares.filter(x => x.percent > 0.005);
+            const partnersLine = partners.map(x => `${escHtml(x.name || '?')} (${Math.round(x.percent)}%): ${ltrAmt(x.amount)}`).join('&nbsp;&nbsp;|&nbsp;&nbsp;');
+            const techsLine = (job.technicians || []).map(tech => {
+                const dues = calculateJobTechDuesWithReimbursement(tech, job.amountReceived, job.materialCost);
+                const overall = techOverallDuesPaidRemaining(tech.name || '');
+                return `${escHtml(tech.name || '?')}: ${ltrAmt(dues)} <span style="color:var(--text-muted);">(${t('techPartnerColPaid')} ${ltrAmt(overall.paid)}, ${t('techPartnerColRemaining')} ${ltrAmt(overall.remaining)})</span>`;
+            }).join('<br>');
+            return `<div style="border:1px solid var(--border-color); border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+                <div style="font-weight:700; color:#38bdf8; margin-bottom:6px;">${escHtml(job.clientName || '')}${job.startDate ? ' — ' + escHtml(job.startDate) : ''}</div>
+                <div style="font-size:0.78rem; margin-bottom:4px;"><span style="color:var(--text-muted);">${t('techPartnerColTech')}</span> ${techsLine}</div>
+                <div style="font-size:0.78rem;"><span style="color:var(--text-muted);">${t('techPartnerColPartners')}</span> ${partnersLine}</div>
+            </div>`;
+        }).join('');
+    }
+
+    // Same structured-table style as the Technician and Partner reports — one row per
+    // (job, technician) pair, with that job's partner split shown alongside.
+    async function downloadTechPartnerReportPDF() {
+        const jobs = getJobsWithTechAndPartner();
+        if (jobs.length === 0) { alert(t('noTechPartnerJobs')); return; }
+        if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
+        const { jsPDF } = window.jspdf;
+        let doc = new jsPDF('p', 'mm', 'a4');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
+        doc.text('AHA - Jobs With Technician & Partner', 14, 15);
+
+        const rows = [];
+        jobs.forEach(job => {
+            const { extraShares } = jobNet(job);
+            const partners = extraShares.filter(x => x.percent > 0.005);
+            const partnersText = partners.map(x => `${x.name || '?'} (${Math.round(x.percent)}%)`).join(', ');
+            const partnersShareTotal = round2(partners.reduce((s, x) => s + x.amount, 0));
+            (job.technicians || []).forEach(tech => {
+                const dues = calculateJobTechDuesWithReimbursement(tech, job.amountReceived, job.materialCost);
+                const overall = techOverallDuesPaidRemaining(tech.name || '');
+                rows.push({
+                    date: job.startDate || '', client: job.clientName || '',
+                    tech: tech.name || '', techDues: dues,
+                    partners: partnersText, partnerShare: partnersShareTotal,
+                    paid: overall.paid, remaining: overall.remaining
+                });
+            });
+        });
+
+        const headers = [["Date", "Client", "Technician", "Tech Dues", "Partner(s)", "Partner Share $", "Tech Paid (all-time)", "Tech Remaining"]];
+        const money = v => '$' + v.toFixed(2);
+        const data = rows.map(r => [r.date, r.client, r.tech, money(r.techDues), r.partners, money(r.partnerShare), money(r.paid), money(r.remaining)]);
+        const TECH_PARTNER_ARABIC_COLS = [1, 2, 4]; // Client, Technician, Partner(s)
+
+        doc.autoTable({
+            head: headers, body: data, startY: 24, theme: 'grid',
+            styles: { fontSize: 8.5, cellPadding: 2, halign: 'center' },
+            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+            didDrawCell: function(cellData) {
+                if (cellData.section !== 'body') return;
+                if (!TECH_PARTNER_ARABIC_COLS.includes(cellData.column.index)) return;
+                const text = String(cellData.cell.raw ?? '');
+                if (!text || !containsArabic(text)) return;
+                doc.setFillColor(255, 255, 255);
+                doc.rect(cellData.cell.x, cellData.cell.y, cellData.cell.width, cellData.cell.height, 'F');
+                doc.setDrawColor(200, 200, 200);
+                doc.rect(cellData.cell.x, cellData.cell.y, cellData.cell.width, cellData.cell.height);
+                const img = textToImage(text);
+                const padding = 1;
+                let targetH = cellData.cell.height - padding * 2;
+                let targetW = targetH * img.aspect;
+                if (targetW > cellData.cell.width - padding * 2) { targetW = cellData.cell.width - padding * 2; targetH = targetW / img.aspect; }
+                const x = cellData.cell.x + (cellData.cell.width - targetW) / 2;
+                const y = cellData.cell.y + (cellData.cell.height - targetH) / 2;
+                doc.addImage(img.dataUrl, 'PNG', x, y, targetW, targetH);
+            }
+        });
+
+        doc.save('AHA_Tech_Partner_Report.pdf');
     }
 
     function renderExpenseReportContent() {
@@ -7098,19 +7247,22 @@ ${closeBtnHtml}
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
+    // Pressing "Last week" repeatedly steps one more week further back each time (last week,
+    // then the week before that, then the week before that...) instead of jumping to the same
+    // fixed week every click. "This week" or "Clear" resets the step back to the start.
+    let logLastWeekStep = 0;
     function setLogDateRange(preset) {
         const fromEl = document.getElementById('filterDateFrom');
         const toEl = document.getElementById('filterDateTo');
         const today = new Date();
-        if (preset === 'week' || preset === 'lastweek') {
-            const w = weekOf(isoDate(today), preset === 'week' ? 0 : -1);   // Monday to Sunday of this week, or the one before
+        if (preset === 'week') {
+            logLastWeekStep = 0;
+            const w = weekOf(isoDate(today), 0);
             fromEl.value = w.start; toEl.value = w.end;
-        } else if (preset === 'last2weeks') {
-            // Covers the previous 2 full calendar weeks (Monday two weeks ago through last Sunday) —
-            // same start/worked-on matching as every other preset, just a wider window.
-            const w1 = weekOf(isoDate(today), -2);
-            const w2 = weekOf(isoDate(today), -1);
-            fromEl.value = w1.start; toEl.value = w2.end;
+        } else if (preset === 'lastweek') {
+            logLastWeekStep += 1;
+            const w = weekOf(isoDate(today), -logLastWeekStep);
+            fromEl.value = w.start; toEl.value = w.end;
         }
         filterJobs();
     }
@@ -7123,21 +7275,28 @@ ${closeBtnHtml}
         renderTechGuideContent();
     }
 
+    // Same step-back behavior as the other "Last week" buttons: each press goes one more week
+    // further back than the last; "Today", "This week" or "Clear" resets the step.
+    let guideLastWeekStep = 0;
     function setGuideDateRange(preset) {
         const fromEl = document.getElementById('guideDateFrom');
         const toEl = document.getElementById('guideDateTo');
         const today = new Date();
         const iso = d => isoDate(d);
         if (preset === 'today') {
+            guideLastWeekStep = 0;
             fromEl.value = iso(today); toEl.value = iso(today);
-        } else if (preset === 'week' || preset === 'lastweek') {
+        } else if (preset === 'week') {
+            guideLastWeekStep = 0;
             // Weeks run Monday to Sunday (the whole week, so a Monday never collapses to a single day).
-            const w = weekOf(iso(today), preset === 'week' ? 0 : -1);
+            const w = weekOf(iso(today), 0);
             fromEl.value = w.start; toEl.value = w.end;
-        } else if (preset === 'last2weeks') {
-            const w1 = weekOf(iso(today), -2), w2 = weekOf(iso(today), -1);
-            fromEl.value = w1.start; toEl.value = w2.end;
+        } else if (preset === 'lastweek') {
+            guideLastWeekStep += 1;
+            const w = weekOf(iso(today), -guideLastWeekStep);
+            fromEl.value = w.start; toEl.value = w.end;
         } else {
+            guideLastWeekStep = 0;
             fromEl.value = ''; toEl.value = '';
         }
         renderTechGuideContent();
@@ -7402,6 +7561,7 @@ ${closeBtnHtml}
     function clearDateFilter() {
         document.getElementById('filterDateFrom').value = '';
         document.getElementById('filterDateTo').value = '';
+        logLastWeekStep = 0;
         filterJobs();
     }
 
