@@ -1669,6 +1669,7 @@
         emailThankYouSubject: { ar: 'شكرًا لتعاملك مع AHA Handyman', en: 'Thank You - AHA Handyman' },
         emailReminderSubject: { ar: 'تذكير بالدفع - AHA Handyman', en: 'Payment Reminder - AHA Handyman' },
         invoiceSendMsgBtn: { ar: '✉️ ابعت رسالة للعميل', en: '✉️ Send Client Message' },
+        invoiceLoadingNote: { ar: 'بيتأكد من آخر نسخة محفوظة على السيرفر...', en: 'Checking the latest saved version on the server...' },
         aiTimeoutMsg: { ar: 'ما ردّش في الوقت المناسب. اتأكد من النت وجرّب تاني.', en: 'did not respond in time. Check your internet and try again.' },
         aiStageSdk: { ar: 'تحميل مكتبة الـ AI', en: 'Loading the AI library' },
         aiStageModel: { ar: 'رد الـ AI', en: 'AI response' },
@@ -4973,10 +4974,28 @@
         return [{ desc: '', qty: '1', amount: parseVal(job.totalRevenue) }];
     }
 
-    function openInvoiceModal(jobId) {
+    async function openInvoiceModal(jobId) {
         jobId = String(jobId);
+        closeOtherTopModals('invoiceModal');
+        document.getElementById('invoiceModal').style.display = 'flex';
+        const container = document.getElementById('invoiceModalContent');
+        if (container) container.innerHTML = `<div style="padding:30px 0; text-align:center; color:var(--text-muted);">${t('invoiceLoadingNote')}</div>`;
+
+        // Re-sync straight from the server before showing anything. A phone that was
+        // backgrounded, lost signal, or just came back online can otherwise keep showing
+        // an outdated offline snapshot here — which looked exactly like a saved invoice
+        // "disappearing" even though it was safely on the server the whole time.
+        try {
+            const serverDoc = await JOBS_DOC.get({ source: 'server' });
+            if (serverDoc.exists && serverDoc.data().jobs) {
+                const freshJobs = serverDoc.data().jobs;
+                freshJobs.forEach(j => { j.id = String(j.id); });
+                savedJobs = freshJobs;
+            }
+        } catch (e) { /* offline or unreachable — fall back to whatever's already in memory */ }
+
         const job = savedJobs.find(j => String(j.id) === jobId);
-        if (!job) return;
+        if (!job) { if (container) container.innerHTML = ''; return; }
         const seq = jobId.replace(/\D/g, '').slice(-4).padStart(4, '0') || '0001';
         invoiceState = {
             jobId,
@@ -4994,8 +5013,6 @@
             showValidity: false,
             validityText: t('invoiceValidityPlaceholder')
         };
-        closeOtherTopModals('invoiceModal');
-        document.getElementById('invoiceModal').style.display = 'flex';
         renderInvoiceModalContent();
     }
 
