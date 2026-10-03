@@ -1056,7 +1056,8 @@
         <h3 id="techPaymentTitleEl" style="color:#38bdf8; margin:0 0 4px; font-size:1rem;" data-i18n="techPaymentTitle"></h3>
         <div id="techPaymentNameLabel" style="font-weight:700; margin-bottom:14px;"></div>
         <div class="form-group"><label data-i18n="withdrawalAmountLabel"></label><input type="text" id="techPaymentAmount" placeholder="0" onfocus="this.select()"></div>
-        <div class="form-group"><label data-i18n="lblReceiptDate"></label><input type="date" id="techPaymentDate"></div>
+        <div class="form-group"><label data-i18n="lblReceiptDate"></label><input type="date" id="techPaymentDate" onchange="syncTechPaymentSettleDate()"></div>
+        <div class="form-group"><label data-i18n="techPaymentSettleLabel"></label><input type="date" id="techPaymentSettleDate" oninput="this.dataset.touched='1'"><div style="font-size:0.72rem; color:var(--text-muted); margin-top:3px;" data-i18n="techPaymentSettleHint"></div></div>
         <input type="text" id="techPaymentNote" data-i18n-ph="companyExpenseNotePh" style="margin-bottom:12px;">
         <button class="success" style="width:100%; padding:11px; margin-bottom:8px;" onclick="saveTechPayment()" data-i18n="saveWithdrawalBtn"></button>
         <button class="danger" style="width:100%; padding:8px; font-size:0.85rem;" onclick="closeTechPaymentModal()" data-i18n="cancelBtn"></button>
@@ -1640,6 +1641,8 @@
         alertPhoneUnavailable: { ar: 'رقم الهاتف غير متوفر لهذا الفني.', en: 'Phone number not available for this technician.' },
         guideModalTitle: { ar: 'دليل الحسابات الشامل للفنيين و S & M', en: 'Complete Technicians & S/M Guide' },
         guideSendShareBtn: { ar: 'إرسال حصة S & M', en: 'Send S & M Share' },
+        guideShareSLabel: { ar: 'حصة S (للفترة دي):', en: 'S Share (this period):' },
+        guideShareMLabel: { ar: 'حصة M (للفترة دي):', en: 'M Share (this period):' },
         guideAddTechBtn: { ar: '+ إضافة فني جديد', en: '+ Add New Technician' },
         guideCloseBtn: { ar: '✕ إغلاق', en: '✕ Close' },
         addTechFormTitle: { ar: 'إضافة بيانات فني جديد', en: 'Add New Technician' },
@@ -1655,6 +1658,9 @@
         guideThPaidInPeriod: { ar: 'المدفوع في الفترة دي', en: 'Paid in Period' },
         guideThRemainingInPeriod: { ar: 'الباقي في الفترة دي', en: 'Remaining in Period' },
         techPaymentTitle: { ar: '💵 تسجيل دفعة لفني', en: '💵 Record Technician Payment' },
+        techPaymentSettleLabel: { ar: '📆 بتقفل حساب الأسبوع اللي فيه:', en: '📆 Settles the week that includes:' },
+        techPaymentSettleHint: { ar: 'سيبها زي تاريخ الدفع إلا لو الدفعة دي بتقفل حساب أسبوع قديم متأخر', en: 'Leave same as the payment date unless this is a catch-up payment for an older week' },
+        techPaymentSettlesNote: { ar: 'بتقفل حساب أسبوع:', en: 'Settles week of:' },
         withdrawalAmountLabel: { ar: 'المبلغ ($):', en: 'Amount ($):' },
         guidePaidNote: { ar: 'المدفوع هنا = الدفعات المسجلة بزرار 💵 (بتاريخها). الدفعات مش بتتسجل جوه الشغلانة.', en: 'Paid here = payments logged with the 💵 button (by their date). Payments are not recorded inside a job.' },
         lblAddReceived: { ar: 'سجّل دفعة جديدة من العميل (بتتجمع في المبلغ المستلم)', en: 'Record a new client payment (added to Amount Received)' },
@@ -6765,7 +6771,11 @@ ${closeBtnHtml}
         techPaymentName = name;
         document.getElementById('techPaymentNameLabel').textContent = name;
         document.getElementById('techPaymentAmount').value = '';
-        document.getElementById('techPaymentDate').value = isoDate(new Date());
+        const todayStr = isoDate(new Date());
+        document.getElementById('techPaymentDate').value = todayStr;
+        const settleEl0 = document.getElementById('techPaymentSettleDate');
+        settleEl0.value = todayStr; // by default this payment settles the week it's dated in
+        delete settleEl0.dataset.touched;
         document.getElementById('techPaymentNote').value = '';
         document.getElementById('techPaymentModal').style.display = 'flex';
     }
@@ -6779,14 +6789,24 @@ ${closeBtnHtml}
         document.getElementById('techPaymentNameLabel').textContent = p.name;
         document.getElementById('techPaymentAmount').value = parseVal(p.amount);
         document.getElementById('techPaymentDate').value = p.date || isoDate(new Date());
+        const settleEl1 = document.getElementById('techPaymentSettleDate');
+        settleEl1.value = p.settleDate || p.date || isoDate(new Date());
+        settleEl1.dataset.touched = '1'; // existing entry: don't silently re-sync this to the payment date if it's edited
         document.getElementById('techPaymentNote').value = p.note || '';
         document.getElementById('techPaymentModal').style.display = 'flex';
     }
     function closeTechPaymentModal() { document.getElementById('techPaymentModal').style.display = 'none'; editingPaymentAt = ''; techPaymentJobId = null; }
+    // The settle-date field defaults to tracking the payment date (most payments settle the
+    // same week they're made in) until the user types in it directly — then it's pinned.
+    function syncTechPaymentSettleDate() {
+        const settleEl = document.getElementById('techPaymentSettleDate');
+        if (settleEl && !settleEl.dataset.touched) settleEl.value = document.getElementById('techPaymentDate').value;
+    }
 
     async function saveTechPayment() {
         const amount = parseVal(document.getElementById('techPaymentAmount').value);
         const date = document.getElementById('techPaymentDate').value;
+        const settleDate = document.getElementById('techPaymentSettleDate').value || date;
         const note = document.getElementById('techPaymentNote').value.trim();
         if (amount <= 0) { alert(t('alertWithdrawalAmountRequired')); return; }
 
@@ -6794,7 +6814,7 @@ ${closeBtnHtml}
             const idx = techPayments.findIndex(x => x.at === editingPaymentAt);
             if (idx === -1) { closeTechPaymentModal(); renderTechGuideContent(); return; }
             const backup = { ...techPayments[idx] };
-            techPayments[idx] = { ...backup, amount, date, note, editedBy: currentUserEmail || '?', editedAt: new Date().toISOString() };
+            techPayments[idx] = { ...backup, amount, date, settleDate, note, editedBy: currentUserEmail || '?', editedAt: new Date().toISOString() };
             try {
                 await TECH_PAYMENTS_DOC.set({ entries: techPayments });
                 logActivity('edit', backup.name || '', `${t('guidePaymentsTitle')}: $${parseVal(backup.amount).toFixed(2)} (${backup.date || ''}) → $${amount.toFixed(2)} (${date})`);
@@ -6809,7 +6829,7 @@ ${closeBtnHtml}
             return;
         }
 
-        const entry = { name: techPaymentName, amount, date, note, by: currentUserEmail || '?', at: new Date().toISOString() };
+        const entry = { name: techPaymentName, amount, date, settleDate, note, by: currentUserEmail || '?', at: new Date().toISOString() };
         if (techPaymentJobId) {
             entry.jobId = techPaymentJobId;
             const job = savedJobs.find(j => String(j.id) === String(techPaymentJobId));
@@ -7435,7 +7455,7 @@ ${closeBtnHtml}
                 style="margin-bottom:8px; padding:10px 14px; ${isOverdue ? 'border-color:var(--danger); background:rgba(225,29,72,0.08);' : ''}">
             <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
                 <div>
-                    <div><span class="drag-handle" title="${t('dragHandleHint')}" onpointerdown="startCardDrag(event, '${job.id}', '${entry.date}')">⠿</span>${timeLabel}<strong>${job.clientName || ''}</strong>${isOverdue ? ` <span style="color:#f87171; font-size:0.72rem; font-weight:700;">⚠️ ${t('overdueLabel')}</span>` : ''}</div>
+                    <div><span class="drag-handle" title="${t('dragHandleHint')}" onpointerdown="startCardDrag(event, '${job.id}', '${entry.date}')">⠿</span>${timeLabel}<strong>${job.clientName || ''}</strong>${!isJobActive(job) ? ` <span class="badge completed" style="font-size:0.68rem;">${statusLabel(job.jobStatus)}</span>` : ''}${isOverdue ? ` <span style="color:#f87171; font-size:0.72rem; font-weight:700;">⚠️ ${t('overdueLabel')}</span>` : ''}</div>
                     <div style="font-size:0.78rem; color:var(--text-muted);">${job.clientAddress ? `<a href="#" onclick="event.preventDefault(); event.stopPropagation(); showMapChoice('${job.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${job.clientAddress}</a>` : ''}${showAllPendingMode ? ' — ' + (entry.date || t('noDateSet')) : ''}</div>
                     <div style="font-size:0.78rem; color:#38bdf8;">${t('weeklyTechsLabel')} ${teamNames}</div>
                     ${entry.note ? `<div style="font-size:0.76rem; color:var(--text-muted); margin-top:2px;">🔧 ${entry.note}</div>` : ''}
@@ -7483,11 +7503,18 @@ ${closeBtnHtml}
         const days = getWeekRange(weeklyBoardOffset);
         document.getElementById('weeklyRangeLabel').innerHTML = ltrRange(isoDate(days[0]), isoDate(days[days.length - 1]));
 
+        // The per-day calendar is a historical record too, not just a to-do list: a job that
+        // got marked "خلص" (done/closed) should keep showing which days its techs actually
+        // worked on it. Only a cancelled job ("ملغي") — work that never really happened — is
+        // left out here. "Show all pending" above stays active-jobs-only on purpose: that view
+        // is specifically about outstanding work still to schedule.
+        const boardJobs = savedJobs.filter(job => job.jobStatus !== 'ملغي');
+
         let html = '';
         days.forEach(d => {
             const dateStr = isoDate(d);
             let pairs = [];
-            activeJobs.forEach(job => { getScheduleEntries(job).forEach(entry => { if (entry.date === dateStr) pairs.push({ job, entry }); }); });
+            boardJobs.forEach(job => { getScheduleEntries(job).forEach(entry => { if (entry.date === dateStr) pairs.push({ job, entry }); }); });
             pairs = sortDayEntries(pairs);
             const isToday = dateStr === todayStr;
             html += `<div style="margin-bottom:14px; border:1px solid var(--border-color); border-radius:10px; overflow:hidden;">
@@ -7641,6 +7668,30 @@ ${closeBtnHtml}
         return Math.max(0, round2(recv - mat));
     }
 
+    // Period-scoped S & M share: the same dated-money-in-the-period approach as a percentage
+    // technician's pay (percentBaseForPeriod), net of the SAME period-scoped technician dues
+    // already shown in this guide's own table (via computeTechPeriodStats) — so "Send S & M
+    // Share" reflects ONLY the selected week, not every job's all-time totals. With no date
+    // filter this reduces to the exact same all-time numbers it always showed.
+    function computeSAndMPeriodShare(dateFrom, dateTo) {
+        const hasDateFilter = !!(dateFrom || dateTo);
+        const techStats = computeTechPeriodStats(dateFrom, dateTo);
+        const jobPeriodTechDues = {};
+        Object.values(techStats).forEach(s => s.jobs.forEach(j => {
+            jobPeriodTechDues[j.job.id] = round2((jobPeriodTechDues[j.job.id] || 0) + j.dues);
+        }));
+        let totalShareS = 0, totalShareM = 0;
+        savedJobs.forEach(job => {
+            const periodBase = hasDateFilter ? percentBaseForPeriod(job, dateFrom, dateTo) : round2(parseVal(job.amountReceived) - parseVal(job.materialCost));
+            const techDues = hasDateFilter ? (jobPeriodTechDues[job.id] || 0) : jobNet(job).totalTechDues;
+            const netForSplit = round2(periodBase - techDues);
+            const ratio = jobSplitRatio(job);
+            totalShareS += netForSplit * ratio.s;
+            totalShareM += netForSplit * ratio.m;
+        });
+        return { totalShareS: round2(totalShareS), totalShareM: round2(totalShareM) };
+    }
+
     // A stand-in for the job currently open in the form, built from what's on screen right now (not yet
     // saved). Lets the money-status panel and the Guide-identical stats function react as you type, without
     // needing a second copy of the calculation logic.
@@ -7765,9 +7816,16 @@ ${closeBtnHtml}
     }
 
     // Payments logged with the 💵 button (dated, per technician) that fall inside the range.
+    // Scoped by settleDate — which week's account this payment closes — not by the day it was
+    // actually handed over (p.date). A catch-up payment made this week for an older unpaid week
+    // is tagged with that older week's date, so it no longer bleeds into this week's "Remaining
+    // in Period". Old payments recorded before this field existed have no settleDate, so they
+    // fall back to their own payment date exactly as before.
     function techPaymentsInPeriod(name, dateFrom, dateTo) {
-        return techPayments.filter(p => p.name === name &&
-            (!dateFrom || (p.date && p.date >= dateFrom)) && (!dateTo || (p.date && p.date <= dateTo)));
+        return techPayments.filter(p => {
+            const d = p.settleDate || p.date;
+            return p.name === name && (!dateFrom || (d && d >= dateFrom)) && (!dateTo || (d && d <= dateTo));
+        });
     }
 
     // Payments tagged with a specific jobId (made from the job-screen "Pay" button) — lets us
@@ -7994,7 +8052,7 @@ ${closeBtnHtml}
     function renderTechDetailHtml(name, stats, dateFrom, dateTo) {
         const s = stats[name];
         const jobs = s ? s.jobs.slice().sort((a, b) => (a.job.startDate || '').localeCompare(b.job.startDate || '')) : [];
-        const pays = techPaymentsInPeriod(name, dateFrom, dateTo).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+        const pays = techPaymentsInPeriod(name, dateFrom, dateTo).slice().sort((a, b) => ((a.settleDate || a.date) || '').localeCompare((b.settleDate || b.date) || ''));
         const noDates = !dateFrom && !dateTo;
         const legacyTotal = round2(jobs.reduce((s, j) => s + (j.legacyPaid || 0), 0));
         let h = '<div class="tg-detail">';
@@ -8007,7 +8065,8 @@ ${closeBtnHtml}
         h += `<h4 style="margin-top:14px;">${t(noDates ? 'guidePaymentsTitleAll' : 'guidePaymentsTitle')} (${pays.length})</h4>`;
         if (pays.length === 0) h += `<div class="tg-empty">${t('guideNoPaymentsInPeriod')}</div>`;
         pays.forEach(p => {
-            h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(p.date || '')}</span><span class="tg-d-main">${escHtml(p.note || '')}</span><strong style="color:#34d399;">$${parseVal(p.amount).toFixed(2)}</strong><button class="secondary" onclick="openTechPaymentEdit('${jsArg(p.at || '')}')" style="padding:3px 9px; font-size:0.72rem;">${t('editBtn')}</button><button class="danger" onclick="deleteTechPayment('${escJs(p.at || '')}')" style="padding:3px 9px; font-size:0.72rem;">${t('deleteBtn')}</button></div>`;
+            const settleDiffers = p.settleDate && p.date && p.settleDate !== p.date;
+            h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(p.date || '')}</span><span class="tg-d-main">${escHtml(p.note || '')}${settleDiffers ? `<div class="ag-meta" style="color:#fbbf24;">📆 ${t('techPaymentSettlesNote')} <span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${escHtml(p.settleDate)}</span></div>` : ''}</span><strong style="color:#34d399;">$${parseVal(p.amount).toFixed(2)}</strong><button class="secondary" onclick="openTechPaymentEdit('${jsArg(p.at || '')}')" style="padding:3px 9px; font-size:0.72rem;">${t('editBtn')}</button><button class="danger" onclick="deleteTechPayment('${escJs(p.at || '')}')" style="padding:3px 9px; font-size:0.72rem;">${t('deleteBtn')}</button></div>`;
         });
         return h + '</div>';
     }
@@ -8055,6 +8114,11 @@ ${closeBtnHtml}
                 </div></td></tr>`;
         });
         html += '</tbody></table>';
+        const { totalShareS, totalShareM } = computeSAndMPeriodShare(dateFrom, dateTo);
+        html += `<div style="margin-top:14px; padding-top:12px; border-top:2px solid var(--border-color); display:flex; gap:18px; flex-wrap:wrap; font-size:0.95rem;">
+            <div>${t('guideShareSLabel')} <strong style="color:#34d399;">$${totalShareS.toFixed(2)}</strong></div>
+            <div>${t('guideShareMLabel')} <strong style="color:#34d399;">$${totalShareM.toFixed(2)}</strong></div>
+        </div>`;
         if (selectedTech) html += renderTechDetailHtml(selectedTech, stats, dateFrom, dateTo);
         container.innerHTML = html;
     }
@@ -8132,11 +8196,19 @@ ${closeBtnHtml}
     }
 
     function sendWhatsAppShareSM() {
-        let totalShareS = 0, totalShareM = 0;
-        savedJobs.forEach(job => { const { shareS, shareM } = jobNet(job); totalShareS += shareS; totalShareM += shareM; });
+        // Same date range currently picked on this guide screen — it used to always sum every
+        // job ever, so "Send S & M Share" during a chosen week silently included every other
+        // week too. Now it only counts the selected period, same as the technicians' table above it.
+        const dateFrom = document.getElementById('guideDateFrom').value;
+        const dateTo = document.getElementById('guideDateTo').value;
+        const hasDateFilter = !!(dateFrom || dateTo);
+        const { totalShareS, totalShareM } = computeSAndMPeriodShare(dateFrom, dateTo);
+        const periodLine = hasDateFilter
+            ? (currentLang === 'ar' ? `\nالفترة: ${dateFrom || '...'} → ${dateTo || '...'}` : `\nPeriod: ${dateFrom || '...'} → ${dateTo || '...'}`)
+            : '';
         const msg = currentLang === 'ar'
-            ? `تقرير حصص الأرباح:\nحصة S: $${totalShareS.toFixed(2)}\nحصة M: $${totalShareM.toFixed(2)}`
-            : `Profit Share Report:\nS Share (40%): $${totalShareS.toFixed(2)}\nM Share (40%): $${totalShareM.toFixed(2)}`;
+            ? `تقرير حصص الأرباح:${periodLine}\nحصة S: $${totalShareS.toFixed(2)}\nحصة M: $${totalShareM.toFixed(2)}`
+            : `Profit Share Report:${periodLine}\nS Share (40%): $${totalShareS.toFixed(2)}\nM Share (40%): $${totalShareM.toFixed(2)}`;
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
     }
 </script>
