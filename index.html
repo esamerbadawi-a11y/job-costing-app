@@ -1731,6 +1731,7 @@
         invoiceSendMsgBtn: { ar: '✉️ ابعت رسالة للعميل', en: '✉️ Send Client Message' },
         invoicePaidBadge: { ar: '✅ مدفوعة بالكامل', en: '✅ PAID IN FULL' },
         invoicePaidStamp: { ar: 'مدفوعة بالكامل', en: 'PAID IN FULL' },
+        invoicePaidMarkToggle: { ar: 'حط علامة "مدفوعة بالكامل" على الفاتورة دي', en: 'Mark this invoice as PAID IN FULL' },
         invoiceLoadingNote: { ar: 'بيتأكد من آخر نسخة محفوظة على السيرفر...', en: 'Checking the latest saved version on the server...' },
         invoiceScopeClarificationsTitle: { ar: 'توضيحات نطاق العمل', en: 'Scope Clarifications' },
         invoiceScopeClarification1: { ar: 'الشغل الموصوف فوق يشمل العمالة والمواد المذكورة؛ أي حاجة تانية مش داخلة.', en: 'Work described above includes labor and the materials listed; anything else is excluded.' },
@@ -5172,7 +5173,11 @@
             showFollowUp: false,
             followUpText: job.followUpDate || '',
             showValidity: false,
-            validityText: t('invoiceValidityPlaceholder')
+            validityText: t('invoiceValidityPlaceholder'),
+            // Defaults to whatever the job's actual recorded payments say, but it's just a
+            // starting point — you can tick/untick the "PAID IN FULL" mark yourself on the
+            // invoice screen, and that choice is what actually shows and gets saved/printed.
+            paidMark: jobRemaining(job) <= 0.005
         };
         renderInvoiceModalContent();
     }
@@ -5271,6 +5276,7 @@
         invoiceState.jobId = jobId;
         invoiceState.savedId = saved.id;
         if (!invoiceState.credits) invoiceState.credits = []; // older saved invoices, if any, predate the credits list
+        if (invoiceState.paidMark === undefined) invoiceState.paidMark = jobRemaining(job) <= 0.005; // older saved invoices predate the manual mark — fall back to the job's actual payment status
         renderInvoiceModalContent();
     }
 
@@ -5440,12 +5446,11 @@
         const subtotal = invoiceSubtotal();
         const credit = invoiceCreditsTotal();
         const totalDue = subtotal - credit;
-        // "Paid in full" is a job-level fact (actual money received on the job), not something
-        // that depends on this one invoice's own line items/credits happening to add up to zero —
-        // a job is very often paid through its own payment tracking without ever needing a
-        // matching "credit" typed into any particular invoice. Using jobRemaining() here keeps
-        // this consistent with every other screen in the app that already reports paid/unpaid.
-        const isJobPaid = jobRemaining(job) <= 0.005;
+        // "PAID IN FULL" starts out set automatically from the job's actual recorded payments
+        // (jobRemaining), but it's a manual mark from here on — you tick/untick it yourself on
+        // this screen, and that choice (invoiceState.paidMark) is what actually shows and prints.
+        if (invoiceState.paidMark === undefined) invoiceState.paidMark = jobRemaining(job) <= 0.005;
+        const isJobPaid = !!invoiceState.paidMark;
 
         const savedInvoices = job.savedInvoices || [];
         const savedListHtml = savedInvoices.length === 0
@@ -5520,6 +5525,10 @@
                         <span>${t('invoiceTotalDueLabel')}</span><span id="invTotalDueDisplay">$${totalDue.toFixed(2)}</span>
                     </div>
                     <div id="invPaidBadge" style="display:${isJobPaid ? 'block' : 'none'}; text-align:center; color:#22c55e; font-weight:700; font-size:0.85rem; margin-top:8px; letter-spacing:0.5px;">${t('invoicePaidBadge')}</div>
+                    <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px;">
+                        <input type="checkbox" id="invPaidMarkToggle" ${invoiceState.paidMark ? 'checked' : ''} onchange="toggleInvoiceOption('paidMark', this.checked)">
+                        <label for="invPaidMarkToggle" style="font-size:0.8rem; color:var(--text-muted); cursor:pointer;">${t('invoicePaidMarkToggle')}</label>
+                    </div>
                 </div>
             </div>
 
@@ -5573,9 +5582,9 @@
         const credits = invoiceState.credits || [];
         const creditsTotal = invoiceCreditsTotal();
         const totalDue = subtotal - creditsTotal;
-        // Same job-level "paid in full" fact as the on-screen badge — based on what's actually
-        // been received on the job, not on whether this invoice's own items/credits sum to zero.
-        const isPaid = jobRemaining(job) <= 0.005;
+        // Mirrors whatever the "PAID IN FULL" checkbox on the invoice screen is set to — same
+        // manual mark, so what you see on screen is exactly what prints.
+        const isPaid = !!invoiceState.paidMark;
         const accent = '#2C6B45';
         const companyName = companyProfile.name || 'Affordable Handyman Approach';
         const companyTagline = companyProfile.tagline || '';
