@@ -1670,6 +1670,10 @@
         emailReminderSubject: { ar: 'تذكير بالدفع - AHA Handyman', en: 'Payment Reminder - AHA Handyman' },
         invoiceSendMsgBtn: { ar: '✉️ ابعت رسالة للعميل', en: '✉️ Send Client Message' },
         invoiceLoadingNote: { ar: 'بيتأكد من آخر نسخة محفوظة على السيرفر...', en: 'Checking the latest saved version on the server...' },
+        invoiceScopeClarificationsTitle: { ar: 'توضيحات نطاق العمل', en: 'Scope Clarifications' },
+        invoiceScopeClarification1: { ar: 'الشغل الموصوف فوق يشمل العمالة والمواد المذكورة؛ أي حاجة تانية مش داخلة.', en: 'Work described above includes labor and the materials listed; anything else is excluded.' },
+        invoiceScopeClarification2: { ar: 'المواد اللي العميل هيوفرها (لو فيه)، بتتحسب منفصلة ومش داخلة في سعر العقد.', en: 'Customer-supplied materials, if any, are listed separately and excluded from the contract price.' },
+        invoiceScopeClarification3: { ar: 'أي شغل خارج نطاق العمل ده محتاج موافقة العميل وممكن يتسعّر منفصل.', en: 'Any work outside this scope requires customer approval and may be quoted separately.' },
         aiTimeoutMsg: { ar: 'ما ردّش في الوقت المناسب. اتأكد من النت وجرّب تاني.', en: 'did not respond in time. Check your internet and try again.' },
         aiStageSdk: { ar: 'تحميل مكتبة الـ AI', en: 'Loading the AI library' },
         aiStageModel: { ar: 'رد الـ AI', en: 'AI response' },
@@ -5417,6 +5421,7 @@
                    <div><b>${escHtml(t('invoicePhoneLabel'))}:</b> ${escHtml(job.clientPhone || '')}</div>
                  </div>
                  <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
+                   <div class="ui" style="font-size:12px; color:#6B6257;"><b>${escHtml(t('invoiceTypeLabel'))}:</b> ${escHtml(invoiceDocTypeDisplay(invoiceState.docType))}</div>
                    <div style="background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 18px; text-align:center; min-width:200px;">
                      <div class="ui" style="font-size:11px; letter-spacing:1px; opacity:0.9;">${escHtml(t('invoiceBalanceDue')).toUpperCase()}</div>
                      <div class="ui" style="font-size:24px; font-weight:700;">$${totalDue.toFixed(2)}</div>
@@ -5447,6 +5452,18 @@
             ? `<div style="text-align:right;"><span class="ui" style="font-size:15px; font-weight:700;">${escHtml(t('invoiceTotalDueAmountLine')).toUpperCase()}: $${totalDue.toFixed(2)}</span></div>`
             : '';
 
+        // A fixed boilerplate block (not editable per-invoice) on Invoice/Estimate/Proposal only —
+        // "Additional Work" keeps its own distinct layout and note section untouched.
+        const scopeClarificationsHtml = isAdditionalWork ? '' : `
+            <div style="margin-top:2px;">
+              <div class="ui" style="font-weight:700; font-size:12px; letter-spacing:0.5px; color:${accent}; margin-bottom:6px;">${escHtml(t('invoiceScopeClarificationsTitle')).toUpperCase()}</div>
+              <ul style="margin:0; padding-${currentLang === 'ar' ? 'right' : 'left'}:18px; font-size:11.5px; line-height:1.7; color:#3A332B;">
+                <li>${escHtml(t('invoiceScopeClarification1'))}</li>
+                <li>${escHtml(t('invoiceScopeClarification2'))}</li>
+                <li>${escHtml(t('invoiceScopeClarification3'))}</li>
+              </ul>
+            </div>`;
+
         // The printed invoice opens in its own blank tab with no browser chrome of its own on a
         // phone, so without this it had no way to be closed except the phone's own back gesture.
         const closeLabel = currentLang === 'ar' ? 'إغلاق' : 'Close';
@@ -5461,6 +5478,7 @@
 </style></head><body>
 ${closeBtnHtml}
 <div style="position:relative; width:850px; min-height:1060px; margin:0 auto; background:#FDFBF6; color:#241F1A; overflow:hidden;">
+  <div style="height:10px; background:#1A1A1A;"></div>
   ${watermarkHtml}
   <div style="position:relative; z-index:1; width:100%; min-height:1060px; box-sizing:border-box; padding:36px 56px 30px 56px; display:flex; flex-direction:column; gap:16px;">
 
@@ -5468,8 +5486,8 @@ ${closeBtnHtml}
       <div style="display:flex; gap:14px; align-items:center;">
         ${logoHeaderHtml}
         <div>
-          <div class="ui" style="font-weight:700; font-size:15px; letter-spacing:0.3px;">${escHtml(companyName).toUpperCase()}</div>
-          ${companyTagline ? `<div class="ui" style="font-size:11px; color:${accent}; font-style:italic; margin-top:2px;">${escHtml(companyTagline)}</div>` : ''}
+          <div class="ui" style="font-weight:700; font-size:17px; letter-spacing:0.3px;">${escHtml(companyName).toUpperCase()}</div>
+          ${companyTagline ? `<div class="ui" style="font-size:12px; color:#3A332B; font-style:italic; margin-top:2px;">${escHtml(companyTagline)}</div>` : ''}
         </div>
       </div>
       ${isAdditionalWork ? '' : titleBlockHtml}
@@ -5492,6 +5510,8 @@ ${closeBtnHtml}
       ${totalsBlockHtml}
     </div>
     ${validityRow}
+
+    ${scopeClarificationsHtml}
 
     ${noteBox}
 
