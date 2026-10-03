@@ -480,7 +480,7 @@
                         <input type="date" id="filterDateTo" onchange="filterJobs()" style="min-width:130px;">
                     </div>
                     <button class="secondary" onclick="setLogDateRange('week')" style="padding: 8px 12px; font-size: 0.78rem;" data-i18n="presetWeekBtn"></button>
-                    <button class="secondary" onclick="setLogDateRange('lastweek')" style="padding: 8px 12px; font-size: 0.78rem;" data-i18n="presetLastWeekBtn"></button>
+                    <button class="secondary" onclick="setLogDateRange('last2weeks')" style="padding: 8px 12px; font-size: 0.78rem;" data-i18n="presetLast2WeeksBtn"></button>
                     <button class="secondary" onclick="clearDateFilter()" style="padding: 8px 12px; font-size: 0.78rem;" data-i18n="clearDateFilterBtn"></button>
                     <button class="warning" id="filterDebtBtn" onclick="toggleDebtFilter()" style="padding: 8px 12px; font-size: 0.78rem;" data-i18n="debtFilterOff"></button>
                     <button class="secondary" onclick="toggleSelectAll(true)" style="padding: 8px 12px; font-size: 0.78rem;" data-i18n="selectAllBtn"></button>
@@ -658,7 +658,7 @@
                             <input type="date" id="techPeriodTo" onchange="renderTechnicians()" style="min-width:130px;">
                         </div>
                         <button class="secondary" onclick="setTechPeriod('week')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetWeekBtn"></button>
-                        <button class="secondary" onclick="setTechPeriod('lastweek')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetLastWeekBtn"></button>
+                        <button class="secondary" onclick="setTechPeriod('last2weeks')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetLast2WeeksBtn"></button>
                         <button class="secondary" onclick="setTechPeriod('clear')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
                     </div>
                     <div id="jobPeriodNetBox"></div>
@@ -761,7 +761,7 @@
             <button class="secondary" onclick="setGuideDateRange('today')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetTodayBtn"></button>
             <button class="secondary" onclick="shiftGuideWeek(-1)" style="padding:6px 12px; font-size:0.75rem;">◀</button>
             <button class="secondary" onclick="setGuideDateRange('week')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetWeekBtn"></button>
-            <button class="secondary" onclick="setGuideDateRange('lastweek')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetLastWeekBtn"></button>
+            <button class="secondary" onclick="setGuideDateRange('last2weeks')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetLast2WeeksBtn"></button>
             <button class="secondary" onclick="shiftGuideWeek(1)" style="padding:6px 12px; font-size:0.75rem;">▶</button>
             <button class="secondary" onclick="setGuideDateRange('clear')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
             <div style="display:flex; align-items:center; gap:6px;">
@@ -1642,6 +1642,7 @@
         twOver: { ar: 'زيادة {c} عن المستحق', en: '{c} more than the dues' },
         guideManualNote: { ar: 'حسب الأسابيع المسجلة على الشغلانة', en: 'By the weeks entered on the job' },
         presetLastWeekBtn: { ar: 'الأسبوع اللي فات', en: 'Last week' },
+        presetLast2WeeksBtn: { ar: 'آخر أسبوعين', en: 'Last 2 Weeks' },
         guideJobsTitleAll: { ar: 'كل شغلاناته (من غير فلتر تاريخ)', en: 'All his jobs (no date filter)' },
         guidePaymentsTitleAll: { ar: 'كل دفعاته (من غير فلتر تاريخ)', en: 'All his payments (no date filter)' },
         guideLegacyPaid: { ar: 'مكتوب جوه الشغلانة: مدفوع {a} (مش محسوب)', en: 'Job says paid {a} (not counted)' },
@@ -2790,6 +2791,10 @@
     function setTechPeriod(preset) {
         const fromEl = document.getElementById('techPeriodFrom'), toEl = document.getElementById('techPeriodTo');
         if (preset === 'clear') { fromEl.value = ''; toEl.value = ''; }
+        else if (preset === 'last2weeks') {
+            const w1 = weekOf(isoDate(new Date()), -2), w2 = weekOf(isoDate(new Date()), -1);
+            fromEl.value = w1.start; toEl.value = w2.end;
+        }
         else { const w = weekOf(isoDate(new Date()), preset === 'week' ? 0 : -1); fromEl.value = w.start; toEl.value = w.end; }
         renderTechnicians();
     }
@@ -7100,6 +7105,12 @@ ${closeBtnHtml}
         if (preset === 'week' || preset === 'lastweek') {
             const w = weekOf(isoDate(today), preset === 'week' ? 0 : -1);   // Monday to Sunday of this week, or the one before
             fromEl.value = w.start; toEl.value = w.end;
+        } else if (preset === 'last2weeks') {
+            // Covers the previous 2 full calendar weeks (Monday two weeks ago through last Sunday) —
+            // same start/worked-on matching as every other preset, just a wider window.
+            const w1 = weekOf(isoDate(today), -2);
+            const w2 = weekOf(isoDate(today), -1);
+            fromEl.value = w1.start; toEl.value = w2.end;
         }
         filterJobs();
     }
@@ -7123,6 +7134,9 @@ ${closeBtnHtml}
             // Weeks run Monday to Sunday (the whole week, so a Monday never collapses to a single day).
             const w = weekOf(iso(today), preset === 'week' ? 0 : -1);
             fromEl.value = w.start; toEl.value = w.end;
+        } else if (preset === 'last2weeks') {
+            const w1 = weekOf(iso(today), -2), w2 = weekOf(iso(today), -1);
+            fromEl.value = w1.start; toEl.value = w2.end;
         } else {
             fromEl.value = ''; toEl.value = '';
         }
