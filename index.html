@@ -3706,11 +3706,15 @@
         if (!invoiceState) return;
         const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
         if (!job) return;
-        const totalDue = invoiceSubtotal() - invoiceCreditsTotal();
-        const isPaid = totalDue <= 0;
-        aiReminderCtx = { job, rem: totalDue, daysOverdue: null, apiKey: getGeminiApiKey(), run: 0, mode: 'ai', msgKind: isPaid ? 'thankyou' : 'reminder' };
+        // Same job-level "paid in full" fact used by the invoice's PAID badge/stamp — based on
+        // what's actually been received on the job (jobRemaining), not just this one invoice's
+        // own items/credits, so the right message (thank-you vs. reminder) goes out even when the
+        // client paid through the job's own payment tracking rather than a credit on this invoice.
+        const rem = jobRemaining(job);
+        const isPaid = rem <= 0.005;
+        aiReminderCtx = { job, rem, daysOverdue: null, apiKey: getGeminiApiKey(), run: 0, mode: 'ai', msgKind: isPaid ? 'thankyou' : 'reminder' };
         document.getElementById('aiReminderLang').value = currentLang === 'ar' ? 'ar' : 'en';
-        document.getElementById('aiReminderJob').textContent = `${job.clientName || ''} — $${totalDue.toFixed(2)}`;
+        document.getElementById('aiReminderJob').textContent = `${job.clientName || ''} — $${rem.toFixed(2)}`;
         document.getElementById('aiReminderText').value = '';
         document.getElementById('aiReminderModal').style.display = 'flex';
         if (!aiReminderCtx.apiKey) { useTemplateReminder('aiNoKeyNote'); return; }   // no key: don't leave the user stuck
@@ -5363,9 +5367,11 @@
         const totalDue = subtotal - credit;
         const subEl = document.getElementById('invSubtotalDisplay');
         const totalEl = document.getElementById('invTotalDueDisplay');
-        const paidEl = document.getElementById('invPaidBadge');
         if (subEl) subEl.innerText = '$' + subtotal.toFixed(2);
         if (totalEl) totalEl.innerText = '$' + totalDue.toFixed(2);
+        // The "PAID IN FULL" badge is NOT re-toggled here on purpose — it reflects the job's
+        // actual recorded payments (set once when the screen opens), not whatever the invoice's
+        // own items/credits happen to add up to while you're still editing them.
         if (paidEl) paidEl.style.display = totalDue <= 0 ? 'block' : 'none';
     }
 
@@ -5429,6 +5435,12 @@
         const subtotal = invoiceSubtotal();
         const credit = invoiceCreditsTotal();
         const totalDue = subtotal - credit;
+        // "Paid in full" is a job-level fact (actual money received on the job), not something
+        // that depends on this one invoice's own line items/credits happening to add up to zero —
+        // a job is very often paid through its own payment tracking without ever needing a
+        // matching "credit" typed into any particular invoice. Using jobRemaining() here keeps
+        // this consistent with every other screen in the app that already reports paid/unpaid.
+        const isJobPaid = jobRemaining(job) <= 0.005;
 
         const savedInvoices = job.savedInvoices || [];
         const savedListHtml = savedInvoices.length === 0
@@ -5502,7 +5514,7 @@
                     <div style="display:flex; justify-content:space-between; align-items:center; background:#2C6B45; color:#fff; border-radius:8px; padding:8px 12px; margin-top:6px; font-weight:700;">
                         <span>${t('invoiceTotalDueLabel')}</span><span id="invTotalDueDisplay">$${totalDue.toFixed(2)}</span>
                     </div>
-                    <div id="invPaidBadge" style="display:${totalDue <= 0 ? 'block' : 'none'}; text-align:center; color:#22c55e; font-weight:700; font-size:0.85rem; margin-top:8px; letter-spacing:0.5px;">${t('invoicePaidBadge')}</div>
+                    <div id="invPaidBadge" style="display:${isJobPaid ? 'block' : 'none'}; text-align:center; color:#22c55e; font-weight:700; font-size:0.85rem; margin-top:8px; letter-spacing:0.5px;">${t('invoicePaidBadge')}</div>
                 </div>
             </div>
 
@@ -5556,7 +5568,9 @@
         const credits = invoiceState.credits || [];
         const creditsTotal = invoiceCreditsTotal();
         const totalDue = subtotal - creditsTotal;
-        const isPaid = totalDue <= 0;
+        // Same job-level "paid in full" fact as the on-screen badge — based on what's actually
+        // been received on the job, not on whether this invoice's own items/credits sum to zero.
+        const isPaid = jobRemaining(job) <= 0.005;
         const accent = '#2C6B45';
         const companyName = companyProfile.name || 'Affordable Handyman Approach';
         const companyTagline = companyProfile.tagline || '';
