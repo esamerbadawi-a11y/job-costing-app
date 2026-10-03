@@ -3810,6 +3810,30 @@
         recognition.start();
     }
 
+    // Safety net on top of the prompt instructions below: the destination for all AI text in this
+    // file is a plain <textarea>, which can't render Markdown/HTML. If the model still returns a
+    // Markdown table or stray <br>/HTML tags, clean it up into plain readable lines instead of
+    // showing the raw syntax to the user.
+    function sanitizeAiPlainText(text) {
+        if (!text) return '';
+        let s = String(text).replace(/\r\n/g, '\n');
+        s = s.replace(/<br\s*\/?>/gi, ' ');          // stray <br> -> a space (keeps a table row on one line)
+        s = s.replace(/\*\*(.+?)\*\*/g, '$1');        // drop stray **bold** markers left inside table cells
+        s = s.replace(/<\/?[a-zA-Z][^>]*>/g, '');     // strip any other stray HTML tags
+        s = s.split('\n').map(line => {
+            const trimmed = line.trim();
+            if (/^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?$/.test(trimmed)) return ''; // markdown table separator row (|---|---|)
+            if (trimmed.startsWith('|') && trimmed.endsWith('|') && trimmed.length > 1) {
+                // markdown table row -> a single readable line with its cells joined
+                const cells = trimmed.slice(1, -1).split('|').map(c => c.trim()).filter(Boolean);
+                return cells.length ? '- ' + cells.join(' — ') : '';
+            }
+            return line;
+        }).filter(line => line.trim() !== '').join('\n');
+        s = s.replace(/\n{3,}/g, '\n\n');
+        return s.trim();
+    }
+
     // Reads a photo, sends it to Gemini's vision-capable model, and appends what it
     // thinks the job needs into the target field — handy for a quick on-site photo.
     async function analyzePhotoForScope(event, fieldId, btnId, galleryId) {
@@ -3828,10 +3852,10 @@
             const base64Data = dataUrl.split(',')[1];
 
             const promptText = currentLang === 'ar'
-                ? 'اتفرج على الصورة دي لموقع شغل صيانة/مقاولات، واكتب وصف نقاط مختصر وواضح لإيه المطلوب عمله (تصليحات، دهانات، إلخ) بناءً على اللي شايفه. من غير مقدمات.'
-                : "Look at this handyman/contracting job-site photo and write a short, clear bullet-point description of what work appears to be needed, based on what you see. No preamble.";
+                ? 'اتفرج على الصورة دي لموقع شغل صيانة/مقاولات، واكتب وصف نقاط مختصر وواضح لإيه المطلوب عمله (تصليحات، دهانات، إلخ) بناءً على اللي شايفه. من غير مقدمات. اكتب النتيجة كنص عادي منظم في نقاط، كل نقطة في سطر جديد وتبدأ بعلامة "-"، وممكن تحط **كلمة مهمة** لو عايز تبرزها. ممنوع تستخدم جدول Markdown (علامة |) أو أكواد HTML زي <br> أو أي تنسيق تاني.'
+                : "Look at this handyman/contracting job-site photo and write a short, clear bullet-point description of what work appears to be needed, based on what you see. No preamble. Return plain text only, organized as short bullet points each on its own new line starting with \"-\" (you may use **word** to highlight a key word). Do NOT use a Markdown table (| characters), HTML tags like <br>, or any other markup.";
 
-            const resultText = await aiGenerate(apiKey, [{ inlineData: { mimeType: 'image/jpeg', data: base64Data } }, { text: promptText }]);
+            const resultText = sanitizeAiPlainText(await aiGenerate(apiKey, [{ inlineData: { mimeType: 'image/jpeg', data: base64Data } }, { text: promptText }]));
 
             const field = document.getElementById(fieldId);
             field.value = (field.value.trim() ? field.value.trim() + '\n\n' : '') + resultText.trim();
@@ -3868,11 +3892,13 @@
             const defaultInstructionAr = 'حوّل الملاحظات دي بتاعة شغلانة صيانة/مقاولات لوصف نقاط واضح ومختصر ومرتب للشغل المطلوب';
             const defaultInstructionEn = 'Rewrite these handyman/contracting job notes as a clean, concise bullet-point scope of work';
             const instruction = customInstruction || (currentLang === 'ar' ? defaultInstructionAr : defaultInstructionEn);
+            const formatRuleAr = 'اكتب النتيجة كنص عادي فقط (plain text) منظم في نقاط واضحة، كل نقطة في سطر جديد منفصل وتبدأ بعلامة "-"، وممكن تحط **كلمة مهمة** لو عايز تبرزها. ممنوع نهائي تستخدم جدول Markdown (علامة |) أو أكواد HTML زي <br> أو أي رموز تنسيق تانية — النص ده هيتحط في مربع نص عادي مش هيعرض أي تنسيق غير كده.';
+            const formatRuleEn = 'Return plain text only, organized as clear bullet points, each on its own new line starting with "-" (you may use **word** to highlight a key word). Do NOT use a Markdown table (| characters), HTML tags like <br>, or any other markup — this text goes into a plain text box that cannot render anything beyond that.';
             const promptText = currentLang === 'ar'
-                ? `${instruction}. حافظ على نفس لغة النص الأصلي، من غير مقدمات: ${current}`
-                : `${instruction}. Keep the same language as the original text, no preamble: ${current}`;
+                ? `${instruction}. حافظ على نفس لغة النص الأصلي، من غير مقدمات. ${formatRuleAr}: ${current}`
+                : `${instruction}. Keep the same language as the original text, no preamble. ${formatRuleEn}: ${current}`;
 
-            field.value = await aiGenerate(apiKey, promptText);
+            field.value = sanitizeAiPlainText(await aiGenerate(apiKey, promptText));
         } catch (err) {
             const msg = (err && err.message) ? err.message : String(err);
             if (/401|403|UNAUTHENTICATED|PERMISSION|API key/i.test(msg)) { try { localStorage.removeItem('geminiApiKey'); } catch (e) {} }
