@@ -1704,10 +1704,11 @@
         alertBonusAmountRequired: { ar: 'اكتب مبلغ البونس.', en: 'Enter the bonus amount.' },
         splitDayBtn: { ar: '✂️ قسّم اليوم', en: '✂️ Split the day' },
         splitDayTitle: { ar: '✂️ قسّم يومية الفني بين الشغلانتين', en: "✂️ Split His Day's Pay Between the Two Jobs" },
-        splitDayHint: { ar: 'نصيب الشغلانة التانية بيتسجل فورًا. نصيب الشغلانة دي بيتسجل لما تحفظ الشغلانة من زرار الحفظ العادي.', en: "The other job's share is saved right away. This job's share is only saved when you hit this job's own Save button." },
+        splitDayHint: { ar: 'نصيب الشغلانتين بيتسجلوا فورًا على السيرفر، من غير ما تحتاج تحفظ أي شغلانة بعد كده.', en: "Both shares are saved straight away — no need to save either job afterward." },
         splitDayThisJobLabel: { ar: 'المبلغ لهذه الشغلانة ($)', en: 'Amount for this job ($)' },
         splitDaySaveBtn: { ar: '✂️ قسّم واحفظ', en: '✂️ Split & Save' },
         alertSplitAmountsRequired: { ar: 'اكتب المبلغين الاتنين.', en: 'Enter both amounts.' },
+        alertSplitNeedsSavedJob: { ar: 'لازم تحفظ الشغلانة دي الأول قبل ما تقسم يوم فيها.', en: 'Save this job first before splitting a day on it.' },
         splitDaySavedToast: { ar: 'تم تقسيم يومية هذا اليوم بين الشغلانتين.', en: "This day's pay was split between both jobs." },
         withdrawalAmountLabel: { ar: 'المبلغ ($):', en: 'Amount ($):' },
         guidePaidNote: { ar: 'المدفوع هنا = الدفعات المسجلة بزرار 💵 (بتاريخها). الدفعات مش بتتسجل جوه الشغلانة.', en: 'Paid here = payments logged with the 💵 button (by their date). Payments are not recorded inside a job.' },
@@ -3145,11 +3146,13 @@
         renderTechnicians();
     }
 
-    // Splitting one day's pay between two jobs: this job's half is just a normal dailyAlloc entry
-    // on the open form (saved only when the form itself is saved, like any other 📅 amount typed
-    // here). The other job is already persisted and isn't open right now, so its half has to be
-    // written straight to Firestore via a transaction — same re-read-fresh-then-mutate pattern
-    // saveCurrentInvoice() uses for touching a job that isn't the one on screen.
+    // Splitting one day's pay between two jobs writes BOTH halves straight to Firestore in one
+    // transaction, rather than leaving "this job"'s half sitting only in the open form's unsaved
+    // state (that version let the split silently disappear if the person navigated away without
+    // separately clicking this job's own Save button). Both jobs are already persisted — the
+    // overlap warning that shows the split button only appears once this job itself has been
+    // saved at least once — so both can be reached by id, re-reading fresh data first, the same
+    // pattern saveCurrentInvoice() uses for touching a job that isn't the one on screen.
     let splitDayState = null;
     function openSplitDayModal(index, date, otherJobId, otherJobName) {
         const tech = technicians[index];
@@ -3174,49 +3177,75 @@
         const amtOther = round2(parseVal(document.getElementById('splitDayAmountOther').value));
         if (amtHere <= 0 || amtOther <= 0) { alert(t('alertSplitAmountsRequired')); return; }
 
+        const thisJobId = document.getElementById('editingJobId').value;
+        if (!thisJobId || thisJobId === '__unsaved__') {
+            alert(t('alertSplitNeedsSavedJob'));
+            return;
+        }
+
+        const idHere = newLedgerId();
+        const idOther = newLedgerId();
+        const noteHere = currentLang === 'ar' ? ('مقسومة مع ' + otherJobName) : ('Split with ' + otherJobName);
+        const noteOther = currentLang === 'ar' ? 'مقسومة مع شغلانة تانية' : 'Split with another job';
+
         try {
             await db.runTransaction(async (tx) => {
                 const snap = await tx.get(JOBS_DOC);
                 const freshJobs = (snap.exists && snap.data().jobs) ? snap.data().jobs : [];
+                const hIdx = freshJobs.findIndex(j => String(j.id) === String(thisJobId));
                 const oIdx = freshJobs.findIndex(j => String(j.id) === String(otherJobId));
+                if (hIdx === -1) throw new Error('this-job-not-found');
                 if (oIdx === -1) throw new Error('other-job-not-found');
+                const hJob = freshJobs[hIdx];
                 const oJob = freshJobs[oIdx];
+                const hTech = (hJob.technicians || []).find(t2 => (t2.name || '').trim() === techName);
                 const oTech = (oJob.technicians || []).find(t2 => (t2.name || '').trim() === techName);
+                if (!hTech) throw new Error('this-tech-not-found');
                 if (!oTech) throw new Error('other-tech-not-found');
+                hTech.dailyAlloc = hTech.dailyAlloc || [];
                 oTech.dailyAlloc = oTech.dailyAlloc || [];
+                if (hTech.dailyAlloc.some(e => e.date === date)) throw new Error('this-already-has-amount');
                 if (oTech.dailyAlloc.some(e => e.date === date)) throw new Error('other-already-has-amount');
-                oTech.dailyAlloc.push({ id: newLedgerId(), date, amount: amtOther, note: currentLang === 'ar' ? 'مقسومة مع شغلانة تانية' : 'Split with another job' });
+                // Both halves go in together so the write either fully happens or not at all —
+                // no state where only one side of the split is actually saved.
+                hTech.dailyAlloc.push({ id: idHere, date, amount: amtHere, note: noteHere });
+                oTech.dailyAlloc.push({ id: idOther, date, amount: amtOther, note: noteOther });
+                hJob.lastEditedBy = currentUserEmail;
                 oJob.lastEditedBy = currentUserEmail;
                 tx.set(JOBS_DOC, { jobs: freshJobs });
             });
         } catch (err) {
             if (err && err.message === 'other-already-has-amount') {
                 alert(currentLang === 'ar' ? 'فيه مبلغ متحط فعلاً لنفس اليوم في الشغلانة التانية — راجعها الأول.' : 'An amount already exists for that day on the other job — check it first.');
+            } else if (err && err.message === 'this-already-has-amount') {
+                alert(currentLang === 'ar' ? 'فيه مبلغ متحط فعلاً لنفس اليوم في الشغلانة دي — راجعها الأول.' : 'An amount already exists for that day on this job — check it first.');
             } else {
                 alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
             }
             return;
         }
 
-        // Mirror the other job's change onto the local savedJobs copy, same as every other
-        // cross-job write in this app.
-        const oIdxLocal = savedJobs.findIndex(j => String(j.id) === String(otherJobId));
-        if (oIdxLocal !== -1) {
-            const oJob = savedJobs[oIdxLocal];
-            const oTech = (oJob.technicians || []).find(t2 => (t2.name || '').trim() === techName);
-            if (oTech) {
-                oTech.dailyAlloc = oTech.dailyAlloc || [];
-                oTech.dailyAlloc.push({ id: newLedgerId(), date, amount: amtOther, note: currentLang === 'ar' ? 'مقسومة مع شغلانة تانية' : 'Split with another job' });
+        // Firestore now has both halves for real — mirror them onto the local savedJobs copies
+        // of both jobs so every other screen (reports, the Tech Guide) reflects it immediately.
+        [[thisJobId, amtHere, idHere, noteHere], [otherJobId, amtOther, idOther, noteOther]].forEach(([jid, amt, id, note]) => {
+            const jIdx = savedJobs.findIndex(j => String(j.id) === String(jid));
+            if (jIdx === -1) return;
+            const job = savedJobs[jIdx];
+            const tech2 = (job.technicians || []).find(t2 => (t2.name || '').trim() === techName);
+            if (tech2) {
+                tech2.dailyAlloc = tech2.dailyAlloc || [];
+                if (!tech2.dailyAlloc.some(e => e.id === id)) tech2.dailyAlloc.push({ id, date, amount: amt, note });
             }
-            oJob.lastEditedBy = currentUserEmail;
-        }
+            job.lastEditedBy = currentUserEmail;
+        });
 
-        // This job's half lives only on the open form until its own Save button is clicked —
-        // exactly like any other 📅 amount typed in here.
+        // The open form's own `technicians` working copy needs the same entry so the screen
+        // updates right away, and so it already matches Firestore if this job's own Save
+        // button gets clicked afterward (no double-add).
         const tech = technicians[index];
         if (tech) {
             tech.dailyAlloc = tech.dailyAlloc || [];
-            tech.dailyAlloc.push({ id: newLedgerId(), date, amount: amtHere, note: currentLang === 'ar' ? ('مقسومة مع ' + otherJobName) : ('Split with ' + otherJobName) });
+            if (!tech.dailyAlloc.some(e => e.id === idHere)) tech.dailyAlloc.push({ id: idHere, date, amount: amtHere, note: noteHere });
         }
 
         closeSplitDayModal();
