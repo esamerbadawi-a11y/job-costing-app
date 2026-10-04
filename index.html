@@ -1692,6 +1692,7 @@
         alertTechNameRequired: { ar: 'يرجى كتابة اسم الفني', en: 'Please enter the technician name' },
         alertTechSaveFailed: { ar: 'حصل خطأ ومقدرش يحفظ الفني. جرب تاني.', en: 'Something went wrong and the technician could not be saved. Please try again.' },
         alertJobSaveFailed: { ar: 'حصل خطأ ومقدرش يحفظ الشغلانة. جرب تاني قبل ما تسيب الصفحة.', en: 'Something went wrong and the job could not be saved. Please try again before leaving the page.' },
+        alertFirestoreTerminated: { ar: 'الاتصال بقاعدة البيانات اتقطع لأن الصفحة فضلت فاتحة فترة طويلة من غير أي تفاعل (بيحصل في الموبايل لما الصفحة تفضل في الخلفية). محتاج تحدّث الصفحة عشان أي حفظ يرجع يشتغل.\n\nتحدّث الصفحة دلوقتي؟', en: 'The database connection dropped because the page sat open for a while without activity (common on mobile when the page stays in the background). The page needs to be refreshed before any save will work again.\n\nRefresh now?' },
         alertPhoneUnavailable: { ar: 'رقم الهاتف غير متوفر لهذا الفني.', en: 'Phone number not available for this technician.' },
         guideModalTitle: { ar: 'دليل الحسابات الشامل للفنيين و S & M', en: 'Complete Technicians & S/M Guide' },
         guideSendShareBtn: { ar: 'إرسال حصة S & M', en: 'Send S & M Share' },
@@ -2464,6 +2465,22 @@
         showToast._t = setTimeout(() => { el.style.display = 'none'; }, 3500);
     }
 
+    // Firestore's offline-persistence layer (enablePersistence, used for the app's real-time
+    // sync) can lose its IndexedDB connection after the page sits open in the background for a
+    // long time — common on mobile Safari when the tab is backgrounded or the phone sleeps.
+    // When that happens, the local Firestore client dies and EVERY save after that fails with
+    // the raw SDK message "The client has already been terminated." — no save will work again
+    // until the page is reloaded. This turns that specific, otherwise-cryptic error into a
+    // clear, actionable prompt instead of the generic "something went wrong" alert.
+    function alertSaveError(err) {
+        const msg = (err && err.message) ? err.message : '';
+        if (msg.includes('already been terminated')) {
+            if (confirm(t('alertFirestoreTerminated'))) location.reload();
+            return;
+        }
+        alert(t('alertJobSaveFailed') + ' (' + (msg || 'unknown error') + ')');
+    }
+
     // Visits scheduled on one day (Weekly Board entries), earliest first.
     function getAgendaForDay(dateStr) {
         const pairs = [];
@@ -2672,7 +2689,7 @@
             return true;
         } catch (err) {
             savedJobs[idx] = backup;
-            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            alertSaveError(err);
             return false;
         }
     }
@@ -3264,7 +3281,7 @@
             } else if (err && err.message === 'this-already-has-amount') {
                 alert(currentLang === 'ar' ? 'فيه مبلغ متحط فعلاً لنفس اليوم في الشغلانة دي — راجعها الأول.' : 'An amount already exists for that day on this job — check it first.');
             } else {
-                alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+                alertSaveError(err);
             }
             return;
         }
@@ -4523,7 +4540,7 @@
             await saveSavedJobsData();
             logActivity(editingId ? 'edit' : 'add', clientName, buildJobChangeSummary(oldJobSnapshot, jobData));
         } catch (err) {
-            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            alertSaveError(err);
             return;
         }
         if (hasAttachments) {
@@ -5078,7 +5095,7 @@
             logActivity('edit', targets.map(j => j.clientName).join(', '), t('activityMarkedDone'));
         } catch (err) {
             savedJobs = backup;
-            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            alertSaveError(err);
             return;
         }
         refreshAllViews();
@@ -5558,7 +5575,7 @@
                 tx.set(JOBS_DOC, { jobs: freshJobs });
             });
         } catch (err) {
-            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            alertSaveError(err);
             return;
         }
 
@@ -6280,7 +6297,7 @@ ${closeBtnHtml}
             document.getElementById('companyExpenseNote').value = '';
             renderCompanyAccountContent();
         } catch (err) {
-            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            alertSaveError(err);
         }
     }
 
@@ -6291,7 +6308,7 @@ ${closeBtnHtml}
             await COMPANY_EXPENSES_DOC.set({ entries: companyExpenses });
             renderCompanyAccountContent();
         } catch (err) {
-            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            alertSaveError(err);
         }
     }
 
@@ -6382,7 +6399,7 @@ ${closeBtnHtml}
             document.getElementById('withdrawalNote').value = '';
             renderPartnerAccountContent();
         } catch (err) {
-            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            alertSaveError(err);
         }
     }
 
@@ -6393,7 +6410,7 @@ ${closeBtnHtml}
             await WITHDRAWALS_DOC.set({ entries: partnerWithdrawals });
             renderPartnerAccountContent();
         } catch (err) {
-            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            alertSaveError(err);
         }
     }
 
@@ -6621,7 +6638,7 @@ ${closeBtnHtml}
             renderPartnerReportContent();
         } catch (err) {
             extraPartnerPayments = extraPartnerPayments.filter(x => x !== entry);
-            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            alertSaveError(err);
         }
     }
     async function deleteExtraPartnerPayment(index) {
@@ -6633,7 +6650,7 @@ ${closeBtnHtml}
             renderPartnerReportContent();
         } catch (err) {
             if (backup) extraPartnerPayments.splice(index, 0, backup);
-            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            alertSaveError(err);
         }
     }
 
@@ -7176,7 +7193,7 @@ ${closeBtnHtml}
             toggleContactForm(true);
             renderContacts();
         } catch (err) {
-            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            alertSaveError(err);
         }
     }
 
@@ -7322,7 +7339,7 @@ ${closeBtnHtml}
                 logActivity('edit', backup.name || '', `${t('guidePaymentsTitle')}: $${parseVal(backup.amount).toFixed(2)} (${backup.date || ''}) → $${amount.toFixed(2)} (${date})`);
             } catch (err) {
                 techPayments[idx] = backup;
-                alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+                alertSaveError(err);
                 return;
             }
             closeTechPaymentModal();
@@ -7352,7 +7369,7 @@ ${closeBtnHtml}
             safeCall(renderPartnerReportContentIfOpen);
         } catch (err) {
             techPayments = techPayments.filter(x => x !== entry);   // the save failed: don't keep a payment that was never stored
-            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            alertSaveError(err);
         }
     }
 
@@ -7728,7 +7745,7 @@ ${closeBtnHtml}
             resetAppointmentForm();
             renderAppointments();
         } catch (err) {
-            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            alertSaveError(err);
         }
     }
 
@@ -7736,7 +7753,7 @@ ${closeBtnHtml}
         if (!confirm(t('confirmDeleteAppointment'))) return;
         appointments = appointments.filter(a => a.id !== id);
         try { await APPOINTMENTS_DOC.set({ entries: appointments }); renderAppointments(); }
-        catch (err) { alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')'); }
+        catch (err) { alertSaveError(err); }
     }
 
     // Pulls an appointment's details straight into a fresh job entry form, then removes
@@ -7901,7 +7918,7 @@ ${closeBtnHtml}
             if (entryIdx !== -1) { entries[entryIdx].dayOrder = i; savedJobs[jobIdx].dailySchedule = entries; }
         });
         try { await saveSavedJobsData(); }
-        catch (e) { savedJobs = backup; alert(t('alertJobSaveFailed') + ' (' + (e && e.message ? e.message : 'unknown error') + ')'); }
+        catch (e) { savedJobs = backup; alertSaveError(e); }
         renderWeeklyBoard();
     }
 
@@ -8424,7 +8441,7 @@ ${closeBtnHtml}
             logActivity('delete', removed.name || '', `${t('guidePaymentsTitle')}: $${parseVal(removed.amount).toFixed(2)} (${removed.date || ''})`);
         } catch (err) {
             techPayments.splice(idx, 0, removed);
-            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            alertSaveError(err);
         }
         renderTechGuideContent();
         safeCall(renderTechnicians);
@@ -8493,7 +8510,7 @@ ${closeBtnHtml}
                 logActivity('edit', backup.name || '', `${t('techBonusTitle')}: $${parseVal(backup.amount).toFixed(2)} (${backup.date || ''}) → $${amount.toFixed(2)} (${date})`);
             } catch (err) {
                 techBonuses[idx] = backup;
-                alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+                alertSaveError(err);
                 return;
             }
             closeTechBonusModal();
@@ -8510,7 +8527,7 @@ ${closeBtnHtml}
             renderTechGuideContent();
         } catch (err) {
             techBonuses = techBonuses.filter(x => x !== entry);
-            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            alertSaveError(err);
         }
     }
 
@@ -8525,7 +8542,7 @@ ${closeBtnHtml}
             logActivity('delete', removed.name || '', `${t('techBonusTitle')}: $${parseVal(removed.amount).toFixed(2)} (${removed.date || ''})`);
         } catch (err) {
             techBonuses.splice(idx, 0, removed);
-            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            alertSaveError(err);
         }
         renderTechGuideContent();
     }
@@ -8710,7 +8727,7 @@ ${closeBtnHtml}
             safeCall(renderTechnicians);
         } catch (err) {
             techPayments = techPayments.filter(x => x !== entry);
-            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            alertSaveError(err);
         }
     }
 
@@ -8735,7 +8752,7 @@ ${closeBtnHtml}
             safeCall(renderPartnerReportContentIfOpen);
         } catch (err) {
             techPayments = techPayments.filter(x => x !== entry);
-            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            alertSaveError(err);
         }
     }
 
