@@ -5012,6 +5012,11 @@
 
         if (rows.length === 0) { alert(currentLang === 'ar' ? 'الفني ده لسه مالوش شغلانات مسجلة في الفترة دي.' : 'This technician has no recorded jobs in this period.'); return; }
 
+        // Oldest to newest, across jobs/bonuses/payments together — not grouped by type. A job
+        // row's date can be a comma-joined list of days (e.g. earlier worked, later worked); it
+        // sorts by its first (earliest) date since the list itself is already built ascending.
+        rows.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
         const headers = [["Date", "Client", "Pay Type", "Dues", "Paid", "Remaining"]];
         const money = v => (v === null || v === undefined) ? '-' : '$' + v.toFixed(2);
         const data = rows.map(r => [r.date, r.client, r.type, money(r.dues), money(r.paid), money(r.remaining)]);
