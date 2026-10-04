@@ -1680,6 +1680,7 @@
         techBonusNotePh: { ar: 'سبب البونس (اختياري)', en: 'Reason for the bonus (optional)' },
         techBonusSaveBtn: { ar: '🎁 حفظ البونس', en: '🎁 Save Bonus' },
         techBonusBtn: { ar: '🎁 بونس', en: '🎁 Bonus' },
+        techPayBtn: { ar: '💵 دفع', en: '💵 Pay' },
         guideThBonusInPeriod: { ar: 'بونس الفترة', en: 'Bonus (period)' },
         guideBonusesTitle: { ar: '🎁 بونساته في الفترة', en: '🎁 His Bonuses in the Period' },
         guideBonusesTitleAll: { ar: '🎁 كل البونسات', en: '🎁 All Bonuses' },
@@ -1908,16 +1909,17 @@
     const TECH_TYPE_KEYS = { 'نسبة مخصصة': 'typeCustom', 'فني لوحده (%60)': 'typeAlone60', 'نسبة (50%)': 'typeTogether50', 'مبلغ ثابت': 'typeFixed', 'باليومية': 'typeDaily', 'بالساعة': 'typeHourly' };
     function techTypeLabel(type) { return t(TECH_TYPE_KEYS[type] || 'typeCustom'); }
 
-    // The actual day(s) a technician worked ON THIS JOB, restricted to the selected period —
-    // not the job's own start date, which can be long before (or after) the days he was
-    // actually scheduled on it. Falls back to the job's start date only when there's no
-    // day-level data to show (a typed week, or a percentage technician's money-based job).
-    function techJobWorkDatesLabel(j, dateFrom, dateTo) {
-        if (j.manual) return j.weeks.map(w => w.weekStart).filter(Boolean).sort().join(', ') || (j.job.startDate || '');
-        if (j.dailyManual) return j.dailyEntries.map(e => e.date).filter(Boolean).sort().join(', ') || (j.job.startDate || '');
-        if (j.isPercentPeriod) return j.job.startDate || '';
-        const dates = (j.dates || []).filter(d => (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo)).sort();
-        return dates.length ? dates.join(', ') : (j.job.startDate || '');
+    // Splits a total amount evenly across a list of dates, one row per actual day worked,
+    // instead of one combined row for the whole job — rounded to the cent, with any leftover
+    // penny from the division put on the last day so the parts always add back up exactly.
+    function splitAmountAcrossDates(total, dates) {
+        const n = dates.length;
+        if (n === 0) return [];
+        const per = round2(total / n);
+        const rows = dates.map(d => ({ date: d, amount: per }));
+        const diff = round2(total - round2(per * n));
+        if (Math.abs(diff) > 0.001) rows[rows.length - 1].amount = round2(rows[rows.length - 1].amount + diff);
+        return rows;
     }
     function statusLabel(status) { return status === 'خلص' ? t('statusDoneShort') : (status === 'ملغي' ? t('statusCancelledShort') : t('statusActiveShort')); }
     // A job counts as "active" (shows up in scheduling, the weekly board, today's banner, etc.)
@@ -4994,7 +4996,34 @@
                 const wageOnly = round2(j.dues - reimb);
                 totalDues += wageOnly;
                 totalMaterials += reimb;
-                rows.push({ date: techJobWorkDatesLabel(j, dateFrom, dateTo), client: j.job.clientName || '', type: techTypeLabel(j.tech.type), dues: wageOnly, materials: reimb > 0.005 ? reimb : null, paid: null, remaining: null });
+
+                // One row per actual day he worked — that's the thing that matters, not how
+                // many days the job itself ran for. A typed week or a percentage job has no
+                // day-level split to show, so those stay as one row.
+                if (j.manual) {
+                    rows.push({ date: j.weeks.map(w => w.weekStart).filter(Boolean).sort().join(', ') || (j.job.startDate || ''), client: j.job.clientName || '', type: techTypeLabel(j.tech.type), dues: wageOnly, materials: null, paid: null, remaining: null });
+                } else if (j.dailyManual) {
+                    // Already one $ amount per actual day — each gets its own row as-is.
+                    j.dailyEntries.forEach(e => {
+                        rows.push({ date: e.date, client: j.job.clientName || '', type: techTypeLabel(j.tech.type), dues: round2(parseVal(e.amount)), materials: null, paid: null, remaining: null });
+                    });
+                } else if (j.isPercentPeriod) {
+                    rows.push({ date: j.job.startDate || '', client: j.job.clientName || '', type: techTypeLabel(j.tech.type), dues: wageOnly, materials: null, paid: null, remaining: null });
+                } else {
+                    const datesInPeriod = (j.dates || []).filter(d => (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo)).sort();
+                    if (datesInPeriod.length === 0) {
+                        rows.push({ date: j.job.startDate || '', client: j.job.clientName || '', type: techTypeLabel(j.tech.type), dues: wageOnly, materials: null, paid: null, remaining: null });
+                    } else {
+                        splitAmountAcrossDates(wageOnly, datesInPeriod).forEach(r => {
+                            rows.push({ date: r.date, client: j.job.clientName || '', type: techTypeLabel(j.tech.type), dues: r.amount, materials: null, paid: null, remaining: null });
+                        });
+                    }
+                }
+                // Materials he bought himself, each on its own actual purchase date — not folded
+                // into any one wage day.
+                (j.reimbEntries || []).forEach(e => {
+                    rows.push({ date: e.date || '', client: 'Materials (' + (j.job.clientName || '') + ')', type: '-', dues: null, materials: round2(parseVal(e.amount)), paid: null, remaining: null });
+                });
             });
         }
         // Bonuses (🎁) get their own rows too, clearly labeled as a bonus — kept separate from
@@ -8338,6 +8367,7 @@ ${closeBtnHtml}
                 <td data-label="${t('guideThRemainingInPeriod')}" style="color:${remainingInPeriod > 0 ? '#f87171' : '#94a3b8'}; font-weight:700;">$${remainingInPeriod.toFixed(2)}</td>
                 <td data-label="" class="tg-actions-cell"><div class="tg-actions">
                     <button class="secondary" onclick="showTechDetails('${jsArg(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#475569;">🔎 ${t('guideDetailsBtn')}</button>
+                    <button class="secondary" onclick="openTechPaymentPrompt('${jsArg(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#16a34a;">${t('techPayBtn')}</button>
                     <button class="secondary" onclick="openTechBonusPrompt('${jsArg(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#fbbf24; color:#1a1a1a;">${t('techBonusBtn')}</button>
                     <button class="secondary" onclick="sendWhatsAppTech('${escJs(name)}', '${escJs(rawPhone)}', ${dues}, ${bonus})" style="padding:4px 8px; font-size:0.75rem; background:#059669;">${t('guideWhatsAppBtn')}</button>
                     <button class="secondary" onclick="printTechnicianReport('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#0ea5e9;">${t('printReportBtn')}</button>
