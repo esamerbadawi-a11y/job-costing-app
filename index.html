@@ -730,7 +730,6 @@
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
             <h2 style="color:#38bdf8; margin:0; font-size:1.2rem;">👨‍🔧 <span data-i18n="guideModalTitle"></span></h2>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <button class="success" onclick="sendWhatsAppShareSM()" style="padding:6px 12px; font-size:0.8rem; background:#059669;" data-i18n="guideSendShareBtn"></button>
                 <button class="success" onclick="openAddTechnicianModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideAddTechBtn"></button>
                 <button class="danger" onclick="closeTechGuideModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
             </div>
@@ -808,7 +807,12 @@
     <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:90%; max-width:700px; max-height:85vh; overflow-y:auto; padding:25px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
             <h2 style="color:#38bdf8; margin:0; font-size:1.2rem;">💰 <span data-i18n="partnerAccountTitle"></span></h2>
-            <button class="danger" onclick="closePartnerAccountModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="success" onclick="sendWhatsAppSharePartner('S','wdFilterFrom','wdFilterTo')" style="padding:6px 12px; font-size:0.8rem; background:#059669;" data-i18n="guideSendShareSBtn"></button>
+                <button class="success" onclick="sendWhatsAppSharePartner('M','wdFilterFrom','wdFilterTo')" style="padding:6px 12px; font-size:0.8rem; background:#059669;" data-i18n="guideSendShareMBtn"></button>
+                <button class="success" onclick="sendWhatsAppShareCombined('wdFilterFrom','wdFilterTo')" style="padding:6px 12px; font-size:0.8rem; background:#0891b2;" data-i18n="guideSendShareBothBtn"></button>
+                <button class="danger" onclick="closePartnerAccountModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+            </div>
         </div>
 
         <div style="background:var(--panel-bg); border:1px solid var(--border-color); padding:15px; border-radius:10px; margin-bottom:18px;">
@@ -922,7 +926,10 @@
     <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:90%; max-width:700px; max-height:85vh; overflow-y:auto; padding:25px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
             <h2 style="color:#38bdf8; margin:0; font-size:1.2rem;">🏢 <span data-i18n="companyAccountTitle"></span></h2>
-            <button class="danger" onclick="closeCompanyAccountModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="success" onclick="sendWhatsAppSharePartner('Company','ceFilterFrom','ceFilterTo')" style="padding:6px 12px; font-size:0.8rem; background:#059669;" data-i18n="guideSendShareCompanyBtn"></button>
+                <button class="danger" onclick="closeCompanyAccountModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+            </div>
         </div>
 
         <div style="background:var(--panel-bg); border:1px solid var(--border-color); padding:15px; border-radius:10px; margin-bottom:18px;">
@@ -1695,7 +1702,10 @@
         alertFirestoreTerminated: { ar: 'الاتصال بقاعدة البيانات اتقطع لأن الصفحة فضلت فاتحة فترة طويلة من غير أي تفاعل (بيحصل في الموبايل لما الصفحة تفضل في الخلفية). محتاج تحدّث الصفحة عشان أي حفظ يرجع يشتغل.\n\nتحدّث الصفحة دلوقتي؟', en: 'The database connection dropped because the page sat open for a while without activity (common on mobile when the page stays in the background). The page needs to be refreshed before any save will work again.\n\nRefresh now?' },
         alertPhoneUnavailable: { ar: 'رقم الهاتف غير متوفر لهذا الفني.', en: 'Phone number not available for this technician.' },
         guideModalTitle: { ar: 'دليل الحسابات الشامل للفنيين و S & M', en: 'Complete Technicians & S/M Guide' },
-        guideSendShareBtn: { ar: 'إرسال حصة S & M', en: 'Send S & M Share' },
+        guideSendShareSBtn: { ar: '📤 إرسال حصة S', en: '📤 Send S Share' },
+        guideSendShareMBtn: { ar: '📤 إرسال حصة M', en: '📤 Send M Share' },
+        guideSendShareBothBtn: { ar: '📤 إرسال الاتنين مع بعض', en: '📤 Send Both Together' },
+        guideSendShareCompanyBtn: { ar: '📤 إرسال حصة الشركة', en: '📤 Send Company Share' },
         guideShareSLabel: { ar: 'حصة S (للفترة دي):', en: 'S Share (this period):' },
         guideShareMLabel: { ar: 'حصة M (للفترة دي):', en: 'M Share (this period):' },
         guideAddTechBtn: { ar: '+ إضافة فني جديد', en: '+ Add New Technician' },
@@ -8250,21 +8260,37 @@ ${closeBtnHtml}
             if (b.jobId) jobPeriodBonus[b.jobId] = round2((jobPeriodBonus[b.jobId] || 0) + parseVal(b.amount));
             else generalBonusTotal += parseVal(b.amount);
         });
-        let totalShareS = 0, totalShareM = 0;
+        let totalShareS = 0, totalShareM = 0, totalShareCompany = 0;
+        // Per-job breakdown — what THIS job alone contributed to S's, M's and the company's
+        // share in the period — so a report can show "which job gave how much", not just one
+        // combined total. The company's cut also has that job's own extraExpenses taken off it,
+        // same as jobNet()'s companyNet — extraExpenses has no date of its own, so it's always
+        // applied in full, the same simplification used everywhere else in the app.
+        const jobBreakdown = [];
         savedJobs.forEach(job => {
             const periodBase = hasDateFilter ? percentBaseForPeriod(job, dateFrom, dateTo) : round2(parseVal(job.amountReceived) - parseVal(job.materialCost));
             const techDues = hasDateFilter ? (jobPeriodTechDues[job.id] || 0) : jobNet(job).totalTechDues;
             const bonusForJob = jobPeriodBonus[job.id] || 0;
             const netForSplit = round2(periodBase - techDues - bonusForJob);
             const ratio = jobSplitRatio(job);
+            const jobShareS = round2(netForSplit * ratio.s);
+            const jobShareM = round2(netForSplit * ratio.m);
+            const jobShareCompany = round2(netForSplit * ratio.company - parseVal(job.extraExpenses));
             totalShareS += netForSplit * ratio.s;
             totalShareM += netForSplit * ratio.m;
+            totalShareCompany += jobShareCompany;
+            if (Math.abs(jobShareS) > 0.005 || Math.abs(jobShareM) > 0.005 || Math.abs(jobShareCompany) > 0.005) {
+                jobBreakdown.push({ job, shareS: jobShareS, shareM: jobShareM, shareCompany: jobShareCompany });
+            }
         });
         if (generalBonusTotal > 0.005) {
-            totalShareS -= round2(generalBonusTotal * 0.4);
-            totalShareM -= round2(generalBonusTotal * 0.4);
+            const generalBonusCutS = round2(generalBonusTotal * 0.4);
+            const generalBonusCutM = round2(generalBonusTotal * 0.4);
+            totalShareS -= generalBonusCutS;
+            totalShareM -= generalBonusCutM;
+            jobBreakdown.push({ job: null, generalBonus: true, shareS: -generalBonusCutS, shareM: -generalBonusCutM, shareCompany: 0 });
         }
-        return { totalShareS: round2(totalShareS), totalShareM: round2(totalShareM) };
+        return { totalShareS: round2(totalShareS), totalShareM: round2(totalShareM), totalShareCompany: round2(totalShareCompany), jobBreakdown };
     }
 
     // A stand-in for the job currently open in the form, built from what's on screen right now (not yet
@@ -8928,20 +8954,65 @@ ${closeBtnHtml}
         window.open(`https://wa.me/${normalized}?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
-    function sendWhatsAppShareSM() {
-        // Same date range currently picked on this guide screen — it used to always sum every
-        // job ever, so "Send S & M Share" during a chosen week silently included every other
-        // week too. Now it only counts the selected period, same as the technicians' table above it.
-        const dateFrom = document.getElementById('guideDateFrom').value;
-        const dateTo = document.getElementById('guideDateTo').value;
+    // Sends ONE person's (or the company's) share on its own, with a line per job showing what
+    // THAT job alone contributed — never bundled with anyone else's number into one message.
+    // dateFromId/dateToId point at whichever screen's own date filter is currently showing
+    // (the S & M Account screen's wdFilterFrom/wdFilterTo, or the Company Account screen's
+    // ceFilterFrom/ceFilterTo) — same period math as that screen's own figures either way.
+    function sendWhatsAppSharePartner(partner, dateFromId, dateToId) {
+        const dateFrom = document.getElementById(dateFromId).value;
+        const dateTo = document.getElementById(dateToId).value;
         const hasDateFilter = !!(dateFrom || dateTo);
-        const { totalShareS, totalShareM } = computeSAndMPeriodShare(dateFrom, dateTo);
+        const { totalShareS, totalShareM, totalShareCompany, jobBreakdown } = computeSAndMPeriodShare(dateFrom, dateTo);
+        const amount = partner === 'M' ? totalShareM : (partner === 'Company' ? totalShareCompany : totalShareS);
+        const partnerLabel = partner === 'Company' ? t('statShareCompany') : partner;
         const periodLine = hasDateFilter
             ? (currentLang === 'ar' ? `\nالفترة: ${dateFrom || '...'} → ${dateTo || '...'}` : `\nPeriod: ${dateFrom || '...'} → ${dateTo || '...'}`)
             : '';
-        const msg = currentLang === 'ar'
-            ? `تقرير حصص الأرباح:${periodLine}\nحصة S: $${totalShareS.toFixed(2)}\nحصة M: $${totalShareM.toFixed(2)}`
-            : `Profit Share Report:${periodLine}\nS Share (40%): $${totalShareS.toFixed(2)}\nM Share (40%): $${totalShareM.toFixed(2)}`;
+        // One line per job showing what THAT job alone contributed to this share — so it's
+        // clear which job gave how much, not just one combined total.
+        const lines = (jobBreakdown || []).map(b => {
+            const amt = partner === 'M' ? b.shareM : (partner === 'Company' ? b.shareCompany : b.shareS);
+            if (Math.abs(amt) < 0.005) return null;
+            const label = b.generalBonus
+                ? (currentLang === 'ar' ? 'بونص عام' : 'General bonus')
+                : `${b.job.clientName || ''}${b.job.startDate ? ' (' + b.job.startDate + ')' : ''}`;
+            return `${label}: $${amt.toFixed(2)}`;
+        }).filter(Boolean);
+        const totalLabel = currentLang === 'ar' ? 'الإجمالي' : 'Total';
+        const parts = [`${currentLang === 'ar' ? 'تقرير حصة ' + partnerLabel : partnerLabel + ' Share Report'}:${periodLine}`, ...lines, `${totalLabel}: $${amount.toFixed(2)}`];
+        const msg = parts.join('\n');
+        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    // Sends S and M's shares together in one message, each with its own per-job breakdown —
+    // for when the two of them are fine getting the same message (unlike the separate S-only /
+    // M-only buttons, which exist so each can be sent privately to just that one person).
+    function sendWhatsAppShareCombined(dateFromId, dateToId) {
+        const dateFrom = document.getElementById(dateFromId).value;
+        const dateTo = document.getElementById(dateToId).value;
+        const hasDateFilter = !!(dateFrom || dateTo);
+        const { totalShareS, totalShareM, jobBreakdown } = computeSAndMPeriodShare(dateFrom, dateTo);
+        const periodLine = hasDateFilter
+            ? (currentLang === 'ar' ? `\nالفترة: ${dateFrom || '...'} → ${dateTo || '...'}` : `\nPeriod: ${dateFrom || '...'} → ${dateTo || '...'}`)
+            : '';
+        const buildLines = key => (jobBreakdown || []).map(b => {
+            const amt = b[key];
+            if (Math.abs(amt) < 0.005) return null;
+            const label = b.generalBonus
+                ? (currentLang === 'ar' ? 'بونص عام' : 'General bonus')
+                : `${b.job.clientName || ''}${b.job.startDate ? ' (' + b.job.startDate + ')' : ''}`;
+            return `${label}: $${amt.toFixed(2)}`;
+        }).filter(Boolean);
+        const totalLabel = currentLang === 'ar' ? 'الإجمالي' : 'Total';
+        const sLabel = currentLang === 'ar' ? 'حصة S' : 'S Share';
+        const mLabel = currentLang === 'ar' ? 'حصة M' : 'M Share';
+        const parts = [
+            `${currentLang === 'ar' ? 'تقرير حصص الأرباح' : 'Profit Share Report'}:${periodLine}`,
+            '', `${sLabel}:`, ...buildLines('shareS'), `${totalLabel}: $${totalShareS.toFixed(2)}`,
+            '', `${mLabel}:`, ...buildLines('shareM'), `${totalLabel}: $${totalShareM.toFixed(2)}`
+        ];
+        const msg = parts.join('\n');
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
     }
 </script>
