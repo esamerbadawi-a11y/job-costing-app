@@ -6672,9 +6672,9 @@ ${closeBtnHtml}
 
         if (rows.length === 0) { alert(t('noJobsThisDay')); return; }
 
-        const headers = [["Date", "Client", "Job Total", "Materials", "Technicians", "Share %", "Share $"]];
+        const headers = [["Date", "Client", "Job Total", "Materials", "Technicians", "Share $"]];
         const money = v => '$' + v.toFixed(2);
-        const data = rows.map(r => [r.date, r.client, money(r.total), money(r.materials), money(r.tech), Math.round(r.percent) + '%', money(r.share)]);
+        const data = rows.map(r => [r.date, r.client, money(r.total), money(r.materials), money(r.tech), money(r.share)]);
         const PARTNER_REPORT_ARABIC_COLS = [1]; // Client
 
         doc.autoTable({
@@ -6701,7 +6701,12 @@ ${closeBtnHtml}
             }
         });
 
-        const finalY = doc.lastAutoTable.finalY + 10;
+        // Paid/Remaining come from this report's own payment ledger (extraPartnerPayments) —
+        // the same one the on-screen view uses — never from techPayments.
+        const paid = round2(extraPartnerPayments.filter(p => (p.name || '').trim() === name).reduce((s, p) => s + parseVal(p.amount), 0));
+        const remaining = round2(grandTotal - paid);
+
+        let finalY = doc.lastAutoTable.finalY + 10;
         doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(0, 0, 0);
         if (containsArabic(name)) {
             const totalPrefix = `Total for`;
@@ -6714,6 +6719,13 @@ ${closeBtnHtml}
         } else {
             doc.text(`Total for ${name}: $${grandTotal.toFixed(2)}`, 14, finalY);
         }
+        finalY += 8;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
+        doc.text(`Paid: $${paid.toFixed(2)}`, 14, finalY);
+        finalY += 7;
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Remaining: $${remaining.toFixed(2)}`, 14, finalY);
+
         doc.save(`AHA_Partner_Report_${name}.pdf`);
     }
 
