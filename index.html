@@ -839,7 +839,12 @@
                 <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="filterDateToLabel"></label>
                 <input type="date" id="wdFilterTo" onchange="renderPartnerAccountContent()" style="min-width:130px;">
             </div>
-            <button class="secondary" onclick="document.getElementById('wdFilterPartner').value=''; document.getElementById('wdFilterFrom').value=''; document.getElementById('wdFilterTo').value=''; renderPartnerAccountContent();" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
+            <button class="secondary" onclick="setPartnerDateRange('today')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetTodayBtn"></button>
+            <button class="secondary" onclick="shiftPartnerWeek(-1)" style="padding:6px 12px; font-size:0.75rem;">◀</button>
+            <button class="secondary" onclick="setPartnerDateRange('week')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetWeekBtn"></button>
+            <button class="secondary" onclick="setPartnerDateRange('lastweek')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetLastWeekBtn"></button>
+            <button class="secondary" onclick="shiftPartnerWeek(1)" style="padding:6px 12px; font-size:0.75rem;">▶</button>
+            <button class="secondary" onclick="document.getElementById('wdFilterPartner').value=''; setPartnerDateRange('clear');" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
         </div>
 
         <div id="partnerAccountContent" style="font-size:0.85rem; line-height:1.7; color:var(--text-main);"></div>
@@ -885,7 +890,13 @@
                 <label data-i18n="techPartnerToLabel"></label>
                 <input type="date" id="techPartnerReportTo" onchange="renderTechPartnerReportContent()">
             </div>
+            <button class="secondary" onclick="setTechPartnerDateRange('today')" style="padding:9px 12px; font-size:0.8rem;" data-i18n="presetTodayBtn"></button>
+            <button class="secondary" onclick="shiftTechPartnerWeek(-1)" style="padding:9px 12px; font-size:0.8rem;">◀</button>
+            <button class="secondary" onclick="setTechPartnerDateRange('week')" style="padding:9px 12px; font-size:0.8rem;" data-i18n="presetWeekBtn"></button>
+            <button class="secondary" onclick="setTechPartnerDateRange('lastweek')" style="padding:9px 12px; font-size:0.8rem;" data-i18n="presetLastWeekBtn"></button>
+            <button class="secondary" onclick="shiftTechPartnerWeek(1)" style="padding:9px 12px; font-size:0.8rem;">▶</button>
             <button class="secondary" onclick="clearTechPartnerReportDates()" data-i18n="techPartnerClearDatesBtn" style="padding:9px 12px; font-size:0.8rem;"></button>
+            <button class="secondary" style="background:#16a34a; padding:9px 12px; font-size:0.8rem;" onclick="payTechPartnerReportPerson()" data-i18n="techPayBtn"></button>
             <button class="secondary" style="background:#f87171; color:#fff;" onclick="downloadTechPartnerReportPDF()" data-i18n="partnerReportDownloadBtn"></button>
         </div>
 
@@ -1914,6 +1925,9 @@
         activityHandedOver: { ar: 'الزيارة اتحوّلت لـ', en: 'Visit handed over to' },
         clientNoPhone: { ar: 'مفيش رقم تليفون للعميل ده.', en: 'This client has no phone number.' },
         guidePeriodNote: { ar: 'الفني اللي ليه أسابيع متسجلة على الشغلانة (📆) بيتحسب بالأرقام دي زي ما هي لكل أسبوع (الأسبوع من الإثنين للأحد). غير كده، مستحق الشغلانة بيتقسم على أيام الفني المجدولة. دوس 🔎 تفاصيل عشان تشوف كل رقم جه منين.', en: 'A technician with weeks entered on the job (📆) is counted with exactly those amounts per week (weeks run Monday to Sunday). Otherwise the job\'s dues are split by his scheduled days. Tap 🔎 Details to see where each number comes from.' },
+        partnerPeriodNote: { ar: 'نفس حسبة "إرسال نصيب S و M" بالظبط، لكن محصورة في الفترة اللي اخترتها فوق — المسحوب هنا هو بس اللي اتسحب بتاريخ جوه نفس الفترة.', en: 'The exact same math as "Send S & M Share", scoped to the period picked above — withdrawals here are only the ones dated inside that same period.' },
+        partnerPeriodLabel: { ar: 'الفترة المختارة', en: 'Selected period' },
+        partnerAllTimeLabel: { ar: 'الإجمالي الكلي (كل الوقت)', en: 'All-time total' },
         presetTodayBtn: { ar: 'اليوم', en: 'Today' },
         presetWeekBtn: { ar: 'الأسبوع ده', en: 'This Week' },
         guideThDues: { ar: 'إجمالي المستحقات', en: 'Total Dues' },
@@ -6363,7 +6377,42 @@ ${closeBtnHtml}
         const remainingS = earnedS - withdrawnS;
         const remainingM = earnedM - withdrawnM;
 
-        let html = `<div class="grid-2" style="margin-bottom:18px; gap:12px;">
+        // Same weekly view the Technicians Guide gives per technician: with a date range picked
+        // above (via the same Today/◀ this week ▶/Last week buttons), S & M get an "earned this
+        // period" figure (computeSAndMPeriodShare — the exact same period math "Send S & M Share"
+        // already uses) against what was actually withdrawn and dated inside that same period.
+        const dateFrom = document.getElementById('wdFilterFrom').value;
+        const dateTo = document.getElementById('wdFilterTo').value;
+        const hasDateFilter = !!(dateFrom || dateTo);
+        let html = '';
+        if (hasDateFilter) {
+            const { totalShareS: periodEarnedS, totalShareM: periodEarnedM } = computeSAndMPeriodShare(dateFrom, dateTo);
+            let periodWithdrawnS = 0, periodWithdrawnM = 0;
+            partnerWithdrawals.forEach(w => {
+                if (!(!dateFrom || (w.date && w.date >= dateFrom)) || !(!dateTo || (w.date && w.date <= dateTo))) return;
+                if (w.partner === 'S') periodWithdrawnS += parseVal(w.amount); else periodWithdrawnM += parseVal(w.amount);
+            });
+            const periodRemainingS = round2(periodEarnedS - periodWithdrawnS);
+            const periodRemainingM = round2(periodEarnedM - periodWithdrawnM);
+            html += `<div class="note-box" style="margin-bottom:10px;">${t('partnerPeriodNote')}</div>
+            <div class="grid-2" style="margin-bottom:10px; gap:12px;">
+                <div style="background:var(--panel-bg); border:1px solid #38bdf8; border-radius:8px; padding:14px;">
+                    <div style="color:#38bdf8; font-weight:700; margin-bottom:8px;">S — ${t('partnerPeriodLabel')}</div>
+                    <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalEarnedLabel')} <b style="color:#34d399;">$${periodEarnedS.toFixed(2)}</b></div>
+                    <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalWithdrawnLabel')} <b style="color:#f87171;">$${periodWithdrawnS.toFixed(2)}</b></div>
+                    <div style="font-size:0.9rem; margin-top:6px; border-top:1px solid var(--border-color); padding-top:6px;">${t('remainingBalanceLabel')} <b style="color:${periodRemainingS < 0 ? '#f87171' : '#fbbf24'};">$${periodRemainingS.toFixed(2)}</b></div>
+                </div>
+                <div style="background:var(--panel-bg); border:1px solid #38bdf8; border-radius:8px; padding:14px;">
+                    <div style="color:#38bdf8; font-weight:700; margin-bottom:8px;">M — ${t('partnerPeriodLabel')}</div>
+                    <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalEarnedLabel')} <b style="color:#34d399;">$${periodEarnedM.toFixed(2)}</b></div>
+                    <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalWithdrawnLabel')} <b style="color:#f87171;">$${periodWithdrawnM.toFixed(2)}</b></div>
+                    <div style="font-size:0.9rem; margin-top:6px; border-top:1px solid var(--border-color); padding-top:6px;">${t('remainingBalanceLabel')} <b style="color:${periodRemainingM < 0 ? '#f87171' : '#fbbf24'};">$${periodRemainingM.toFixed(2)}</b></div>
+                </div>
+            </div>`;
+        }
+
+        html += `<div style="color:var(--text-muted); font-size:0.78rem; margin-bottom:6px;">${t('partnerAllTimeLabel')}</div>
+        <div class="grid-2" style="margin-bottom:18px; gap:12px;">
             <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:8px; padding:14px;">
                 <div style="color:#38bdf8; font-weight:700; margin-bottom:8px;">S</div>
                 <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalEarnedLabel')} <b style="color:#34d399;">$${earnedS.toFixed(2)}</b></div>
@@ -6590,9 +6639,42 @@ ${closeBtnHtml}
     function clearTechPartnerReportDates() {
         document.getElementById('techPartnerReportFrom').value = '';
         document.getElementById('techPartnerReportTo').value = '';
+        techPartnerLastWeekStep = 0;
         renderTechPartnerReportContent();
     }
     function closeTechPartnerReportModal() { document.getElementById('techPartnerReportModal').style.display = 'none'; }
+
+    // Same week-picker as the Technicians Guide and the S & M account, for this report too.
+    let techPartnerLastWeekStep = 0;
+    function shiftTechPartnerWeek(dir) {
+        const fromEl = document.getElementById('techPartnerReportFrom'), toEl = document.getElementById('techPartnerReportTo');
+        const base = mondayOf(fromEl.value || isoDate(new Date()));
+        const w = weekOf(base, dir);
+        fromEl.value = w.start; toEl.value = w.end;
+        renderTechPartnerReportContent();
+    }
+    function setTechPartnerDateRange(preset) {
+        const fromEl = document.getElementById('techPartnerReportFrom');
+        const toEl = document.getElementById('techPartnerReportTo');
+        const today = new Date();
+        const iso = d => isoDate(d);
+        if (preset === 'today') {
+            techPartnerLastWeekStep = 0;
+            fromEl.value = iso(today); toEl.value = iso(today);
+        } else if (preset === 'week') {
+            techPartnerLastWeekStep = 0;
+            const w = weekOf(iso(today), 0);
+            fromEl.value = w.start; toEl.value = w.end;
+        } else if (preset === 'lastweek') {
+            techPartnerLastWeekStep += 1;
+            const w = weekOf(iso(today), -techPartnerLastWeekStep);
+            fromEl.value = w.start; toEl.value = w.end;
+        } else {
+            techPartnerLastWeekStep = 0;
+            fromEl.value = ''; toEl.value = '';
+        }
+        renderTechPartnerReportContent();
+    }
 
     // Shared by the on-screen view and the PDF: for one person, their two job lists plus the
     // combined total/paid/remaining. Paid/remaining use the SAME payments ledger as everywhere
@@ -6732,7 +6814,7 @@ ${closeBtnHtml}
 
         doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(0, 0, 0);
         doc.text(`Total (technician + partner): ${money(combinedTotal)}`, 14, nextY);
-        doc.text(`Paid (all-time): ${money(paid)}`, 14, nextY + 7);
+        doc.text(`Paid (${(dateFrom || dateTo) ? 'in period' : 'all-time'}): ${money(paid)}`, 14, nextY + 7);
         doc.text(`Remaining: ${money(remaining)}`, 14, nextY + 14);
 
         doc.save(`AHA_Tech_Partner_Report_${name}.pdf`);
@@ -7093,6 +7175,7 @@ ${closeBtnHtml}
             closeTechPaymentModal();
             renderTechGuideContent();
             safeCall(renderTechnicians);
+            safeCall(renderTechPartnerReportContentIfOpen);
             return;
         }
 
@@ -7109,6 +7192,7 @@ ${closeBtnHtml}
             renderTechGuideContent();
             safeCall(renderTechnicians);
             safeCall(renderJobPayModalIfOpen);
+            safeCall(renderTechPartnerReportContentIfOpen);
         } catch (err) {
             techPayments = techPayments.filter(x => x !== entry);   // the save failed: don't keep a payment that was never stored
             alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
@@ -7911,6 +7995,40 @@ ${closeBtnHtml}
         renderTechGuideContent();
     }
 
+    // Same week-picker as the Technicians Guide, for the S & M account — lets S/M see a weekly
+    // earned/withdrawn/remaining figure the same way a technician does, instead of only ever
+    // seeing their all-time totals.
+    let partnerLastWeekStep = 0;
+    function shiftPartnerWeek(dir) {
+        const fromEl = document.getElementById('wdFilterFrom'), toEl = document.getElementById('wdFilterTo');
+        const base = mondayOf(fromEl.value || isoDate(new Date()));
+        const w = weekOf(base, dir);
+        fromEl.value = w.start; toEl.value = w.end;
+        renderPartnerAccountContent();
+    }
+    function setPartnerDateRange(preset) {
+        const fromEl = document.getElementById('wdFilterFrom');
+        const toEl = document.getElementById('wdFilterTo');
+        const today = new Date();
+        const iso = d => isoDate(d);
+        if (preset === 'today') {
+            partnerLastWeekStep = 0;
+            fromEl.value = iso(today); toEl.value = iso(today);
+        } else if (preset === 'week') {
+            partnerLastWeekStep = 0;
+            const w = weekOf(iso(today), 0);
+            fromEl.value = w.start; toEl.value = w.end;
+        } else if (preset === 'lastweek') {
+            partnerLastWeekStep += 1;
+            const w = weekOf(iso(today), -partnerLastWeekStep);
+            fromEl.value = w.start; toEl.value = w.end;
+        } else {
+            partnerLastWeekStep = 0;
+            fromEl.value = ''; toEl.value = '';
+        }
+        renderPartnerAccountContent();
+    }
+
     // ONE place that works out, per technician, what they EARNED on each job.
     // The Technicians Guide table AND the printed technician report both use it, so they can never disagree.
     // With a date range set, a job's dues are prorated by the share of the technician's scheduled days
@@ -8265,6 +8383,18 @@ ${closeBtnHtml}
 
     function renderJobPayModalIfOpen() {
         if (document.getElementById('jobPayModal').style.display === 'flex') renderJobPayModal();
+    }
+    function renderTechPartnerReportContentIfOpen() {
+        if (document.getElementById('techPartnerReportModal').style.display === 'flex') renderTechPartnerReportContent();
+    }
+    // Logs a payment for whoever's selected in this report, without leaving the screen — same
+    // payments ledger the Technicians Guide's 💵 button writes to (techPayments), so it comes
+    // straight off "Paid" / "Remaining" here too, whether this person was paid as a technician
+    // or as a partner.
+    function payTechPartnerReportPerson() {
+        const name = document.getElementById('techPartnerReportSelect').value;
+        if (!name) { alert(t('noTechPartnerJobs')); return; }
+        openTechPaymentPrompt(name);
     }
 
     // ===== Job-screen "Pay" modal: pay technicians out of THIS job's collected money, =====
