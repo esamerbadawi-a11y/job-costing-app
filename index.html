@@ -861,10 +861,23 @@
         <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:15px;">
             <div class="form-group" style="flex:1; min-width:160px; margin-bottom:0;">
                 <label data-i18n="partnerReportPickLabel"></label>
-                <select id="partnerReportSelect" onchange="renderPartnerReportContent()"></select>
+                <select id="partnerReportSelect" onchange="renderPartnerReportContent(); closeExtraPartnerPaymentForm();"></select>
             </div>
-            <button class="secondary" style="background:#16a34a; padding:9px 12px; font-size:0.8rem;" onclick="payPartnerReportPerson()" data-i18n="techPayBtn"></button>
+            <button class="secondary" style="background:#16a34a; padding:9px 12px; font-size:0.8rem;" onclick="toggleExtraPartnerPaymentForm()" data-i18n="techPayBtn"></button>
             <button class="secondary" style="background:#f87171; color:#fff;" onclick="downloadPartnerReportPDF()" data-i18n="partnerReportDownloadBtn"></button>
+        </div>
+
+        <!-- This payment form saves ONLY into this screen's own ledger (extraPartnerPayments) —
+             never into techPayments — so a payment logged here never shows up on, or gets
+             confused with, the Technicians Guide or the Technician & Partner Report. -->
+        <div id="extraPartnerPaymentForm" style="display:none; background:var(--panel-bg); border:1px solid var(--border-color); padding:15px; border-radius:10px; margin-bottom:15px;">
+            <h3 style="color:#38bdf8; font-size:0.95rem; margin-bottom:10px;" data-i18n="addPartnerPaymentTitle"></h3>
+            <div class="grid-3" style="margin-bottom:10px;">
+                <input type="text" id="partnerPaymentAmount" placeholder="0" onfocus="this.select()">
+                <input type="date" id="partnerPaymentDate">
+                <input type="text" id="partnerPaymentNote" data-i18n-ph="withdrawalNotePh">
+            </div>
+            <button class="success" onclick="saveExtraPartnerPayment()" data-i18n="saveWithdrawalBtn"></button>
         </div>
 
         <div id="partnerReportContent" style="font-size:0.85rem; line-height:1.6; color:var(--text-main);"></div>
@@ -1292,6 +1305,9 @@
         partnerReportPickLabel: { ar: 'اختار الشريك:', en: 'Pick the partner:' },
         partnerReportDownloadBtn: { ar: '📄 تحميل PDF', en: '📄 Download PDF' },
         partnerReportTotalLabel: { ar: 'الإجمالي المستحق له:', en: 'Total earned:' },
+        addPartnerPaymentTitle: { ar: 'تسجيل دفعة للشريك', en: 'Record a Payment to the Partner' },
+        partnerPaymentHistoryTitle: { ar: 'سجل الدفعات', en: 'Payment History' },
+        partnerPaymentNoneYet: { ar: 'لسه مفيش دفعات متسجلة له.', en: 'No payments recorded yet.' },
         techPartnerReportBtn: { ar: '👷🤝 تقرير الفني والشريك', en: '👷🤝 Tech & Partner Report' },
         techPartnerReportTitle: { ar: 'تقرير الفني والشريك', en: 'Technician & Partner Report' },
         noTechPartnerJobs: { ar: 'اختار اسم عشان تشوف شغلاناته.', en: 'Pick a name to see their jobs.' },
@@ -2085,6 +2101,7 @@
     const TECHS_DOC = db.collection('jobCostingApp').doc('technicianPhones');
     const ACTIVITY_LOG = db.collection('jobCostingApp').doc('activityLog');
     const WITHDRAWALS_DOC = db.collection('jobCostingApp').doc('partnerWithdrawals');
+    const EXTRA_PARTNER_PAYMENTS_DOC = db.collection('jobCostingApp').doc('extraPartnerPayments');
     const APPOINTMENTS_DOC = db.collection('jobCostingApp').doc('appointments');
     const SERVICE_TYPES_DOC = db.collection('jobCostingApp').doc('serviceTypes');
     const COMPANY_EXPENSES_DOC = db.collection('jobCostingApp').doc('companyExpenses');
@@ -2254,6 +2271,7 @@
     let selectedJobIds = new Set();
     let lastDeletedJobs = [];
     let partnerWithdrawals = [];
+    let extraPartnerPayments = [];
     let appointments = [];
     let serviceTypesList = ['Estimate', 'Drywall', 'Plumbing', 'Flooring', 'Electrical', 'Painting', 'HVAC', 'Roofing'];
     let companyExpenses = [];
@@ -2328,6 +2346,14 @@
             partnerWithdrawals = (doc.exists && doc.data().entries) ? doc.data().entries : [];
             if (document.getElementById('partnerAccountModal').style.display !== 'none') safeCall(renderPartnerAccountContent);
         }, err => console.error('Firestore withdrawals sync error:', err));
+
+        // Payments made to extra (profit-share) partners — kept in their own ledger, separate
+        // from techPayments, so a payment logged here only ever shows on this one screen and
+        // never mixes into a technician's dues elsewhere (even if the names happen to match).
+        EXTRA_PARTNER_PAYMENTS_DOC.onSnapshot(doc => {
+            extraPartnerPayments = (doc.exists && doc.data().entries) ? doc.data().entries : [];
+            if (document.getElementById('partnerReportModal').style.display !== 'none') safeCall(renderPartnerReportContent);
+        }, err => console.error('Firestore extra partner payments sync error:', err));
 
         APPOINTMENTS_DOC.onSnapshot(doc => {
             appointments = (doc.exists && doc.data().entries) ? doc.data().entries : [];
@@ -6525,12 +6551,27 @@ ${closeBtnHtml}
             </div>`;
         });
 
-        // Paid comes from the same payments ledger the Technicians Guide and the Job-Pay screen's
-        // partner section both write to (techPayments) — a payment there is keyed by this same
-        // name string, whether it was logged as a technician or as an extra partner, so a
-        // partial payment made out of one job's "Pay" screen shows up here too.
-        const paid = round2(techPaymentsInPeriod(name, '', '').reduce((s, p) => s + parseVal(p.amount), 0));
+        // Paid comes ONLY from this screen's own ledger (extraPartnerPayments) — kept entirely
+        // separate from techPayments, so a payment logged here never shows up on, or draws from,
+        // any other screen (Technicians Guide, Technician & Partner Report), even if this
+        // partner's name happens to match a technician's name elsewhere.
+        const myPayments = extraPartnerPayments.filter(p => (p.name || '').trim() === name)
+            .slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        const paid = round2(myPayments.reduce((s, p) => s + parseVal(p.amount), 0));
         const remaining = round2(partnerTotal - paid);
+
+        const paymentsHtml = myPayments.length === 0
+            ? `<p style="color:var(--text-muted); padding:6px 0; font-size:0.8rem;">${t('partnerPaymentNoneYet')}</p>`
+            : myPayments.map(p => {
+                const idx = extraPartnerPayments.indexOf(p);
+                return `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:5px 0; border-bottom:1px solid var(--border-color); font-size:0.8rem;">
+                    <span>${escHtml(p.date || '')}${p.note ? ' — ' + escHtml(p.note) : ''}</span>
+                    <span style="display:flex; align-items:center; gap:8px;">
+                        <strong style="color:#34d399;">${ltrAmt(parseVal(p.amount))}</strong>
+                        <button class="danger" onclick="deleteExtraPartnerPayment(${idx})" style="padding:2px 8px; font-size:0.7rem;">${t('deleteBtn')}</button>
+                    </span>
+                </div>`;
+            }).join('');
 
         container.innerHTML = (jobs.length === 0)
             ? `<p style="text-align:center; color:var(--text-muted); padding:15px;">${t('noJobsThisDay')}</p>`
@@ -6539,17 +6580,61 @@ ${closeBtnHtml}
                     <div style="display:flex; justify-content:space-between;"><span>${t('partnerReportTotalLabel')}</span> <strong style="color:#34d399;">${ltrAmt(partnerTotal)}</strong></div>
                     <div style="display:flex; justify-content:space-between;"><span>${t('techPartnerColPaid')}</span> <strong>${ltrAmt(paid)}</strong></div>
                     <div style="display:flex; justify-content:space-between;"><span>${t('techPartnerColRemaining')}</span> <strong style="color:${remaining > 0.005 ? '#f87171' : '#34d399'};">${ltrAmt(remaining)}</strong></div>
+                </div>
+                <div style="margin-top:14px;">
+                    <div style="font-weight:700; margin-bottom:4px; font-size:0.85rem;">${t('partnerPaymentHistoryTitle')}</div>
+                    ${paymentsHtml}
                 </div>`;
     }
     function renderPartnerReportContentIfOpen() {
         if (document.getElementById('partnerReportModal').style.display === 'flex') renderPartnerReportContent();
     }
-    // Logs a payment for whoever's selected here, into the same payments ledger used everywhere
-    // else (techPayments) — same pattern as the Technician & Partner Report's 💵 button.
-    function payPartnerReportPerson() {
+    function toggleExtraPartnerPaymentForm() {
         const name = document.getElementById('partnerReportSelect').value;
         if (!name) { alert(t('noExtraPartnersYet')); return; }
-        openTechPaymentPrompt(name);
+        const box = document.getElementById('extraPartnerPaymentForm');
+        const showing = box.style.display !== 'none';
+        if (showing) { closeExtraPartnerPaymentForm(); return; }
+        box.style.display = 'block';
+        document.getElementById('partnerPaymentAmount').value = '';
+        document.getElementById('partnerPaymentDate').value = isoDate(new Date());
+        document.getElementById('partnerPaymentNote').value = '';
+    }
+    function closeExtraPartnerPaymentForm() {
+        document.getElementById('extraPartnerPaymentForm').style.display = 'none';
+    }
+    // Saves a payment into this screen's OWN ledger (extraPartnerPayments) — never touches
+    // techPayments, so it only ever appears here, exactly as asked.
+    async function saveExtraPartnerPayment() {
+        const name = document.getElementById('partnerReportSelect').value;
+        if (!name) { alert(t('noExtraPartnersYet')); return; }
+        const amount = parseVal(document.getElementById('partnerPaymentAmount').value);
+        const date = document.getElementById('partnerPaymentDate').value || isoDate(new Date());
+        const note = document.getElementById('partnerPaymentNote').value.trim();
+        if (amount <= 0) { alert(t('alertWithdrawalAmountRequired')); return; }
+
+        const entry = { name, amount, date, note, by: currentUserEmail || '?', at: new Date().toISOString() };
+        try {
+            extraPartnerPayments.unshift(entry);
+            await EXTRA_PARTNER_PAYMENTS_DOC.set({ entries: extraPartnerPayments });
+            closeExtraPartnerPaymentForm();
+            renderPartnerReportContent();
+        } catch (err) {
+            extraPartnerPayments = extraPartnerPayments.filter(x => x !== entry);
+            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+        }
+    }
+    async function deleteExtraPartnerPayment(index) {
+        if (!confirm(t('confirmDeleteWithdrawal'))) return;
+        const backup = extraPartnerPayments[index];
+        extraPartnerPayments.splice(index, 1);
+        try {
+            await EXTRA_PARTNER_PAYMENTS_DOC.set({ entries: extraPartnerPayments });
+            renderPartnerReportContent();
+        } catch (err) {
+            if (backup) extraPartnerPayments.splice(index, 0, backup);
+            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+        }
     }
 
     // Built the same way as the Technician Report: one clean autoTable grid (instead of
