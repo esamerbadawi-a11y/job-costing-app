@@ -5189,16 +5189,31 @@
         const data = rows.map(r => [r.date, r.client, r.type, money(r.dues), money(r.materials), money(r.paid), money(r.remaining)]);
         const TECH_REPORT_ARABIC_COLS = [1, 2]; // Client, Pay Type
 
+        // Bonus (🎁) rows are highlighted and bolded throughout the table — same light-amber
+        // background jsPDF-autoTable draws from styles.fillColor, plus a bold font, so a bonus
+        // reads as a reward at a glance instead of blending into the regular job rows.
+        const BONUS_HIGHLIGHT_RGB = [255, 243, 205];
+        const BONUS_TEXT_RGB = [120, 90, 0];
+        const isBonusRow = (rowRaw) => String((rowRaw && rowRaw[1]) ?? '').startsWith('Bonus');
+
         doc.autoTable({
             head: headers, body: data, startY: 27, theme: 'grid',
             styles: { fontSize: 9, cellPadding: 2, halign: 'center' },
             headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+            didParseCell: function(cellData) {
+                if (cellData.section !== 'body') return;
+                if (!isBonusRow(cellData.row.raw)) return;
+                cellData.cell.styles.fontStyle = 'bold';
+                cellData.cell.styles.fillColor = BONUS_HIGHLIGHT_RGB;
+                cellData.cell.styles.textColor = BONUS_TEXT_RGB;
+            },
             didDrawCell: function(cellData) {
                 if (cellData.section !== 'body') return;
                 if (!TECH_REPORT_ARABIC_COLS.includes(cellData.column.index)) return;
                 const text = String(cellData.cell.raw ?? '');
                 if (!text || !containsArabic(text)) return;
-                doc.setFillColor(255, 255, 255);
+                const bonusRow = isBonusRow(cellData.row.raw);
+                doc.setFillColor(...(bonusRow ? BONUS_HIGHLIGHT_RGB : [255, 255, 255]));
                 doc.rect(cellData.cell.x, cellData.cell.y, cellData.cell.width, cellData.cell.height, 'F');
                 doc.setDrawColor(200, 200, 200);
                 doc.rect(cellData.cell.x, cellData.cell.y, cellData.cell.width, cellData.cell.height);
@@ -5218,7 +5233,18 @@
         doc.text(`Basic Dues: $${totalDues.toFixed(2)}`, 14, finalY);
         let lineY = finalY + 7;
         if (totalMaterials > 0.005) { doc.text(`Materials: $${totalMaterials.toFixed(2)}`, 14, lineY); lineY += 7; }
-        if (totalBonus > 0.005) { doc.text(`Bonus: $${totalBonus.toFixed(2)}`, 14, lineY); lineY += 7; }
+        if (totalBonus > 0.005) {
+            const bonusText = `Bonus: $${totalBonus.toFixed(2)}`;
+            doc.setFont("helvetica", "bold");
+            const tw = doc.getTextWidth(bonusText);
+            doc.setFillColor(255, 243, 205);
+            doc.rect(13, lineY - 4.5, tw + 4, 6, 'F');
+            doc.setTextColor(120, 90, 0);
+            doc.text(bonusText, 14, lineY);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "normal");
+            lineY += 7;
+        }
         doc.text(`Total Paid: $${totalPaid.toFixed(2)}`, 14, lineY);
         doc.setFont("helvetica", "bold");
         doc.text(`Remaining Balance: $${(totalDues + totalMaterials + totalBonus - totalPaid).toFixed(2)}`, 14, lineY + 7);
