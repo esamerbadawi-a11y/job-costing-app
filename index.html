@@ -1064,6 +1064,19 @@
     </div>
 </div>
 
+<div id="techBonusModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center;">
+    <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:85%; max-width:360px; padding:20px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+        <h3 id="techBonusTitleEl" style="color:#fbbf24; margin:0 0 4px; font-size:1rem;" data-i18n="techBonusTitle"></h3>
+        <div id="techBonusNameLabel" style="font-weight:700; margin-bottom:14px;"></div>
+        <div class="form-group"><label data-i18n="withdrawalAmountLabel"></label><input type="text" id="techBonusAmount" placeholder="0" onfocus="this.select()"></div>
+        <div class="form-group"><label data-i18n="lblReceiptDate"></label><input type="date" id="techBonusDate"></div>
+        <div class="form-group"><label data-i18n="techBonusJobLabel"></label><select id="techBonusJobSelect"></select></div>
+        <input type="text" id="techBonusNote" data-i18n-ph="techBonusNotePh" style="margin-bottom:12px;">
+        <button class="success" style="width:100%; padding:11px; margin-bottom:8px; background:#fbbf24; border-color:#fbbf24; color:#1a1a1a;" onclick="saveTechBonus()" data-i18n="techBonusSaveBtn"></button>
+        <button class="danger" style="width:100%; padding:8px; font-size:0.85rem;" onclick="closeTechBonusModal()" data-i18n="cancelBtn"></button>
+    </div>
+</div>
+
 <div id="jobPayModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
     <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:92%; max-width:620px; max-height:88vh; overflow-y:auto; padding:22px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
@@ -1661,6 +1674,21 @@
         techPaymentSettleLabel: { ar: '📆 بتقفل حساب الأسبوع اللي فيه:', en: '📆 Settles the week that includes:' },
         techPaymentSettleHint: { ar: 'سيبها زي تاريخ الدفع إلا لو الدفعة دي بتقفل حساب أسبوع قديم متأخر', en: 'Leave same as the payment date unless this is a catch-up payment for an older week' },
         techPaymentSettlesNote: { ar: 'بتقفل حساب أسبوع:', en: 'Settles week of:' },
+        techBonusTitle: { ar: '🎁 بونس لفني', en: '🎁 Technician Bonus' },
+        techBonusJobLabel: { ar: 'لشغلانة معينة؟ (اختياري)', en: 'For a specific job? (optional)' },
+        techBonusJobNone: { ar: '— بدون ربط بشغلانة —', en: '— Not linked to a job —' },
+        techBonusNotePh: { ar: 'سبب البونس (اختياري)', en: 'Reason for the bonus (optional)' },
+        techBonusSaveBtn: { ar: '🎁 حفظ البونس', en: '🎁 Save Bonus' },
+        techBonusBtn: { ar: '🎁 بونس', en: '🎁 Bonus' },
+        guideThBonusInPeriod: { ar: 'بونس الفترة', en: 'Bonus (period)' },
+        guideBonusesTitle: { ar: '🎁 بونساته في الفترة', en: '🎁 His Bonuses in the Period' },
+        guideBonusesTitleAll: { ar: '🎁 كل البونسات', en: '🎁 All Bonuses' },
+        guideNoBonusesInPeriod: { ar: 'مفيش بونسات مسجلة في الفترة دي.', en: 'No bonuses recorded in this period.' },
+        guideBasicDuesLabel: { ar: 'الحسبة الأساسية:', en: 'Basic dues:' },
+        guideBonusLabel: { ar: '🎁 بونس:', en: '🎁 Bonus:' },
+        guideTotalWithBonusLabel: { ar: 'الإجمالي (مع البونس):', en: 'Total (incl. bonus):' },
+        confirmDeleteTechBonus: { ar: 'تمسح البونس ده من سجل الفني؟', en: "Delete this bonus from the technician's record?" },
+        alertBonusAmountRequired: { ar: 'اكتب مبلغ البونس.', en: 'Enter the bonus amount.' },
         withdrawalAmountLabel: { ar: 'المبلغ ($):', en: 'Amount ($):' },
         guidePaidNote: { ar: 'المدفوع هنا = الدفعات المسجلة بزرار 💵 (بتاريخها). الدفعات مش بتتسجل جوه الشغلانة.', en: 'Paid here = payments logged with the 💵 button (by their date). Payments are not recorded inside a job.' },
         lblAddReceived: { ar: 'سجّل دفعة جديدة من العميل (بتتجمع في المبلغ المستلم)', en: 'Record a new client payment (added to Amount Received)' },
@@ -2010,6 +2038,7 @@
     const COMPANY_EXPENSES_DOC = db.collection('jobCostingApp').doc('companyExpenses');
     const CONTACTS_DOC = db.collection('jobCostingApp').doc('contacts');
     const TECH_PAYMENTS_DOC = db.collection('jobCostingApp').doc('techPayments');
+    const TECH_BONUSES_DOC = db.collection('jobCostingApp').doc('techBonuses');
     const COMPANY_PROFILE_DOC = db.collection('jobCostingApp').doc('companyProfile');
 
     async function saveSavedJobsData(){ await JOBS_DOC.set({ jobs: savedJobs }); }
@@ -2178,6 +2207,7 @@
     let companyExpenses = [];
     let contacts = [];
     let techPayments = [];
+    let techBonuses = [];
     let editingContactId = '';
     let onlyShowDebt = false;
     // The company's own identity — name, logo and contact info — used to put a real header
@@ -2271,6 +2301,11 @@
             techPayments = (doc.exists && doc.data().entries) ? doc.data().entries : [];
             if (document.getElementById('techGuideModal').style.display !== 'none') safeCall(renderTechGuideContent);
         }, err => console.error('Firestore tech payments sync error:', err));
+
+        TECH_BONUSES_DOC.onSnapshot(doc => {
+            techBonuses = (doc.exists && doc.data().entries) ? doc.data().entries : [];
+            if (document.getElementById('techGuideModal').style.display !== 'none') safeCall(renderTechGuideContent);
+        }, err => console.error('Firestore tech bonuses sync error:', err));
 
         COMPANY_PROFILE_DOC.onSnapshot(doc => {
             // The bug this guards against: the very first time the app opens, this snapshot
@@ -2428,8 +2463,11 @@
     function weeklyDueTechnicians() {
         const w = weekOf(isoDate(new Date()));
         const stats = computeTechPeriodStats(w.start, w.end);
-        const rows = Object.keys(stats).map(name => {
-            const due = round2(stats[name].dues);
+        const names = new Set([...Object.keys(stats), ...techBonuses.filter(b => b.date >= w.start && b.date <= w.end).map(b => b.name)]);
+        const rows = [...names].map(name => {
+            const basicDue = round2(stats[name] ? stats[name].dues : 0);
+            const bonus = techBonusTotalInPeriod(name, w.start, w.end);
+            const due = round2(basicDue + bonus);
             const paid = round2(techPaymentsInPeriod(name, w.start, w.end).reduce((s, p) => s + parseVal(p.amount), 0));
             return { name, due, paid, remaining: round2(due - paid) };
         }).filter(r => r.remaining > 0.005).sort((a, b) => b.remaining - a.remaining);
@@ -4926,7 +4964,7 @@
         const hasDateFilter = !!(dateFrom || dateTo);
 
         const rows = [];
-        let totalDues = 0, totalPaid = 0;
+        let totalDues = 0, totalBonus = 0, totalPaid = 0;
         const techStats = computeTechPeriodStats(dateFrom, dateTo)[techName];
         if (techStats) {
             techStats.jobs.forEach(j => {
@@ -4934,6 +4972,15 @@
                 rows.push({ date: j.job.startDate || '', client: j.job.clientName || '', type: techTypeLabel(j.tech.type), dues: j.dues, paid: null, remaining: null });
             });
         }
+        // Bonuses (🎁) get their own rows too, clearly labeled as a bonus — kept separate from
+        // "Dues" in the totals below so it reads as a reward, not pay for extra job work.
+        techBonusesInPeriod(techName, dateFrom, dateTo)
+            .slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+            .forEach(b => {
+                const amt = parseVal(b.amount);
+                totalBonus += amt;
+                rows.push({ date: b.date || '', client: 'Bonus' + (b.jobClientName ? ' (' + b.jobClientName + ')' : '') + (b.note ? ' - ' + b.note : ''), type: '-', dues: amt, paid: null, remaining: null });
+            });
         // Payments come only from the 💵 button (same as the Guide), listed as their own rows.
         // Job rows show what was earned; payments are per technician, not per job, so the running
         // balance is given in the totals below the table instead of on each row.
@@ -4978,10 +5025,12 @@
 
         const finalY = doc.lastAutoTable.finalY + 10;
         doc.setFont("helvetica", "normal"); doc.setFontSize(11); doc.setTextColor(0, 0, 0);
-        doc.text(`Total Dues: $${totalDues.toFixed(2)}`, 14, finalY);
-        doc.text(`Total Paid: $${totalPaid.toFixed(2)}`, 14, finalY + 7);
+        doc.text(`Basic Dues: $${totalDues.toFixed(2)}`, 14, finalY);
+        let lineY = finalY + 7;
+        if (totalBonus > 0.005) { doc.text(`Bonus: $${totalBonus.toFixed(2)}`, 14, lineY); lineY += 7; }
+        doc.text(`Total Paid: $${totalPaid.toFixed(2)}`, 14, lineY);
         doc.setFont("helvetica", "bold");
-        doc.text(`Remaining Balance: $${(totalDues - totalPaid).toFixed(2)}`, 14, finalY + 14);
+        doc.text(`Remaining Balance: $${(totalDues + totalBonus - totalPaid).toFixed(2)}`, 14, lineY + 7);
 
         doc.autoPrint();
         window.open(doc.output('bloburl'), '_blank');
@@ -7681,15 +7730,31 @@ ${closeBtnHtml}
         Object.values(techStats).forEach(s => s.jobs.forEach(j => {
             jobPeriodTechDues[j.job.id] = round2((jobPeriodTechDues[j.job.id] || 0) + j.dues);
         }));
+        // Bonuses (🎁) are a company expense, so they come off net profit before the S/M split —
+        // same treatment as technician dues. A bonus tied to a specific job comes off THAT job's
+        // own net (at that job's own split ratio); a bonus with no job comes off the combined
+        // total at the company's default 40/40 ratio, since there's no specific job's ratio to use.
+        const bonusesInRange = techBonuses.filter(b => (!dateFrom || b.date >= dateFrom) && (!dateTo || b.date <= dateTo));
+        const jobPeriodBonus = {};
+        let generalBonusTotal = 0;
+        bonusesInRange.forEach(b => {
+            if (b.jobId) jobPeriodBonus[b.jobId] = round2((jobPeriodBonus[b.jobId] || 0) + parseVal(b.amount));
+            else generalBonusTotal += parseVal(b.amount);
+        });
         let totalShareS = 0, totalShareM = 0;
         savedJobs.forEach(job => {
             const periodBase = hasDateFilter ? percentBaseForPeriod(job, dateFrom, dateTo) : round2(parseVal(job.amountReceived) - parseVal(job.materialCost));
             const techDues = hasDateFilter ? (jobPeriodTechDues[job.id] || 0) : jobNet(job).totalTechDues;
-            const netForSplit = round2(periodBase - techDues);
+            const bonusForJob = jobPeriodBonus[job.id] || 0;
+            const netForSplit = round2(periodBase - techDues - bonusForJob);
             const ratio = jobSplitRatio(job);
             totalShareS += netForSplit * ratio.s;
             totalShareM += netForSplit * ratio.m;
         });
+        if (generalBonusTotal > 0.005) {
+            totalShareS -= round2(generalBonusTotal * 0.4);
+            totalShareM -= round2(generalBonusTotal * 0.4);
+        }
         return { totalShareS: round2(totalShareS), totalShareM: round2(totalShareM) };
     }
 
@@ -7872,6 +7937,113 @@ ${closeBtnHtml}
         renderTechGuideContent();
         safeCall(renderTechnicians);
         safeCall(renderJobPayModalIfOpen);
+    }
+
+    // ---------- Technician bonuses: a reward on top of normal job dues (🎁), shown as its own
+    // line in the report so it's clear it's a bonus and not pay for extra work. It's scoped to
+    // the period by its own date (it's new money for whichever week it's given in), combines
+    // into the same total as that week's dues so it can be paid out in one go, and — since it's
+    // a reward the company is giving, not job income — it comes off net profit before the S/M
+    // split (optionally against one specific job's own split ratio, if tied to a job). ----------
+    let techBonusName = '';
+    let editingBonusAt = '';
+    function openTechBonusPrompt(name) {
+        editingBonusAt = '';
+        techBonusName = name;
+        document.getElementById('techBonusTitleEl').textContent = t('techBonusTitle');
+        document.getElementById('techBonusNameLabel').textContent = name;
+        document.getElementById('techBonusAmount').value = '';
+        document.getElementById('techBonusDate').value = isoDate(new Date());
+        document.getElementById('techBonusNote').value = '';
+        const jobSel = document.getElementById('techBonusJobSelect');
+        const jobs = jobsWhereTech(name);
+        jobSel.innerHTML = `<option value="">${t('techBonusJobNone')}</option>` +
+            jobs.map(j => `<option value="${escHtml(j.id)}">${escHtml(j.clientName || '')}${j.startDate ? ' — ' + escHtml(j.startDate) : ''}</option>`).join('');
+        jobSel.value = '';
+        document.getElementById('techBonusModal').style.display = 'flex';
+    }
+    function openTechBonusEdit(at) {
+        const b = techBonuses.find(x => x.at === at);
+        if (!b) return;
+        editingBonusAt = at;
+        techBonusName = b.name;
+        document.getElementById('techBonusTitleEl').textContent = t('techBonusTitle');
+        document.getElementById('techBonusNameLabel').textContent = b.name;
+        document.getElementById('techBonusAmount').value = parseVal(b.amount);
+        document.getElementById('techBonusDate').value = b.date || isoDate(new Date());
+        document.getElementById('techBonusNote').value = b.note || '';
+        const jobSel = document.getElementById('techBonusJobSelect');
+        const jobs = jobsWhereTech(b.name);
+        jobSel.innerHTML = `<option value="">${t('techBonusJobNone')}</option>` +
+            jobs.map(j => `<option value="${escHtml(j.id)}">${escHtml(j.clientName || '')}${j.startDate ? ' — ' + escHtml(j.startDate) : ''}</option>`).join('');
+        jobSel.value = b.jobId || '';
+        document.getElementById('techBonusModal').style.display = 'flex';
+    }
+    function closeTechBonusModal() { document.getElementById('techBonusModal').style.display = 'none'; editingBonusAt = ''; }
+
+    async function saveTechBonus() {
+        const amount = parseVal(document.getElementById('techBonusAmount').value);
+        const date = document.getElementById('techBonusDate').value;
+        const note = document.getElementById('techBonusNote').value.trim();
+        const jobId = document.getElementById('techBonusJobSelect').value || null;
+        if (amount <= 0) { alert(t('alertBonusAmountRequired')); return; }
+        const job = jobId ? savedJobs.find(j => String(j.id) === String(jobId)) : null;
+
+        if (editingBonusAt) {
+            const idx = techBonuses.findIndex(x => x.at === editingBonusAt);
+            if (idx === -1) { closeTechBonusModal(); renderTechGuideContent(); return; }
+            const backup = { ...techBonuses[idx] };
+            techBonuses[idx] = { ...backup, amount, date, note, jobId, jobClientName: job ? (job.clientName || '') : '', editedBy: currentUserEmail || '?', editedAt: new Date().toISOString() };
+            try {
+                await TECH_BONUSES_DOC.set({ entries: techBonuses });
+                logActivity('edit', backup.name || '', `${t('techBonusTitle')}: $${parseVal(backup.amount).toFixed(2)} (${backup.date || ''}) → $${amount.toFixed(2)} (${date})`);
+            } catch (err) {
+                techBonuses[idx] = backup;
+                alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+                return;
+            }
+            closeTechBonusModal();
+            renderTechGuideContent();
+            return;
+        }
+
+        const entry = { name: techBonusName, amount, date, note, jobId, jobClientName: job ? (job.clientName || '') : '', by: currentUserEmail || '?', at: new Date().toISOString() };
+        try {
+            techBonuses.unshift(entry);
+            await TECH_BONUSES_DOC.set({ entries: techBonuses });
+            logActivity('add', techBonusName, `${t('techBonusTitle')}: $${amount.toFixed(2)}`);
+            closeTechBonusModal();
+            renderTechGuideContent();
+        } catch (err) {
+            techBonuses = techBonuses.filter(x => x !== entry);
+            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+        }
+    }
+
+    async function deleteTechBonus(at) {
+        const idx = techBonuses.findIndex(b => b.at === at);
+        if (idx === -1) return;
+        if (!confirm(t('confirmDeleteTechBonus'))) return;
+        const removed = techBonuses[idx];
+        techBonuses.splice(idx, 1);
+        try {
+            await TECH_BONUSES_DOC.set({ entries: techBonuses });
+            logActivity('delete', removed.name || '', `${t('techBonusTitle')}: $${parseVal(removed.amount).toFixed(2)} (${removed.date || ''})`);
+        } catch (err) {
+            techBonuses.splice(idx, 0, removed);
+            alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+        }
+        renderTechGuideContent();
+    }
+
+    // Bonuses logged with the 🎁 button that fall inside the range, scoped by their own date
+    // (the week they were given in) — same idea as techPaymentsInPeriod, for bonuses instead of payments.
+    function techBonusesInPeriod(name, dateFrom, dateTo) {
+        return techBonuses.filter(b => b.name === name &&
+            (!dateFrom || (b.date && b.date >= dateFrom)) && (!dateTo || (b.date && b.date <= dateTo)));
+    }
+    function techBonusTotalInPeriod(name, dateFrom, dateTo) {
+        return round2(techBonusesInPeriod(name, dateFrom, dateTo).reduce((s, b) => s + parseVal(b.amount), 0));
     }
 
     function renderJobPayModalIfOpen() {
@@ -8064,14 +8236,29 @@ ${closeBtnHtml}
         const s = stats[name];
         const jobs = s ? s.jobs.slice().sort((a, b) => (a.job.startDate || '').localeCompare(b.job.startDate || '')) : [];
         const pays = techPaymentsInPeriod(name, dateFrom, dateTo).slice().sort((a, b) => ((a.settleDate || a.date) || '').localeCompare((b.settleDate || b.date) || ''));
+        const bonuses = techBonusesInPeriod(name, dateFrom, dateTo).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
         const noDates = !dateFrom && !dateTo;
         const legacyTotal = round2(jobs.reduce((s, j) => s + (j.legacyPaid || 0), 0));
         let h = '<div class="tg-detail">';
         if (legacyTotal > 0) h += `<div class="note-box" style="margin-bottom:10px;">${t('guideLegacyTotal').replace('{a}', ltrAmt(legacyTotal))}</div>`;
+        const basicDues = s ? s.dues : 0;
+        const bonusTotal = round2(bonuses.reduce((sum, b) => sum + parseVal(b.amount), 0));
+        if (bonusTotal > 0.005) {
+            h += `<div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px; font-size:0.85rem;">
+                <div>${t('guideBasicDuesLabel')} <strong style="color:#fbbf24;">$${basicDues.toFixed(2)}</strong></div>
+                <div>${t('guideBonusLabel')} <strong style="color:#fbbf24;">$${bonusTotal.toFixed(2)}</strong></div>
+                <div>${t('guideTotalWithBonusLabel')} <strong style="color:#34d399;">$${round2(basicDues + bonusTotal).toFixed(2)}</strong></div>
+            </div>`;
+        }
         h += `<h4>${t(noDates ? 'guideJobsTitleAll' : 'guideJobsTitle')} (${jobs.length})</h4>`;
         if (jobs.length === 0) h += `<div class="tg-empty">${t('guideNoJobsInPeriod')}</div>`;
         jobs.forEach(j => {
             h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(j.job.startDate || '')}</span><span class="tg-d-main"><button type="button" onclick="openJobOverlay('${jsArg(j.job.id)}')" style="background:none; border:none; padding:0; margin:0; font:inherit; font-weight:700; color:#38bdf8; text-decoration:underline; cursor:pointer;">${escHtml(j.job.clientName || '')}</button> <small style="color:var(--text-muted);">${techTypeLabel(j.tech.type)}</small>${j.manual ? `<div class="ag-meta" style="color:#34d399;">📆 ${t('guideManualNote')}: ${j.weeks.map(w => `<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${escHtml(w.weekStart)} $${parseVal(w.amount).toFixed(2)}</span>`).join(' · ')}</div>` : ''}${j.dailyManual ? `<div class="ag-meta" style="color:#a78bfa;">📅 ${t('dailyAllocNote')}: ${j.dailyEntries.map(e => `<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${escHtml(e.date)} ${parseVal(e.amount) <= 0.005 ? `<span style="color:#fbbf24;">— ${t('dailyAllocMissingBadge')}</span>` : '$' + parseVal(e.amount).toFixed(2)}</span>`).join(' · ')}</div>` : ''}${j.isPercentPeriod ? `<div class="ag-meta" style="color:#38bdf8;">${t('tmsMoneyBaseNote').replace('{recv}', ltrAmt(j.periodRecv)).replace('{mat}', ltrAmt(j.periodMat)).replace('{base}', ltrAmt(j.periodBase)).replace('{pct}', j.pct)}</div>` : ''}${(!j.isPercentPeriod && !j.dailyManual && j.fraction < 0.9999) ? `<div class="ag-meta" style="color:#fbbf24;">${t('guideProrateNote').replace('{a}', j.daysIn).replace('{b}', j.daysAll).replace('{full}', '<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">$' + j.fullDues.toFixed(2) + '</span>')}</div>` : ''}${(!j.isPercentPeriod && !j.dailyManual && j.fraction < 0.9999) ? `<div class="ag-meta">${t('guideEditDaysHint')}</div><div class="ag-actions">${j.dates.filter(d => (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo)).sort().map(d => `<button class="secondary" onclick="openEditScheduleModal('${jsArg(j.job.id)}', '${jsArg(d)}')">📅 ${escHtml(d)}</button>`).join('')}</div>` : ''}${j.legacyPaid > 0 ? `<div class="ag-meta">${t('guideLegacyPaid').replace('{a}', ltrAmt(j.legacyPaid))}</div>` : ''}${j.reimbEntries && j.reimbEntries.length > 0 ? `<div class="ag-meta" style="color:#fb923c;">🧾 ${t('reimbTitle')}: ${j.reimbEntries.map(e => `<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${escHtml(e.date)} $${parseVal(e.amount).toFixed(2)}</span>`).join(' · ')}</div>` : ''}</span><strong style="color:#fbbf24;">$${j.dues.toFixed(2)}</strong></div>`;
+        });
+        h += `<h4 style="margin-top:14px;">${t(noDates ? 'guideBonusesTitleAll' : 'guideBonusesTitle')} (${bonuses.length})</h4>`;
+        if (bonuses.length === 0) h += `<div class="tg-empty">${t('guideNoBonusesInPeriod')}</div>`;
+        bonuses.forEach(b => {
+            h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(b.date || '')}</span><span class="tg-d-main">${escHtml(b.note || '')}${b.jobClientName ? `<div class="ag-meta" style="color:var(--text-muted);">${escHtml(b.jobClientName)}</div>` : ''}</span><strong style="color:#fbbf24;">🎁 $${parseVal(b.amount).toFixed(2)}</strong><button class="secondary" onclick="openTechBonusEdit('${jsArg(b.at || '')}')" style="padding:3px 9px; font-size:0.72rem;">${t('editBtn')}</button><button class="danger" onclick="deleteTechBonus('${escJs(b.at || '')}')" style="padding:3px 9px; font-size:0.72rem;">${t('deleteBtn')}</button></div>`;
         });
         h += `<h4 style="margin-top:14px;">${t(noDates ? 'guidePaymentsTitleAll' : 'guidePaymentsTitle')} (${pays.length})</h4>`;
         if (pays.length === 0) h += `<div class="tg-empty">${t('guideNoPaymentsInPeriod')}</div>`;
@@ -8104,21 +8291,24 @@ ${closeBtnHtml}
         const shownNames = selectedTech ? [selectedTech] : [...allNames];
         if (allNames.size === 0) { container.innerHTML = periodLabel + `<p style="text-align:center; color:var(--text-muted); padding:20px;">${t('guideEmpty')}</p>`; return; }
 
-        let html = periodLabel + `<table style="width:100%; border-collapse:collapse; margin-top:10px;"><thead><tr><th>${t('guideThName')}</th><th>${t('guideThPhone')}</th><th>${t('guideThDuesInPeriod')}</th><th>${t('guideThPaidInPeriod')}</th><th>${t('guideThRemainingInPeriod')}</th><th>${t('guideThActions')}</th></tr></thead><tbody>`;
+        let html = periodLabel + `<table style="width:100%; border-collapse:collapse; margin-top:10px;"><thead><tr><th>${t('guideThName')}</th><th>${t('guideThPhone')}</th><th>${t('guideThDuesInPeriod')}</th><th>${t('guideThBonusInPeriod')}</th><th>${t('guideThPaidInPeriod')}</th><th>${t('guideThRemainingInPeriod')}</th><th>${t('guideThActions')}</th></tr></thead><tbody>`;
         shownNames.forEach(name => {
             const dues = stats[name] ? stats[name].dues : 0;
+            const bonus = techBonusTotalInPeriod(name, dateFrom, dateTo);
             const paidInPeriod = techPaymentsInPeriod(name, dateFrom, dateTo).reduce((sum, p) => sum + parseVal(p.amount), 0);
-            const remainingInPeriod = dues - paidInPeriod;
+            const remainingInPeriod = round2(dues + bonus - paidInPeriod);
             const rawPhone = technicianPhones[name] || '';
             const phoneDisplay = rawPhone ? (() => { const { code, local } = splitPhoneForEdit(rawPhone); return code === 'other' ? rawPhone : `+${code} ${local}`; })() : t('guideNA');
             const phoneHtml = rawPhone ? `<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${phoneDisplay}</span>` : phoneDisplay;
             html += `<tr><td data-label=""><strong>${name}</strong></td><td data-label="${t('guideThPhone')}">${phoneHtml}</td>
                 <td data-label="${t('guideThDuesInPeriod')}" style="color:#fbbf24; font-weight:700;">$${dues.toFixed(2)}</td>
+                <td data-label="${t('guideThBonusInPeriod')}" style="color:${bonus > 0.005 ? '#fbbf24' : 'var(--text-muted)'}; font-weight:700;">${bonus > 0.005 ? '🎁 $' + bonus.toFixed(2) : '—'}</td>
                 <td data-label="${t('guideThPaidInPeriod')}" style="color:#34d399; font-weight:700;">$${paidInPeriod.toFixed(2)}</td>
                 <td data-label="${t('guideThRemainingInPeriod')}" style="color:${remainingInPeriod > 0 ? '#f87171' : '#94a3b8'}; font-weight:700;">$${remainingInPeriod.toFixed(2)}</td>
                 <td data-label="" class="tg-actions-cell"><div class="tg-actions">
                     <button class="secondary" onclick="showTechDetails('${jsArg(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#475569;">🔎 ${t('guideDetailsBtn')}</button>
-                    <button class="secondary" onclick="sendWhatsAppTech('${escJs(name)}', '${escJs(rawPhone)}', ${dues})" style="padding:4px 8px; font-size:0.75rem; background:#059669;">${t('guideWhatsAppBtn')}</button>
+                    <button class="secondary" onclick="openTechBonusPrompt('${jsArg(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#fbbf24; color:#1a1a1a;">${t('techBonusBtn')}</button>
+                    <button class="secondary" onclick="sendWhatsAppTech('${escJs(name)}', '${escJs(rawPhone)}', ${dues}, ${bonus})" style="padding:4px 8px; font-size:0.75rem; background:#059669;">${t('guideWhatsAppBtn')}</button>
                     <button class="secondary" onclick="printTechnicianReport('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#0ea5e9;">${t('printReportBtn')}</button>
                     <button class="secondary" onclick="openEditTechnicianModal('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#0284c7;">${t('editBtn')}</button>
                     <button class="danger" onclick="deleteTechnicianFromDirectory('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem;">${t('deleteBtn')}</button>
@@ -8197,12 +8387,18 @@ ${closeBtnHtml}
         return String(phone).replace(/[^\d]/g, '');
     }
 
-    function sendWhatsAppTech(name, phone, dues) {
+    function sendWhatsAppTech(name, phone, dues, bonus) {
         const normalized = normalizePhone(phone);
         if (!normalized) { alert(t('alertPhoneUnavailable')); return; }
+        bonus = parseVal(bonus);
+        // The basic calculation and the bonus are always shown as two separate lines (never
+        // blended into one number) so the technician can tell a reward from his regular pay.
+        const bonusLine = bonus > 0.005
+            ? (currentLang === 'ar' ? `\n🎁 بونس: $${bonus.toFixed(2)}\nالإجمالي: $${(dues + bonus).toFixed(2)}` : `\n🎁 Bonus: $${bonus.toFixed(2)}\nTotal: $${(dues + bonus).toFixed(2)}`)
+            : '';
         const msg = currentLang === 'ar'
-            ? `مرحباً بك يا ${name}، إجمالي المستحقات الخاصة بك حتى الآن هو: $${dues.toFixed(2)}`
-            : `Hi ${name}, your total dues so far are: $${dues.toFixed(2)}`;
+            ? `مرحباً بك يا ${name}، إجمالي المستحقات الخاصة بك حتى الآن هو: $${dues.toFixed(2)}${bonusLine}`
+            : `Hi ${name}, your total dues so far are: $${dues.toFixed(2)}${bonusLine}`;
         window.open(`https://wa.me/${normalized}?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
