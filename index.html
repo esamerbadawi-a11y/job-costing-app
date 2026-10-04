@@ -863,6 +863,7 @@
                 <label data-i18n="partnerReportPickLabel"></label>
                 <select id="partnerReportSelect" onchange="renderPartnerReportContent()"></select>
             </div>
+            <button class="secondary" style="background:#16a34a; padding:9px 12px; font-size:0.8rem;" onclick="payPartnerReportPerson()" data-i18n="techPayBtn"></button>
             <button class="secondary" style="background:#f87171; color:#fff;" onclick="downloadPartnerReportPDF()" data-i18n="partnerReportDownloadBtn"></button>
         </div>
 
@@ -1066,6 +1067,7 @@
     <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:85%; max-width:360px; padding:20px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
         <h3 id="techPaymentTitleEl" style="color:#38bdf8; margin:0 0 4px; font-size:1rem;" data-i18n="techPaymentTitle"></h3>
         <div id="techPaymentNameLabel" style="font-weight:700; margin-bottom:14px;"></div>
+        <div class="form-group" id="techPaymentJobGroup"><label data-i18n="techPaymentJobLabel"></label><select id="techPaymentJobSelect"></select></div>
         <div class="form-group"><label data-i18n="withdrawalAmountLabel"></label><input type="text" id="techPaymentAmount" placeholder="0" onfocus="this.select()"></div>
         <div class="form-group"><label data-i18n="lblReceiptDate"></label><input type="date" id="techPaymentDate" onchange="syncTechPaymentSettleDate()"></div>
         <div class="form-group"><label data-i18n="techPaymentSettleLabel"></label><input type="date" id="techPaymentSettleDate" oninput="this.dataset.touched='1'"><div style="font-size:0.72rem; color:var(--text-muted); margin-top:3px;" data-i18n="techPaymentSettleHint"></div></div>
@@ -1694,6 +1696,8 @@
         guideThPaidInPeriod: { ar: 'المدفوع في الفترة دي', en: 'Paid in Period' },
         guideThRemainingInPeriod: { ar: 'الباقي في الفترة دي', en: 'Remaining in Period' },
         techPaymentTitle: { ar: '💵 تسجيل دفعة لفني', en: '💵 Record Technician Payment' },
+        techPaymentJobLabel: { ar: 'الدفعة دي خاصة بإيه؟', en: 'What is this payment for?' },
+        techPaymentAllJobsOption: { ar: 'كل الشغلانات اللي هو داخل فيها', en: 'All jobs he is in' },
         techPaymentSettleLabel: { ar: '📆 بتقفل حساب الأسبوع اللي فيه:', en: '📆 Settles the week that includes:' },
         techPaymentSettleHint: { ar: 'سيبها زي تاريخ الدفع إلا لو الدفعة دي بتقفل حساب أسبوع قديم متأخر', en: 'Leave same as the payment date unless this is a catch-up payment for an older week' },
         techPaymentSettlesNote: { ar: 'بتقفل حساب أسبوع:', en: 'Settles week of:' },
@@ -6521,9 +6525,31 @@ ${closeBtnHtml}
             </div>`;
         });
 
+        // Paid comes from the same payments ledger the Technicians Guide and the Job-Pay screen's
+        // partner section both write to (techPayments) — a payment there is keyed by this same
+        // name string, whether it was logged as a technician or as an extra partner, so a
+        // partial payment made out of one job's "Pay" screen shows up here too.
+        const paid = round2(techPaymentsInPeriod(name, '', '').reduce((s, p) => s + parseVal(p.amount), 0));
+        const remaining = round2(partnerTotal - paid);
+
         container.innerHTML = (jobs.length === 0)
             ? `<p style="text-align:center; color:var(--text-muted); padding:15px;">${t('noJobsThisDay')}</p>`
-            : jobsHtml + `<div style="text-align:end; font-size:1rem; font-weight:700; color:#34d399; padding-top:8px; border-top:2px solid var(--border-color);">${t('partnerReportTotalLabel')} ${ltrAmt(partnerTotal)}</div>`;
+            : jobsHtml + `
+                <div style="margin-top:4px; padding-top:8px; border-top:2px solid var(--border-color); font-size:0.95rem; line-height:1.9;">
+                    <div style="display:flex; justify-content:space-between;"><span>${t('partnerReportTotalLabel')}</span> <strong style="color:#34d399;">${ltrAmt(partnerTotal)}</strong></div>
+                    <div style="display:flex; justify-content:space-between;"><span>${t('techPartnerColPaid')}</span> <strong>${ltrAmt(paid)}</strong></div>
+                    <div style="display:flex; justify-content:space-between;"><span>${t('techPartnerColRemaining')}</span> <strong style="color:${remaining > 0.005 ? '#f87171' : '#34d399'};">${ltrAmt(remaining)}</strong></div>
+                </div>`;
+    }
+    function renderPartnerReportContentIfOpen() {
+        if (document.getElementById('partnerReportModal').style.display === 'flex') renderPartnerReportContent();
+    }
+    // Logs a payment for whoever's selected here, into the same payments ledger used everywhere
+    // else (techPayments) — same pattern as the Technician & Partner Report's 💵 button.
+    function payPartnerReportPerson() {
+        const name = document.getElementById('partnerReportSelect').value;
+        if (!name) { alert(t('noExtraPartnersYet')); return; }
+        openTechPaymentPrompt(name);
     }
 
     // Built the same way as the Technician Report: one clean autoTable grid (instead of
@@ -7112,6 +7138,34 @@ ${closeBtnHtml}
     // (and the Job Pay / Tech & Partner reports) count it correctly. Opened from anywhere else
     // (Technician Guide, Agenda, "This Week") it stays null — those are genuinely all-jobs payments.
     let techPaymentJobId = null;
+    // Every job this person is in, either as a technician or as an extra profit-share partner
+    // (or both) — used to let a payment be tagged to one specific job instead of only ever
+    // being a general payment against his combined total.
+    function jobOptionsForPaymentPerson(name) {
+        const byId = new Map();
+        jobsWhereTech(name).forEach(job => {
+            const e = byId.get(job.id) || { job, tech: false, partner: false };
+            e.tech = true; byId.set(job.id, e);
+        });
+        jobsForExtraPartner(name).forEach(job => {
+            const e = byId.get(job.id) || { job, tech: false, partner: false };
+            e.partner = true; byId.set(job.id, e);
+        });
+        return Array.from(byId.values()).sort((a, b) => (b.job.startDate || '').localeCompare(a.job.startDate || ''));
+    }
+    function populateTechPaymentJobSelect(name, preselectJobId) {
+        const sel = document.getElementById('techPaymentJobSelect');
+        const options = jobOptionsForPaymentPerson(name);
+        let html = `<option value="">${t('techPaymentAllJobsOption')}</option>`;
+        options.forEach(({ job, tech, partner }) => {
+            const icon = tech && partner ? '🔧🤝' : (partner ? '🤝' : '🔧');
+            html += `<option value="${escHtml(job.id)}">${icon} ${escHtml(job.clientName || '')}${job.startDate ? ' — ' + escHtml(job.startDate) : ''}</option>`;
+        });
+        sel.innerHTML = html;
+        sel.value = preselectJobId || '';
+        document.getElementById('techPaymentJobGroup').style.display = options.length ? '' : 'none';
+    }
+
     let editingPaymentAt = '';
     function openTechPaymentPrompt(name, jobId) {
         editingPaymentAt = '';
@@ -7126,6 +7180,7 @@ ${closeBtnHtml}
         settleEl0.value = todayStr; // by default this payment settles the week it's dated in
         delete settleEl0.dataset.touched;
         document.getElementById('techPaymentNote').value = '';
+        populateTechPaymentJobSelect(name, jobId);
         document.getElementById('techPaymentModal').style.display = 'flex';
     }
     function openTechPaymentEdit(at) {
@@ -7142,6 +7197,7 @@ ${closeBtnHtml}
         settleEl1.value = p.settleDate || p.date || isoDate(new Date());
         settleEl1.dataset.touched = '1'; // existing entry: don't silently re-sync this to the payment date if it's edited
         document.getElementById('techPaymentNote').value = p.note || '';
+        document.getElementById('techPaymentJobGroup').style.display = 'none'; // editing never re-tags which job it belongs to
         document.getElementById('techPaymentModal').style.display = 'flex';
     }
     function closeTechPaymentModal() { document.getElementById('techPaymentModal').style.display = 'none'; editingPaymentAt = ''; techPaymentJobId = null; }
@@ -7176,13 +7232,16 @@ ${closeBtnHtml}
             renderTechGuideContent();
             safeCall(renderTechnicians);
             safeCall(renderTechPartnerReportContentIfOpen);
+            safeCall(renderPartnerReportContentIfOpen);
             return;
         }
 
         const entry = { name: techPaymentName, amount, date, settleDate, note, by: currentUserEmail || '?', at: new Date().toISOString() };
-        if (techPaymentJobId) {
-            entry.jobId = techPaymentJobId;
-            const job = savedJobs.find(j => String(j.id) === String(techPaymentJobId));
+        const jobSelectEl = document.getElementById('techPaymentJobSelect');
+        const chosenJobId = (jobSelectEl && jobSelectEl.value) || techPaymentJobId;
+        if (chosenJobId) {
+            entry.jobId = chosenJobId;
+            const job = savedJobs.find(j => String(j.id) === String(chosenJobId));
             if (job) entry.jobClientName = job.clientName || '';
         }
         try {
@@ -7193,6 +7252,7 @@ ${closeBtnHtml}
             safeCall(renderTechnicians);
             safeCall(renderJobPayModalIfOpen);
             safeCall(renderTechPartnerReportContentIfOpen);
+            safeCall(renderPartnerReportContentIfOpen);
         } catch (err) {
             techPayments = techPayments.filter(x => x !== entry);   // the save failed: don't keep a payment that was never stored
             alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
@@ -8272,6 +8332,8 @@ ${closeBtnHtml}
         renderTechGuideContent();
         safeCall(renderTechnicians);
         safeCall(renderJobPayModalIfOpen);
+        safeCall(renderTechPartnerReportContentIfOpen);
+        safeCall(renderPartnerReportContentIfOpen);
     }
 
     // ---------- Technician bonuses: a reward on top of normal job dues (🎁), shown as its own
@@ -8572,6 +8634,8 @@ ${closeBtnHtml}
             await TECH_PAYMENTS_DOC.set({ entries: techPayments });
             logActivity('add', partner.name || '', `${t('guidePaymentsTitle')}: $${amount.toFixed(2)} (${job.clientName || ''})`);
             renderJobPayModal();
+            safeCall(renderTechPartnerReportContentIfOpen);
+            safeCall(renderPartnerReportContentIfOpen);
         } catch (err) {
             techPayments = techPayments.filter(x => x !== entry);
             alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
