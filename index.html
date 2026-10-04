@@ -6761,11 +6761,11 @@ ${closeBtnHtml}
 
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 100, 100);
         const periodText = (dateFrom || dateTo)
-            ? `${t('techPartnerPeriodLabel')}: ${dateFrom || '...'} → ${dateTo || '...'}`
-            : `${t('techPartnerPeriodLabel')}: ${t('techPartnerAllTimeLabel')}`;
+            ? `Period: ${dateFrom || '...'} - ${dateTo || '...'}`
+            : `Period: All time`;
         doc.text(periodText, 14, 21);
         doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
-        doc.text(`${t('techPartnerPrintedOnLabel')}: ${isoDate(new Date())}`, 14, 26);
+        doc.text(`Printed on: ${isoDate(new Date())}`, 14, 26);
         doc.setTextColor(0, 0, 0);
 
         const drawArabicCells = function(cellData, arabicCols) {
@@ -8526,7 +8526,7 @@ ${closeBtnHtml}
             <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:8px;">${t('jobPayCashAvailableHint')}</div>
             <div>${t('thShareS')} (${Math.round(ratio.s * 100)}%): <strong style="color:#38bdf8;">${ltrAmt(shareS)}</strong></div>
             <div>${t('thShareM')} (${Math.round(ratio.m * 100)}%): <strong style="color:#38bdf8;">${ltrAmt(shareM)}</strong></div>
-            <div>${t('thCompany')} (${Math.round(ratio.company * 100)}%): <strong style="color:#fbbf24;">${ltrAmt(companyShare)}</strong></div>
+            <div>${t('statShareCompany')} (${Math.round(ratio.company * 100)}%): <strong style="color:#fbbf24;">${ltrAmt(companyShare)}</strong></div>
             ${extraRows}
         `;
     }
