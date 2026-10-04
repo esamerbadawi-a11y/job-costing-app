@@ -4982,12 +4982,19 @@
         doc.setTextColor(0, 0, 0);
 
         const rows = [];
-        let totalDues = 0, totalBonus = 0, totalPaid = 0;
+        let totalDues = 0, totalMaterials = 0, totalBonus = 0, totalPaid = 0;
         const techStats = computeTechPeriodStats(dateFrom, dateTo)[techName];
         if (techStats) {
             techStats.jobs.forEach(j => {
-                totalDues += j.dues;
-                rows.push({ date: techJobWorkDatesLabel(j, dateFrom, dateTo), client: j.job.clientName || '', type: techTypeLabel(j.tech.type), dues: j.dues, paid: null, remaining: null });
+                // Materials he bought himself (to be reimbursed) get their own column — they used
+                // to be silently folded into "Dues" (j.dues = wage + reimbSum), which made his pay
+                // look bigger than it actually was. Wage is shown alone here; reimbursement is its
+                // own number, in its own column, right next to it.
+                const reimb = round2(j.reimbSum || 0);
+                const wageOnly = round2(j.dues - reimb);
+                totalDues += wageOnly;
+                totalMaterials += reimb;
+                rows.push({ date: techJobWorkDatesLabel(j, dateFrom, dateTo), client: j.job.clientName || '', type: techTypeLabel(j.tech.type), dues: wageOnly, materials: reimb > 0.005 ? reimb : null, paid: null, remaining: null });
             });
         }
         // Bonuses (🎁) get their own rows too, clearly labeled as a bonus — kept separate from
@@ -4997,7 +5004,7 @@
             .forEach(b => {
                 const amt = parseVal(b.amount);
                 totalBonus += amt;
-                rows.push({ date: b.date || '', client: 'Bonus' + (b.jobClientName ? ' (' + b.jobClientName + ')' : '') + (b.note ? ' - ' + b.note : ''), type: '-', dues: amt, paid: null, remaining: null });
+                rows.push({ date: b.date || '', client: 'Bonus' + (b.jobClientName ? ' (' + b.jobClientName + ')' : '') + (b.note ? ' - ' + b.note : ''), type: '-', dues: amt, materials: null, paid: null, remaining: null });
             });
         // Payments come only from the 💵 button (same as the Guide), listed as their own rows.
         // Job rows show what was earned; payments are per technician, not per job, so the running
@@ -5007,7 +5014,7 @@
             .forEach(p => {
                 const amt = parseVal(p.amount);
                 totalPaid += amt;
-                rows.push({ date: p.date || '', client: 'Payment' + (p.note ? ' - ' + p.note : ''), type: '-', dues: null, paid: amt, remaining: null });
+                rows.push({ date: p.date || '', client: 'Payment' + (p.note ? ' - ' + p.note : ''), type: '-', dues: null, materials: null, paid: amt, remaining: null });
             });
 
         if (rows.length === 0) { alert(currentLang === 'ar' ? 'الفني ده لسه مالوش شغلانات مسجلة في الفترة دي.' : 'This technician has no recorded jobs in this period.'); return; }
@@ -5017,9 +5024,9 @@
         // sorts by its first (earliest) date since the list itself is already built ascending.
         rows.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
-        const headers = [["Date", "Client", "Pay Type", "Dues", "Paid", "Remaining"]];
+        const headers = [["Date", "Client", "Pay Type", "Dues", "Materials", "Paid", "Remaining"]];
         const money = v => (v === null || v === undefined) ? '-' : '$' + v.toFixed(2);
-        const data = rows.map(r => [r.date, r.client, r.type, money(r.dues), money(r.paid), money(r.remaining)]);
+        const data = rows.map(r => [r.date, r.client, r.type, money(r.dues), money(r.materials), money(r.paid), money(r.remaining)]);
         const TECH_REPORT_ARABIC_COLS = [1, 2]; // Client, Pay Type
 
         doc.autoTable({
@@ -5050,10 +5057,11 @@
         doc.setFont("helvetica", "normal"); doc.setFontSize(11); doc.setTextColor(0, 0, 0);
         doc.text(`Basic Dues: $${totalDues.toFixed(2)}`, 14, finalY);
         let lineY = finalY + 7;
+        if (totalMaterials > 0.005) { doc.text(`Materials: $${totalMaterials.toFixed(2)}`, 14, lineY); lineY += 7; }
         if (totalBonus > 0.005) { doc.text(`Bonus: $${totalBonus.toFixed(2)}`, 14, lineY); lineY += 7; }
         doc.text(`Total Paid: $${totalPaid.toFixed(2)}`, 14, lineY);
         doc.setFont("helvetica", "bold");
-        doc.text(`Remaining Balance: $${(totalDues + totalBonus - totalPaid).toFixed(2)}`, 14, lineY + 7);
+        doc.text(`Remaining Balance: $${(totalDues + totalMaterials + totalBonus - totalPaid).toFixed(2)}`, 14, lineY + 7);
 
         doc.autoPrint();
         window.open(doc.output('bloburl'), '_blank');
