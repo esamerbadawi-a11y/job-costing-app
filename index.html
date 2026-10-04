@@ -1372,6 +1372,20 @@
         cwCompanyShare: { ar: 'نصيب الشركة (20%):', en: "Company's Share (20%):" },
         totalWithdrawnLabel: { ar: 'اتصرف له فعلاً:', en: 'Total Withdrawn:' },
         remainingBalanceLabel: { ar: 'الباقي له لسه:', en: 'Remaining Balance:' },
+        companyPeriodNote: { ar: 'نفس حسبة "إرسال نصيب الشركة" بالظبط، لكن محصورة في الفترة اللي اخترتها فوق — الدخل والمصروف والباقي هنا كلهم بس خلال نفس الفترة.', en: 'The exact same math as "Send Company Share", scoped to the period picked above — the income, spent and remaining here are only for that same period.' },
+        cwNetIncomeLabel: { ar: 'صافي دخل الشركة خلال الفترة:', en: "Company's Net Income (Period):" },
+        cwAllTimeExpensesLabel: { ar: 'إجمالي المبلغ المحطوط في الشركة (كل الوقت):', en: 'Total Amount Spent by the Company (All-Time):' },
+        revertToAppointmentBtn: { ar: 'رجوع لـ Appointment', en: 'Revert to Appointment' },
+        confirmRevertToAppointment: { ar: 'هل أنت متأكد إنك عايز ترجع الشغلانة دي لـ Appointments؟ هتتشال من السجل وتتحول لموعد لسه مش شغلانة.', en: 'Are you sure you want to revert this job back to Appointments? It will be removed from the job log and turned back into a pending appointment.' },
+        alertRevertBlockedTitle: { ar: 'مش ممكن ترجع الشغلانة دي لـ Appointment لإن فيها بيانات فعلية مسجلة:', en: "Can't revert this job to an Appointment — it already has real data recorded on it:" },
+        revertBlockReasonAmount: { ar: 'مبلغ مستلم', en: 'Amount received' },
+        revertBlockReasonMaterial: { ar: 'تكلفة خامات', en: 'Material cost' },
+        revertBlockReasonExtraExp: { ar: 'مصاريف إضافية', en: 'Extra expenses' },
+        revertBlockReasonTechs: { ar: 'فنيين متضافين للشغلانة', en: 'Technicians added to the job' },
+        revertBlockReasonExpenseItems: { ar: 'عناصر مصاريف مسجلة', en: 'Recorded expense items' },
+        revertBlockReasonPayments: { ar: 'دفعات مسجلة للفنيين على الشغلانة', en: 'Recorded technician payments on the job' },
+        revertBlockReasonBonuses: { ar: 'بونص مسجل على الشغلانة', en: 'Bonus recorded on the job' },
+        activityRevertedToAppointment: { ar: 'رجّعت الشغلانة لـ Appointments', en: 'Reverted the job back to Appointments' },
         noWithdrawalsYet: { ar: 'لسه مفيش أي مبلغ اتسجل إنه اتصرف.', en: 'No withdrawals recorded yet.' },
         withdrawalHistoryTitle: { ar: 'سجل المبالغ اللي اتصرفت', en: 'Withdrawal History' },
         wdFilterAll: { ar: 'الكل (S و M)', en: 'All (S & M)' },
@@ -4846,6 +4860,7 @@
                     <button class="secondary" onclick="openJobPayModal('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#16a34a;" title="${t('jobPayBtn')}">💰</button>
                     <button class="secondary" onclick="editJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem;">${t('editBtn')}</button>
                     <button class="secondary" onclick="duplicateJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#0284c7;">${t('duplicateBtn')}</button>
+                    <button class="secondary" onclick="revertJobToAppointment('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#f59e0b;" title="${t('revertToAppointmentBtn')}">↩️</button>
                     <button class="danger" onclick="deleteJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem;">${t('deleteBtn')}</button>
                 </td>
             `;
@@ -6327,7 +6342,9 @@ ${closeBtnHtml}
 
         // The full waterfall, aggregated across every job: revenue in, materials and
         // technician dues out, the 40/40/20 split, then the company's own general
-        // expenses (not tied to any one job) out of its 20% share.
+        // expenses (not tied to any one job) out of its 20% share. This is the ALL-TIME
+        // picture — always computed, used as the main view with no date filter, and always
+        // shown as a one-line reference total at the end even when a period is picked.
         let totalReceived = 0, totalMaterials = 0, totalTechDues = 0, totalShareS = 0, totalShareM = 0, totalIncome = 0;
         savedJobs.forEach(job => {
             const { totalTechDues: dues, shareS, shareM, companyNet } = jobNet(job);
@@ -6342,16 +6359,44 @@ ${closeBtnHtml}
         companyExpenses.forEach(e => { totalGeneralExpenses += parseVal(e.amount); });
         const remaining = totalIncome - totalGeneralExpenses;
 
-        let html = `<div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:8px; padding:14px; margin-bottom:18px;">
-            <div style="font-size:0.8rem; color:var(--text-muted);">${t('cwTotalReceived')} <b>$${totalReceived.toFixed(2)}</b></div>
-            <div style="font-size:0.8rem; color:var(--text-muted);">${t('cwMaterials')} <b style="color:#f87171;">-$${totalMaterials.toFixed(2)}</b></div>
-            <div style="font-size:0.8rem; color:var(--text-muted);">${t('cwTechDues')} <b style="color:#f87171;">-$${totalTechDues.toFixed(2)}</b></div>
-            <div style="font-size:0.8rem; color:var(--text-muted); border-top:1px dashed var(--border-color); margin-top:4px; padding-top:4px;">${t('cwShareS')} <b style="color:#34d399;">$${totalShareS.toFixed(2)}</b></div>
-            <div style="font-size:0.8rem; color:var(--text-muted);">${t('cwShareM')} <b style="color:#34d399;">$${totalShareM.toFixed(2)}</b></div>
-            <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">${t('cwCompanyShare')} <b style="color:#fbbf24;">$${totalIncome.toFixed(2)}</b></div>
-            <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalWithdrawnLabel')} <b style="color:#f87171;">-$${totalGeneralExpenses.toFixed(2)}</b></div>
-            <div style="font-size:0.95rem; margin-top:6px; border-top:1px solid var(--border-color); padding-top:6px;">${t('remainingBalanceLabel')} <b style="color:${remaining < 0 ? '#f87171' : '#fbbf24'};">$${remaining.toFixed(2)}</b></div>
-        </div>`;
+        const dateFrom = document.getElementById('ceFilterFrom').value;
+        const dateTo = document.getElementById('ceFilterTo').value;
+        const hasDateFilter = !!(dateFrom || dateTo);
+
+        let html = '';
+        if (hasDateFilter) {
+            // With a period picked, the main box becomes THAT period's own numbers — the
+            // company's net income earned in the period (same period math as "Send Company
+            // Share" / computeSAndMPeriodShare), what was actually spent (company expenses
+            // dated inside the same period), and what's left of just that period's money.
+            const { totalShareCompany: periodIncome } = computeSAndMPeriodShare(dateFrom, dateTo);
+            const periodSpent = round2(companyExpenses
+                .filter(e => (!dateFrom || (e.date && e.date >= dateFrom)) && (!dateTo || (e.date && e.date <= dateTo)))
+                .reduce((s, e) => s + parseVal(e.amount), 0));
+            const periodRemaining = round2(periodIncome - periodSpent);
+            html += `<div class="note-box" style="margin-bottom:10px;">${t('companyPeriodNote')}</div>
+            <div style="background:var(--card-dark); border:1px solid #38bdf8; border-radius:8px; padding:14px; margin-bottom:14px;">
+                <div style="color:#38bdf8; font-weight:700; margin-bottom:8px;">${t('partnerPeriodLabel')}</div>
+                <div style="font-size:0.85rem; color:var(--text-muted);">${t('cwNetIncomeLabel')} <b style="color:#34d399;">$${periodIncome.toFixed(2)}</b></div>
+                <div style="font-size:0.85rem; color:var(--text-muted);">${t('totalWithdrawnLabel')} <b style="color:#f87171;">-$${periodSpent.toFixed(2)}</b></div>
+                <div style="font-size:0.95rem; margin-top:6px; border-top:1px solid var(--border-color); padding-top:6px;">${t('remainingBalanceLabel')} <b style="color:${periodRemaining < 0 ? '#f87171' : '#fbbf24'};">$${periodRemaining.toFixed(2)}</b></div>
+            </div>`;
+        } else {
+            html += `<div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:8px; padding:14px; margin-bottom:18px;">
+                <div style="font-size:0.8rem; color:var(--text-muted);">${t('cwTotalReceived')} <b>$${totalReceived.toFixed(2)}</b></div>
+                <div style="font-size:0.8rem; color:var(--text-muted);">${t('cwMaterials')} <b style="color:#f87171;">-$${totalMaterials.toFixed(2)}</b></div>
+                <div style="font-size:0.8rem; color:var(--text-muted);">${t('cwTechDues')} <b style="color:#f87171;">-$${totalTechDues.toFixed(2)}</b></div>
+                <div style="font-size:0.8rem; color:var(--text-muted); border-top:1px dashed var(--border-color); margin-top:4px; padding-top:4px;">${t('cwShareS')} <b style="color:#34d399;">$${totalShareS.toFixed(2)}</b></div>
+                <div style="font-size:0.8rem; color:var(--text-muted);">${t('cwShareM')} <b style="color:#34d399;">$${totalShareM.toFixed(2)}</b></div>
+                <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">${t('cwCompanyShare')} <b style="color:#fbbf24;">$${totalIncome.toFixed(2)}</b></div>
+                <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalWithdrawnLabel')} <b style="color:#f87171;">-$${totalGeneralExpenses.toFixed(2)}</b></div>
+                <div style="font-size:0.95rem; margin-top:6px; border-top:1px solid var(--border-color); padding-top:6px;">${t('remainingBalanceLabel')} <b style="color:${remaining < 0 ? '#f87171' : '#fbbf24'};">$${remaining.toFixed(2)}</b></div>
+            </div>`;
+        }
+
+        // Always shown, whichever view is primary above — the lifetime total of every general
+        // expense ever logged for the company, as a fixed reference point.
+        html += `<div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:18px; padding-bottom:10px; border-bottom:1px dashed var(--border-color);">${t('cwAllTimeExpensesLabel')} <b style="color:#f87171;">$${totalGeneralExpenses.toFixed(2)}</b></div>`;
 
         if (companyExpenses.length === 0) {
             html += `<p style="text-align:center; color:var(--text-muted); padding:15px;">${t('noWithdrawalsYet')}</p>`;
@@ -7806,6 +7851,60 @@ ${closeBtnHtml}
         editJob(newJob.id); // opens it pre-filled, in edit mode, so refining it later never creates a duplicate
         switchScreen('entry');
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // The opposite of convertAppointmentToJob — for a job that was created by mistake and
+    // should've stayed a pending appointment. Only allowed while the job carries ZERO real
+    // financial activity (nothing received, no materials/expenses, no technicians or
+    // payments attached) — otherwise undoing it would silently throw away real money
+    // already recorded. On success it goes back to Appointments in its plain, basic shape
+    // (name/phone/address/date/note only) — none of the job-only fields carry over.
+    async function revertJobToAppointment(id) {
+        const job = savedJobs.find(j => j.id === id);
+        if (!job) return;
+
+        const reasons = [];
+        if (Math.abs(parseVal(job.amountReceived)) > 0.005) reasons.push(t('revertBlockReasonAmount'));
+        if (Math.abs(parseVal(job.materialCost)) > 0.005) reasons.push(t('revertBlockReasonMaterial'));
+        if (Math.abs(parseVal(job.extraExpenses)) > 0.005) reasons.push(t('revertBlockReasonExtraExp'));
+        if ((job.technicians || []).length > 0) reasons.push(t('revertBlockReasonTechs'));
+        if ((job.expenseItems || []).length > 0) reasons.push(t('revertBlockReasonExpenseItems'));
+        if (techPayments.some(p => p.jobId === job.id)) reasons.push(t('revertBlockReasonPayments'));
+        if (techBonuses.some(b => b.jobId === job.id)) reasons.push(t('revertBlockReasonBonuses'));
+
+        if (reasons.length > 0) {
+            alert(t('alertRevertBlockedTitle') + '\n\n' + reasons.map(r => '• ' + r).join('\n'));
+            return;
+        }
+
+        if (!confirm(t('confirmRevertToAppointment'))) return;
+
+        const newAppt = {
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+            clientName: job.clientName || '',
+            clientPhone: job.clientPhone || '',
+            clientEmail: job.clientEmail || '',
+            clientAddress: job.clientAddress || '',
+            requestedDate: job.startDate || '',
+            requestedTime: (job.dailySchedule && job.dailySchedule[0] && job.dailySchedule[0].time) || '',
+            services: [],
+            note: ''
+            // Deliberately plain/basic: no clientDescription, no dailySchedule, no photos,
+            // no status — exactly like a freshly-created appointment, nothing job-only kept.
+        };
+
+        savedJobs = savedJobs.filter(j => j.id !== id);
+        appointments.unshift(newAppt);
+        try {
+            await saveSavedJobsData();
+            await APPOINTMENTS_DOC.set({ entries: appointments });
+            logActivity('delete', job.clientName, t('activityRevertedToAppointment'));
+        } catch (err) {
+            alertSaveError(err);
+            return;
+        }
+
+        refreshAllViews();
     }
 
     function renderAppointments() {
