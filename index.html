@@ -1077,6 +1077,18 @@
     </div>
 </div>
 
+<div id="splitDayModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center;">
+    <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:90%; max-width:380px; padding:20px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+        <h3 style="color:#a78bfa; margin:0 0 4px; font-size:1rem;" data-i18n="splitDayTitle"></h3>
+        <div id="splitDayInfoLabel" style="font-weight:700; margin-bottom:6px;"></div>
+        <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:14px;" data-i18n="splitDayHint"></div>
+        <div class="form-group"><label data-i18n="splitDayThisJobLabel"></label><input type="text" id="splitDayAmountHere" placeholder="0" onfocus="this.select()"></div>
+        <div class="form-group"><label id="splitDayOtherJobLabel"></label><input type="text" id="splitDayAmountOther" placeholder="0" onfocus="this.select()"></div>
+        <button class="success" style="width:100%; padding:11px; margin-bottom:8px; background:#a78bfa; border-color:#a78bfa;" onclick="confirmSplitDay()" data-i18n="splitDaySaveBtn"></button>
+        <button class="danger" style="width:100%; padding:8px; font-size:0.85rem;" onclick="closeSplitDayModal()" data-i18n="cancelBtn"></button>
+    </div>
+</div>
+
 <div id="jobPayModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
     <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:92%; max-width:620px; max-height:88vh; overflow-y:auto; padding:22px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
@@ -1690,6 +1702,13 @@
         guideTotalWithBonusLabel: { ar: 'الإجمالي (مع البونس):', en: 'Total (incl. bonus):' },
         confirmDeleteTechBonus: { ar: 'تمسح البونس ده من سجل الفني؟', en: "Delete this bonus from the technician's record?" },
         alertBonusAmountRequired: { ar: 'اكتب مبلغ البونس.', en: 'Enter the bonus amount.' },
+        splitDayBtn: { ar: '✂️ قسّم اليوم', en: '✂️ Split the day' },
+        splitDayTitle: { ar: '✂️ قسّم يومية الفني بين الشغلانتين', en: "✂️ Split His Day's Pay Between the Two Jobs" },
+        splitDayHint: { ar: 'نصيب الشغلانة التانية بيتسجل فورًا. نصيب الشغلانة دي بيتسجل لما تحفظ الشغلانة من زرار الحفظ العادي.', en: "The other job's share is saved right away. This job's share is only saved when you hit this job's own Save button." },
+        splitDayThisJobLabel: { ar: 'المبلغ لهذه الشغلانة ($)', en: 'Amount for this job ($)' },
+        splitDaySaveBtn: { ar: '✂️ قسّم واحفظ', en: '✂️ Split & Save' },
+        alertSplitAmountsRequired: { ar: 'اكتب المبلغين الاتنين.', en: 'Enter both amounts.' },
+        splitDaySavedToast: { ar: 'تم تقسيم يومية هذا اليوم بين الشغلانتين.', en: "This day's pay was split between both jobs." },
         withdrawalAmountLabel: { ar: 'المبلغ ($):', en: 'Amount ($):' },
         guidePaidNote: { ar: 'المدفوع هنا = الدفعات المسجلة بزرار 💵 (بتاريخها). الدفعات مش بتتسجل جوه الشغلانة.', en: 'Paid here = payments logged with the 💵 button (by their date). Payments are not recorded inside a job.' },
         lblAddReceived: { ar: 'سجّل دفعة جديدة من العميل (بتتجمع في المبلغ المستلم)', en: 'Record a new client payment (added to Amount Received)' },
@@ -3126,6 +3145,85 @@
         renderTechnicians();
     }
 
+    // Splitting one day's pay between two jobs: this job's half is just a normal dailyAlloc entry
+    // on the open form (saved only when the form itself is saved, like any other 📅 amount typed
+    // here). The other job is already persisted and isn't open right now, so its half has to be
+    // written straight to Firestore via a transaction — same re-read-fresh-then-mutate pattern
+    // saveCurrentInvoice() uses for touching a job that isn't the one on screen.
+    let splitDayState = null;
+    function openSplitDayModal(index, date, otherJobId, otherJobName) {
+        const tech = technicians[index];
+        if (!tech) return;
+        splitDayState = { index, date, otherJobId, otherJobName, techName: (tech.name || '').trim() };
+        const rate = parseVal(tech.rate);
+        const half = rate > 0 ? round2(rate / 2) : 0;
+        document.getElementById('splitDayInfoLabel').textContent = `${tech.name} — ${date}`;
+        document.getElementById('splitDayAmountHere').value = half > 0 ? half : '';
+        document.getElementById('splitDayAmountOther').value = half > 0 ? half : '';
+        document.getElementById('splitDayOtherJobLabel').textContent = (currentLang === 'ar' ? 'المبلغ لشغلانة ' : 'Amount for ') + otherJobName + ' ($)';
+        document.getElementById('splitDayModal').style.display = 'flex';
+    }
+    function closeSplitDayModal() {
+        document.getElementById('splitDayModal').style.display = 'none';
+        splitDayState = null;
+    }
+    async function confirmSplitDay() {
+        if (!splitDayState) return;
+        const { index, date, otherJobId, otherJobName, techName } = splitDayState;
+        const amtHere = round2(parseVal(document.getElementById('splitDayAmountHere').value));
+        const amtOther = round2(parseVal(document.getElementById('splitDayAmountOther').value));
+        if (amtHere <= 0 || amtOther <= 0) { alert(t('alertSplitAmountsRequired')); return; }
+
+        try {
+            await db.runTransaction(async (tx) => {
+                const snap = await tx.get(JOBS_DOC);
+                const freshJobs = (snap.exists && snap.data().jobs) ? snap.data().jobs : [];
+                const oIdx = freshJobs.findIndex(j => String(j.id) === String(otherJobId));
+                if (oIdx === -1) throw new Error('other-job-not-found');
+                const oJob = freshJobs[oIdx];
+                const oTech = (oJob.technicians || []).find(t2 => (t2.name || '').trim() === techName);
+                if (!oTech) throw new Error('other-tech-not-found');
+                oTech.dailyAlloc = oTech.dailyAlloc || [];
+                if (oTech.dailyAlloc.some(e => e.date === date)) throw new Error('other-already-has-amount');
+                oTech.dailyAlloc.push({ id: newLedgerId(), date, amount: amtOther, note: currentLang === 'ar' ? 'مقسومة مع شغلانة تانية' : 'Split with another job' });
+                oJob.lastEditedBy = currentUserEmail;
+                tx.set(JOBS_DOC, { jobs: freshJobs });
+            });
+        } catch (err) {
+            if (err && err.message === 'other-already-has-amount') {
+                alert(currentLang === 'ar' ? 'فيه مبلغ متحط فعلاً لنفس اليوم في الشغلانة التانية — راجعها الأول.' : 'An amount already exists for that day on the other job — check it first.');
+            } else {
+                alert(t('alertJobSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            }
+            return;
+        }
+
+        // Mirror the other job's change onto the local savedJobs copy, same as every other
+        // cross-job write in this app.
+        const oIdxLocal = savedJobs.findIndex(j => String(j.id) === String(otherJobId));
+        if (oIdxLocal !== -1) {
+            const oJob = savedJobs[oIdxLocal];
+            const oTech = (oJob.technicians || []).find(t2 => (t2.name || '').trim() === techName);
+            if (oTech) {
+                oTech.dailyAlloc = oTech.dailyAlloc || [];
+                oTech.dailyAlloc.push({ id: newLedgerId(), date, amount: amtOther, note: currentLang === 'ar' ? 'مقسومة مع شغلانة تانية' : 'Split with another job' });
+            }
+            oJob.lastEditedBy = currentUserEmail;
+        }
+
+        // This job's half lives only on the open form until its own Save button is clicked —
+        // exactly like any other 📅 amount typed in here.
+        const tech = technicians[index];
+        if (tech) {
+            tech.dailyAlloc = tech.dailyAlloc || [];
+            tech.dailyAlloc.push({ id: newLedgerId(), date, amount: amtHere, note: currentLang === 'ar' ? ('مقسومة مع ' + otherJobName) : ('Split with ' + otherJobName) });
+        }
+
+        closeSplitDayModal();
+        renderTechnicians();
+        showToast(t('splitDaySavedToast'));
+    }
+
     // The full "who owes what across every job" picture belongs in the Technicians Guide, not here —
     // showing it on a single job's screen made it look like this job's own number, which it never was.
     // This job screen keeps only what IS specific to it: a warning if this technician is booked on
@@ -3142,7 +3240,11 @@
         const overlaps = jobId !== '__unsaved__' ? techScheduleOverlaps(tech.name, jobId) : [];
         if (overlaps.length === 0) return '';
         return `<div class="ledger-warn" style="margin-top:12px;">⚠️ ${t('tmsOverlapWarn')}<br>` +
-            overlaps.map(o => `📅 ${escHtml(o.date)} — ${escHtml(o.jobName)}` + (o.otherAmount > 0.005 ? ` (${ltrAmt(o.otherAmount)})` : ` (${t('tmsOverlapNoAmount')})`)).join('<br>') + `</div>`;
+            overlaps.map(o => `📅 ${escHtml(o.date)} — ${escHtml(o.jobName)}` +
+                (o.otherAmount > 0.005
+                    ? ` (${ltrAmt(o.otherAmount)})`
+                    : ` (${t('tmsOverlapNoAmount')}) <button type="button" class="secondary" style="padding:2px 8px; font-size:0.72rem; margin-left:6px;" onclick="openSplitDayModal(${index}, '${jsArg(o.date)}', '${jsArg(o.jobId)}', '${jsArg(o.jobName)}')">${t('splitDayBtn')}</button>`)
+            ).join('<br>') + `</div>`;
     }
 
     // The job's own bottom line for the picked period: money received minus materials minus every
