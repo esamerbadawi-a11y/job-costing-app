@@ -1907,6 +1907,18 @@
     function t(key) { return (T[key] && T[key][currentLang]) || key; }
     const TECH_TYPE_KEYS = { 'نسبة مخصصة': 'typeCustom', 'فني لوحده (%60)': 'typeAlone60', 'نسبة (50%)': 'typeTogether50', 'مبلغ ثابت': 'typeFixed', 'باليومية': 'typeDaily', 'بالساعة': 'typeHourly' };
     function techTypeLabel(type) { return t(TECH_TYPE_KEYS[type] || 'typeCustom'); }
+
+    // The actual day(s) a technician worked ON THIS JOB, restricted to the selected period —
+    // not the job's own start date, which can be long before (or after) the days he was
+    // actually scheduled on it. Falls back to the job's start date only when there's no
+    // day-level data to show (a typed week, or a percentage technician's money-based job).
+    function techJobWorkDatesLabel(j, dateFrom, dateTo) {
+        if (j.manual) return j.weeks.map(w => w.weekStart).filter(Boolean).sort().join(', ') || (j.job.startDate || '');
+        if (j.dailyManual) return j.dailyEntries.map(e => e.date).filter(Boolean).sort().join(', ') || (j.job.startDate || '');
+        if (j.isPercentPeriod) return j.job.startDate || '';
+        const dates = (j.dates || []).filter(d => (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo)).sort();
+        return dates.length ? dates.join(', ') : (j.job.startDate || '');
+    }
     function statusLabel(status) { return status === 'خلص' ? t('statusDoneShort') : (status === 'ملغي' ? t('statusCancelledShort') : t('statusActiveShort')); }
     // A job counts as "active" (shows up in scheduling, the weekly board, today's banner, etc.)
     // only while it's still in progress — both "خلص" (completed) and "ملغي" (cancelled) jobs
@@ -4963,13 +4975,19 @@
         const dateTo = document.getElementById('guideDateTo').value;
         const hasDateFilter = !!(dateFrom || dateTo);
 
+        // Make explicit that each job's Dues figure is calculated from the specific day(s) he
+        // actually worked it (shown in the Date column below) — not the job's own start date.
+        doc.setFont("helvetica", "italic"); doc.setFontSize(8.5); doc.setTextColor(90, 90, 90);
+        doc.text("Dues per job are calculated only from the day(s) actually worked, shown below.", 14, 21);
+        doc.setTextColor(0, 0, 0);
+
         const rows = [];
         let totalDues = 0, totalBonus = 0, totalPaid = 0;
         const techStats = computeTechPeriodStats(dateFrom, dateTo)[techName];
         if (techStats) {
             techStats.jobs.forEach(j => {
                 totalDues += j.dues;
-                rows.push({ date: j.job.startDate || '', client: j.job.clientName || '', type: techTypeLabel(j.tech.type), dues: j.dues, paid: null, remaining: null });
+                rows.push({ date: techJobWorkDatesLabel(j, dateFrom, dateTo), client: j.job.clientName || '', type: techTypeLabel(j.tech.type), dues: j.dues, paid: null, remaining: null });
             });
         }
         // Bonuses (🎁) get their own rows too, clearly labeled as a bonus — kept separate from
@@ -5000,7 +5018,7 @@
         const TECH_REPORT_ARABIC_COLS = [1, 2]; // Client, Pay Type
 
         doc.autoTable({
-            head: headers, body: data, startY: 24, theme: 'grid',
+            head: headers, body: data, startY: 27, theme: 'grid',
             styles: { fontSize: 9, cellPadding: 2, halign: 'center' },
             headStyles: { fillColor: [41, 128, 185], textColor: 255 },
             didDrawCell: function(cellData) {
