@@ -6474,7 +6474,19 @@
   html{ -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
   body{margin:0; font-family: Georgia, 'Times New Roman', serif; background:#FDFBF6; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; overflow-x:auto;}
   .ui{font-family: Arial, Helvetica, sans-serif;}
-  @media print { .no-print { display:none !important; } .invoice-page{ width:850px !important; } }
+  @media print {
+    .no-print { display:none !important; }
+    /* 816px/1056px is Letter size at 96dpi (the screen-preview box is a bit larger at
+       850x1060 so it still looks like a full page while editing). More importantly: both
+       boxes also force a minimum height equal to a full page on screen, which was leaving
+       zero spare room when actually printed — the browser's own header/footer (if the
+       person has "Headers and footers" on in the print dialog) or small font-metric
+       differences between devices were enough to push the last little bit (the signature
+       line + footer) onto a second, almost-empty page. Letting height follow the real
+       content here, instead of always padding out to a full page, gives that margin back. */
+    .invoice-page{ width:816px !important; min-height:0 !important; }
+    .invoice-inner{ min-height:0 !important; }
+  }
   @media screen and (max-width: 900px) { .invoice-page{ width:100% !important; } }
   @media screen and (max-width: 480px) {
     .invoice-inner{ padding:22px 18px 20px 18px !important; }
