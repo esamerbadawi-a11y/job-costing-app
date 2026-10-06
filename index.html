@@ -952,6 +952,8 @@
                 <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="filterDateToLabel"></label>
                 <input type="date" id="ceFilterTo" onchange="renderCompanyAccountContent()" style="min-width:130px;">
             </div>
+            <button class="secondary" onclick="setCompanyDateRange('week')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetWeekBtn"></button>
+            <button class="secondary" onclick="setCompanyDateRange('lastweek')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetLastWeekBtn"></button>
             <button class="secondary" onclick="document.getElementById('ceFilterFrom').value=''; document.getElementById('ceFilterTo').value=''; renderCompanyAccountContent();" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
         </div>
 
@@ -8310,6 +8312,31 @@ ${closeBtnHtml}
             fromEl.value = ''; toEl.value = '';
         }
         renderPartnerAccountContent();
+    }
+
+    // Same week-picker, for the Company Account screen's own date filter.
+    let companyLastWeekStep = 0;
+    function setCompanyDateRange(preset) {
+        const fromEl = document.getElementById('ceFilterFrom');
+        const toEl = document.getElementById('ceFilterTo');
+        const today = new Date();
+        const iso = d => isoDate(d);
+        if (preset === 'today') {
+            companyLastWeekStep = 0;
+            fromEl.value = iso(today); toEl.value = iso(today);
+        } else if (preset === 'week') {
+            companyLastWeekStep = 0;
+            const w = weekOf(iso(today), 0);
+            fromEl.value = w.start; toEl.value = w.end;
+        } else if (preset === 'lastweek') {
+            companyLastWeekStep += 1;
+            const w = weekOf(iso(today), -companyLastWeekStep);
+            fromEl.value = w.start; toEl.value = w.end;
+        } else {
+            companyLastWeekStep = 0;
+            fromEl.value = ''; toEl.value = '';
+        }
+        renderCompanyAccountContent();
     }
 
     // ONE place that works out, per technician, what they EARNED on each job.
