@@ -638,6 +638,7 @@
                     <div class="form-group"><label data-i18n="lblAmountReceived"></label><input type="text" id="amountReceived" value="0" onfocus="this.select()" oninput="calculateRemaining(); calculate(); renderLedger('receipt'); updateSplitRatioTotal();"></div>
                     <div class="form-group"><label data-i18n="lblAmountRemaining"></label><input type="text" id="amountRemaining" value="0" readonly style="background: #1e293b; color: #f87171; font-weight: 700;"></div>
                 </div>
+                <div id="jobMarginEstimateBox" class="no-print" style="display:none; border-radius:8px; padding:10px 12px; margin-bottom:14px;"></div>
                 <div class="form-group" id="receiptAddBox">
                     <label data-i18n="lblAddReceived"></label>
                     <div class="ledger-add-row">
@@ -1068,6 +1069,12 @@
             </div>
         </div>
 
+        <div class="form-group">
+            <label data-i18n="lblMarginAlertThreshold"></label>
+            <input type="text" inputmode="decimal" id="companyProfileMarginThreshold" data-i18n-ph="phMarginAlertThreshold" onfocus="this.select()">
+            <div class="ag-meta" style="margin-top:4px;" data-i18n="marginAlertThresholdHint"></div>
+        </div>
+
         <button class="success" id="saveCompanyProfileBtnEl" onclick="saveCompanyProfile()" style="width:100%; margin-top:8px;" data-i18n="saveCompanyProfileBtn"></button>
     </div>
 </div>
@@ -1415,6 +1422,12 @@
         lblCompanyEmail: { ar: 'إيميل الشركة', en: 'Company Email' },
         lblCompanyTaxId: { ar: 'رقم ضريبي/ترخيص (اختياري)', en: 'Tax ID / License # (optional)' },
         lblCompanyWebsite: { ar: 'الموقع الإلكتروني (اختياري)', en: 'Website (optional)' },
+        lblMarginAlertThreshold: { ar: 'تنبيه هامش الربح لو نزل تحت (%)', en: 'Alert if profit margin drops below (%)' },
+        phMarginAlertThreshold: { ar: 'مثلاً: 15', en: 'e.g. 15' },
+        marginAlertThresholdHint: { ar: 'سيبها فاضية عشان توقف التنبيه. لو محدد نسبة، هيظهرلك تحذير وإنت بتضيف شغلانة جديدة لو هامش ربحها المتوقع (من قيمة العقد الكلية) نزل تحت النسبة دي.', en: "Leave empty to turn the alert off. If set, you'll get a warning while adding a new job if its expected profit margin (based on the full contract value) drops below this percentage." },
+        marginEstimateLabel: { ar: 'هامش الربح المتوقع (من قيمة العقد الكلية)', en: 'Expected profit margin (of full contract value)' },
+        marginBelowThresholdWarning: { ar: 'الهامش أقل من الحد اللي حددته ({threshold}%) — راجع الأرقام قبل الحفظ.', en: "This is below your alert threshold ({threshold}%) — double-check the numbers before saving." },
+        marginEstimateIncompleteNote: { ar: 'ده تقدير أولي لسه ناقصه بيانات الفنيين أو المواد — هيتحدث تلقائيًا كل ما تضيفهم.', en: "This is a preliminary estimate still missing technician or material costs — it updates automatically as you add them." },
         uploadLogoBtn: { ar: '📤 رفع لوجو', en: '📤 Upload Logo' },
         removeLogoBtn: { ar: '🗑 شيل اللوجو', en: '🗑 Remove Logo' },
         saveCompanyProfileBtn: { ar: '💾 حفظ بيانات الشركة', en: '💾 Save Company Profile' },
@@ -2569,7 +2582,7 @@
             // form is auto-refreshed only on that FIRST arrival — never again afterwards, so a
             // partner's edit elsewhere can't silently wipe out text you're still typing.
             const wasLoaded = companyProfileLoaded;
-            companyProfile = doc.exists ? Object.assign({ name: '', logo: '', tagline: '', address: '', phones: [], email: '', taxId: '', website: '' }, doc.data()) : companyProfile;
+            companyProfile = doc.exists ? Object.assign({ name: '', logo: '', tagline: '', address: '', phones: [], email: '', taxId: '', website: '', marginAlertThreshold: null }, doc.data()) : companyProfile;
             if (!Array.isArray(companyProfile.phones)) companyProfile.phones = companyProfile.phone ? [companyProfile.phone] : [];
             refreshCompanyLogoAspect();
             companyProfileLoaded = true;
@@ -4082,7 +4095,7 @@
         updateSplitRatioTotal();
     }
 
-    function calculate() { technicians.forEach((t, i) => updateTechCardDues(i)); }
+    function calculate() { technicians.forEach((t, i) => updateTechCardDues(i)); safeCall(renderMarginWarning); }
 
     // Adds a new materials purchase onto the running total instead of making the user
     // work out the sum by hand each time more materials are bought mid-job.
@@ -4948,6 +4961,7 @@
         document.getElementById('formTitle').innerText = t('formTitleNew');
         document.getElementById('saveBtn').innerText = t('saveBtnNew');
         document.getElementById('cancelEditBtn').style.display = 'none';
+        safeCall(renderMarginWarning);
     }
 
     // The whole job form's own live money picture, reused for the profit-split $ preview: what's left
@@ -4958,6 +4972,44 @@
         let techDues = 0;
         technicians.forEach(tech => { techDues += effectiveJobTechDue(tech, received, materials) + techReimbTotal(tech); });
         return round2(received - materials - techDues);
+    }
+    // A separate estimate from liveNetForSplit() above: that one tracks actual cash received (for
+    // the S/M/company split preview), but the margin warning is about whether the JOB ITSELF is
+    // worth it — so it's measured against the full contract value, as if it all gets collected,
+    // not just what's been received so far (which is often still $0 on a brand-new job).
+    function liveMarginEstimate() {
+        const revenue = parseVal(document.getElementById('totalRevenue').value);
+        const materials = parseVal(document.getElementById('materialCost').value);
+        const expenses = parseVal(document.getElementById('extraExpenses').value);
+        let techDues = 0;
+        technicians.forEach(tech => { techDues += effectiveJobTechDue(tech, revenue, materials) + techReimbTotal(tech); });
+        const net = round2(revenue - materials - techDues - expenses);
+        const marginPct = revenue > 0.005 ? round2(net / revenue * 100) : null;
+        // Still missing the two things most likely to move this number a lot — worth saying so,
+        // since a brand-new job with nothing entered yet would otherwise show a falsely perfect 100%.
+        const incomplete = technicians.length === 0 || materials < 0.005;
+        return { revenue, net, marginPct, incomplete };
+    }
+    function renderMarginWarning() {
+        const box = document.getElementById('jobMarginEstimateBox');
+        if (!box) return;
+        const { revenue, net, marginPct, incomplete } = liveMarginEstimate();
+        if (revenue < 0.005 || marginPct === null) { box.style.display = 'none'; return; }
+        const threshold = companyProfile.marginAlertThreshold;
+        const hasThreshold = threshold !== null && threshold !== undefined && threshold !== '' && !isNaN(threshold);
+        const isLow = hasThreshold && marginPct < parseVal(threshold);
+        box.style.display = 'block';
+        box.style.background = isLow ? 'rgba(248,113,113,0.12)' : 'rgba(52,211,153,0.08)';
+        box.style.border = `1px solid ${isLow ? '#f87171' : '#34d399'}`;
+        const lineColor = isLow ? '#f87171' : '#34d399';
+        box.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                <span style="font-size:0.8rem; color:var(--text-muted);">${t('marginEstimateLabel')}</span>
+                <strong style="font-size:1.05rem; color:${lineColor};">${marginPct}% <span style="font-size:0.78rem; color:var(--text-muted); font-weight:400;">($${net.toFixed(2)})</span></strong>
+            </div>
+            ${isLow ? `<div style="font-size:0.78rem; color:#f87171; margin-top:4px;">⚠️ ${t('marginBelowThresholdWarning').replace('{threshold}', threshold)}</div>` : ''}
+            ${incomplete ? `<div style="font-size:0.74rem; color:var(--text-muted); margin-top:4px;">📝 ${t('marginEstimateIncompleteNote')}</div>` : ''}
+        `;
     }
     function updateSplitRatioTotal() {
         const s = parseVal(document.getElementById('splitRatioS').value);
@@ -5405,6 +5457,7 @@
         document.getElementById('formTitle').innerText = t('formTitleEdit');
         document.getElementById('saveBtn').innerText = t('saveBtnUpdate');
         document.getElementById('cancelEditBtn').style.display = 'block';
+        safeCall(renderMarginWarning);
         goToJobStep(1);
         switchScreen('entry');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -6564,6 +6617,7 @@ ${closeBtnHtml}
         document.getElementById('companyProfileEmail').value = companyProfile.email || '';
         document.getElementById('companyProfileTaxId').value = companyProfile.taxId || '';
         document.getElementById('companyProfileWebsite').value = companyProfile.website || '';
+        document.getElementById('companyProfileMarginThreshold').value = (companyProfile.marginAlertThreshold !== undefined && companyProfile.marginAlertThreshold !== null) ? companyProfile.marginAlertThreshold : '';
         companyProfilePhonesWorking = (companyProfile.phones && companyProfile.phones.length > 0) ? [...companyProfile.phones] : [''];
         renderCompanyPhones();
         const img = document.getElementById('companyLogoPreview');
@@ -6637,6 +6691,8 @@ ${closeBtnHtml}
         companyProfile.email = document.getElementById('companyProfileEmail').value.trim();
         companyProfile.taxId = document.getElementById('companyProfileTaxId').value.trim();
         companyProfile.website = document.getElementById('companyProfileWebsite').value.trim();
+        const marginThresholdRaw = document.getElementById('companyProfileMarginThreshold').value.trim();
+        companyProfile.marginAlertThreshold = marginThresholdRaw === '' ? null : parseVal(marginThresholdRaw);
         delete companyProfile.phone; // retire the old single-phone field now that phones[] replaces it
         try {
             await saveCompanyProfileData();
