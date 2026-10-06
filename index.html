@@ -1951,8 +1951,8 @@
         aiNoKeyNote: { ar: 'مفيش مفتاح AI، فدي رسالة جاهزة تقدر تعدّل فيها.', en: 'There is no AI key, so this is a ready-made message you can edit.' },
         aiTemplateNote: { ar: 'رسالة جاهزة (من غير AI). عدّل فيها زي ما تحب.', en: 'Ready-made message (no AI). Edit it as you like.' },
         alertJobHasNoEmail: { ar: 'الشغلانة دي معندهاش إيميل عميل محفوظ.', en: 'This job has no client email saved.' },
-        emailThankYouSubject: { ar: 'شكرًا لتعاملك مع AHA Handyman', en: 'Thank You - AHA Handyman' },
-        emailReminderSubject: { ar: 'تذكير بالدفع - AHA Handyman', en: 'Payment Reminder - AHA Handyman' },
+        emailThankYouSubjectPrefix: { ar: 'شكرًا لتعاملك مع', en: 'Thank You -' },
+        emailReminderSubjectPrefix: { ar: 'تذكير بالدفع -', en: 'Payment Reminder -' },
         invoiceSendMsgBtn: { ar: '✉️ ابعت رسالة للعميل', en: '✉️ Send Client Message' },
         invoicePaidBadge: { ar: '✅ مدفوعة بالكامل', en: '✅ PAID IN FULL' },
         invoicePaidStamp: { ar: 'مدفوعة بالكامل', en: 'PAID IN FULL' },
@@ -2414,6 +2414,53 @@
     let companyProfile = { name: '', logo: '', tagline: '', address: '', phones: [], email: '', taxId: '', website: '' };
     let companyProfileLoaded = false; // true once the first Firestore snapshot of it has arrived
     let companyProfilePhonesWorking = []; // the phone-number rows currently shown in the open form
+    // The one source of truth for "what's the company called" everywhere it appears to a client or
+    // on a report (invoices, PDFs, WhatsApp/SMS/email messages, filenames): Company Profile if it's
+    // been filled in, otherwise this fallback. Change the name/logo once in Company Profile and
+    // every one of those places follows automatically — nothing else should hardcode the name.
+    function companyDisplayName() { return (companyProfile.name || '').trim() || 'AHA Handyman Approach'; }
+    // Short, filesystem-safe version of the same name, for downloaded file names (e.g. "AHA_Partner_Report...").
+    function companyFileSlug() { return companyDisplayName().replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'Company'; }
+    // Short code for invoice numbers (e.g. "AHA-2026-0001") — initials of the saved company name, or "AHA" if none is set yet.
+    function companyInvoicePrefix() {
+        const name = (companyProfile.name || '').trim();
+        if (!name) return 'AHA';
+        const initials = name.split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 6);
+        return initials || 'AHA';
+    }
+    // Cached width/height ratio of the company logo, so every PDF can place it as a watermark
+    // without waiting on an async image load mid-report. Refreshed whenever the logo changes
+    // (uploaded, removed, or synced in from Firestore) — a PDF built in the brief gap before that
+    // finishes just uses the previous ratio (or a 1:1 square the very first time), which only
+    // ever affects the watermark's shape very slightly, never whether it appears.
+    let companyLogoAspect = 1;
+    function refreshCompanyLogoAspect() {
+        if (!companyProfile.logo) { companyLogoAspect = 1; return; }
+        const img = new Image();
+        img.onload = () => { if (img.width && img.height) companyLogoAspect = img.width / img.height; };
+        img.src = companyProfile.logo;
+    }
+    // Stamps every page of a jsPDF report with the company logo, centered and very faint, so it
+    // reads as a watermark rather than a competing graphic. No-op when no logo is set.
+    function addLogoWatermark(doc) {
+        if (!companyProfile.logo) return;
+        try {
+            const pageCount = doc.internal.getNumberOfPages();
+            const pageW = doc.internal.pageSize.getWidth();
+            const pageH = doc.internal.pageSize.getHeight();
+            const box = Math.min(pageW, pageH) * 0.6;
+            let w = box, h = box / companyLogoAspect;
+            if (h > box) { h = box; w = box * companyLogoAspect; }
+            const x = (pageW - w) / 2, y = (pageH - h) / 2;
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.saveGraphicsState();
+                doc.setGState(new doc.GState({ opacity: 0.08 }));
+                doc.addImage(companyProfile.logo, x, y, w, h);
+                doc.restoreGraphicsState();
+            }
+        } catch (e) { console.error('Watermark error:', e); }
+    }
 
     const EXCLUSIVE_PERCENT_TYPES = ['فني لوحده (%60)', 'نسبة (50%)'];
     const EXPENSE_CATEGORIES = ['بنزين / مواصلات', 'أكل ومشروبات', 'إيجار موقع/مكتب الشركة', 'صيانة عربية', 'أدوات ومعدات', 'تراخيص ورسوم', 'تأمين', 'دعاية وإعلان', 'أخرى'];
@@ -2524,6 +2571,7 @@
             const wasLoaded = companyProfileLoaded;
             companyProfile = doc.exists ? Object.assign({ name: '', logo: '', tagline: '', address: '', phones: [], email: '', taxId: '', website: '' }, doc.data()) : companyProfile;
             if (!Array.isArray(companyProfile.phones)) companyProfile.phones = companyProfile.phone ? [companyProfile.phone] : [];
+            refreshCompanyLogoAspect();
             companyProfileLoaded = true;
             if (!wasLoaded && document.getElementById('companyProfileModal').style.display !== 'none') safeCall(renderCompanyProfileForm);
             const saveBtn = document.getElementById('saveCompanyProfileBtnEl');
@@ -3043,8 +3091,8 @@
     function fmtClientTime(tm) { if (!tm) return ''; const [h, m] = tm.split(':').map(Number); return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`; }
     function buildClientVisitMessage(oldDate, newDate, newTime, scheduleMode) {
         const at = newTime ? ` at ${fmtClientTime(newTime)}` : '';
-        if (scheduleMode || !oldDate) return `Hello, this is AHA Handyman. Our appointment is set for ${fmtClientDate(newDate)}${at}. Please let me know if that works for you.`;
-        return `Hello, this is AHA Handyman. I need to move our appointment from ${fmtClientDate(oldDate)} to ${fmtClientDate(newDate)}${at}. Sorry for the inconvenience - does that work for you?`;
+        if (scheduleMode || !oldDate) return `Hello, this is ${companyDisplayName()}. Our appointment is set for ${fmtClientDate(newDate)}${at}. Please let me know if that works for you.`;
+        return `Hello, this is ${companyDisplayName()}. I need to move our appointment from ${fmtClientDate(oldDate)} to ${fmtClientDate(newDate)}${at}. Sorry for the inconvenience - does that work for you?`;
     }
     function offerClientMessage(job, oldDate, newDate, newTime, scheduleMode) {
         let digits = normalizePhone(job.clientPhone);
@@ -4200,18 +4248,18 @@
         const what = (job.clientDescription || '').split('\n')[0].slice(0, 80).trim();
         const amount = '$' + rem.toFixed(2);
         const long = daysOverdue && daysOverdue > 14;
-        if (lang === 'ar') return `أهلاً، معاك AHA Handyman. تذكير ودّي بالمبلغ المتبقي ${amount}${what ? ' عن ' + what : ''}${daysOverdue ? `، وعدّى ${daysOverdue} يوم على موعد المتابعة` : ''}. ${long ? 'ياريت نرتب السداد في أقرب وقت.' : 'ياريت تبلغنا إمتى نقدر نستلمه.'} شكرًا لتعاونك.`;
-        return `Hello, this is AHA Handyman. A friendly reminder about the remaining balance of ${amount}${what ? ' for ' + what : ''}${daysOverdue ? `, now ${daysOverdue} days past the follow-up date` : ''}. ${long ? 'Please arrange payment as soon as you can.' : 'Please let us know when we can expect it.'} Thank you!`;
+        if (lang === 'ar') return `أهلاً، معاك ${companyDisplayName()}. تذكير ودّي بالمبلغ المتبقي ${amount}${what ? ' عن ' + what : ''}${daysOverdue ? `، وعدّى ${daysOverdue} يوم على موعد المتابعة` : ''}. ${long ? 'ياريت نرتب السداد في أقرب وقت.' : 'ياريت تبلغنا إمتى نقدر نستلمه.'} شكرًا لتعاونك.`;
+        return `Hello, this is ${companyDisplayName()}. A friendly reminder about the remaining balance of ${amount}${what ? ' for ' + what : ''}${daysOverdue ? `, now ${daysOverdue} days past the follow-up date` : ''}. ${long ? 'Please arrange payment as soon as you can.' : 'Please let us know when we can expect it.'} Thank you!`;
     }
     function buildThankYouPrompt(job, lang) {
-        if (lang === 'ar') return `اكتب رسالة شكر مهذبة ومختصرة (2-3 جمل) للعميل ${job.clientName}، بعد ما خلّص سداد فاتورة شغلانة "${job.clientDescription || 'الصيانة'}" بالكامل. اشكره على التعامل وثقته في AHA Handyman. من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`;
-        return `Write a polite, concise (2-3 sentence) thank-you message to client ${job.clientName}, now that they've fully paid for the "${job.clientDescription || 'service'}" job. Thank them for their business and trust in AHA Handyman. No preamble or headers, just the message.`;
+        if (lang === 'ar') return `اكتب رسالة شكر مهذبة ومختصرة (2-3 جمل) للعميل ${job.clientName}، بعد ما خلّص سداد فاتورة شغلانة "${job.clientDescription || 'الصيانة'}" بالكامل. اشكره على التعامل وثقته في ${companyDisplayName()}. من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`;
+        return `Write a polite, concise (2-3 sentence) thank-you message to client ${job.clientName}, now that they've fully paid for the "${job.clientDescription || 'service'}" job. Thank them for their business and trust in ${companyDisplayName()}. No preamble or headers, just the message.`;
     }
     // The same message without AI, so the thank-you note can always be sent.
     function buildFallbackThankYou(job, lang) {
         const what = (job.clientDescription || '').split('\n')[0].slice(0, 80).trim();
-        if (lang === 'ar') return `أهلاً ${job.clientName || ''}، معاك AHA Handyman. شكرًا جزيلاً على سداد فاتورة${what ? ' ' + what : ''} بالكامل، وعلى ثقتك فينا. تشرفنا بخدمتك! 🙏`;
-        return `Hello ${job.clientName || ''}, this is AHA Handyman. Thank you so much for fully settling the invoice${what ? ' for ' + what : ''}, and for trusting us with your project. It was a pleasure working with you! 🙏`;
+        if (lang === 'ar') return `أهلاً ${job.clientName || ''}، معاك ${companyDisplayName()}. شكرًا جزيلاً على سداد فاتورة${what ? ' ' + what : ''} بالكامل، وعلى ثقتك فينا. تشرفنا بخدمتك! 🙏`;
+        return `Hello ${job.clientName || ''}, this is ${companyDisplayName()}. Thank you so much for fully settling the invoice${what ? ' for ' + what : ''}, and for trusting us with your project. It was a pleasure working with you! 🙏`;
     }
 
     function setAiReminderStatus(kind, text) {
@@ -4311,7 +4359,7 @@
         if (!c || !text) return;
         if (kind === 'email') {
             if (!c.job.clientEmail) { alert(t('alertJobHasNoEmail')); return; }
-            const subject = encodeURIComponent(t(c.msgKind === 'thankyou' ? 'emailThankYouSubject' : 'emailReminderSubject'));
+            const subject = encodeURIComponent(`${t(c.msgKind === 'thankyou' ? 'emailThankYouSubjectPrefix' : 'emailReminderSubjectPrefix')} ${companyDisplayName()}`);
             openExternal(`mailto:${c.job.clientEmail}?subject=${subject}&body=${encodeURIComponent(text)}`, false);
             return;
         }
@@ -5459,7 +5507,7 @@
             pdfWindow.location.href = url;
         } else {
             const a = document.createElement('a');
-            a.href = url; a.download = 'AHA_Jobs.pdf';
+            a.href = url; a.download = `${companyFileSlug()}_Jobs.pdf`;
             document.body.appendChild(a); a.click(); a.remove();
         }
     }
@@ -5622,6 +5670,7 @@
         doc.setFont("helvetica", "bold");
         doc.text(`Remaining Balance: $${(totalDues + totalMaterials + totalBonus - totalPaid).toFixed(2)}`, 14, lineY + 7);
 
+        addLogoWatermark(doc);
         doc.autoPrint();
         window.open(doc.output('bloburl'), '_blank');
     }
@@ -5631,7 +5680,7 @@
         const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = `AHA_BACKUP_${isoDate(new Date())}.json`;
+        a.href = url; a.download = `${companyFileSlug()}_BACKUP_${isoDate(new Date())}.json`;
         document.body.appendChild(a); a.click(); a.remove();
         URL.revokeObjectURL(url);
     }
@@ -5698,7 +5747,7 @@
         const blob = new Blob(["\uFEFF" + csvRows.join("\r\n")], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = "AHA_PM_STATEMENT.csv";
+        a.href = url; a.download = `${companyFileSlug()}_PM_STATEMENT.csv`;
         document.body.appendChild(a); a.click(); a.remove();
         URL.revokeObjectURL(url);
     }
@@ -5733,7 +5782,7 @@
         const { jsPDF } = window.jspdf;
         let doc = new jsPDF('l', 'mm', 'a4');
         doc.setFont("helvetica", "bold"); doc.setFontSize(16);
-        doc.text("AHA - PM STATEMENT", 14, 15);
+        doc.text(`${companyDisplayName()} - PM STATEMENT`, 14, 15);
 
         const headers = [["Jobs #", "Date", "Customer", "Address", "Contract", "Received", "Balance", "Materials", "Status", "Split (S/M/Co)", "Net Profit", "S Share", "M Share", "Company Net"]];
         const data = jobsList.map((job, index) => {
@@ -5772,12 +5821,13 @@
                 doc.addImage(img.dataUrl, 'PNG', x, y, targetW, targetH);
             }
         });
+        addLogoWatermark(doc);
         return doc;
     }
 
     async function exportPDF() {
         const doc = await buildJobsPdfDoc(savedJobs);
-        doc.save("AHA_PM_STATEMENT.pdf");
+        doc.save(`${companyFileSlug()}_PM_STATEMENT.pdf`);
     }
 
     // ===== Branded, itemized client invoice (replaces the old plain PDF invoice) =====
@@ -5824,7 +5874,7 @@
             jobId,
             savedId: null, // set once this draft has been saved (via saveCurrentInvoice) — lets "Save" update it in place instead of creating a duplicate
             docType: 'INVOICE',
-            invoiceNo: `AHA-${new Date().getFullYear()}-${seq}`,
+            invoiceNo: `${companyInvoicePrefix()}-${new Date().getFullYear()}-${seq}`,
             invoiceDate: isoDate(new Date()),
             items: defaultInvoiceItemsForJob(job),
             credits: [], // each: { label: string, amount: number } — named deductions, e.g. "PVC Trim Credit — Not Installed"
@@ -6247,7 +6297,7 @@
         // manual mark, so what you see on screen is exactly what prints.
         const isPaid = !!invoiceState.paidMark;
         const accent = '#2C6B45';
-        const companyName = companyProfile.name || 'Affordable Handyman Approach';
+        const companyName = companyDisplayName();
         const companyTagline = companyProfile.tagline || '';
         const companyLogo = companyProfile.logo || '';
         const footerLine = [...(companyProfile.phones || []), companyProfile.email].filter(Boolean).join('  |  ');
@@ -6571,10 +6621,11 @@ ${closeBtnHtml}
         if (!file) return;
         try {
             companyProfile.logo = await compressLogoToBase64(file);
+            refreshCompanyLogoAspect();
             renderCompanyProfileForm();
         } catch (e) { alert(t('alertPhotoFailed')); }
     }
-    function removeCompanyLogo() { companyProfile.logo = ''; renderCompanyProfileForm(); }
+    function removeCompanyLogo() { companyProfile.logo = ''; refreshCompanyLogoAspect(); renderCompanyProfileForm(); }
     async function saveCompanyProfile() {
         // Belt-and-braces: even if the button was somehow clicked while disabled, never let a
         // save go through before we actually know what's in Firestore — that's exactly what was
@@ -7031,7 +7082,7 @@ ${closeBtnHtml}
         const { jsPDF } = window.jspdf;
         let doc = new jsPDF('p', 'mm', 'a4');
         doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
-        const titleText = 'AHA - Partner Report:';
+        const titleText = `${companyDisplayName()} - Partner Report:`;
         doc.text(titleText, 14, 15);
         const nameImg = textToImage(name);
         const nameH = 7, nameW = nameH * nameImg.aspect;
@@ -7110,7 +7161,8 @@ ${closeBtnHtml}
         doc.setFont('helvetica', 'bold');
         doc.text(`Remaining: $${remaining.toFixed(2)}`, 14, finalY);
 
-        doc.save(`AHA_Partner_Report_${name}.pdf`);
+        addLogoWatermark(doc);
+        doc.save(`${companyFileSlug()}_Partner_Report_${name}.pdf`);
     }
 
     // Simple PDF-only weekly recap for the Company Account screen — deliberately NOT shown
@@ -7127,7 +7179,7 @@ ${closeBtnHtml}
         let doc = new jsPDF('p', 'mm', 'a4');
 
         doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
-        doc.text('AHA - Company Weekly Report', 14, 15);
+        doc.text(`${companyDisplayName()} - Company Weekly Report`, 14, 15);
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 100, 100);
         doc.text(`Period: ${dateFrom || '...'} - ${dateTo || '...'}`, 14, 21);
         doc.text(`Printed on: ${isoDate(new Date())}`, 14, 26);
@@ -7201,7 +7253,8 @@ ${closeBtnHtml}
         doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(0, 0, 0);
         doc.text(`Net for the Period: $${netForPeriod.toFixed(2)}`, 14, finalY);
 
-        doc.save(`AHA_Company_Weekly_Report_${dateFrom || 'all'}_${dateTo || 'all'}.pdf`);
+        addLogoWatermark(doc);
+        doc.save(`${companyFileSlug()}_Company_Weekly_Report_${dateFrom || 'all'}_${dateTo || 'all'}.pdf`);
     }
 
     // ---------- Technician & Partner Report: pick ONE person, see every job he worked as a
@@ -7350,7 +7403,7 @@ ${closeBtnHtml}
         const money = v => '$' + v.toFixed(2);
 
         doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
-        const titleText = 'AHA - Technician & Partner Report:';
+        const titleText = `${companyDisplayName()} - Technician & Partner Report:`;
         doc.text(titleText, 14, 15);
         const nameImg = textToImage(name);
         const nameH = 7, nameW = nameH * nameImg.aspect;
@@ -7415,7 +7468,8 @@ ${closeBtnHtml}
         doc.text(`Paid (${(dateFrom || dateTo) ? 'in period' : 'all-time'}): ${money(paid)}`, 14, nextY + 7);
         doc.text(`Remaining: ${money(remaining)}`, 14, nextY + 14);
 
-        doc.save(`AHA_Tech_Partner_Report_${name}.pdf`);
+        addLogoWatermark(doc);
+        doc.save(`${companyFileSlug()}_Tech_Partner_Report_${name}.pdf`);
     }
 
     function renderExpenseReportContent() {
