@@ -124,6 +124,8 @@
         .detail-summary { cursor: pointer; color: #38bdf8; }
         .detail-summary .detail-arrow { font-size: 0.7rem; }
         .detail-full { display: none; margin-top: 4px; }
+        .menu-section-label { padding: 8px 14px 4px; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+        .screen-subtitle { font-size: 0.78rem; color: var(--text-muted); margin: -8px 0 14px; }
         .filters-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
         .filters-bar input, .filters-bar select { flex: 1; min-width: 140px; }
         .table-responsive { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border-color); }
@@ -268,19 +270,24 @@
                 </div>
             </div>
 
-            <button class="secondary" onclick="openGlobalSearch()" style="align-self:center;" title="🔍">🔍</button>
+            <button class="secondary" onclick="openGlobalSearch()" style="align-self:center;" data-i18n-title="globalSearchBtnTitle">🔍 <span data-i18n="globalSearchBtnLabel" style="font-size:0.78rem;"></span></button>
 
             <div style="position:relative; align-self:center;">
                 <button class="secondary" onclick="toggleGroupMenu('reports')" id="reportsMenuTrigger" data-i18n="reportsMenuBtn"></button>
-                <div id="reportsMenuDropdown" style="display:none; position:absolute; top:110%; inset-inline-start:0; background:var(--card-dark); border:1px solid var(--border-color); border-radius:10px; box-shadow:0 10px 25px rgba(0,0,0,0.4); min-width:200px; z-index:1000; overflow:hidden;">
+                <div id="reportsMenuDropdown" style="display:none; position:absolute; top:110%; inset-inline-start:0; background:var(--card-dark); border:1px solid var(--border-color); border-radius:10px; box-shadow:0 10px 25px rgba(0,0,0,0.4); min-width:220px; z-index:1000; overflow:hidden; max-height:80vh; overflow-y:auto;">
+                    <div class="menu-section-label" data-i18n="menuSectionTechs"></div>
                     <button class="secondary" onclick="openTechGuideModal()" data-i18n="guideBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
-<button class="secondary" onclick="openWeeklyPayScreen()" data-i18n="weeklyPayBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px; color:#34d399;"></button>
+                    <button class="secondary" onclick="openWeeklyPayScreen()" data-i18n="weeklyPayBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px; color:#34d399;"></button>
                     <button class="secondary" onclick="openExpenseReportModal()" data-i18n="expenseReportBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
-                    <button class="secondary" id="activityLogBtnEl" style="display:none; width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;" onclick="openActivityLogModal()" data-i18n="activityLogBtn"></button>
+
+                    <div class="menu-section-label" data-i18n="menuSectionFinancial"></div>
                     <button class="secondary" onclick="openPartnerAccountModal()" data-i18n="partnerAccountBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
                     <button class="secondary" onclick="openPartnerReportModal()" data-i18n="partnerReportBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
                     <button class="secondary" onclick="openTechPartnerReportModal()" data-i18n="techPartnerReportBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
                     <button class="secondary" onclick="openCompanyAccountModal()" data-i18n="companyAccountBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
+
+                    <div class="menu-section-label" id="menuSectionAdminLabel" style="display:none;" data-i18n="menuSectionAdmin"></div>
+                    <button class="secondary" id="activityLogBtnEl" style="display:none; width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;" onclick="openActivityLogModal()" data-i18n="activityLogBtn"></button>
                 </div>
             </div>
 
@@ -743,6 +750,7 @@
                 <button class="danger" onclick="closeTechGuideModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
             </div>
         </div>
+        <div class="screen-subtitle" data-i18n="guideModalSubtitle"></div>
         <div id="addTechFormContainer" style="display:none; background:var(--panel-bg); border:1px solid var(--accent); padding:15px; border-radius:10px; margin-bottom:15px;">
             <h3 style="color:#38bdf8; font-size:0.95rem; margin-bottom:10px;" id="addTechFormTitle" data-i18n="addTechFormTitle"></h3>
             <input type="hidden" id="editingTechName" value="">
@@ -798,6 +806,7 @@
             <h2 style="color:#38bdf8; margin:0; font-size:1.2rem;">📊 <span data-i18n="expenseReportTitle"></span></h2>
             <button class="danger" onclick="closeExpenseReportModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
         </div>
+        <div class="screen-subtitle" data-i18n="expenseReportSubtitle"></div>
         <div id="expenseReportContent" style="font-size:0.9rem; line-height:1.7; color:var(--text-main);"></div>
     </div>
 </div>
@@ -808,6 +817,7 @@
             <h2 style="color:#38bdf8; margin:0; font-size:1.2rem;">🕒 <span data-i18n="activityLogTitle"></span></h2>
             <button class="danger" onclick="closeActivityLogModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
         </div>
+        <div class="screen-subtitle" data-i18n="activityLogSubtitle"></div>
         <div id="activityLogContent" style="font-size:0.85rem; line-height:1.7; color:var(--text-main);"></div>
     </div>
 </div>
@@ -823,6 +833,7 @@
                 <button class="danger" onclick="closePartnerAccountModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
             </div>
         </div>
+        <div class="screen-subtitle" data-i18n="partnerAccountSubtitle"></div>
 
         <div style="background:var(--panel-bg); border:1px solid var(--border-color); padding:15px; border-radius:10px; margin-bottom:18px;">
             <h3 style="color:#38bdf8; font-size:0.95rem; margin-bottom:10px;" data-i18n="addWithdrawalTitle"></h3>
@@ -870,6 +881,7 @@
             <h2 style="color:#38bdf8; margin:0; font-size:1.2rem;">🤝 <span data-i18n="partnerReportTitle"></span></h2>
             <button class="danger" onclick="closePartnerReportModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
         </div>
+        <div class="screen-subtitle" data-i18n="partnerReportSubtitle"></div>
 
         <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:15px;">
             <div class="form-group" style="flex:1; min-width:160px; margin-bottom:0;">
@@ -903,6 +915,7 @@
             <h2 style="color:#38bdf8; margin:0; font-size:1.2rem;">👷🤝 <span data-i18n="techPartnerReportTitle"></span></h2>
             <button class="danger" onclick="closeTechPartnerReportModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
         </div>
+        <div class="screen-subtitle" data-i18n="techPartnerReportSubtitle"></div>
 
         <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:15px;">
             <div class="form-group" style="flex:1; min-width:160px; margin-bottom:0;">
@@ -940,6 +953,7 @@
                 <button class="danger" onclick="closeCompanyAccountModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
             </div>
         </div>
+        <div class="screen-subtitle" data-i18n="companyAccountSubtitle"></div>
 
         <div style="background:var(--panel-bg); border:1px solid var(--border-color); padding:15px; border-radius:10px; margin-bottom:18px;">
             <h3 style="color:#38bdf8; font-size:0.95rem; margin-bottom:10px;" data-i18n="addCompanyExpenseTitle"></h3>
@@ -1395,6 +1409,19 @@
         alertPickWeekFirst: { ar: 'اختار فترة (من/لحد) الأول فوق، وبعدين دوس على التقرير.', en: 'Pick a date range (from/to) above first, then download the report.' },
         companyWeekReportBtn: { ar: '📄 تقرير الفترة PDF', en: '📄 Period Report PDF' },
         moreActionsBtn: { ar: '⋯ المزيد', en: '⋯ More' },
+        jobQuickDetailsBtn: { ar: 'تفاصيل سريعة', en: 'Quick Details' },
+        globalSearchBtnTitle: { ar: 'ابحث عن أي عميل أو شغلانة أو فني من هنا', en: 'Search for any client, job or technician from here' },
+        globalSearchBtnLabel: { ar: 'بحث', en: 'Search' },
+        menuSectionTechs: { ar: 'الفنيين', en: 'Technicians' },
+        menuSectionFinancial: { ar: 'التقارير المالية', en: 'Financial Reports' },
+        menuSectionAdmin: { ar: 'الإدارة', en: 'Admin' },
+        guideModalSubtitle: { ar: 'كل فني ومستحقاته، وحصة S و M من كل شغلانة — في مكان واحد.', en: "Every technician's dues, and S & M's share from every job — all in one place." },
+        expenseReportSubtitle: { ar: 'إجمالي كل نوع مصروف (خامات، بترول، أدوات...) عبر كل الشغلانات.', en: 'Totals for each expense category (materials, fuel, tools...) across every job.' },
+        activityLogSubtitle: { ar: 'سجل تلقائي بكل تعديل حصل في البرنامج ومين عمله ومتى.', en: 'An automatic log of every change made in the app — who did it, and when.' },
+        partnerAccountSubtitle: { ar: 'نصيب S و M من أرباح كل الشغلانات، واللي اتصرف منه واللي لسه باقي.', en: "S & M's share of profit across every job, what's been withdrawn, and what's left." },
+        partnerReportSubtitle: { ar: 'اختار شريك إضافي (غير S أو M) وشوف نصيبه من كل شغلانة اشترك فيها.', en: "Pick an extra partner (other than S or M) and see their share from every job they're in." },
+        techPartnerReportSubtitle: { ar: 'اختار اسم واحد (فني أو شريك) وشوف كل شغلاناته ومستحقاته في مكان واحد.', en: 'Pick one name (technician or partner) and see all their jobs and dues in one place.' },
+        companyAccountSubtitle: { ar: 'دخل الشركة من نصيبها في الأرباح (20%)، ومصاريفها العامة اللي مش خاصة بشغلانة معينة.', en: "The company's income from its share of profit (20%), and its general expenses not tied to one job." },
         filtersToggleBtn: { ar: '🔍 فلترة وبحث', en: '🔍 Filter & Search' },
         techCountSuffix: { ar: 'فنيين', en: 'techs' },
         expCountSuffix: { ar: 'بنود', en: 'items' },
@@ -1409,7 +1436,7 @@
         revertBlockReasonPayments: { ar: 'دفعات مسجلة للفنيين على الشغلانة', en: 'Recorded technician payments on the job' },
         revertBlockReasonBonuses: { ar: 'بونص مسجل على الشغلانة', en: 'Bonus recorded on the job' },
         activityRevertedToAppointment: { ar: 'رجّعت الشغلانة لـ Appointments', en: 'Reverted the job back to Appointments' },
-        noWithdrawalsYet: { ar: 'لسه مفيش أي مبلغ اتسجل إنه اتصرف.', en: 'No withdrawals recorded yet.' },
+        noWithdrawalsYet: { ar: 'لسه مفيش أي مبلغ اتسجل إنه اتصرف — سجله في النموذج اللي فوق.', en: 'No withdrawals recorded yet — use the form above to record one.' },
         withdrawalHistoryTitle: { ar: 'سجل المبالغ اللي اتصرفت', en: 'Withdrawal History' },
         wdFilterAll: { ar: 'الكل (S و M)', en: 'All (S & M)' },
         noWithdrawalsMatchFilter: { ar: 'مفيش نتايج مطابقة للفلتر ده.', en: 'No entries match this filter.' },
@@ -1531,7 +1558,7 @@
         apptNewServicePh: { ar: 'ضيف خدمة جديدة...', en: 'Add a new service...' },
         apptAddServiceBtn: { ar: '+ إضافة', en: '+ Add' },
         saveAppointmentBtn: { ar: 'حفظ الموعد', en: 'Save Appointment' },
-        noAppointmentsYet: { ar: 'لسه مفيش أي مواعيد مسجلة.', en: 'No appointments recorded yet.' },
+        noAppointmentsYet: { ar: 'لسه مفيش أي مواعيد مسجلة — دوس على "إضافة موعد" تحت عشان تسجل أول موعد.', en: 'No appointments yet — use "Add Appointment" below to record your first one.' },
         noDateSet: { ar: 'من غير تاريخ محدد', en: 'No date set' },
         convertToJobBtn: { ar: '🔁 حوّلها لشغلانة', en: '🔁 Convert to Job' },
         confirmDeleteAppointment: { ar: 'متأكد من حذف الموعد ده؟', en: 'Delete this appointment?' },
@@ -1705,7 +1732,7 @@
         thNet: { ar: 'الصافي', en: 'Net' },
         thCompany: { ar: 'شركة (20%)', en: 'Company (20%)' },
         thActions: { ar: 'إجراءات', en: 'Actions' },
-        emptyJobs: { ar: 'لا توجد شغلانات محفوظة مطابقة للبحث', en: 'No matching saved jobs found' },
+        emptyJobs: { ar: 'لسه مفيش شغلانات متسجلة — روح لشاشة "إضافة شغلانة" وسجل أول شغلانة.', en: 'No jobs yet — go to "Add Job" to record your first one.' },
         loadingJobs: { ar: 'جاري التحميل...', en: 'Loading...' },
         debtBadgePrefix: { ar: '⚠️ متبقي تحصيل:', en: '⚠️ Outstanding:' },
         techLineDue: { ar: 'مستحق', en: 'Due' },
@@ -2088,6 +2115,7 @@
         document.documentElement.lang = currentLang;
         document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.getAttribute('data-i18n')); });
         document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.getAttribute('data-i18n-ph')); });
+        document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.getAttribute('data-i18n-title')); });
 
         const editingId = document.getElementById('editingJobId').value;
         document.getElementById('formTitle').innerText = editingId ? t('formTitleEdit') : t('formTitleNew');
@@ -2302,6 +2330,7 @@
             document.getElementById('pdfContentArea').style.display = 'block';
             document.getElementById('currentUserBadge').textContent = displayNameFor(user.email);
             document.getElementById('activityLogBtnEl').style.display = (user.email === ADMIN_EMAIL) ? '' : 'none';
+            document.getElementById('menuSectionAdminLabel').style.display = (user.email === ADMIN_EMAIL) ? '' : 'none';
             safeCall(updateFabVisibility);
             setupRealtimeSync();
         } else {
@@ -4886,7 +4915,7 @@
                 <td data-label="${t('thShareM')}" style="color:#38bdf8;">$${shareM.toFixed(2)} <span style="color:var(--text-muted); font-size:0.72rem;">(${Math.round(rowRatio.m * 100)}%)</span></td>
                 <td data-label="${t('thCompany')}" style="color:#fbbf24;">$${companyNet.toFixed(2)}</td>
                 <td data-label="${t('thActions')}" class="no-print">
-                    <button class="secondary" onclick="showJobQuickDetails('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#7c3aed;">ℹ️</button>
+                    <button class="secondary" onclick="showJobQuickDetails('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#7c3aed;" title="${t('jobQuickDetailsBtn')}">ℹ️</button>
                     <button class="secondary" onclick="openInvoiceModal('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#0ea5e9;" title="${t('invoiceBtn')}">🧾</button>
                     <button class="secondary" onclick="openJobPayModal('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#16a34a;" title="${t('jobPayBtn')}">💰</button>
                     <button class="secondary" onclick="editJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem;">${t('editBtn')}</button>
