@@ -118,6 +118,12 @@
         button.warning:hover { background: #b45309; }
         .tech-card { background: #131b2e; border: 1px solid var(--border-color); border-radius: 12px; padding: 18px; margin-bottom: 15px; position: relative; }
         .note-box { background: rgba(14,165,233,0.08); border: 1px dashed var(--accent); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 0.78rem; }
+        .summary-line { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 2px; }
+        .summary-highlight { font-size: 1.35rem; font-weight: 800; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .summary-highlight span:first-child { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+        .detail-summary { cursor: pointer; color: #38bdf8; }
+        .detail-summary .detail-arrow { font-size: 0.7rem; }
+        .detail-full { display: none; margin-top: 4px; }
         .filters-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
         .filters-bar input, .filters-bar select { flex: 1; min-width: 140px; }
         .table-responsive { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border-color); }
@@ -463,8 +469,11 @@
         <div>
             <div class="card" id="jobsTableCard">
                 <h2 data-i18n="jobsCardTitle"></h2>
-                <div class="filters-bar no-print">
-                    <input type="text" id="searchInput" data-i18n-ph="searchPlaceholder" oninput="filterJobs()">
+                <div class="no-print" style="display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
+                    <input type="text" id="searchInput" data-i18n-ph="searchPlaceholder" oninput="filterJobs()" style="flex:1; min-width:160px;">
+                    <button class="secondary" onclick="toggleJobsFilterPanel()" style="padding:8px 12px; font-size:0.78rem; white-space:nowrap;" data-i18n="filtersToggleBtn"></button>
+                </div>
+                <div class="filters-bar no-print" id="jobsFilterPanel" style="display:none;">
                     <select id="filterTech" onchange="filterJobs()"><option value="" data-i18n="allTechs"></option></select>
                     <select id="filterStatus" onchange="filterJobs()">
                         <option value="" data-i18n="allStatuses"></option>
@@ -943,19 +952,24 @@
             <button class="success" onclick="saveCompanyExpense()" data-i18n="saveWithdrawalBtn"></button>
         </div>
 
-        <div style="background:var(--panel-bg); border:1px solid var(--border-color); padding:12px; border-radius:10px; margin-bottom:15px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-            <div style="display:flex; align-items:center; gap:6px;">
-                <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="filterDateFromLabel"></label>
-                <input type="date" id="ceFilterFrom" onchange="renderCompanyAccountContent()" style="min-width:130px;">
+        <div style="background:var(--panel-bg); border:1px solid var(--border-color); padding:12px; border-radius:10px; margin-bottom:15px;">
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="filterDateFromLabel"></label>
+                    <input type="date" id="ceFilterFrom" onchange="renderCompanyAccountContent()" style="min-width:130px;">
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="filterDateToLabel"></label>
+                    <input type="date" id="ceFilterTo" onchange="renderCompanyAccountContent()" style="min-width:130px;">
+                </div>
+                <button class="secondary" onclick="setCompanyDateRange('week')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetWeekBtn"></button>
+                <button class="secondary" onclick="setCompanyDateRange('lastweek')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetLastWeekBtn"></button>
+                <button class="secondary" onclick="toggleCompanyMoreActions()" style="padding:6px 12px; font-size:0.75rem; background:#475569;" data-i18n="moreActionsBtn"></button>
             </div>
-            <div style="display:flex; align-items:center; gap:6px;">
-                <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="filterDateToLabel"></label>
-                <input type="date" id="ceFilterTo" onchange="renderCompanyAccountContent()" style="min-width:130px;">
+            <div id="companyMoreActionsPanel" style="display:none; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border-color);">
+                <button class="secondary" onclick="document.getElementById('ceFilterFrom').value=''; document.getElementById('ceFilterTo').value=''; renderCompanyAccountContent();" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
+                <button class="danger" onclick="downloadCompanyWeekReportPDF()" style="padding:6px 12px; font-size:0.75rem; background:#f87171;" data-i18n="companyWeekReportBtn"></button>
             </div>
-            <button class="secondary" onclick="setCompanyDateRange('week')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetWeekBtn"></button>
-            <button class="secondary" onclick="setCompanyDateRange('lastweek')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetLastWeekBtn"></button>
-            <button class="secondary" onclick="document.getElementById('ceFilterFrom').value=''; document.getElementById('ceFilterTo').value=''; renderCompanyAccountContent();" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
-            <button class="danger" onclick="downloadCompanyWeekReportPDF()" style="padding:6px 12px; font-size:0.75rem; background:#f87171;" data-i18n="companyWeekReportBtn"></button>
         </div>
 
         <div id="companyAccountContent" style="font-size:0.85rem; line-height:1.7; color:var(--text-main);"></div>
@@ -1380,6 +1394,10 @@
         cwAllTimeExpensesLabel: { ar: 'إجمالي المبلغ المحطوط في الشركة (كل الوقت):', en: 'Total Amount Spent by the Company (All-Time):' },
         alertPickWeekFirst: { ar: 'اختار فترة (من/لحد) الأول فوق، وبعدين دوس على التقرير.', en: 'Pick a date range (from/to) above first, then download the report.' },
         companyWeekReportBtn: { ar: '📄 تقرير الفترة PDF', en: '📄 Period Report PDF' },
+        moreActionsBtn: { ar: '⋯ المزيد', en: '⋯ More' },
+        filtersToggleBtn: { ar: '🔍 فلترة وبحث', en: '🔍 Filter & Search' },
+        techCountSuffix: { ar: 'فنيين', en: 'techs' },
+        expCountSuffix: { ar: 'بنود', en: 'items' },
         revertToAppointmentBtn: { ar: 'رجوع لـ Appointment', en: 'Revert to Appointment' },
         confirmRevertToAppointment: { ar: 'هل أنت متأكد إنك عايز ترجع الشغلانة دي لـ Appointments؟ هتتشال من السجل وتتحول لموعد لسه مش شغلانة.', en: 'Are you sure you want to revert this job back to Appointments? It will be removed from the job log and turned back into a pending appointment.' },
         alertRevertBlockedTitle: { ar: 'مش ممكن ترجع الشغلانة دي لـ Appointment لإن فيها بيانات فعلية مسجلة:', en: "Can't revert this job to an Appointment — it already has real data recorded on it:" },
@@ -4821,18 +4839,26 @@
 
         jobsToRender.forEach(job => {
             let techDetailsText = '';
+            let techTotalDue = 0;
             (job.technicians || []).forEach(tech => {
                 const wage = effectiveJobTechDue(tech, job.amountReceived, job.materialCost);
                 const reimb = techReimbTotal(tech);
                 const totalDue = reimb > 0.005 ? ` $${round2(wage + reimb).toFixed(2)} ($${wage.toFixed(2)} + $${reimb.toFixed(2)} ${t('materialsShort')})` : ` $${wage.toFixed(2)}`;
                 techDetailsText += `• ${tech.name || 'Tech'} (${techTypeLabel(tech.type)}): ${t('techLineDue')}${totalDue}<br>`;
+                techTotalDue += round2(wage + reimb);
             });
+            const techCount = (job.technicians || []).length;
+            const techSummary = techCount > 0 ? `${techCount} ${t('techCountSuffix')} - $${round2(techTotalDue).toFixed(2)}` : t('noTechData');
 
             let expenseDetailsText = '';
+            let expenseTotalAmount = 0;
             (job.expenseItems || []).forEach(item => {
                 const label = item.category === 'أخرى' && item.note ? `${expenseCatLabel(item.category)} (${item.note})` : expenseCatLabel(item.category);
                 expenseDetailsText += `• ${label}: $${parseVal(item.amount).toFixed(2)}<br>`;
+                expenseTotalAmount += parseVal(item.amount);
             });
+            const expenseCount = (job.expenseItems || []).length;
+            const expenseSummary = expenseCount > 0 ? `${expenseCount} ${t('expCountSuffix')} - $${round2(expenseTotalAmount).toFixed(2)}` : `$${parseVal(job.extraExpenses).toFixed(2)}`;
 
             const { net: netProfit, shareS, shareM, companyNet, ratio: rowRatio } = jobNet(job);
             const rev = parseVal(job.totalRevenue);
@@ -4853,8 +4879,8 @@
                 <td data-label="${t('thDateStatus')}"><span class="badge ${statusBadgeClass}">${statusLabel(job.jobStatus)}</span><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.startDate || ''}</span></td>
                 <td data-label="${t('thAmounts')}" style="font-size: 0.82rem;">$${rev.toFixed(2)} / <span style="color:#34d399;">$${rec.toFixed(2)}</span> / <span style="color:#f87171; font-weight:700;">$${rem.toFixed(2)}</span></td>
                 <td data-label="${t('thMaterials')}" style="color:#f87171;">$${parseVal(job.materialCost).toFixed(2)}</td>
-                <td data-label="${t('thExpenses')}" style="font-size:0.8rem;">${expenseDetailsText || '$' + parseVal(job.extraExpenses).toFixed(2)}</td>
-                <td data-label="${t('thTechPay')}" style="font-size:0.8rem;">${techDetailsText || t('noTechData')}</td>
+                <td data-label="${t('thExpenses')}" style="font-size:0.8rem;">${expenseDetailsText ? `<span class="detail-summary" onclick="toggleRowDetail(this)">${expenseSummary} <span class="detail-arrow">▾</span></span><div class="detail-full">${expenseDetailsText}</div>` : expenseSummary}</td>
+                <td data-label="${t('thTechPay')}" style="font-size:0.8rem;">${techDetailsText ? `<span class="detail-summary" onclick="toggleRowDetail(this)">${techSummary} <span class="detail-arrow">▾</span></span><div class="detail-full">${techDetailsText}</div>` : techSummary}</td>
                 <td data-label="${t('thNet')}" style="color:${netProfit < 0 ? '#f87171' : '#34d399'}; font-weight:700;">$${netProfit.toFixed(2)}</td>
                 <td data-label="${t('thShareS')}" style="color:#38bdf8;">$${shareS.toFixed(2)} <span style="color:var(--text-muted); font-size:0.72rem;">(${Math.round(rowRatio.s * 100)}%)</span></td>
                 <td data-label="${t('thShareM')}" style="color:#38bdf8;">$${shareM.toFixed(2)} <span style="color:var(--text-muted); font-size:0.72rem;">(${Math.round(rowRatio.m * 100)}%)</span></td>
@@ -6382,20 +6408,20 @@ ${closeBtnHtml}
             html += `<div class="note-box" style="margin-bottom:10px;">${t('companyPeriodNote')}</div>
             <div style="background:var(--card-dark); border:1px solid #38bdf8; border-radius:8px; padding:14px; margin-bottom:14px;">
                 <div style="color:#38bdf8; font-weight:700; margin-bottom:8px;">${t('partnerPeriodLabel')}</div>
-                <div style="font-size:0.85rem; color:var(--text-muted);">${t('cwNetIncomeLabel')} <b style="color:#34d399;">$${periodIncome.toFixed(2)}</b></div>
-                <div style="font-size:0.85rem; color:var(--text-muted);">${t('totalWithdrawnLabel')} <b style="color:#f87171;">-$${periodSpent.toFixed(2)}</b></div>
-                <div style="font-size:0.95rem; margin-top:6px; border-top:1px solid var(--border-color); padding-top:6px;">${t('remainingBalanceLabel')} <b style="color:${periodRemaining < 0 ? '#f87171' : '#fbbf24'};">$${periodRemaining.toFixed(2)}</b></div>
+                <div class="summary-line">${t('cwNetIncomeLabel')} <b style="color:#34d399;">$${periodIncome.toFixed(2)}</b></div>
+                <div class="summary-line">${t('totalWithdrawnLabel')} <b style="color:#f87171;">-$${periodSpent.toFixed(2)}</b></div>
+                <div class="summary-highlight"><span>${t('remainingBalanceLabel')}</span><b style="color:${periodRemaining < 0 ? '#f87171' : '#fbbf24'};">$${periodRemaining.toFixed(2)}</b></div>
             </div>`;
         } else {
             html += `<div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:8px; padding:14px; margin-bottom:18px;">
-                <div style="font-size:0.8rem; color:var(--text-muted);">${t('cwTotalReceived')} <b>$${totalReceived.toFixed(2)}</b></div>
-                <div style="font-size:0.8rem; color:var(--text-muted);">${t('cwMaterials')} <b style="color:#f87171;">-$${totalMaterials.toFixed(2)}</b></div>
-                <div style="font-size:0.8rem; color:var(--text-muted);">${t('cwTechDues')} <b style="color:#f87171;">-$${totalTechDues.toFixed(2)}</b></div>
-                <div style="font-size:0.8rem; color:var(--text-muted); border-top:1px dashed var(--border-color); margin-top:4px; padding-top:4px;">${t('cwShareS')} <b style="color:#34d399;">$${totalShareS.toFixed(2)}</b></div>
-                <div style="font-size:0.8rem; color:var(--text-muted);">${t('cwShareM')} <b style="color:#34d399;">$${totalShareM.toFixed(2)}</b></div>
-                <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">${t('cwCompanyShare')} <b style="color:#fbbf24;">$${totalIncome.toFixed(2)}</b></div>
-                <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalWithdrawnLabel')} <b style="color:#f87171;">-$${totalGeneralExpenses.toFixed(2)}</b></div>
-                <div style="font-size:0.95rem; margin-top:6px; border-top:1px solid var(--border-color); padding-top:6px;">${t('remainingBalanceLabel')} <b style="color:${remaining < 0 ? '#f87171' : '#fbbf24'};">$${remaining.toFixed(2)}</b></div>
+                <div class="summary-line">${t('cwTotalReceived')} <b>$${totalReceived.toFixed(2)}</b></div>
+                <div class="summary-line">${t('cwMaterials')} <b style="color:#f87171;">-$${totalMaterials.toFixed(2)}</b></div>
+                <div class="summary-line">${t('cwTechDues')} <b style="color:#f87171;">-$${totalTechDues.toFixed(2)}</b></div>
+                <div class="summary-line" style="border-top:1px dashed var(--border-color); margin-top:4px; padding-top:4px;">${t('cwShareS')} <b style="color:#34d399;">$${totalShareS.toFixed(2)}</b></div>
+                <div class="summary-line">${t('cwShareM')} <b style="color:#34d399;">$${totalShareM.toFixed(2)}</b></div>
+                <div class="summary-line">${t('cwCompanyShare')} <b style="color:#fbbf24;">$${totalIncome.toFixed(2)}</b></div>
+                <div class="summary-line">${t('totalWithdrawnLabel')} <b style="color:#f87171;">-$${totalGeneralExpenses.toFixed(2)}</b></div>
+                <div class="summary-highlight"><span>${t('remainingBalanceLabel')}</span><b style="color:${remaining < 0 ? '#f87171' : '#fbbf24'};">$${remaining.toFixed(2)}</b></div>
             </div>`;
         }
 
@@ -6505,15 +6531,15 @@ ${closeBtnHtml}
             <div class="grid-2" style="margin-bottom:10px; gap:12px;">
                 <div style="background:var(--panel-bg); border:1px solid #38bdf8; border-radius:8px; padding:14px;">
                     <div style="color:#38bdf8; font-weight:700; margin-bottom:8px;">S — ${t('partnerPeriodLabel')}</div>
-                    <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalEarnedLabel')} <b style="color:#34d399;">$${periodEarnedS.toFixed(2)}</b></div>
-                    <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalWithdrawnLabel')} <b style="color:#f87171;">$${periodWithdrawnS.toFixed(2)}</b></div>
-                    <div style="font-size:0.9rem; margin-top:6px; border-top:1px solid var(--border-color); padding-top:6px;">${t('remainingBalanceLabel')} <b style="color:${periodRemainingS < 0 ? '#f87171' : '#fbbf24'};">$${periodRemainingS.toFixed(2)}</b></div>
+                    <div class="summary-line">${t('totalEarnedLabel')} <b style="color:#34d399;">$${periodEarnedS.toFixed(2)}</b></div>
+                    <div class="summary-line">${t('totalWithdrawnLabel')} <b style="color:#f87171;">$${periodWithdrawnS.toFixed(2)}</b></div>
+                    <div class="summary-highlight"><span>${t('remainingBalanceLabel')}</span><b style="color:${periodRemainingS < 0 ? '#f87171' : '#fbbf24'};">$${periodRemainingS.toFixed(2)}</b></div>
                 </div>
                 <div style="background:var(--panel-bg); border:1px solid #38bdf8; border-radius:8px; padding:14px;">
                     <div style="color:#38bdf8; font-weight:700; margin-bottom:8px;">M — ${t('partnerPeriodLabel')}</div>
-                    <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalEarnedLabel')} <b style="color:#34d399;">$${periodEarnedM.toFixed(2)}</b></div>
-                    <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalWithdrawnLabel')} <b style="color:#f87171;">$${periodWithdrawnM.toFixed(2)}</b></div>
-                    <div style="font-size:0.9rem; margin-top:6px; border-top:1px solid var(--border-color); padding-top:6px;">${t('remainingBalanceLabel')} <b style="color:${periodRemainingM < 0 ? '#f87171' : '#fbbf24'};">$${periodRemainingM.toFixed(2)}</b></div>
+                    <div class="summary-line">${t('totalEarnedLabel')} <b style="color:#34d399;">$${periodEarnedM.toFixed(2)}</b></div>
+                    <div class="summary-line">${t('totalWithdrawnLabel')} <b style="color:#f87171;">$${periodWithdrawnM.toFixed(2)}</b></div>
+                    <div class="summary-highlight"><span>${t('remainingBalanceLabel')}</span><b style="color:${periodRemainingM < 0 ? '#f87171' : '#fbbf24'};">$${periodRemainingM.toFixed(2)}</b></div>
                 </div>
             </div>`;
         }
@@ -6522,15 +6548,15 @@ ${closeBtnHtml}
         <div class="grid-2" style="margin-bottom:18px; gap:12px;">
             <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:8px; padding:14px;">
                 <div style="color:#38bdf8; font-weight:700; margin-bottom:8px;">S</div>
-                <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalEarnedLabel')} <b style="color:#34d399;">$${earnedS.toFixed(2)}</b></div>
-                <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalWithdrawnLabel')} <b style="color:#f87171;">$${withdrawnS.toFixed(2)}</b></div>
-                <div style="font-size:0.9rem; margin-top:6px; border-top:1px solid var(--border-color); padding-top:6px;">${t('remainingBalanceLabel')} <b style="color:${remainingS < 0 ? '#f87171' : '#fbbf24'};">$${remainingS.toFixed(2)}</b></div>
+                <div class="summary-line">${t('totalEarnedLabel')} <b style="color:#34d399;">$${earnedS.toFixed(2)}</b></div>
+                <div class="summary-line">${t('totalWithdrawnLabel')} <b style="color:#f87171;">$${withdrawnS.toFixed(2)}</b></div>
+                <div class="summary-highlight"><span>${t('remainingBalanceLabel')}</span><b style="color:${remainingS < 0 ? '#f87171' : '#fbbf24'};">$${remainingS.toFixed(2)}</b></div>
             </div>
             <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:8px; padding:14px;">
                 <div style="color:#38bdf8; font-weight:700; margin-bottom:8px;">M</div>
-                <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalEarnedLabel')} <b style="color:#34d399;">$${earnedM.toFixed(2)}</b></div>
-                <div style="font-size:0.8rem; color:var(--text-muted);">${t('totalWithdrawnLabel')} <b style="color:#f87171;">$${withdrawnM.toFixed(2)}</b></div>
-                <div style="font-size:0.9rem; margin-top:6px; border-top:1px solid var(--border-color); padding-top:6px;">${t('remainingBalanceLabel')} <b style="color:${remainingM < 0 ? '#f87171' : '#fbbf24'};">$${remainingM.toFixed(2)}</b></div>
+                <div class="summary-line">${t('totalEarnedLabel')} <b style="color:#34d399;">$${earnedM.toFixed(2)}</b></div>
+                <div class="summary-line">${t('totalWithdrawnLabel')} <b style="color:#f87171;">$${withdrawnM.toFixed(2)}</b></div>
+                <div class="summary-highlight"><span>${t('remainingBalanceLabel')}</span><b style="color:${remainingM < 0 ? '#f87171' : '#fbbf24'};">$${remainingM.toFixed(2)}</b></div>
             </div>
         </div>`;
 
@@ -8431,6 +8457,34 @@ ${closeBtnHtml}
             fromEl.value = ''; toEl.value = '';
         }
         renderCompanyAccountContent();
+    }
+
+    // Collapses the less-common Company Account actions (clear filter, PDF report) behind a
+    // "More" toggle, so the bar people actually use every time (date range + week presets)
+    // isn't crowded by buttons they only need once in a while.
+    function toggleCompanyMoreActions() {
+        const panel = document.getElementById('companyMoreActionsPanel');
+        panel.style.display = (panel.style.display === 'none' || !panel.style.display) ? 'flex' : 'none';
+    }
+
+    function toggleJobsFilterPanel() {
+        const panel = document.getElementById('jobsFilterPanel');
+        panel.style.display = (panel.style.display === 'none' || !panel.style.display) ? 'flex' : 'none';
+    }
+
+    // Expands/collapses a single job row's technician or expense breakdown — the row stays a
+    // one-line summary until someone actually wants the detail, instead of always showing the
+    // full bullet list for every job in the table.
+    function toggleRowDetail(el) {
+        const full = el.nextElementSibling;
+        if (!full) return;
+        // getComputedStyle, not el.style — the hidden state comes from the .detail-full CSS
+        // class (display:none), not an inline style, so checking .style.display directly
+        // would always read '' and never detect it as hidden.
+        const showing = getComputedStyle(full).display !== 'none';
+        full.style.display = showing ? 'none' : 'block';
+        const arrow = el.querySelector('.detail-arrow');
+        if (arrow) arrow.textContent = showing ? '▾' : '▴';
     }
 
     // ONE place that works out, per technician, what they EARNED on each job.
