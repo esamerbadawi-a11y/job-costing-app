@@ -6354,7 +6354,11 @@
         const companyTagline = companyProfile.tagline || '';
         const companyLogo = companyProfile.logo || '';
         const footerLine = [...(companyProfile.phones || []), companyProfile.email].filter(Boolean).join('  |  ');
-        const footerParts = [footerLine, companyProfile.website].filter(Boolean).join('   &bull;   ');
+        // The site URL itself must not line-wrap: browsers treat "-" as a break point, so a
+        // hyphenated domain (e.g. affordable-handyman-approach.com) was splitting mid-word
+        // across two lines. Keeping it in one nowrap span lets it wrap as a whole unit instead.
+        const websitePart = companyProfile.website ? `<span style="white-space:nowrap;">${escHtml(companyProfile.website)}</span>` : '';
+        const footerParts = [footerLine, websitePart].filter(Boolean).join('   &bull;   ');
 
         // "Additional Work" lists discrete tasks (Description + Amount only, no # or Qty columns,
         // per the agreed reference layout); every other document type keeps the original 4-column
@@ -6365,7 +6369,7 @@
             const cells = isAdditionalWork
                 ? `<div>${escHtml(it.desc)}</div><div style="text-align:right;">$${parseVal(it.amount).toFixed(2)}</div>`
                 : `<div>${i + 1}</div><div>${escHtml(it.desc)}</div><div style="text-align:center;">${escHtml(it.qty || '')}</div><div style="text-align:right;">$${parseVal(it.amount).toFixed(2)}</div>`;
-            return `<div style="display:grid; grid-template-columns: ${itemsGridCols}; gap:10px; padding:10px 12px; font-size:12.5px; border-bottom:1px solid #E7E1D6; ${bg}">${cells}</div>`;
+            return `<div class="invoice-item-row" style="display:grid; grid-template-columns: ${itemsGridCols}; gap:10px; padding:10px 12px; font-size:12.5px; border-bottom:1px solid #E7E1D6; ${bg}">${cells}</div>`;
         }).join('');
         const itemsHeaderCells = isAdditionalWork
             ? `<div>${escHtml(t('invoiceColDesc')).toUpperCase()}</div><div style="text-align:right;">${escHtml(t('invoiceColAmount')).toUpperCase()}</div>`
@@ -6379,7 +6383,7 @@
         const followUpRow = invoiceState.showFollowUp ? `<div style="font-size:11.5px; color:#6B6257;"><b>${t('invoiceFollowUpToggle')}:</b> ${escHtml(invoiceState.followUpText)}</div>` : '';
         const validityRow = invoiceState.showValidity ? `<div style="display:flex; justify-content:flex-end;"><div style="font-size:11px; color:#6B6257; font-style:italic; width:300px; text-align:right;">${escHtml(invoiceState.validityText)}</div></div>` : '';
         const noteHeaderText = isAdditionalWork ? t('invoiceWorkNoteHeader') : t('invoiceNoteLabel');
-        const noteBox = invoiceState.note ? `<div style="background:#F6F1E8; border:1px dashed ${accent}; border-radius:6px; padding:14px 16px;"><div style="font-weight:700; font-size:11.5px; letter-spacing:0.5px; margin-bottom:6px; color:${accent};">${escHtml(noteHeaderText).toUpperCase()}</div><div style="font-size:12.5px; line-height:1.7; color:#3A332B;">${escHtml(invoiceState.note).replace(/\n/g, '<br>')}</div></div>` : '';
+        const noteBox = invoiceState.note ? `<div class="invoice-note" style="background:#F6F1E8; border:1px dashed ${accent}; border-radius:6px; padding:14px 16px;"><div style="font-weight:700; font-size:11.5px; letter-spacing:0.5px; margin-bottom:6px; color:${accent};">${escHtml(noteHeaderText).toUpperCase()}</div><div class="invoice-note-body" style="font-size:12.5px; line-height:1.7; color:#3A332B;">${escHtml(invoiceState.note).replace(/\n/g, '<br>')}</div></div>` : '';
         const logoHeaderHtml = companyLogo ? `<img src="${companyLogo}" style="width:70px; height:70px; object-fit:contain; flex-shrink:0;">` : '';
         const watermarkHtml = companyLogo ? `<img src="${companyLogo}" style="position:absolute; top:50%; left:50%; width:560px; height:560px; transform:translate(-50%,-50%); opacity:0.06; pointer-events:none;">` : '';
         const paidStampHtml = isPaid ? `<div style="position:absolute; top:260px; left:0; width:100%; text-align:center; z-index:5; transform:rotate(-18deg); color:rgba(220,38,38,0.32); font-family: Arial, Helvetica, sans-serif; font-weight:800; font-size:54px; letter-spacing:4px; white-space:nowrap; pointer-events:none;">${escHtml(t('invoicePaidStamp')).toUpperCase()}</div>` : '';
@@ -6452,7 +6456,7 @@
         // A fixed boilerplate block (not editable per-invoice) on Invoice/Estimate/Proposal only —
         // "Additional Work" keeps its own distinct layout and note section untouched.
         const scopeClarificationsHtml = isAdditionalWork ? '' : `
-            <div style="margin-top:2px;">
+            <div class="invoice-scope" style="margin-top:2px;">
               <div class="ui" style="font-weight:700; font-size:12px; letter-spacing:0.5px; color:${accent}; margin-bottom:6px;">${escHtml(t('invoiceScopeClarificationsTitle')).toUpperCase()}</div>
               <ul style="margin:0; padding-${currentLang === 'ar' ? 'right' : 'left'}:18px; font-size:11.5px; line-height:1.7; color:#3A332B;">
                 <li>${escHtml(t('invoiceScopeClarification1'))}</li>
@@ -6486,15 +6490,24 @@
        content here, instead of always padding out to a full page, gives that margin back. */
     .invoice-page{ width:816px !important; min-height:0 !important; }
     /* Also trim the spacing budget itself (not just the forced full-page height above) —
-       some print engines (notably iOS Safari / AirPrint, which was what actually still
-       overflowed to a near-empty 2nd page after the min-height fix alone) seem to reserve
-       more margin around the printable area than this file's own @page rule asks for, and/or
-       don't let a flex child split across a page break — they push the WHOLE next block to
-       page 2 rather than filling the remaining space on page 1. Tightening the gaps/padding
-       here, print-only, buys real headroom without changing how the invoice looks on screen. */
-    .invoice-inner{ min-height:0 !important; gap:10px !important; padding:24px 56px 16px 56px !important; }
-    .invoice-sigrow{ margin-top:4px !important; }
-    .invoice-footer{ margin-top:4px !important; padding-top:10px !important; }
+       some print engines (notably iOS Safari / AirPrint, and Chrome with "Headers and
+       footers" turned on in the print dialog — both reserve extra top/bottom margin for
+       their own date/URL/page-number strip, on top of this file's own @page rule) leave
+       less real room than my own sandbox testing showed, so the signature+footer block was
+       still tipping over onto an almost-empty 2nd page. Browsers also don't split a block
+       across a page break — they push the WHOLE next block to page 2 rather than filling
+       the remaining space on page 1 — so even a few px of overflow costs a whole page.
+       Tightening gaps/padding here, print-only, buys real headroom without changing how the
+       invoice looks on screen. */
+    .invoice-inner{ min-height:0 !important; gap:6px !important; padding:16px 56px 8px 56px !important; }
+    .invoice-item-row{ padding:6px 12px !important; }
+    .invoice-note{ padding:8px 12px !important; }
+    .invoice-note-body{ line-height:1.4 !important; }
+    .invoice-scope{ margin-top:0 !important; }
+    .invoice-scope ul{ line-height:1.4 !important; }
+    .invoice-sigline{ height:22px !important; }
+    .invoice-sigrow{ margin-top:6px !important; }
+    .invoice-footer{ margin-top:2px !important; padding-top:6px !important; }
   }
   @media screen and (max-width: 900px) { .invoice-page{ width:100% !important; } }
   @media screen and (max-width: 480px) {
@@ -6550,9 +6563,9 @@ ${closeBtnHtml}
     ${totalDueAmountLineHtml}
 
     <div class="invoice-sigrow" style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:16px; gap:24px;">
-      <div style="flex-grow:1;"><div style="border-bottom:1px solid #241F1A; height:36px;"></div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">Customer Approval</div></div>
-      <div style="width:180px;"><div style="border-bottom:1px solid #241F1A; height:36px;"></div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">${escHtml(companyName)} Representative</div></div>
-      <div style="width:120px;"><div style="border-bottom:1px solid #241F1A; height:36px;"></div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">Date</div></div>
+      <div style="flex-grow:1;"><div class="invoice-sigline" style="border-bottom:1px solid #241F1A; height:36px;"></div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">Customer Approval</div></div>
+      <div style="width:180px;"><div class="invoice-sigline" style="border-bottom:1px solid #241F1A; height:36px;"></div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">${escHtml(companyName)} Representative</div></div>
+      <div style="width:120px;"><div class="invoice-sigline" style="border-bottom:1px solid #241F1A; height:36px;"></div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">Date</div></div>
     </div>
 
     <div class="invoice-footer" style="margin-top:14px; padding-top:18px; border-top:1px solid #E7E1D6; text-align:center;">
