@@ -6485,7 +6485,16 @@
        line + footer) onto a second, almost-empty page. Letting height follow the real
        content here, instead of always padding out to a full page, gives that margin back. */
     .invoice-page{ width:816px !important; min-height:0 !important; }
-    .invoice-inner{ min-height:0 !important; }
+    /* Also trim the spacing budget itself (not just the forced full-page height above) —
+       some print engines (notably iOS Safari / AirPrint, which was what actually still
+       overflowed to a near-empty 2nd page after the min-height fix alone) seem to reserve
+       more margin around the printable area than this file's own @page rule asks for, and/or
+       don't let a flex child split across a page break — they push the WHOLE next block to
+       page 2 rather than filling the remaining space on page 1. Tightening the gaps/padding
+       here, print-only, buys real headroom without changing how the invoice looks on screen. */
+    .invoice-inner{ min-height:0 !important; gap:10px !important; padding:24px 56px 16px 56px !important; }
+    .invoice-sigrow{ margin-top:4px !important; }
+    .invoice-footer{ margin-top:4px !important; padding-top:10px !important; }
   }
   @media screen and (max-width: 900px) { .invoice-page{ width:100% !important; } }
   @media screen and (max-width: 480px) {
@@ -6540,13 +6549,13 @@ ${closeBtnHtml}
 
     ${totalDueAmountLineHtml}
 
-    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:16px; gap:24px;">
+    <div class="invoice-sigrow" style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:16px; gap:24px;">
       <div style="flex-grow:1;"><div style="border-bottom:1px solid #241F1A; height:36px;"></div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">Customer Approval</div></div>
       <div style="width:180px;"><div style="border-bottom:1px solid #241F1A; height:36px;"></div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">${escHtml(companyName)} Representative</div></div>
       <div style="width:120px;"><div style="border-bottom:1px solid #241F1A; height:36px;"></div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">Date</div></div>
     </div>
 
-    <div style="margin-top:14px; padding-top:18px; border-top:1px solid #E7E1D6; text-align:center;">
+    <div class="invoice-footer" style="margin-top:14px; padding-top:18px; border-top:1px solid #E7E1D6; text-align:center;">
       ${footerParts ? `<div class="ui" style="font-size:11px; color:#6B6257; letter-spacing:0.3px;">${footerParts}</div>` : ''}
       <div style="font-size:13px; margin-top:6px;">${escHtml(t('invoiceThankYou'))}</div>
     </div>
