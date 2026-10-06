@@ -124,6 +124,11 @@
         .detail-summary { cursor: pointer; color: #38bdf8; }
         .detail-summary .detail-arrow { font-size: 0.7rem; }
         .detail-full { display: none; margin-top: 4px; }
+        .job-step { display: none; }
+        .job-step.active { display: block; }
+        .job-step-tabs { display: flex; gap: 4px; margin-bottom: 16px; overflow-x: auto; border-bottom: 1px solid var(--border-color); }
+        .job-step-tab { flex: 1; min-width: 90px; background: none; border: none; border-bottom: 3px solid transparent; color: var(--text-muted); padding: 10px 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+        .job-step-tab.active-tab { color: #38bdf8; border-bottom-color: #38bdf8; }
         .menu-section-label { padding: 8px 14px 4px; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
         .screen-subtitle { font-size: 0.78rem; color: var(--text-muted); margin: -8px 0 14px; }
         .filters-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
@@ -264,6 +269,7 @@
                     <button class="secondary" onclick="toggleLanguage()" id="langToggleBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;">عربي 🌐</button>
                     <button class="secondary" onclick="toggleTheme()" id="themeToggleBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
                     <button class="secondary" onclick="toggleUserMenu(); openCompanyProfileModal();" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;" data-i18n="companyProfileBtn"></button>
+                    <button class="secondary" onclick="toggleUserMenu(); checkWhatsNew(true);" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;" data-i18n="whatsNewBtn"></button>
                     <button class="secondary" onclick="resetGeminiApiKey()" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;" data-i18n="resetAiKeyBtn"></button>
                     <button class="danger" onclick="doLogout()" data-i18n="logoutBtn" style="width:100%; border-radius:0; text-align:start; padding:10px 14px;"></button>
                     <div style="padding:8px 14px; font-size:0.7rem; color:var(--text-muted); text-align:start; border-top:1px solid var(--border-color);"><span data-i18n="appVersionLabel"></span> <span id="appVersionValue" dir="ltr"></span></div>
@@ -548,6 +554,14 @@
                 <div id="jobFormBody" style="padding-top:0;">
                 <input type="hidden" id="editingJobId" value="">
 
+                <div class="job-step-tabs no-print">
+                    <button type="button" class="job-step-tab active-tab" id="jobStepTab1" onclick="goToJobStep(1)" data-i18n="jobStepTabClient"></button>
+                    <button type="button" class="job-step-tab" id="jobStepTab2" onclick="goToJobStep(2)" data-i18n="jobStepTabMoney"></button>
+                    <button type="button" class="job-step-tab" id="jobStepTab3" onclick="goToJobStep(3)" data-i18n="jobStepTabTechs"></button>
+                    <button type="button" class="job-step-tab" id="jobStepTab4" onclick="goToJobStep(4)" data-i18n="jobStepTabSplit"></button>
+                </div>
+
+                <div class="job-step active" id="jobStep1">
                 <div id="crmClientInfoBox" style="display: none; background: rgba(14, 165, 233, 0.1); border: 1px solid var(--accent); border-radius: 10px; padding: 12px; margin-bottom: 14px; font-size: 0.85rem;">
                     <div style="color: #38bdf8; font-weight: 700; margin-bottom: 4px;">🔍 <span data-i18n="crmBoxTitle"></span></div>
                     <div id="crmClientInfoContent" style="display: flex; gap: 15px; flex-wrap: wrap; color: var(--text-main);"></div>
@@ -610,7 +624,9 @@
                     </div>
                     <div id="jobPhotoGallery" style="display:none; gap:8px; flex-wrap:wrap; margin-top:6px;"></div>
                 </div>
+                </div>
 
+                <div class="job-step" id="jobStep2">
                 <div class="grid-3">
                     <div class="form-group"><label data-i18n="lblStartDate"></label><input type="date" id="startDate"></div>
                     <div class="form-group"><label data-i18n="lblEndDate"></label><input type="date" id="endDate"></div>
@@ -652,7 +668,9 @@
                     <div style="color: #38bdf8; font-weight: bold; font-size: 0.9rem; margin-bottom: 10px;" data-i18n="jobScheduleSummaryTitle"></div>
                     <div id="jobScheduleSummaryContent" style="font-size:0.82rem;"></div>
                 </div>
+                </div>
 
+                <div class="job-step" id="jobStep3">
                 <div class="card" style="background: var(--panel-bg); padding: 16px; margin-top: 15px; border: 1px solid var(--border-color);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <span style="color: #f39c12; font-weight: bold; font-size: 1rem;" data-i18n="techSectionTitle"></span>
@@ -681,7 +699,9 @@
                     <div id="jobPeriodNetBox"></div>
                     <div id="techniciansContainer"></div>
                 </div>
+                </div>
 
+                <div class="job-step" id="jobStep4">
                 <div class="card" style="background: var(--panel-bg); padding: 16px; margin-top: 15px; border: 1px solid var(--border-color);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <span style="color: #f39c12; font-weight: bold; font-size: 1rem;" data-i18n="expenseSectionTitle"></span>
@@ -731,8 +751,11 @@
 
                     <div id="splitRatioTotalDisplay" style="margin-top:10px; text-align:end; font-size:0.9rem;"></div>
                 </div>
+                </div>
 
-                <div style="display: flex; gap: 8px;">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" class="secondary" onclick="goToJobStep(currentJobStep - 1)" id="jobStepPrevBtn" style="flex: 1; padding: 12px; margin-top: 5px; display:none;" data-i18n="jobStepPrevBtn"></button>
+                    <button type="button" class="secondary" onclick="goToJobStep(currentJobStep + 1)" id="jobStepNextBtn" style="flex: 1; padding: 12px; margin-top: 5px;" data-i18n="jobStepNextBtn"></button>
                     <button class="success" onclick="saveJob()" id="saveBtn" style="flex: 2; padding: 12px; margin-top: 5px;"></button>
                     <button class="secondary" onclick="cancelJobEdit()" id="cancelEditBtn" style="flex: 1; padding: 12px; margin-top: 5px; display: none;" data-i18n="cancelEditBtn"></button>
                 </div>
@@ -1215,6 +1238,16 @@
     </div>
 </div>
 
+<div id="whatsNewModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10002; justify-content:center; align-items:center;" onclick="if(event.target===this) closeWhatsNewModal();">
+    <div class="tg-modal-box" style="max-width:480px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.1rem;">🆕 <span data-i18n="whatsNewTitle"></span></h2>
+            <button class="danger" onclick="closeWhatsNewModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+        <div id="whatsNewList" style="font-size:0.85rem; line-height:1.6; color:var(--text-main);"></div>
+    </div>
+</div>
+
 <div id="globalSearchModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10001; justify-content:center; align-items:flex-start;" onclick="if(event.target===this) closeGlobalSearch();">
     <div class="tg-modal-box" style="max-width:520px; margin-top:8vh;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px;">
@@ -1305,6 +1338,11 @@
         <button class="danger" style="width:100%; padding:8px; font-size:0.8rem; margin-bottom:8px; display:none;" id="esRemoveDayBtn" data-i18n="esRemoveDayBtn"></button>
         <button class="secondary" style="width:100%; padding:8px; font-size:0.8rem;" id="esFullEditLink" data-i18n="esFullEditLink"></button>
     </div>
+</div>
+
+<div id="undoToast" style="display:none; position:fixed; bottom:20px; inset-inline-start:50%; transform:translateX(-50%); background:#1e293b; border:1px solid var(--border-color); border-radius:10px; padding:12px 16px; box-shadow:0 10px 25px rgba(0,0,0,0.4); z-index:10010; align-items:center; gap:14px; max-width:90vw;">
+    <span id="undoToastMsg" style="font-size:0.85rem; color:var(--text-main);"></span>
+    <button class="success" onclick="triggerPendingUndo()" style="padding:6px 14px; font-size:0.78rem; white-space:nowrap;" data-i18n="undoBtnLabel"></button>
 </div>
 
 <script>
@@ -1422,6 +1460,11 @@
         partnerReportSubtitle: { ar: 'اختار شريك إضافي (غير S أو M) وشوف نصيبه من كل شغلانة اشترك فيها.', en: "Pick an extra partner (other than S or M) and see their share from every job they're in." },
         techPartnerReportSubtitle: { ar: 'اختار اسم واحد (فني أو شريك) وشوف كل شغلاناته ومستحقاته في مكان واحد.', en: 'Pick one name (technician or partner) and see all their jobs and dues in one place.' },
         companyAccountSubtitle: { ar: 'دخل الشركة من نصيبها في الأرباح (20%)، ومصاريفها العامة اللي مش خاصة بشغلانة معينة.', en: "The company's income from its share of profit (20%), and its general expenses not tied to one job." },
+        whatsNewBtn: { ar: '🆕 إيه الجديد', en: '🆕 What\'s New' },
+        whatsNewTitle: { ar: 'إيه الجديد', en: "What's New" },
+        confirmRestoreJobDraft: { ar: 'لقينا شغلانة جديدة كنت بتكتبها ومحفظتهاش. عايز تكمل منها؟', en: "We found a new job you were filling in that wasn't saved. Want to continue from it?" },
+        undoBtnLabel: { ar: 'تراجع', en: 'Undo' },
+        undoToastDeleted: { ar: 'اتحذف.', en: 'Deleted.' },
         filtersToggleBtn: { ar: '🔍 فلترة وبحث', en: '🔍 Filter & Search' },
         techCountSuffix: { ar: 'فنيين', en: 'techs' },
         expCountSuffix: { ar: 'بنود', en: 'items' },
@@ -1694,6 +1737,12 @@
         saveBtnNew: { ar: 'حفظ واحتساب المشروع', en: 'Save & Calculate Project' },
         saveBtnUpdate: { ar: 'تحديث التعديلات', en: 'Update Changes' },
         cancelEditBtn: { ar: 'إلغاء التعديل', en: 'Cancel Edit' },
+        jobStepTabClient: { ar: '١. بيانات العميل', en: '1. Client Info' },
+        jobStepTabMoney: { ar: '٢. التواريخ والمبالغ', en: '2. Dates & Amounts' },
+        jobStepTabTechs: { ar: '٣. الفنيين', en: '3. Technicians' },
+        jobStepTabSplit: { ar: '٤. المصاريف والتوزيع', en: '4. Expenses & Split' },
+        jobStepPrevBtn: { ar: '⟵ السابق', en: '⟵ Previous' },
+        jobStepNextBtn: { ar: 'التالي ⟶', en: 'Next ⟶' },
         techSelectPlaceholder: { ar: 'اختر الفني...', en: 'Select Technician...' },
         lblTechName: { ar: 'اسم الفني', en: 'Technician Name' },
         lblPaymentMethod: { ar: 'طريقة الحساب', en: 'Payment Method' },
@@ -2333,6 +2382,8 @@
             document.getElementById('menuSectionAdminLabel').style.display = (user.email === ADMIN_EMAIL) ? '' : 'none';
             safeCall(updateFabVisibility);
             setupRealtimeSync();
+            safeCall(() => checkWhatsNew(false));
+            safeCall(offerJobDraftRestoreIfAny);
         } else {
             currentUserEmail = null;
             document.getElementById('loginScreen').style.display = 'flex';
@@ -2487,8 +2538,134 @@
     // "before initialization" error in the console on every page load).
     let debtBannerDismissed = false;
     // Shown at the bottom of the user menu, so you can tell in one second whether the phone is running the latest upload.
-    const APP_VERSION = '2026-09-21.4';
+    const APP_VERSION = '2026-10-06.1';
     safeCall(() => { document.getElementById('appVersionValue').textContent = APP_VERSION; });
+
+    // Each entry is one released update. Newest first. Shown automatically, once, the first
+    // time someone opens the app after an update (checkWhatsNew, called after login) — and any
+    // time from the user menu via "What's New". Keep only a handful of the most recent entries;
+    // this isn't a full history, just enough to orient someone who was away for a while.
+    const WHATS_NEW = [
+        { version: '2026-10-06.1', date: '2026-10-06', items: {
+            ar: ['حساب الشركة بقى يبين دخل/مصروف/متبقي الفترة المحددة بدل الإجمالي الكلي', 'تقرير PDF أسبوعي لحساب الشركة', 'زرار يرجّع شغلانة اتحطت غلط لـ Appointments (لو مفيهاش بيانات مالية)', 'الشاشات بقت أبسط: فلاتر قابلة للطي، وتفاصيل الفنيين/المصاريف تتفتح لما تحتاجها بس'],
+            en: ['Company Account now shows period income/spent/remaining instead of all-time totals', 'Weekly PDF report for Company Account', 'A button to revert a mistakenly-created job back to Appointments (if it has no financial data)', 'Simpler screens: collapsible filters, and technician/expense details open only when you need them']
+        }}
+    ];
+
+    function checkWhatsNew(forceShow) {
+        let lastSeen = null;
+        try { lastSeen = localStorage.getItem('ahaLastSeenVersion'); } catch (e) {}
+        if (!forceShow && lastSeen === APP_VERSION) return;
+        const entries = forceShow ? WHATS_NEW : WHATS_NEW.filter(e => e.version !== lastSeen);
+        if (entries.length === 0) { try { localStorage.setItem('ahaLastSeenVersion', APP_VERSION); } catch (e) {} return; }
+        const list = document.getElementById('whatsNewList');
+        list.innerHTML = entries.map(entry => {
+            const items = (entry.items[currentLang] || entry.items.en).map(line => `<li style="margin-bottom:6px;">${line}</li>`).join('');
+            return `<div style="margin-bottom:14px;"><div style="color:#38bdf8; font-weight:700; font-size:0.8rem; margin-bottom:6px;" dir="ltr">${entry.version} — ${entry.date}</div><ul style="padding-inline-start:20px; margin:0;">${items}</ul></div>`;
+        }).join('');
+        document.getElementById('whatsNewModal').style.display = 'flex';
+        try { localStorage.setItem('ahaLastSeenVersion', APP_VERSION); } catch (e) {}
+    }
+    function closeWhatsNewModal() { document.getElementById('whatsNewModal').style.display = 'none'; }
+
+    // ---------- Unsaved-changes protection for the job entry form ----------
+    // Two separate things, both driven by the same "something changed" signal:
+    //  1. A browser warning before closing/refreshing the tab while there's unsaved work
+    //     (any job, new or being edited).
+    //  2. A local draft of a NEW job in progress (not yet saved at all), so a crashed tab,
+    //     accidental refresh, or dead battery doesn't lose a half-typed job. Scoped to NEW
+    //     jobs only — never to an edit of an existing job — so restoring a stale draft can
+    //     never silently clobber a job someone else may have changed in the meantime.
+    // Photos/receipts/material-entry files are deliberately left out of the draft (they can
+    // be large; keeping the draft to text/number fields + technicians/expenses keeps it small
+    // and keeps localStorage from ever failing to save it).
+    let jobFormDirty = false;
+    const JOB_DRAFT_KEY = 'ahaJobDraftV1';
+    let jobDraftSaveTimer = null;
+
+    function markJobFormDirty() {
+        jobFormDirty = true;
+        const editingId = document.getElementById('editingJobId').value;
+        if (editingId) return; // drafts are only for brand-new jobs, see note above
+        clearTimeout(jobDraftSaveTimer);
+        jobDraftSaveTimer = setTimeout(saveJobDraftToLocalStorage, 800);
+    }
+
+    function saveJobDraftToLocalStorage() {
+        try {
+            const draft = {
+                savedAt: new Date().toISOString(),
+                clientName: document.getElementById('clientName').value,
+                clientPhone: document.getElementById('clientPhone').value,
+                clientEmail: document.getElementById('clientEmail').value,
+                clientAddress: document.getElementById('clientAddress').value,
+                clientDescription: document.getElementById('clientDescription').value,
+                startDate: document.getElementById('startDate').value,
+                endDate: document.getElementById('endDate').value,
+                totalRevenue: document.getElementById('totalRevenue').value,
+                amountReceived: document.getElementById('amountReceived').value,
+                materialCost: document.getElementById('materialCost').value,
+                extraExpenses: document.getElementById('extraExpenses').value,
+                technicians: JSON.parse(JSON.stringify(technicians)),
+                expenseItems: JSON.parse(JSON.stringify(expenseItems)),
+                profitPartners: JSON.parse(JSON.stringify(profitPartners))
+            };
+            // Nothing worth keeping yet (an untouched, still-empty form) — don't save a blank draft.
+            if (!draft.clientName && !draft.clientAddress && draft.technicians.length === 0 && draft.expenseItems.length === 0) {
+                localStorage.removeItem(JOB_DRAFT_KEY);
+                return;
+            }
+            localStorage.setItem(JOB_DRAFT_KEY, JSON.stringify(draft));
+        } catch (e) { /* localStorage full/unavailable — draft safety is best-effort, never blocks the form */ }
+    }
+
+    function clearJobDraft() {
+        try { localStorage.removeItem(JOB_DRAFT_KEY); } catch (e) {}
+    }
+
+    // Offers to restore a draft ONLY when the form is genuinely fresh (new job, nothing typed
+    // yet) — never interrupts someone already mid-edit of an existing job.
+    function offerJobDraftRestoreIfAny() {
+        let raw = null;
+        try { raw = localStorage.getItem(JOB_DRAFT_KEY); } catch (e) {}
+        if (!raw) return;
+        const editingId = document.getElementById('editingJobId').value;
+        if (editingId) return;
+        if (document.getElementById('clientName').value) return; // form already has something in it
+        let draft;
+        try { draft = JSON.parse(raw); } catch (e) { clearJobDraft(); return; }
+        if (!confirm(t('confirmRestoreJobDraft'))) { clearJobDraft(); return; }
+        document.getElementById('clientName').value = draft.clientName || '';
+        document.getElementById('clientPhone').value = draft.clientPhone || '';
+        document.getElementById('clientEmail').value = draft.clientEmail || '';
+        document.getElementById('clientAddress').value = draft.clientAddress || '';
+        document.getElementById('clientDescription').value = draft.clientDescription || '';
+        if (draft.startDate) document.getElementById('startDate').value = draft.startDate;
+        if (draft.endDate) document.getElementById('endDate').value = draft.endDate;
+        document.getElementById('totalRevenue').value = draft.totalRevenue || 0;
+        document.getElementById('amountReceived').value = draft.amountReceived || 0;
+        document.getElementById('materialCost').value = draft.materialCost || 0;
+        document.getElementById('extraExpenses').value = draft.extraExpenses || 0;
+        technicians = draft.technicians || [];
+        expenseItems = draft.expenseItems || [];
+        profitPartners = draft.profitPartners || [];
+        safeCall(renderTechnicians);
+        safeCall(renderExpenseItems);
+        safeCall(renderProfitPartners);
+        jobFormDirty = true;
+    }
+
+    window.addEventListener('beforeunload', function (e) {
+        if (!jobFormDirty) return;
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+    });
+    safeCall(() => {
+        const entryScreen = document.getElementById('screenEntry');
+        entryScreen.addEventListener('input', markJobFormDirty);
+        entryScreen.addEventListener('change', markJobFormDirty);
+    });
     let currentReceipts = [];
     let currentMaterialEntries = [];
     const LEDGERS = {
@@ -2539,6 +2716,29 @@
         el.textContent = msg; el.style.display = 'block';
         clearTimeout(showToast._t);
         showToast._t = setTimeout(() => { el.style.display = 'none'; }, 3500);
+    }
+
+    // Generic "deleted — Undo?" toast. Used for a few low-stakes list deletions (a single
+    // expense/withdrawal/payment entry — never a job or appointment, which cascade into other
+    // screens) so the instant delete still feels safe without stopping to confirm() first.
+    // Only ONE undo can be pending at a time: starting a new one silently drops whichever is
+    // still waiting (that previous delete is simply not undoable anymore, it is NOT re-deleted).
+    let pendingUndo = null;
+    function showUndoToast(message, undoFn, delayMs = 6000) {
+        if (pendingUndo && pendingUndo.timer) clearTimeout(pendingUndo.timer);
+        const toastEl = document.getElementById('undoToast');
+        document.getElementById('undoToastMsg').textContent = message;
+        toastEl.style.display = 'flex';
+        pendingUndo = { undo: undoFn, timer: setTimeout(hideUndoToast, delayMs) };
+    }
+    function hideUndoToast() {
+        document.getElementById('undoToast').style.display = 'none';
+        pendingUndo = null;
+    }
+    function triggerPendingUndo() {
+        const undo = pendingUndo && pendingUndo.undo;
+        hideUndoToast();
+        if (undo) undo();
     }
 
     // Firestore's offline-persistence layer (enablePersistence, used for the app's real-time
@@ -4628,7 +4828,33 @@
         if (jobOverlayOpen) { closeJobOverlay(); showToast(t('toastJobSaved')); }
     }
 
+    // Splits the (long) job form into 4 tabs purely visually — every field from every tab
+    // stays in the DOM the whole time (just hidden via CSS), so none of the existing
+    // calculation functions (calculate(), updateSplitRatioTotal(), renderTechnicians(), etc.)
+    // had to change: they still read/write the same element ids regardless of which tab is
+    // showing. Save and Cancel stay visible on every tab — this is a navigation aid, not a
+    // strict wizard, so nothing blocks saving from tab 1.
+    let currentJobStep = 1;
+    const JOB_STEP_COUNT = 4;
+    function goToJobStep(n) {
+        n = Math.max(1, Math.min(JOB_STEP_COUNT, n));
+        currentJobStep = n;
+        for (let i = 1; i <= JOB_STEP_COUNT; i++) {
+            const stepEl = document.getElementById('jobStep' + i);
+            const tabEl = document.getElementById('jobStepTab' + i);
+            if (stepEl) stepEl.classList.toggle('active', i === n);
+            if (tabEl) tabEl.classList.toggle('active-tab', i === n);
+        }
+        const prevBtn = document.getElementById('jobStepPrevBtn');
+        const nextBtn = document.getElementById('jobStepNextBtn');
+        if (prevBtn) prevBtn.style.display = n === 1 ? 'none' : '';
+        if (nextBtn) nextBtn.style.display = n === JOB_STEP_COUNT ? 'none' : '';
+    }
+
     function resetForm() {
+        jobFormDirty = false;
+        clearJobDraft();
+        goToJobStep(1);
         document.getElementById('editingJobId').value = '';
         document.getElementById('clientName').value = '';
         document.getElementById('clientPhone').value = '';
@@ -5131,6 +5357,7 @@
         document.getElementById('formTitle').innerText = t('formTitleEdit');
         document.getElementById('saveBtn').innerText = t('saveBtnUpdate');
         document.getElementById('cancelEditBtn').style.display = 'block';
+        goToJobStep(1);
         switchScreen('entry');
         window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -6387,14 +6614,23 @@ ${closeBtnHtml}
     }
 
     async function deleteCompanyExpense(index) {
-        if (!confirm(t('confirmDeleteWithdrawal'))) return;
+        const backup = companyExpenses[index];
         companyExpenses.splice(index, 1);
+        renderCompanyAccountContent();
         try {
             await COMPANY_EXPENSES_DOC.set({ entries: companyExpenses });
-            renderCompanyAccountContent();
         } catch (err) {
+            if (backup) companyExpenses.splice(index, 0, backup);
+            renderCompanyAccountContent();
             alertSaveError(err);
+            return;
         }
+        showUndoToast(t('undoToastDeleted'), async () => {
+            companyExpenses.splice(index, 0, backup);
+            renderCompanyAccountContent();
+            try { await COMPANY_EXPENSES_DOC.set({ entries: companyExpenses }); }
+            catch (err) { alertSaveError(err); }
+        });
     }
 
     function renderCompanyAccountContent() {
@@ -6519,14 +6755,23 @@ ${closeBtnHtml}
     }
 
     async function deleteWithdrawal(index) {
-        if (!confirm(t('confirmDeleteWithdrawal'))) return;
+        const backup = partnerWithdrawals[index];
         partnerWithdrawals.splice(index, 1);
+        renderPartnerAccountContent();
         try {
             await WITHDRAWALS_DOC.set({ entries: partnerWithdrawals });
-            renderPartnerAccountContent();
         } catch (err) {
+            if (backup) partnerWithdrawals.splice(index, 0, backup);
+            renderPartnerAccountContent();
             alertSaveError(err);
+            return;
         }
+        showUndoToast(t('undoToastDeleted'), async () => {
+            partnerWithdrawals.splice(index, 0, backup);
+            renderPartnerAccountContent();
+            try { await WITHDRAWALS_DOC.set({ entries: partnerWithdrawals }); }
+            catch (err) { alertSaveError(err); }
+        });
     }
 
     function renderPartnerAccountContent() {
@@ -6757,16 +7002,23 @@ ${closeBtnHtml}
         }
     }
     async function deleteExtraPartnerPayment(index) {
-        if (!confirm(t('confirmDeleteWithdrawal'))) return;
         const backup = extraPartnerPayments[index];
         extraPartnerPayments.splice(index, 1);
+        renderPartnerReportContent();
         try {
             await EXTRA_PARTNER_PAYMENTS_DOC.set({ entries: extraPartnerPayments });
-            renderPartnerReportContent();
         } catch (err) {
             if (backup) extraPartnerPayments.splice(index, 0, backup);
+            renderPartnerReportContent();
             alertSaveError(err);
+            return;
         }
+        showUndoToast(t('undoToastDeleted'), async () => {
+            extraPartnerPayments.splice(index, 0, backup);
+            renderPartnerReportContent();
+            try { await EXTRA_PARTNER_PAYMENTS_DOC.set({ entries: extraPartnerPayments }); }
+            catch (err) { alertSaveError(err); }
+        });
     }
 
     // Built the same way as the Technician Report: one clean autoTable grid (instead of
