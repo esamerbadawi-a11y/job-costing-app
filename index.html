@@ -18,6 +18,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -291,6 +292,7 @@
                     <button class="secondary" onclick="openPartnerReportModal()" data-i18n="partnerReportBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
                     <button class="secondary" onclick="openTechPartnerReportModal()" data-i18n="techPartnerReportBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
                     <button class="secondary" onclick="openCompanyAccountModal()" data-i18n="companyAccountBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
+                    <button class="secondary" onclick="openPeriodLockModal()" data-i18n="periodLockBtn" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;"></button>
 
                     <div class="menu-section-label" id="menuSectionAdminLabel" style="display:none;" data-i18n="menuSectionAdmin"></div>
                     <button class="secondary" id="activityLogBtnEl" style="display:none; width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;" onclick="openActivityLogModal()" data-i18n="activityLogBtn"></button>
@@ -305,6 +307,7 @@
                     <input type="file" id="importBackupInput" accept=".json" style="display:none;" onchange="importBackupJSON(event)">
                     <button class="secondary" onclick="exportData()" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px;" data-i18n="exportCsvBtn"></button>
                     <button class="secondary" onclick="exportPDF()" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px; color:#f87171;" data-i18n="exportPdfBtn"></button>
+                    <button class="secondary" onclick="exportAccountingDetailed()" style="width:100%; border:none; border-radius:0; text-align:start; padding:10px 14px; color:#2dd4bf;" data-i18n="exportAccountingBtn"></button>
                 </div>
             </div>
         </div>
@@ -1007,10 +1010,45 @@
             <div id="companyMoreActionsPanel" style="display:none; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border-color);">
                 <button class="secondary" onclick="document.getElementById('ceFilterFrom').value=''; document.getElementById('ceFilterTo').value=''; renderCompanyAccountContent();" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
                 <button class="danger" onclick="downloadCompanyWeekReportPDF()" style="padding:6px 12px; font-size:0.75rem; background:#f87171;" data-i18n="companyWeekReportBtn"></button>
+                <button class="secondary" onclick="openBankReconModal()" style="padding:6px 12px; font-size:0.75rem; background:#0ea5e9;" data-i18n="bankReconBtn"></button>
             </div>
         </div>
 
         <div id="companyAccountContent" style="font-size:0.85rem; line-height:1.7; color:var(--text-main);"></div>
+    </div>
+</div>
+
+<div id="bankReconModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10002; justify-content:center; align-items:center;" onclick="if(event.target===this) closeBankReconModal();">
+    <div class="tg-modal-box" style="max-width:460px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:12px; gap:10px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.1rem;">🏦 <span data-i18n="bankReconTitle"></span></h2>
+            <button class="danger" onclick="closeBankReconModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+        <div class="screen-subtitle" data-i18n="bankReconSubtitle"></div>
+        <div class="grid-2" style="margin-bottom:10px;">
+            <div class="form-group" style="margin-bottom:0;"><label data-i18n="filterDateFromLabel"></label><input type="date" id="brFrom" onchange="renderBankReconContent()"></div>
+            <div class="form-group" style="margin-bottom:0;"><label data-i18n="filterDateToLabel"></label><input type="date" id="brTo" onchange="renderBankReconContent()"></div>
+        </div>
+        <div class="form-group"><label data-i18n="bankReconActualLabel"></label>
+            <input type="text" inputmode="decimal" id="brActualDeposit" placeholder="0" onfocus="this.select()" oninput="renderBankReconContent()"></div>
+        <div id="bankReconContent" style="font-size:0.85rem; line-height:1.7; color:var(--text-main);"></div>
+    </div>
+</div>
+
+<div id="periodLockModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10002; justify-content:center; align-items:center;" onclick="if(event.target===this) closePeriodLockModal();">
+    <div class="tg-modal-box" style="max-width:460px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:12px; gap:10px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.1rem;">🔒 <span data-i18n="periodLockTitle"></span></h2>
+            <button class="danger" onclick="closePeriodLockModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+        <div class="screen-subtitle" data-i18n="periodLockSubtitle"></div>
+        <div class="grid-2" style="margin-bottom:10px;">
+            <div class="form-group" style="margin-bottom:0;"><label data-i18n="filterDateFromLabel"></label><input type="date" id="plFrom"></div>
+            <div class="form-group" style="margin-bottom:0;"><label data-i18n="filterDateToLabel"></label><input type="date" id="plTo"></div>
+        </div>
+        <input type="text" id="plNote" data-i18n-ph="periodLockNotePh" style="margin-bottom:10px;">
+        <button class="danger" onclick="addPeriodLock()" style="width:100%; margin-bottom:16px;" data-i18n="lockPeriodBtn"></button>
+        <div id="periodLockContent"></div>
     </div>
 </div>
 
@@ -1129,6 +1167,7 @@
             <button id="aiSendSmsBtn" class="secondary" onclick="sendAiReminder('sms')" data-i18n="aiSendSms"></button>
             <button id="aiSendEmailBtn" class="secondary" onclick="sendAiReminder('email')" data-i18n="aiSendEmail"></button>
             <button id="aiCopyBtn" class="secondary" onclick="copyAiReminder()" data-i18n="aiCopyBtn"></button>
+            <button id="aiShareBtn" class="success" style="display:none;" onclick="shareAiReminderWithInvoice()" data-i18n="aiShareBtn"></button>
             <button id="aiTemplateBtn" class="warning" onclick="useTemplateReminder('aiTemplateNote')" data-i18n="aiUseTemplateBtn"></button>
             <button id="aiRetryBtn" class="secondary" onclick="regenerateAiReminder()" data-i18n="aiRetryBtn"></button>
         </div>
@@ -1473,6 +1512,32 @@
         partnerReportSubtitle: { ar: 'اختار شريك إضافي (غير S أو M) وشوف نصيبه من كل شغلانة اشترك فيها.', en: "Pick an extra partner (other than S or M) and see their share from every job they're in." },
         techPartnerReportSubtitle: { ar: 'اختار اسم واحد (فني أو شريك) وشوف كل شغلاناته ومستحقاته في مكان واحد.', en: 'Pick one name (technician or partner) and see all their jobs and dues in one place.' },
         companyAccountSubtitle: { ar: 'دخل الشركة من نصيبها في الأرباح (20%)، ومصاريفها العامة اللي مش خاصة بشغلانة معينة.', en: "The company's income from its share of profit (20%), and its general expenses not tied to one job." },
+
+        periodLockBtn: { ar: '🔒 تقفيل الفترات', en: '🔒 Period Lock' },
+        periodLockTitle: { ar: 'تقفيل الفترات', en: 'Period Lock' },
+        periodLockSubtitle: { ar: 'بعد ما تراجع فترة (أسبوع/شهر) وتتأكد إن أرقامها مظبوطة، اقفلها عشان محدش يعدل أو يحذف أي شغلانة تاريخها جواها بالغلط.', en: "Once you've reviewed a period (week/month) and confirmed its numbers are correct, lock it so no job dated inside it can be accidentally edited or deleted." },
+        periodLockNotePh: { ar: 'ملاحظة (اختياري) — مثلاً: تمت المراجعة والتأكد', en: 'Note (optional) — e.g. Reviewed and confirmed' },
+        lockPeriodBtn: { ar: '🔒 اقفل الفترة دي', en: '🔒 Lock This Period' },
+        noLockedPeriodsYet: { ar: 'لسه مفيش أي فترة مقفولة.', en: 'No locked periods yet.' },
+        unlockBtn: { ar: 'فك القفل', en: 'Unlock' },
+        alertPeriodLockDatesRequired: { ar: 'لازم تحدد تاريخ البداية والنهاية.', en: 'Please pick both a start and end date.' },
+        alertPeriodLockDateOrder: { ar: 'تاريخ البداية لازم يكون قبل تاريخ النهاية.', en: 'The start date must be before the end date.' },
+        confirmPeriodLockIncomplete: { ar: 'في {n} شغلانة في الفترة دي ناقصها بيانات (فنيين أو مواد): {names}. متأكد عايز تقفل الفترة برضه؟', en: 'There are {n} job(s) in this period with missing data (technicians or materials): {names}. Lock the period anyway?' },
+        confirmUnlockPeriod: { ar: 'متأكد عايز تفك قفل الفترة دي؟ الشغلانات اللي جواها هترجع قابلة للتعديل.', en: 'Unlock this period? Jobs inside it will become editable again.' },
+        alertPeriodLockedSave: { ar: 'الشغلانة دي تاريخها جوه فترة مقفولة ({from} → {to}). فك قفل الفترة الأول لو عايز تعدلها.', en: 'This job is dated inside a locked period ({from} → {to}). Unlock the period first if you need to edit it.' },
+        alertPeriodLockedDelete: { ar: 'متقدرش تمسح الشغلانة دي — تاريخها جوه فترة مقفولة ({from} → {to}). فك قفل الفترة الأول.', en: "Can't delete this job — it's dated inside a locked period ({from} → {to}). Unlock the period first." },
+        alertPeriodLockedSkippedSome: { ar: 'اتجاهل {n} شغلانة من الاختيار لأنها جوه فترة مقفولة.', en: '{n} job(s) were skipped because they fall inside a locked period.' },
+
+        bankReconBtn: { ar: '🏦 مطابقة البنك', en: '🏦 Bank Reconciliation' },
+        bankReconTitle: { ar: 'مطابقة البنك', en: 'Bank Reconciliation' },
+        bankReconSubtitle: { ar: 'قارن إجمالي المدفوعات المسجلة في البرنامج خلال فترة معينة بالمبلغ اللي فعلاً نزل في حساب البنك.', en: "Compare the total payments logged in the app for a period against what actually landed in the bank." },
+        bankReconActualLabel: { ar: 'المبلغ الفعلي في البنك', en: 'Actual bank deposit' },
+        bankReconAppTotalLabel: { ar: 'إجمالي المسجل في البرنامج:', en: 'Total logged in the app:' },
+        bankReconDiffLabel: { ar: 'الفرق', en: 'Difference' },
+        bankReconMatchMsg: { ar: '✅ الأرقام متطابقة.', en: '✅ The numbers match.' },
+        bankReconMismatchMsg: { ar: '⚠️ في فرق — ممكن يكون في دفعة متسجلتش، أو اتسجلت بتاريخ غلط.', en: '⚠️ There is a difference — a payment may be missing, or logged with the wrong date.' },
+        bankReconPaymentsListTitle: { ar: 'المدفوعات المسجلة في الفترة دي', en: 'Payments logged in this period' },
+
         whatsNewBtn: { ar: '🆕 إيه الجديد', en: '🆕 What\'s New' },
         whatsNewTitle: { ar: 'إيه الجديد', en: "What's New" },
         confirmRestoreJobDraft: { ar: 'لقينا شغلانة جديدة كنت بتكتبها ومحفظتهاش. عايز تكمل منها؟', en: "We found a new job you were filling in that wasn't saved. Want to continue from it?" },
@@ -1514,6 +1579,7 @@
         importJobsSkipped: { ar: 'شغلانة موجودة اتجاهلت (نفس الرقم)', en: 'existing job(s) skipped (same ID)' },
         importTechsAdded: { ar: 'فني جديد اتضاف', en: 'new technician(s) added' },
         exportCsvBtn: { ar: '📁 تصدير Excel (CSV)', en: '📁 Export Excel (CSV)' },
+        exportAccountingBtn: { ar: '📊 تصدير محاسبي تفصيلي', en: '📊 Detailed Accounting Export' },
         exportPdfBtn: { ar: '📄 تصدير PDF', en: '📄 Export PDF' },
         printBtn: { ar: '🖨️ طباعة المحددة', en: '🖨️ Print Selected' },
         undoPrefix: { ar: '⮜ تراجع عن آخر مسح', en: '⮜ Undo Last Delete' },
@@ -1959,6 +2025,9 @@
         aiCopyBtn: { ar: '📋 نسخ', en: '📋 Copy' },
         aiCopied: { ar: 'اتنسخت الرسالة', en: 'Message copied' },
         aiCopyFailed: { ar: 'مقدرش ينسخ. اضغط مطولًا على النص وانسخه بإيدك.', en: 'Could not copy. Long-press the text and copy it yourself.' },
+        aiShareBtn: { ar: '📎 شارك مع صورة الفاتورة', en: '📎 Share with invoice image' },
+        aiSharing: { ar: 'بيجهّز الصورة...', en: 'Preparing image...' },
+        alertShareNotSupported: { ar: 'المشاركة بالصورة مش متاحة على الجهاز/المتصفح ده. جرّب من الموبايل، أو استخدم أزرار الإرسال التانية.', en: 'Sharing with an image isn\'t supported on this device/browser. Try from a phone, or use the other send buttons.' },
         aiUseTemplateBtn: { ar: 'رسالة جاهزة (من غير AI)', en: 'Ready-made message (no AI)' },
         aiRetryBtn: { ar: '🔄 جرّب الـ AI تاني', en: '🔄 Try the AI again' },
         aiNoKeyNote: { ar: 'مفيش مفتاح AI، فدي رسالة جاهزة تقدر تعدّل فيها.', en: 'There is no AI key, so this is a ready-made message you can edit.' },
@@ -2243,6 +2312,7 @@
     const APPOINTMENTS_DOC = db.collection('jobCostingApp').doc('appointments');
     const SERVICE_TYPES_DOC = db.collection('jobCostingApp').doc('serviceTypes');
     const COMPANY_EXPENSES_DOC = db.collection('jobCostingApp').doc('companyExpenses');
+    const LOCKED_PERIODS_DOC = db.collection('jobCostingApp').doc('lockedPeriods');
     const CONTACTS_DOC = db.collection('jobCostingApp').doc('contacts');
     const TECH_PAYMENTS_DOC = db.collection('jobCostingApp').doc('techPayments');
     const TECH_BONUSES_DOC = db.collection('jobCostingApp').doc('techBonuses');
@@ -2416,6 +2486,7 @@
     let appointments = [];
     let serviceTypesList = ['Estimate', 'Drywall', 'Plumbing', 'Flooring', 'Electrical', 'Painting', 'HVAC', 'Roofing'];
     let companyExpenses = [];
+    let lockedPeriods = [];   // closed-books date ranges — see isDateLocked()
     let contacts = [];
     let techPayments = [];
     let techBonuses = [];
@@ -2557,6 +2628,11 @@
             companyExpenses = (doc.exists && doc.data().entries) ? doc.data().entries : [];
             if (document.getElementById('companyAccountModal').style.display !== 'none') safeCall(renderCompanyAccountContent);
         }, err => console.error('Firestore company expenses sync error:', err));
+
+        LOCKED_PERIODS_DOC.onSnapshot(doc => {
+            lockedPeriods = (doc.exists && doc.data().entries) ? doc.data().entries : [];
+            if (document.getElementById('periodLockModal').style.display !== 'none') safeCall(renderPeriodLockContent);
+        }, err => console.error('Firestore locked periods sync error:', err));
 
         CONTACTS_DOC.onSnapshot(doc => {
             contacts = (doc.exists && doc.data().entries) ? doc.data().entries : [];
@@ -2914,7 +2990,7 @@
     // (e.g. one opened without the other being closed first), the later one in the page would sit on
     // top and silently swallow every tap meant for the one underneath — including a job's name link.
     // Every one of them closes all the others first, so that can never happen.
-    const TOP_LEVEL_MODAL_IDS = ['techGuideModal', 'expenseReportModal', 'activityLogModal', 'partnerAccountModal', 'partnerReportModal', 'techPartnerReportModal', 'companyAccountModal', 'companyProfileModal', 'agendaModal', 'globalSearchModal', 'invoiceModal', 'jobPayModal'];
+    const TOP_LEVEL_MODAL_IDS = ['techGuideModal', 'expenseReportModal', 'activityLogModal', 'partnerAccountModal', 'partnerReportModal', 'techPartnerReportModal', 'companyAccountModal', 'companyProfileModal', 'agendaModal', 'globalSearchModal', 'invoiceModal', 'jobPayModal', 'periodLockModal', 'bankReconModal'];
     function closeOtherTopModals(exceptId) {
         TOP_LEVEL_MODAL_IDS.forEach(id => { if (id !== exceptId) { const el = document.getElementById(id); if (el) el.style.display = 'none'; } });
     }
@@ -4282,7 +4358,7 @@
     }
     function refreshAiReminderButtons(busy) {
         const has = !!document.getElementById('aiReminderText').value.trim();
-        ['aiSendWaBtn', 'aiSendSmsBtn', 'aiSendEmailBtn', 'aiCopyBtn'].forEach(id => { document.getElementById(id).disabled = busy || !has; });
+        ['aiSendWaBtn', 'aiSendSmsBtn', 'aiSendEmailBtn', 'aiCopyBtn', 'aiShareBtn'].forEach(id => { document.getElementById(id).disabled = busy || !has; });
         document.getElementById('aiRetryBtn').disabled = !!busy;
     }
 
@@ -4295,10 +4371,11 @@
             const diff = Math.floor((new Date() - new Date(job.followUpDate + 'T00:00:00')) / 86400000);
             if (diff > 0) daysOverdue = diff;
         }
-        aiReminderCtx = { job, rem, daysOverdue, apiKey: getGeminiApiKey(), run: 0, mode: 'ai', msgKind: 'reminder' };
+        aiReminderCtx = { job, rem, daysOverdue, apiKey: getGeminiApiKey(), run: 0, mode: 'ai', msgKind: 'reminder', fromInvoice: false };
         document.getElementById('aiReminderLang').value = currentLang === 'ar' ? 'ar' : 'en';
         document.getElementById('aiReminderJob').textContent = `${job.clientName || ''} — $${rem.toFixed(2)}`;
         document.getElementById('aiReminderText').value = '';
+        document.getElementById('aiShareBtn').style.display = 'none';   // no invoice open here (called from the jobs list), so there's nothing to share an image of
         document.getElementById('aiReminderModal').style.display = 'flex';
         if (!aiReminderCtx.apiKey) { useTemplateReminder('aiNoKeyNote'); return; }   // no key: don't leave the user stuck
         await regenerateAiReminder();
@@ -4316,10 +4393,13 @@
         // client paid through the job's own payment tracking rather than a credit on this invoice.
         const rem = jobRemaining(job);
         const isPaid = rem <= 0.005;
-        aiReminderCtx = { job, rem, daysOverdue: null, apiKey: getGeminiApiKey(), run: 0, mode: 'ai', msgKind: isPaid ? 'thankyou' : 'reminder' };
+        aiReminderCtx = { job, rem, daysOverdue: null, apiKey: getGeminiApiKey(), run: 0, mode: 'ai', msgKind: isPaid ? 'thankyou' : 'reminder', fromInvoice: true };
         document.getElementById('aiReminderLang').value = currentLang === 'ar' ? 'ar' : 'en';
         document.getElementById('aiReminderJob').textContent = `${job.clientName || ''} — $${rem.toFixed(2)}`;
         document.getElementById('aiReminderText').value = '';
+        // Sharing an image only makes sense when there's an invoice open to render, and only on
+        // devices whose share sheet can take a file (desktop Chrome, for example, cannot).
+        document.getElementById('aiShareBtn').style.display = (navigator.share && navigator.canShare) ? '' : 'none';
         document.getElementById('aiReminderModal').style.display = 'flex';
         if (!aiReminderCtx.apiKey) { useTemplateReminder('aiNoKeyNote'); return; }   // no key: don't leave the user stuck
         await regenerateAiReminder();
@@ -4808,6 +4888,14 @@
         const editingId = document.getElementById('editingJobId').value;
         const clientName = document.getElementById('clientName').value.trim();
         if (!clientName) { alert(t('alertClientNameRequired')); return; }
+
+        // Closed-books protection: block the save if either this job's new date, or (when
+        // editing) its ORIGINAL date, falls inside a locked period — covers both "editing a job
+        // that's already in a locked period" and "moving a job's date into one".
+        const newStartDate = document.getElementById('startDate').value;
+        const existingJobForLock = editingId ? savedJobs.find(j => j.id === editingId) : null;
+        const lockHit = lockedPeriodFor(newStartDate) || (existingJobForLock ? lockedPeriodFor(existingJobForLock.startDate) : null);
+        if (lockHit) { alert(t('alertPeriodLockedSave').replace('{from}', lockHit.dateFrom).replace('{to}', lockHit.dateTo)); return; }
 
         const jobData = {
             id: editingId ? editingId : Date.now().toString() + Math.random().toString(36).substr(2, 5),
@@ -5482,8 +5570,11 @@
     }
 
     async function deleteJob(id) {
-        if (!confirm(t('confirmDeleteJob'))) return;
         id = String(id);
+        const jobForLock = savedJobs.find(j => String(j.id) === id);
+        const lockHit = jobForLock ? lockedPeriodFor(jobForLock.startDate) : null;
+        if (lockHit) { alert(t('alertPeriodLockedDelete').replace('{from}', lockHit.dateFrom).replace('{to}', lockHit.dateTo)); return; }
+        if (!confirm(t('confirmDeleteJob'))) return;
         const jobIndex = savedJobs.findIndex(j => String(j.id) === id);
         if (jobIndex !== -1) { lastDeletedJobs = [savedJobs[jobIndex]]; updateUndoButtonUI(); }
         const deletedClientName = jobIndex !== -1 ? savedJobs[jobIndex].clientName : '';
@@ -5517,6 +5608,14 @@
 
     async function deleteSelectedJobsReport() {
         if (selectedJobIds.size === 0) { alert(t('alertSelectOneToDeleteReport')); return; }
+        // Closed-books protection: silently drop any selected job that falls in a locked period
+        // instead of deleting it, and tell the user how many were skipped and why.
+        const lockedCount = savedJobs.filter(j => selectedJobIds.has(String(j.id)) && isDateLocked(j.startDate)).length;
+        if (lockedCount > 0) {
+            savedJobs.forEach(j => { if (isDateLocked(j.startDate)) selectedJobIds.delete(String(j.id)); });
+            alert(t('alertPeriodLockedSkippedSome').replace('{n}', lockedCount));
+            if (selectedJobIds.size === 0) return;
+        }
         if (!confirm(`${t('confirmDeleteSelectedPrefix')} (${selectedJobIds.size}) ${t('confirmDeleteSelectedSuffix')}`)) return;
 
         lastDeletedJobs = savedJobs.filter(j => selectedJobIds.has(String(j.id)));
@@ -5801,6 +5900,36 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url; a.download = `${companyFileSlug()}_PM_STATEMENT.csv`;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    // A single CSV, accounting-friendly export with two clearly-labeled sections: every job
+    // (revenue/materials/tech dues/split) and every general company expense \u2014 ready to open in
+    // Excel or hand to an accountant/QuickBooks, without having to stitch several reports together.
+    function exportAccountingDetailed() {
+        let rows = [];
+        rows.push(['JOBS']);
+        rows.push(["Date", "Client", "Status", "Total Revenue", "Amount Received", "Materials", "Technician Dues", "S Share", "M Share", "Company Share", "Net Profit"].join(","));
+        savedJobs.forEach(job => {
+            const { totalTechDues, shareS, shareM, companyNet, net } = jobNet(job);
+            rows.push([
+                csvEscape(job.startDate || ''), csvEscape(job.clientName || ''), csvEscape(job.jobStatus || ''),
+                parseVal(job.totalRevenue).toFixed(2), parseVal(job.amountReceived).toFixed(2),
+                parseVal(job.materialCost).toFixed(2), totalTechDues.toFixed(2),
+                shareS.toFixed(2), shareM.toFixed(2), companyNet.toFixed(2), net.toFixed(2)
+            ].join(","));
+        });
+        rows.push([].join(","));
+        rows.push(['GENERAL EXPENSES']);
+        rows.push(["Date", "Category", "Note", "Amount"].join(","));
+        companyExpenses.forEach(e => {
+            rows.push([csvEscape(e.date || ''), csvEscape(expenseCatLabel(e.category)), csvEscape(e.note || ''), parseVal(e.amount).toFixed(2)].join(","));
+        });
+        const blob = new Blob(["\uFEFF" + rows.join("\r\n")], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `${companyFileSlug()}_Accounting_Export_${isoDate(new Date())}.csv`;
         document.body.appendChild(a); a.click(); a.remove();
         URL.revokeObjectURL(url);
     }
@@ -6331,15 +6460,12 @@
         `;
     }
 
-    function printInvoice() {
-        if (!invoiceState) return;
+    // Builds the full invoice HTML document — used both to print it (printInvoice) and to
+    // rasterize it into a shareable image (shareInvoiceImageWithText). withPrintScript=true adds
+    // the auto-print script, which only belongs in the real print popup, never in an offscreen render.
+    function buildInvoiceHtmlDoc(withPrintScript) {
         const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
-        if (!job) return;
-
-        // Opened synchronously, before anything else, so mobile browsers don't treat the
-        // eventual document.write() as a popup-blocker-worthy delayed open.
-        const win = window.open('', '_blank');
-        if (!win) { alert(t('alertSelectOneToPrint')); return; }
+        if (!job) return null;
 
         const isAdditionalWork = invoiceState.docType === 'ADDITIONAL_WORK';
         const subtotal = invoiceSubtotal();
@@ -6575,12 +6701,80 @@ ${closeBtnHtml}
 
   </div>
 </div>
-<script>window.onload = function(){ setTimeout(function(){ window.print(); }, 250); };</scr` + `ipt>
+${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ window.print(); }, 250); };</scr` + `ipt>` : ''}
 </body></html>`;
 
+        return html;
+    }
+
+    function printInvoice() {
+        if (!invoiceState) return;
+        // Opened synchronously, before anything else, so mobile browsers don't treat the
+        // eventual document.write() as a popup-blocker-worthy delayed open.
+        const win = window.open('', '_blank');
+        if (!win) { alert(t('alertSelectOneToPrint')); return; }
+        const html = buildInvoiceHtmlDoc(true);
+        if (!html) { win.close(); return; }
         win.document.open();
         win.document.write(html);
         win.document.close();
+    }
+
+    // Renders the invoice to a PNG image off-screen (via html2canvas, in a hidden iframe so the
+    // real styling/layout is reused as-is) and hands it to the device's native Share sheet
+    // together with the message text, so WhatsApp/Mail/Messages/etc. get the picture AND the
+    // text together in one share, instead of two separate manual steps.
+    async function shareInvoiceImageWithText(text, filenameBase) {
+        if (!invoiceState) return false;
+        if (typeof html2canvas === 'undefined' || !navigator.share || !navigator.canShare) { alert(t('alertShareNotSupported')); return false; }
+        const html = buildInvoiceHtmlDoc(false);
+        if (!html) return false;
+
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:fixed; left:-10000px; top:0; width:900px; height:1200px; border:0; visibility:hidden;';
+        document.body.appendChild(iframe);
+        try {
+            await new Promise((resolve, reject) => {
+                iframe.onload = resolve;
+                iframe.onerror = () => reject(new Error('iframe load failed'));
+                iframe.srcdoc = html;
+                setTimeout(() => reject(new Error('timeout')), 8000);
+            });
+            await new Promise(r => setTimeout(r, 150));   // let any <img> (logo/watermark data URLs) finish painting
+            const target = iframe.contentDocument.querySelector('.invoice-page');
+            if (!target) return false;
+            const canvas = await html2canvas(target, { backgroundColor: '#FDFBF6', scale: 2, useCORS: true });
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            if (!blob) return false;
+            const file = new File([blob], `${filenameBase || 'invoice'}.png`, { type: 'image/png' });
+            if (!navigator.canShare({ files: [file] })) { alert(t('alertShareNotSupported')); return false; }
+            await navigator.share({ files: [file], text });
+            return true;
+        } catch (e) {
+            if (e && e.name !== 'AbortError') { console.error('shareInvoiceImageWithText error:', e); alert(t('alertShareNotSupported')); }  // AbortError = user just cancelled the share sheet, not a real failure
+            return false;
+        } finally {
+            iframe.remove();
+        }
+    }
+
+    // Hooked to the AI-reminder modal's Share button (only shown when that modal was opened from
+    // the Invoice screen, so there's an invoice to render — see sendInvoiceClientMessage).
+    async function shareAiReminderWithInvoice() {
+        const c = aiReminderCtx;
+        const text = document.getElementById('aiReminderText').value.trim();
+        if (!c || !text || !c.fromInvoice) return;
+        const btn = document.getElementById('aiShareBtn');
+        const prevLabel = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = t('aiSharing');
+        try {
+            const nameSlug = (c.job.clientName || 'client').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'client';
+            await shareInvoiceImageWithText(text, `${companyFileSlug()}_Invoice_${nameSlug}`);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = prevLabel;
+        }
     }
 
     function openTechGuideModal() { closeOtherTopModals('techGuideModal'); document.getElementById('techGuideModal').style.display = 'flex'; renderTechGuideContent(); }
@@ -6779,6 +6973,163 @@ ${closeBtnHtml}
         });
     }
 
+    // ---------- Period Lock ("closing the books"): once a date range has been reviewed and
+    // confirmed correct, lock it so a job dated inside it can no longer be edited or deleted by
+    // accident — protects historical numbers from being quietly changed after the fact. A job can
+    // still be freely added/edited/deleted OUTSIDE any locked range. Unlocking is always possible
+    // (nothing is ever truly stuck), it just takes a deliberate second step (confirm + delete). ----------
+    function isDateLocked(dateStr) {
+        if (!dateStr) return false;
+        return lockedPeriods.some(p => (!p.dateFrom || dateStr >= p.dateFrom) && (!p.dateTo || dateStr <= p.dateTo));
+    }
+    // The specific locked period a date falls in (for a clear error message naming the range).
+    function lockedPeriodFor(dateStr) {
+        if (!dateStr) return null;
+        return lockedPeriods.find(p => (!p.dateFrom || dateStr >= p.dateFrom) && (!p.dateTo || dateStr <= p.dateTo)) || null;
+    }
+    function openPeriodLockModal() {
+        closeOtherTopModals('periodLockModal');
+        document.getElementById('periodLockModal').style.display = 'flex';
+        document.getElementById('plFrom').value = '';
+        document.getElementById('plTo').value = '';
+        document.getElementById('plNote').value = '';
+        renderPeriodLockContent();
+    }
+    function closePeriodLockModal() { document.getElementById('periodLockModal').style.display = 'none'; }
+
+    async function addPeriodLock() {
+        const dateFrom = document.getElementById('plFrom').value;
+        const dateTo = document.getElementById('plTo').value;
+        const note = document.getElementById('plNote').value.trim();
+        if (!dateFrom || !dateTo) { alert(t('alertPeriodLockDatesRequired')); return; }
+        if (dateFrom > dateTo) { alert(t('alertPeriodLockDateOrder')); return; }
+
+        // Flag any job in range that's missing material cost / technicians / dates, so a period
+        // never gets locked with silently-incomplete numbers baked into it (the user can still
+        // confirm anyway if it's genuinely meant to be $0).
+        const jobsInRange = savedJobs.filter(j => j.startDate && j.startDate >= dateFrom && j.startDate <= dateTo && j.jobStatus !== 'ملغي');
+        const incomplete = jobsInRange.filter(j => !(j.technicians && j.technicians.length) || parseVal(j.materialCost) === 0 && (j.materialEntries || []).length === 0);
+        if (incomplete.length > 0) {
+            const names = incomplete.slice(0, 8).map(j => j.clientName || '?').join('، ');
+            const msg = t('confirmPeriodLockIncomplete').replace('{n}', incomplete.length).replace('{names}', names);
+            if (!confirm(msg)) return;
+        }
+
+        const entry = { id: Date.now().toString() + Math.random().toString(36).substr(2, 5), dateFrom, dateTo, note, lockedBy: currentUserEmail || '?', lockedAt: new Date().toISOString() };
+        try {
+            lockedPeriods.unshift(entry);
+            await LOCKED_PERIODS_DOC.set({ entries: lockedPeriods });
+            document.getElementById('plFrom').value = '';
+            document.getElementById('plTo').value = '';
+            document.getElementById('plNote').value = '';
+            renderPeriodLockContent();
+        } catch (err) {
+            lockedPeriods = lockedPeriods.filter(x => x !== entry);
+            alertSaveError(err);
+        }
+    }
+
+    async function unlockPeriod(id) {
+        if (!confirm(t('confirmUnlockPeriod'))) return;
+        const backup = lockedPeriods.find(p => p.id === id);
+        lockedPeriods = lockedPeriods.filter(p => p.id !== id);
+        renderPeriodLockContent();
+        try {
+            await LOCKED_PERIODS_DOC.set({ entries: lockedPeriods });
+        } catch (err) {
+            if (backup) lockedPeriods.unshift(backup);
+            renderPeriodLockContent();
+            alertSaveError(err);
+        }
+    }
+
+    function renderPeriodLockContent() {
+        const container = document.getElementById('periodLockContent');
+        if (lockedPeriods.length === 0) {
+            container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:15px;">${t('noLockedPeriodsYet')}</p>`;
+            return;
+        }
+        const sorted = [...lockedPeriods].sort((a, b) => (b.dateFrom || '').localeCompare(a.dateFrom || ''));
+        let html = '<table style="width:100%; border-collapse:collapse;"><tbody>';
+        sorted.forEach(p => {
+            html += `<tr style="border-top:1px solid var(--border-color);">
+                <td style="padding:6px; font-weight:700; color:#38bdf8; white-space:nowrap;">${escHtml(p.dateFrom)} → ${escHtml(p.dateTo)}</td>
+                <td style="padding:6px; font-size:0.78rem; color:var(--text-muted);">${escHtml(p.note || '')}</td>
+                <td style="padding:6px;"><button class="danger" onclick="unlockPeriod('${p.id}')" style="padding:3px 8px; font-size:0.72rem;">🔓 ${t('unlockBtn')}</button></td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    // ---------- Bank Reconciliation: compares what the app has recorded as actually received in
+    // a date range (the dated client payments, job.receipts — the same figures the technician
+    // percentage-pay math already uses, so it's never a guess) against what really landed in the
+    // bank, which the user types in by hand. A mismatch is a signal something wasn't logged (or
+    // was logged with the wrong date), not an error on its own. ----------
+    function openBankReconModal() {
+        closeOtherTopModals('bankReconModal');
+        document.getElementById('bankReconModal').style.display = 'flex';
+        document.getElementById('brFrom').value = document.getElementById('ceFilterFrom').value || '';
+        document.getElementById('brTo').value = document.getElementById('ceFilterTo').value || '';
+        document.getElementById('brActualDeposit').value = '';
+        renderBankReconContent();
+    }
+    function closeBankReconModal() { document.getElementById('bankReconModal').style.display = 'none'; }
+
+    function renderBankReconContent() {
+        const container = document.getElementById('bankReconContent');
+        const dateFrom = document.getElementById('brFrom').value;
+        const dateTo = document.getElementById('brTo').value;
+        if (!dateFrom && !dateTo) {
+            container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:15px;">${t('alertPickWeekFirst')}</p>`;
+            return;
+        }
+        // Every dated client payment across every job, in range — exactly what should have hit
+        // the bank, independent of which job it belongs to.
+        let appTotal = 0;
+        const rows = [];
+        savedJobs.forEach(job => {
+            (job.receipts || []).forEach(r => {
+                if ((!dateFrom || r.date >= dateFrom) && (!dateTo || r.date <= dateTo)) {
+                    appTotal += parseVal(r.amount);
+                    rows.push({ date: r.date, client: job.clientName || '', amount: parseVal(r.amount) });
+                }
+            });
+        });
+        appTotal = round2(appTotal);
+        const actualRaw = document.getElementById('brActualDeposit').value.trim();
+        const hasActual = actualRaw !== '';
+        const actual = parseVal(actualRaw);
+        const diff = round2(actual - appTotal);
+
+        let html = `<div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:8px; padding:14px; margin:10px 0;">
+            <div class="summary-line">${t('bankReconAppTotalLabel')} <b style="color:#38bdf8;">$${appTotal.toFixed(2)}</b></div>`;
+        if (hasActual) {
+            html += `<div class="summary-line">${t('bankReconActualLabel')} <b>$${actual.toFixed(2)}</b></div>
+                <div class="summary-highlight"><span>${t('bankReconDiffLabel')}</span><b style="color:${Math.abs(diff) < 0.01 ? '#34d399' : '#f87171'};">$${diff.toFixed(2)}</b></div>`;
+            html += `<div class="note-box" style="margin-top:8px; border-color:${Math.abs(diff) < 0.01 ? 'var(--success)' : 'var(--danger)'};">${Math.abs(diff) < 0.01 ? t('bankReconMatchMsg') : t('bankReconMismatchMsg')}</div>`;
+        }
+        html += '</div>';
+
+        if (rows.length === 0) {
+            html += `<p style="text-align:center; color:var(--text-muted); padding:10px;">${t('noWithdrawalsMatchFilter')}</p>`;
+        } else {
+            rows.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+            html += `<h4 style="color:var(--text-muted); font-size:0.85rem; margin-bottom:8px;">${t('bankReconPaymentsListTitle')} (${rows.length})</h4>
+            <table style="width:100%; border-collapse:collapse;"><tbody>`;
+            rows.forEach(r => {
+                html += `<tr style="border-top:1px solid var(--border-color);">
+                    <td style="padding:5px; font-size:0.78rem; color:var(--text-muted); white-space:nowrap;">${escHtml(r.date || '')}</td>
+                    <td style="padding:5px; font-size:0.8rem;">${escHtml(r.client)}</td>
+                    <td style="padding:5px; font-weight:700; color:#34d399; text-align:end;">$${r.amount.toFixed(2)}</td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+        }
+        container.innerHTML = html;
+    }
+
     function renderCompanyAccountContent() {
         const container = document.getElementById('companyAccountContent');
 
@@ -6807,11 +7158,11 @@ ${closeBtnHtml}
 
         let html = '';
         if (hasDateFilter) {
-            // With a period picked, the main box becomes THAT period's own numbers — the
-            // company's net income earned in the period (same period math as "Send Company
-            // Share" / computeSAndMPeriodShare), what was actually spent (company expenses
-            // dated inside the same period), and what's left of just that period's money.
-            const { totalShareCompany: periodIncome } = computeSAndMPeriodShare(dateFrom, dateTo);
+            // With a period picked, the main box becomes THAT period's own full waterfall — same
+            // shape as the all-time view below (Received → Materials → Tech Dues → S/M/Company
+            // split → general expenses → Net), not just the final net line, so this doubles as a
+            // proper P&L statement for the period, not only a balance check.
+            const { totalShareCompany: periodIncome, totalReceived: periodReceived, totalMaterials: periodMaterials, totalTechDues: periodTechDues } = computeSAndMPeriodShare(dateFrom, dateTo);
             const periodSpent = round2(companyExpenses
                 .filter(e => (!dateFrom || (e.date && e.date >= dateFrom)) && (!dateTo || (e.date && e.date <= dateTo)))
                 .reduce((s, e) => s + parseVal(e.amount), 0));
@@ -6819,7 +7170,10 @@ ${closeBtnHtml}
             html += `<div class="note-box" style="margin-bottom:10px;">${t('companyPeriodNote')}</div>
             <div style="background:var(--card-dark); border:1px solid #38bdf8; border-radius:8px; padding:14px; margin-bottom:14px;">
                 <div style="color:#38bdf8; font-weight:700; margin-bottom:8px;">${t('partnerPeriodLabel')}</div>
-                <div class="summary-line">${t('cwNetIncomeLabel')} <b style="color:#34d399;">$${periodIncome.toFixed(2)}</b></div>
+                <div class="summary-line">${t('cwTotalReceived')} <b>$${periodReceived.toFixed(2)}</b></div>
+                <div class="summary-line">${t('cwMaterials')} <b style="color:#f87171;">-$${periodMaterials.toFixed(2)}</b></div>
+                <div class="summary-line">${t('cwTechDues')} <b style="color:#f87171;">-$${periodTechDues.toFixed(2)}</b></div>
+                <div class="summary-line" style="border-top:1px dashed var(--border-color); margin-top:4px; padding-top:4px;">${t('cwNetIncomeLabel')} <b style="color:#34d399;">$${periodIncome.toFixed(2)}</b></div>
                 <div class="summary-line">${t('totalWithdrawnLabel')} <b style="color:#f87171;">-$${periodSpent.toFixed(2)}</b></div>
                 <div class="summary-highlight"><span>${t('remainingBalanceLabel')}</span><b style="color:${periodRemaining < 0 ? '#f87171' : '#fbbf24'};">$${periodRemaining.toFixed(2)}</b></div>
             </div>`;
@@ -7299,9 +7653,29 @@ ${closeBtnHtml}
             doc.addImage(img.dataUrl, 'PNG', x, y, targetW, targetH);
         };
 
-        // Section 1: company income, broken down job by job — same math/source as the
+        // Section 1: the full P&L waterfall for the period — Revenue in, Materials and
+        // Technician dues out, the 40/40/20 split, so this report alone is a complete profit &
+        // loss statement for the period, not just a bottom-line number.
+        const { totalShareCompany, jobBreakdown, totalReceived: periodReceivedPdf, totalMaterials: periodMaterialsPdf, totalTechDues: periodTechDuesPdf, totalShareS: periodShareSPdf, totalShareM: periodShareMPdf } = computeSAndMPeriodShare(dateFrom, dateTo);
+        const money = v => '$' + v.toFixed(2);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+        doc.text('Profit & Loss Summary', 14, 34);
+        doc.autoTable({
+            body: [
+                ['Total Received', money(periodReceivedPdf)],
+                ['Materials', '-' + money(periodMaterialsPdf)],
+                ['Technician Dues', '-' + money(periodTechDuesPdf)],
+                ["S's Share", money(periodShareSPdf)],
+                ["M's Share", money(periodShareMPdf)],
+                ["Company's Share (Net)", money(totalShareCompany)],
+            ],
+            startY: 37, theme: 'grid',
+            styles: { fontSize: 9, cellPadding: 2.5 },
+            columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
+        });
+
+        // Section 2: company income, broken down job by job — same math/source as the
         // "Send Company Share" WhatsApp message, just on paper instead.
-        const { totalShareCompany, jobBreakdown } = computeSAndMPeriodShare(dateFrom, dateTo);
         const incomeRows = (jobBreakdown || [])
             .filter(b => Math.abs(b.shareCompany) > 0.005)
             .map(b => [
@@ -7310,18 +7684,19 @@ ${closeBtnHtml}
                 '$' + b.shareCompany.toFixed(2)
             ]);
 
+        let afterSummaryY = doc.lastAutoTable.finalY + 10;
         doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
-        doc.text('Company Income by Job', 14, 34);
+        doc.text('Company Income by Job', 14, afterSummaryY);
         doc.autoTable({
             head: [['Client', 'Date', 'Company Share']],
             body: incomeRows.length ? incomeRows : [['-', '-', '$0.00']],
-            startY: 37, theme: 'grid',
+            startY: afterSummaryY + 3, theme: 'grid',
             styles: { fontSize: 9, cellPadding: 2, halign: 'center' },
             headStyles: { fillColor: [41, 128, 185], textColor: 255 },
             didDrawCell: drawArabicCell([0])
         });
 
-        // Section 2: general expenses in the same period, grouped by category.
+        // Section 3: general expenses in the same period, grouped by category.
         const periodExpenses = companyExpenses.filter(e => (!dateFrom || (e.date && e.date >= dateFrom)) && (!dateTo || (e.date && e.date <= dateTo)));
         const catTotals = {};
         periodExpenses.forEach(e => {
@@ -8965,6 +9340,10 @@ ${closeBtnHtml}
             else generalBonusTotal += parseVal(b.amount);
         });
         let totalShareS = 0, totalShareM = 0, totalShareCompany = 0;
+        // Raw period totals (received / materials / tech dues) — not needed for the split math
+        // above, but kept so a P&L-style report can show the full waterfall (Revenue → Materials
+        // → Tech Dues → Net → Split), not just the final per-partner shares.
+        let totalReceived = 0, totalMaterials = 0, totalTechDues = 0;
         // Per-job breakdown — what THIS job alone contributed to S's, M's and the company's
         // share in the period — so a report can show "which job gave how much", not just one
         // combined total. The company's cut also has that job's own extraExpenses taken off it,
@@ -8972,8 +9351,13 @@ ${closeBtnHtml}
         // applied in full, the same simplification used everywhere else in the app.
         const jobBreakdown = [];
         savedJobs.forEach(job => {
+            const periodRecv = hasDateFilter ? inRangeSum(job.receipts, dateFrom, dateTo) : parseVal(job.amountReceived);
+            const periodMat = hasDateFilter ? inRangeSum(job.materialEntries, dateFrom, dateTo) : parseVal(job.materialCost);
             const periodBase = hasDateFilter ? percentBaseForPeriod(job, dateFrom, dateTo) : round2(parseVal(job.amountReceived) - parseVal(job.materialCost));
             const techDues = hasDateFilter ? (jobPeriodTechDues[job.id] || 0) : jobNet(job).totalTechDues;
+            totalReceived += periodRecv;
+            totalMaterials += periodMat;
+            totalTechDues += techDues;
             const bonusForJob = jobPeriodBonus[job.id] || 0;
             const netForSplit = round2(periodBase - techDues - bonusForJob);
             const ratio = jobSplitRatio(job);
@@ -8994,7 +9378,10 @@ ${closeBtnHtml}
             totalShareM -= generalBonusCutM;
             jobBreakdown.push({ job: null, generalBonus: true, shareS: -generalBonusCutS, shareM: -generalBonusCutM, shareCompany: 0 });
         }
-        return { totalShareS: round2(totalShareS), totalShareM: round2(totalShareM), totalShareCompany: round2(totalShareCompany), jobBreakdown };
+        return {
+            totalShareS: round2(totalShareS), totalShareM: round2(totalShareM), totalShareCompany: round2(totalShareCompany), jobBreakdown,
+            totalReceived: round2(totalReceived), totalMaterials: round2(totalMaterials), totalTechDues: round2(totalTechDues)
+        };
     }
 
     // A stand-in for the job currently open in the form, built from what's on screen right now (not yet
