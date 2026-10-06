@@ -955,6 +955,7 @@
             <button class="secondary" onclick="setCompanyDateRange('week')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetWeekBtn"></button>
             <button class="secondary" onclick="setCompanyDateRange('lastweek')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetLastWeekBtn"></button>
             <button class="secondary" onclick="document.getElementById('ceFilterFrom').value=''; document.getElementById('ceFilterTo').value=''; renderCompanyAccountContent();" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
+            <button class="danger" onclick="downloadCompanyWeekReportPDF()" style="padding:6px 12px; font-size:0.75rem; background:#f87171;" data-i18n="companyWeekReportBtn"></button>
         </div>
 
         <div id="companyAccountContent" style="font-size:0.85rem; line-height:1.7; color:var(--text-main);"></div>
@@ -1377,6 +1378,8 @@
         companyPeriodNote: { ar: 'نفس حسبة "إرسال نصيب الشركة" بالظبط، لكن محصورة في الفترة اللي اخترتها فوق — الدخل والمصروف والباقي هنا كلهم بس خلال نفس الفترة.', en: 'The exact same math as "Send Company Share", scoped to the period picked above — the income, spent and remaining here are only for that same period.' },
         cwNetIncomeLabel: { ar: 'صافي دخل الشركة خلال الفترة:', en: "Company's Net Income (Period):" },
         cwAllTimeExpensesLabel: { ar: 'إجمالي المبلغ المحطوط في الشركة (كل الوقت):', en: 'Total Amount Spent by the Company (All-Time):' },
+        alertPickWeekFirst: { ar: 'اختار فترة (من/لحد) الأول فوق، وبعدين دوس على التقرير.', en: 'Pick a date range (from/to) above first, then download the report.' },
+        companyWeekReportBtn: { ar: '📄 تقرير الفترة PDF', en: '📄 Period Report PDF' },
         revertToAppointmentBtn: { ar: 'رجوع لـ Appointment', en: 'Revert to Appointment' },
         confirmRevertToAppointment: { ar: 'هل أنت متأكد إنك عايز ترجع الشغلانة دي لـ Appointments؟ هتتشال من السجل وتتحول لموعد لسه مش شغلانة.', en: 'Are you sure you want to revert this job back to Appointments? It will be removed from the job log and turned back into a pending appointment.' },
         alertRevertBlockedTitle: { ar: 'مش ممكن ترجع الشغلانة دي لـ Appointment لإن فيها بيانات فعلية مسجلة:', en: "Can't revert this job to an Appointment — it already has real data recorded on it:" },
@@ -6801,6 +6804,97 @@ ${closeBtnHtml}
         doc.text(`Remaining: $${remaining.toFixed(2)}`, 14, finalY);
 
         doc.save(`AHA_Partner_Report_${name}.pdf`);
+    }
+
+    // Simple PDF-only weekly recap for the Company Account screen — deliberately NOT shown
+    // inline on screen (the user asked for a report without a table cluttering the page),
+    // just a button that generates it for the date range already picked above. Two small
+    // tables (income by job, expenses by category) + one net line, built the exact same
+    // Arabic-safe way as the other reports (autoTable + textToImage for Arabic cells).
+    async function downloadCompanyWeekReportPDF() {
+        const dateFrom = document.getElementById('ceFilterFrom').value;
+        const dateTo = document.getElementById('ceFilterTo').value;
+        if (!dateFrom && !dateTo) { alert(t('alertPickWeekFirst')); return; }
+        if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
+        const { jsPDF } = window.jspdf;
+        let doc = new jsPDF('p', 'mm', 'a4');
+
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
+        doc.text('AHA - Company Weekly Report', 14, 15);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 100, 100);
+        doc.text(`Period: ${dateFrom || '...'} - ${dateTo || '...'}`, 14, 21);
+        doc.text(`Printed on: ${isoDate(new Date())}`, 14, 26);
+        doc.setTextColor(0, 0, 0);
+
+        const drawArabicCell = (colIndexes) => function (cellData) {
+            if (cellData.section !== 'body') return;
+            if (!colIndexes.includes(cellData.column.index)) return;
+            const text = String(cellData.cell.raw ?? '');
+            if (!text || !containsArabic(text)) return;
+            doc.setFillColor(255, 255, 255);
+            doc.rect(cellData.cell.x, cellData.cell.y, cellData.cell.width, cellData.cell.height, 'F');
+            doc.setDrawColor(200, 200, 200);
+            doc.rect(cellData.cell.x, cellData.cell.y, cellData.cell.width, cellData.cell.height);
+            const img = textToImage(text);
+            const padding = 1;
+            let targetH = cellData.cell.height - padding * 2;
+            let targetW = targetH * img.aspect;
+            if (targetW > cellData.cell.width - padding * 2) { targetW = cellData.cell.width - padding * 2; targetH = targetW / img.aspect; }
+            const x = cellData.cell.x + (cellData.cell.width - targetW) / 2;
+            const y = cellData.cell.y + (cellData.cell.height - targetH) / 2;
+            doc.addImage(img.dataUrl, 'PNG', x, y, targetW, targetH);
+        };
+
+        // Section 1: company income, broken down job by job — same math/source as the
+        // "Send Company Share" WhatsApp message, just on paper instead.
+        const { totalShareCompany, jobBreakdown } = computeSAndMPeriodShare(dateFrom, dateTo);
+        const incomeRows = (jobBreakdown || [])
+            .filter(b => Math.abs(b.shareCompany) > 0.005)
+            .map(b => [
+                b.generalBonus ? 'General bonus' : (b.job.clientName || ''),
+                b.generalBonus ? '' : (b.job.startDate || ''),
+                '$' + b.shareCompany.toFixed(2)
+            ]);
+
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+        doc.text('Company Income by Job', 14, 34);
+        doc.autoTable({
+            head: [['Client', 'Date', 'Company Share']],
+            body: incomeRows.length ? incomeRows : [['-', '-', '$0.00']],
+            startY: 37, theme: 'grid',
+            styles: { fontSize: 9, cellPadding: 2, halign: 'center' },
+            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+            didDrawCell: drawArabicCell([0])
+        });
+
+        // Section 2: general expenses in the same period, grouped by category.
+        const periodExpenses = companyExpenses.filter(e => (!dateFrom || (e.date && e.date >= dateFrom)) && (!dateTo || (e.date && e.date <= dateTo)));
+        const catTotals = {};
+        periodExpenses.forEach(e => {
+            const label = expenseCatLabel(e.category);
+            catTotals[label] = round2((catTotals[label] || 0) + parseVal(e.amount));
+        });
+        const expenseRows = Object.keys(catTotals).map(label => [label, '$' + catTotals[label].toFixed(2)]);
+        const totalSpent = round2(periodExpenses.reduce((s, e) => s + parseVal(e.amount), 0));
+
+        let afterIncomeY = doc.lastAutoTable.finalY + 10;
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+        doc.text('General Expenses by Category', 14, afterIncomeY);
+        doc.autoTable({
+            head: [['Category', 'Total']],
+            body: expenseRows.length ? expenseRows : [['-', '$0.00']],
+            startY: afterIncomeY + 3, theme: 'grid',
+            styles: { fontSize: 9, cellPadding: 2, halign: 'center' },
+            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+            didDrawCell: drawArabicCell([0])
+        });
+
+        const netForPeriod = round2(totalShareCompany - totalSpent);
+        let finalY = doc.lastAutoTable.finalY + 10;
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(0, 0, 0);
+        doc.text(`Net for the Period: $${netForPeriod.toFixed(2)}`, 14, finalY);
+
+        doc.save(`AHA_Company_Weekly_Report_${dateFrom || 'all'}_${dateTo || 'all'}.pdf`);
     }
 
     // ---------- Technician & Partner Report: pick ONE person, see every job he worked as a
