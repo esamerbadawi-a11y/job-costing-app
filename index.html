@@ -5362,7 +5362,7 @@
                     <button class="secondary" onclick="showJobQuickDetails('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#7c3aed;" title="${t('jobQuickDetailsBtn')}">ℹ️</button>
                     <button class="secondary" onclick="openInvoiceModal('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#0ea5e9;" title="${t('invoiceBtn')}">🧾</button>
                     <button class="secondary" onclick="openJobPayModal('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#16a34a;" title="${t('jobPayBtn')}">💰</button>
-                    <button class="secondary" onclick="editJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem;">${t('editBtn')}</button>
+                    <button class="secondary" onclick="openJobOverlay('${job.id}')" style="padding:4px 8px; font-size:0.75rem;">${t('editBtn')}</button>
                     <button class="secondary" onclick="duplicateJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#0284c7;">${t('duplicateBtn')}</button>
                     <button class="secondary" onclick="revertJobToAppointment('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#f59e0b;" title="${t('revertToAppointmentBtn')}">↩️</button>
                     <button class="danger" onclick="deleteJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem;">${t('deleteBtn')}</button>
