@@ -1161,6 +1161,8 @@
         <div id="aiReminderJob" style="font-weight:700; margin-bottom:10px; overflow-wrap:anywhere;"></div>
         <div class="form-group"><label data-i18n="aiReminderLangLabel"></label>
             <select id="aiReminderLang" onchange="onAiReminderLangChange()"><option value="en">English</option><option value="ar">العربية</option></select></div>
+        <div class="form-group"><label data-i18n="aiCustomInstructionsLabel"></label>
+            <input type="text" id="aiCustomInstructions" dir="auto" data-i18n-ph="aiCustomInstructionsPh"></div>
         <div id="aiReminderStatus" class="note-box" style="margin-bottom:10px;"></div>
         <textarea id="aiReminderText" dir="auto" rows="7" oninput="refreshAiReminderButtons(false)" style="margin-bottom:10px;"></textarea>
         <div class="ag-actions">
@@ -2018,6 +2020,8 @@
         unsavedOpenNoSave: { ar: 'افتح من غير حفظ', en: 'Open without saving' },
         unsavedBack: { ar: 'رجوع', en: 'Go back' },
         aiReminderLangLabel: { ar: 'لغة الرسالة:', en: 'Message language:' },
+        aiCustomInstructionsLabel: { ar: 'توجيهات إضافية للـ AI (اختياري):', en: 'Extra instructions for the AI (optional):' },
+        aiCustomInstructionsPh: { ar: 'مثال: خليها أقصر، أو اذكر إن فيه خصم لو دفع بسرعة...', en: 'e.g. make it shorter, or mention a discount for quick payment...' },
         aiWriting: { ar: '✨ الـ AI بيكتب الرسالة...', en: '✨ The AI is writing the message...' },
         aiReady: { ar: 'الرسالة جاهزة. راجعها وعدّل فيها لو عايز قبل ما تبعتها.', en: 'Message ready. Review it and edit it if you like before sending.' },
         aiSendWhatsApp: { ar: '📱 واتساب', en: '📱 WhatsApp' },
@@ -4328,10 +4332,11 @@
     // ---------- AI payment reminder: a window that shows progress, the message (editable) and the send buttons ----------
     let aiReminderCtx = null;
 
-    function buildReminderPrompt(job, rem, daysOverdue, lang) {
+    function buildReminderPrompt(job, rem, daysOverdue, lang, customInstructions) {
         const long = daysOverdue && daysOverdue > 14;
-        if (lang === 'ar') return `اكتب رسالة تذكير بدفعة متأخرة، مهذبة ومختصرة (2-4 جمل)، للعميل ${job.clientName}، بخصوص شغلانة "${job.clientDescription || 'صيانة'}"، المبلغ المتبقي $${rem.toFixed(2)}${daysOverdue ? `، ومتأخر عن الموعد بـ ${daysOverdue} يوم` : ''}. النبرة تتناسب مع ${long ? 'تأخير طويل نسبيًا لكن لسه محترمة' : 'تذكير ودّي بسيط'}. من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`;
-        return `Write a polite, concise (2-4 sentence) payment reminder to client ${job.clientName}, regarding a "${job.clientDescription || 'service'}" job, outstanding balance $${rem.toFixed(2)}${daysOverdue ? `, ${daysOverdue} days past the follow-up date` : ''}. Tone should be ${long ? 'a bit firmer given the longer delay, but still respectful' : 'a gentle, friendly nudge'}. No preamble or headers, just the message.`;
+        const extra = (customInstructions || '').trim();
+        if (lang === 'ar') return `اكتب رسالة تذكير بدفعة متأخرة، مهذبة ومختصرة (2-4 جمل)، للعميل ${job.clientName}، بخصوص شغلانة "${job.clientDescription || 'صيانة'}"، المبلغ المتبقي $${rem.toFixed(2)}${daysOverdue ? `، ومتأخر عن الموعد بـ ${daysOverdue} يوم` : ''}. النبرة تتناسب مع ${long ? 'تأخير طويل نسبيًا لكن لسه محترمة' : 'تذكير ودّي بسيط'}.${extra ? ` تعليمات إضافية من صاحب الشغل لازم تاخد بالك منها: ${extra}.` : ''} من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`;
+        return `Write a polite, concise (2-4 sentence) payment reminder to client ${job.clientName}, regarding a "${job.clientDescription || 'service'}" job, outstanding balance $${rem.toFixed(2)}${daysOverdue ? `, ${daysOverdue} days past the follow-up date` : ''}. Tone should be ${long ? 'a bit firmer given the longer delay, but still respectful' : 'a gentle, friendly nudge'}.${extra ? ` Extra instructions from the business owner to follow: ${extra}.` : ''} No preamble or headers, just the message.`;
     }
     // The same message without AI, so the reminder can always be sent.
     function buildFallbackReminder(job, rem, daysOverdue, lang) {
@@ -4341,9 +4346,10 @@
         if (lang === 'ar') return `أهلاً، معاك ${companyDisplayName()}. تذكير ودّي بالمبلغ المتبقي ${amount}${what ? ' عن ' + what : ''}${daysOverdue ? `، وعدّى ${daysOverdue} يوم على موعد المتابعة` : ''}. ${long ? 'ياريت نرتب السداد في أقرب وقت.' : 'ياريت تبلغنا إمتى نقدر نستلمه.'} شكرًا لتعاونك.`;
         return `Hello, this is ${companyDisplayName()}. A friendly reminder about the remaining balance of ${amount}${what ? ' for ' + what : ''}${daysOverdue ? `, now ${daysOverdue} days past the follow-up date` : ''}. ${long ? 'Please arrange payment as soon as you can.' : 'Please let us know when we can expect it.'} Thank you!`;
     }
-    function buildThankYouPrompt(job, lang) {
-        if (lang === 'ar') return `اكتب رسالة شكر مهذبة ومختصرة (2-3 جمل) للعميل ${job.clientName}، بعد ما خلّص سداد فاتورة شغلانة "${job.clientDescription || 'الصيانة'}" بالكامل. اشكره على التعامل وثقته في ${companyDisplayName()}. من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`;
-        return `Write a polite, concise (2-3 sentence) thank-you message to client ${job.clientName}, now that they've fully paid for the "${job.clientDescription || 'service'}" job. Thank them for their business and trust in ${companyDisplayName()}. No preamble or headers, just the message.`;
+    function buildThankYouPrompt(job, lang, customInstructions) {
+        const extra = (customInstructions || '').trim();
+        if (lang === 'ar') return `اكتب رسالة شكر مهذبة ومختصرة (2-3 جمل) للعميل ${job.clientName}، بعد ما خلّص سداد فاتورة شغلانة "${job.clientDescription || 'الصيانة'}" بالكامل. اشكره على التعامل وثقته في ${companyDisplayName()}.${extra ? ` تعليمات إضافية من صاحب الشغل لازم تاخد بالك منها: ${extra}.` : ''} من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`;
+        return `Write a polite, concise (2-3 sentence) thank-you message to client ${job.clientName}, now that they've fully paid for the "${job.clientDescription || 'service'}" job. Thank them for their business and trust in ${companyDisplayName()}.${extra ? ` Extra instructions from the business owner to follow: ${extra}.` : ''} No preamble or headers, just the message.`;
     }
     // The same message without AI, so the thank-you note can always be sent.
     function buildFallbackThankYou(job, lang) {
@@ -4376,6 +4382,7 @@
         document.getElementById('aiReminderLang').value = currentLang === 'ar' ? 'ar' : 'en';
         document.getElementById('aiReminderJob').textContent = `${job.clientName || ''} — $${rem.toFixed(2)}`;
         document.getElementById('aiReminderText').value = '';
+        document.getElementById('aiCustomInstructions').value = '';
         document.getElementById('aiShareBtn').style.display = 'none';   // no invoice open here (called from the jobs list), so there's nothing to share an image of
         document.getElementById('aiReminderModal').style.display = 'flex';
         if (!aiReminderCtx.apiKey) { useTemplateReminder('aiNoKeyNote'); return; }   // no key: don't leave the user stuck
@@ -4398,6 +4405,7 @@
         document.getElementById('aiReminderLang').value = currentLang === 'ar' ? 'ar' : 'en';
         document.getElementById('aiReminderJob').textContent = `${job.clientName || ''} — $${rem.toFixed(2)}`;
         document.getElementById('aiReminderText').value = '';
+        document.getElementById('aiCustomInstructions').value = '';
         // Sharing an image only makes sense when there's an invoice open to render, and only on
         // devices whose share sheet can take a file (desktop Chrome, for example, cannot).
         document.getElementById('aiShareBtn').style.display = (navigator.share && navigator.canShare) ? '' : 'none';
@@ -4416,7 +4424,8 @@
         refreshAiReminderButtons(true);
         try {
             const lang = document.getElementById('aiReminderLang').value;
-            const prompt = c.msgKind === 'thankyou' ? buildThankYouPrompt(c.job, lang) : buildReminderPrompt(c.job, c.rem, c.daysOverdue, lang);
+            const customInstructions = document.getElementById('aiCustomInstructions').value;
+            const prompt = c.msgKind === 'thankyou' ? buildThankYouPrompt(c.job, lang, customInstructions) : buildReminderPrompt(c.job, c.rem, c.daysOverdue, lang, customInstructions);
             const text = await aiGenerate(c.apiKey, prompt);
             if (myRun !== c.run || aiReminderCtx !== c) return;   // closed, or a newer request took over
             document.getElementById('aiReminderText').value = text;
