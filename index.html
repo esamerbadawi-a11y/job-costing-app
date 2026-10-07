@@ -49,6 +49,11 @@
         @media(max-width: 1300px) { .stats-grid { grid-template-columns: repeat(4, 1fr); } }
         @media(max-width: 700px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
         @media(max-width: 600px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+        /* Invoice item row (Description/Qty/Amount/✕): on a narrow phone the fixed-width Qty/
+           Amount/✕ columns left almost no room for the Description box, where the long text
+           people actually type gets cramped. Stacking it to one field per line here gives
+           Description the full width, same idea as .grid-2/.grid-3 above. */
+        @media(max-width: 600px) { .invoice-item-grid { grid-template-columns: 1fr !important; } }
 
         /* On narrow screens, the jobs table becomes a stack of cards — one per job —
            so every action button is reachable without side-scrolling. Each cell's
@@ -6438,7 +6443,6 @@
         // The "PAID IN FULL" badge is NOT re-toggled here on purpose — it reflects the job's
         // actual recorded payments (set once when the screen opens), not whatever the invoice's
         // own items/credits happen to add up to while you're still editing them.
-        if (paidEl) paidEl.style.display = totalDue <= 0 ? 'block' : 'none';
     }
 
     function invoiceDocTypeDisplay(docType) {
@@ -6461,10 +6465,10 @@
 
         const itemsHtml = invoiceState.items.map((it, index) => `
             <div class="tech-card" style="margin-bottom:8px;">
-                <div style="display:grid; grid-template-columns: ${itemsGridCols}; gap:10px; align-items:center;">
-                    <div>
+                <div class="invoice-item-grid" style="display:grid; grid-template-columns: ${itemsGridCols}; gap:10px; align-items:end;">
+                    <div class="invoice-item-desc-cell">
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColDesc')}</label>
-                        <input type="text" value="${escHtml(it.desc)}" oninput="updateInvoiceItemField(${index}, 'desc', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
+                        <textarea rows="1" oninput="updateInvoiceItemField(${index}, 'desc', this.value); autoGrowTextarea(this);" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; resize:vertical; min-height:40px; font-family:inherit; font-size:0.9rem; line-height:1.4;">${escHtml(it.desc)}</textarea>
                     </div>
                     ${hideQty ? '' : `
                     <div>
@@ -6475,7 +6479,7 @@
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColAmount')}</label>
                         <input type="text" value="${it.amount !== undefined ? it.amount : ''}" onfocus="this.select()" oninput="updateInvoiceItemField(${index}, 'amount', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; text-align:center;">
                     </div>
-                    <div style="display:flex; align-items:flex-end; height:100%;">
+                    <div style="display:flex; align-items:stretch; height:40px;">
                         <button type="button" onclick="removeInvoiceItemRow(${index})" title="${t('invoiceRemoveItemBtn')}" style="background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid rgba(225,29,72,0.4); padding:9px 0; border-radius:8px; width:100%; cursor:pointer; font-size:14px;">✕</button>
                     </div>
                 </div>
@@ -6620,6 +6624,17 @@
                 <button type="button" onclick="sendInvoiceClientMessage()" style="padding:10px 20px; font-size:0.9rem; background:#7c3aed; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoiceSendMsgBtn')}</button>
             </div>
         `;
+        // A saved item with a long description should open already expanded, not just grow the
+        // next time someone types in it.
+        container.querySelectorAll('.invoice-item-desc-cell textarea').forEach(autoGrowTextarea);
+    }
+
+    // Grows a textarea to fit its content instead of scrolling inside a cramped fixed-height box —
+    // used for the invoice item Description field, which used to be a single-line input too
+    // narrow to comfortably read or edit a longer line of text in.
+    function autoGrowTextarea(el) {
+        el.style.height = 'auto';
+        el.style.height = (el.scrollHeight) + 'px';
     }
 
     // Builds the full invoice HTML document — used both to print it (printInvoice) and to
