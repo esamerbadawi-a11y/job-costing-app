@@ -1185,11 +1185,34 @@
             <button id="aiSendWaBtn" class="success" onclick="sendAiReminder('whatsapp')" data-i18n="aiSendWhatsApp"></button>
             <button id="aiSendSmsBtn" class="secondary" onclick="sendAiReminder('sms')" data-i18n="aiSendSms"></button>
             <button id="aiSendEmailBtn" class="secondary" onclick="sendAiReminder('email')" data-i18n="aiSendEmail"></button>
+            <button id="aiCallBtn" class="secondary" style="display:none; background:#16a34a;" onclick="callAiReminderClient()" data-i18n="aiCallBtn"></button>
             <button id="aiCopyBtn" class="secondary" onclick="copyAiReminder()" data-i18n="aiCopyBtn"></button>
             <button id="aiShareBtn" class="success" style="display:none;" onclick="shareAiReminderWithInvoice()" data-i18n="aiShareBtn"></button>
             <button id="aiTemplateBtn" class="warning" onclick="useTemplateReminder('aiTemplateNote')" data-i18n="aiUseTemplateBtn"></button>
             <button id="aiRetryBtn" class="secondary" onclick="regenerateAiReminder()" data-i18n="aiRetryBtn"></button>
         </div>
+    </div>
+</div>
+
+<div id="followUpReasonModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center;" onclick="if(event.target===this) closeFollowUpReasonModal();">
+    <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:85%; max-width:380px; padding:20px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+        <h3 style="color:#fbbf24; margin:0 0 14px; font-size:1rem;">🔔 <span data-i18n="followUpReasonModalTitle"></span></h3>
+        <div class="form-group">
+            <label data-i18n="followUpReasonLabel"></label>
+            <select id="followUpReasonSelect">
+                <option value="quote_sent" data-i18n="followUpReasonQuoteSent"></option>
+                <option value="visited_waiting" data-i18n="followUpReasonVisitedWaiting"></option>
+                <option value="called_no_answer" data-i18n="followUpReasonCalledNoAnswer"></option>
+                <option value="appointment_reminder" data-i18n="followUpReasonApptReminder"></option>
+                <option value="other" data-i18n="followUpReasonOther"></option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label data-i18n="followUpReasonNoteLabel"></label>
+            <input type="text" id="followUpReasonNote" dir="auto" data-i18n-ph="followUpReasonNotePh">
+        </div>
+        <button class="success" style="width:100%; padding:11px; margin-bottom:8px;" onclick="saveFollowUpReason()" data-i18n="saveFollowUpReasonBtn"></button>
+        <button class="danger" style="width:100%; padding:8px; font-size:0.85rem;" onclick="closeFollowUpReasonModal()" data-i18n="cancelBtn"></button>
     </div>
 </div>
 
@@ -2060,6 +2083,28 @@
         alertJobHasNoEmail: { ar: 'الشغلانة دي معندهاش إيميل عميل محفوظ.', en: 'This job has no client email saved.' },
         emailThankYouSubjectPrefix: { ar: 'شكرًا لتعاملك مع', en: 'Thank You -' },
         emailReminderSubjectPrefix: { ar: 'تذكير بالدفع -', en: 'Payment Reminder -' },
+        emailFollowUpSubjectPrefix: { ar: 'متابعة -', en: 'Follow-up -' },
+        aiCallBtn: { ar: '📞 اتصل', en: '📞 Call' },
+        followUpBtn: { ar: '🔔 متابعة', en: '🔔 Follow Up' },
+        followUpBadgeQuoteSent: { ar: '🔔 بستنى رد على عرض السعر', en: '🔔 Waiting on quote response' },
+        followUpBadgeVisitedWaiting: { ar: '🔔 عملت زيارة وبستنى قرار', en: '🔔 Visited — waiting on decision' },
+        followUpBadgeCalledNoAnswer: { ar: '🔔 اتصلت قبل كده ومردش', en: '🔔 Called before — no answer' },
+        followUpBadgeApptReminder: { ar: '🔔 محتاج تذكير بموعد', en: '🔔 Needs appointment reminder' },
+        followUpBadgeOther: { ar: '🔔 محتاج متابعة', en: '🔔 Needs follow-up' },
+        followUpAiBtn: { ar: '✨ متابعة', en: '✨ Follow Up' },
+        editFollowUpBtn: { ar: '✏️', en: '✏️' },
+        clearFollowUpBtn: { ar: '✓ خلصت', en: '✓ Done' },
+        followUpLastSentLabel: { ar: 'آخر متابعة:', en: 'Last followed up:' },
+        followUpReasonModalTitle: { ar: 'سبب المتابعة', en: 'Follow-up reason' },
+        followUpReasonLabel: { ar: 'نوع المتابعة:', en: 'Follow-up type:' },
+        followUpReasonQuoteSent: { ar: 'بعت عرض سعر وبستنى رد', en: 'Sent a quote, waiting for response' },
+        followUpReasonVisitedWaiting: { ar: 'عملت زيارة/معاينة وبستنى قرار', en: 'Visited/assessed, waiting on decision' },
+        followUpReasonCalledNoAnswer: { ar: 'اتصلت قبل كده ومردش', en: "Called before, didn't answer" },
+        followUpReasonApptReminder: { ar: 'محتاج أذكّره بموعد', en: 'Need to remind about an appointment' },
+        followUpReasonOther: { ar: 'سبب تاني', en: 'Other' },
+        followUpReasonNoteLabel: { ar: 'تفاصيل إضافية (اختياري):', en: 'Extra details (optional):' },
+        followUpReasonNotePh: { ar: 'مثال: مهتم بتركيب كاميرتين إضافيتين...', en: 'e.g. interested in adding two more cameras...' },
+        saveFollowUpReasonBtn: { ar: '💾 حفظ', en: '💾 Save' },
         invoiceSendMsgBtn: { ar: '✉️ ابعت رسالة للعميل', en: '✉️ Send Client Message' },
         invoicePaidBadge: { ar: '✅ مدفوعة بالكامل', en: '✅ PAID IN FULL' },
         invoicePaidStamp: { ar: 'مدفوعة بالكامل', en: 'PAID IN FULL' },
@@ -4378,6 +4423,43 @@
         return `Hello ${job.clientName || ''}, this is ${companyDisplayName()}. Thank you so much for fully settling the invoice${what ? ' for ' + what : ''}, and for trusting us with your project. It was a pleasure working with you! 🙏`;
     }
 
+    // The appointment's chosen follow-up reason (set in the 🔔 picker) drives what the AI is told
+    // the message is actually about — so "sent a quote" and "called, no answer" don't come out
+    // sounding the same. "other" falls back to whatever free-text note the user typed there.
+    function followUpReasonContext(appt, lang) {
+        const note = (appt.followUpReasonNote || '').trim();
+        const map = {
+            quote_sent: { ar: 'بعتنالّه عرض سعر وبنستنى رد منه', en: 'we sent them a price quote and are waiting to hear back' },
+            visited_waiting: { ar: 'عملنالّه زيارة/معاينة وبنستنى قراره', en: 'we did a visit/assessment and are waiting on their decision' },
+            called_no_answer: { ar: 'حاولنا نتصل بيه قبل كده ومردش', en: "we tried calling them before and couldn't reach them" },
+            appointment_reminder: { ar: 'عايزين نفكّره بالموعد المتفق عليه', en: 'we want to remind them about the agreed appointment' },
+            other: { ar: note || 'محتاجين نتابع معاه', en: note || 'we need to follow up with them' }
+        };
+        const entry = map[appt.followUpReason] || map.other;
+        return entry[lang] || entry.ar;
+    }
+    function buildFollowUpPrompt(appt, lang, customInstructions) {
+        const extra = (customInstructions || '').trim();
+        const ctx = followUpReasonContext(appt, lang);
+        const servicesText = (appt.services && appt.services.length) ? appt.services.join(lang === 'ar' ? '، ' : ', ') : '';
+        if (lang === 'ar') return `اكتب رسالة متابعة ودّية ومختصرة (2-4 جمل) للعميل ${appt.clientName}، ${ctx}${servicesText ? `، بخصوص خدمة "${servicesText}"` : ''}. النبرة ودّية ومحترمة، مش ضاغطة على العميل.${extra ? ` تعليمات إضافية من صاحب الشغل لازم تاخد بالك منها: ${extra}.` : ''} من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`;
+        return `Write a friendly, concise (2-4 sentence) follow-up message to client ${appt.clientName} — ${ctx}${servicesText ? `, regarding "${servicesText}"` : ''}. Keep the tone warm and respectful, not pushy.${extra ? ` Extra instructions from the business owner to follow: ${extra}.` : ''} No preamble or headers, just the message.`;
+    }
+    // The same message without AI, so a follow-up can always be sent even with no AI key.
+    function buildFallbackFollowUp(appt, lang) {
+        const lines = {
+            quote_sent: { ar: 'حبينا نتابع معاك بخصوص عرض السعر اللي بعتناهولك', en: 'we wanted to follow up on the quote we sent you' },
+            visited_waiting: { ar: 'حبينا نتابع معاك بعد الزيارة اللي عملناها، تحب تكمل معانا؟', en: 'we wanted to check in after our visit — have you had a chance to decide?' },
+            called_no_answer: { ar: 'حاولنا نتواصل معاك قبل كده ومقدرناش، حبينا نتابع تاني', en: 'we tried reaching you before and wanted to follow up again' },
+            appointment_reminder: { ar: 'حبينا نفكّرك بالموعد المتفق عليه معانا', en: 'we wanted to remind you about our agreed appointment' },
+            other: { ar: (appt.followUpReasonNote || '').trim() || 'حبينا نتابع معاك بخصوص طلبك', en: (appt.followUpReasonNote || '').trim() || 'we wanted to follow up on your request' }
+        };
+        const entry = lines[appt.followUpReason] || lines.other;
+        const line = entry[lang] || entry.ar;
+        if (lang === 'ar') return `أهلاً ${appt.clientName || ''}، معاك ${companyDisplayName()}. ${line}. لو عندك أي سؤال أو قرار، قولنا وإحنا جاهزين نساعدك. شكرًا ليك!`;
+        return `Hello ${appt.clientName || ''}, this is ${companyDisplayName()}. ${line}. Let us know if you have any questions or you'd like to move forward — we're happy to help. Thank you!`;
+    }
+
     function setAiReminderStatus(kind, text) {
         const el = document.getElementById('aiReminderStatus');
         el.textContent = text;
@@ -4386,6 +4468,7 @@
     function refreshAiReminderButtons(busy) {
         const has = !!document.getElementById('aiReminderText').value.trim();
         ['aiSendWaBtn', 'aiSendSmsBtn', 'aiSendEmailBtn', 'aiCopyBtn', 'aiShareBtn'].forEach(id => { document.getElementById(id).disabled = busy || !has; });
+        document.getElementById('aiCallBtn').disabled = !!busy;   // doesn't need the written text — just dials
         document.getElementById('aiRetryBtn').disabled = !!busy;
     }
 
@@ -4404,6 +4487,7 @@
         document.getElementById('aiReminderText').value = '';
         document.getElementById('aiCustomInstructions').value = '';
         document.getElementById('aiShareBtn').style.display = 'none';   // no invoice open here (called from the jobs list), so there's nothing to share an image of
+        document.getElementById('aiCallBtn').style.display = job.clientPhone ? '' : 'none';
         document.getElementById('aiReminderModal').style.display = 'flex';
         if (!aiReminderCtx.apiKey) { useTemplateReminder('aiNoKeyNote'); return; }   // no key: don't leave the user stuck
         await regenerateAiReminder();
@@ -4429,8 +4513,27 @@
         // Sharing an image only makes sense when there's an invoice open to render, and only on
         // devices whose share sheet can take a file (desktop Chrome, for example, cannot).
         document.getElementById('aiShareBtn').style.display = (navigator.share && navigator.canShare) ? '' : 'none';
+        document.getElementById('aiCallBtn').style.display = job.clientPhone ? '' : 'none';
         document.getElementById('aiReminderModal').style.display = 'flex';
         if (!aiReminderCtx.apiKey) { useTemplateReminder('aiNoKeyNote'); return; }   // no key: don't leave the user stuck
+        await regenerateAiReminder();
+    }
+
+    // Opens the same AI-composer modal for an appointment that's been marked 🔔 needing
+    // follow-up — the chosen reason (set via the follow-up picker) drives the prompt, just like
+    // msgKind 'reminder'/'thankyou' do for a job's payment status.
+    async function sendAppointmentFollowUp(apptId) {
+        const appt = appointments.find(a => a.id === apptId);
+        if (!appt) return;
+        aiReminderCtx = { job: appt, rem: 0, daysOverdue: null, apiKey: getGeminiApiKey(), run: 0, mode: 'ai', msgKind: 'followup', fromInvoice: false, apptId: appt.id };
+        document.getElementById('aiReminderLang').value = currentLang === 'ar' ? 'ar' : 'en';
+        document.getElementById('aiReminderJob').textContent = `${appt.clientName || ''} — ${t(followUpReasonBadgeKey(appt.followUpReason))}`;
+        document.getElementById('aiReminderText').value = '';
+        document.getElementById('aiCustomInstructions').value = '';
+        document.getElementById('aiShareBtn').style.display = 'none';
+        document.getElementById('aiCallBtn').style.display = appt.clientPhone ? '' : 'none';
+        document.getElementById('aiReminderModal').style.display = 'flex';
+        if (!aiReminderCtx.apiKey) { useTemplateReminder('aiNoKeyNote'); return; }
         await regenerateAiReminder();
     }
 
@@ -4445,7 +4548,9 @@
         try {
             const lang = document.getElementById('aiReminderLang').value;
             const customInstructions = document.getElementById('aiCustomInstructions').value;
-            const prompt = c.msgKind === 'thankyou' ? buildThankYouPrompt(c.job, lang, customInstructions) : buildReminderPrompt(c.job, c.rem, c.daysOverdue, lang, customInstructions);
+            const prompt = c.msgKind === 'thankyou' ? buildThankYouPrompt(c.job, lang, customInstructions)
+                : c.msgKind === 'followup' ? buildFollowUpPrompt(c.job, lang, customInstructions)
+                : buildReminderPrompt(c.job, c.rem, c.daysOverdue, lang, customInstructions);
             const text = await aiGenerate(c.apiKey, prompt);
             if (myRun !== c.run || aiReminderCtx !== c) return;   // closed, or a newer request took over
             document.getElementById('aiReminderText').value = text;
@@ -4464,7 +4569,9 @@
         if (!c) return;
         c.run++; c.mode = 'template';   // cancels any AI request still running
         const lang = document.getElementById('aiReminderLang').value;
-        document.getElementById('aiReminderText').value = c.msgKind === 'thankyou' ? buildFallbackThankYou(c.job, lang) : buildFallbackReminder(c.job, c.rem, c.daysOverdue, lang);
+        document.getElementById('aiReminderText').value = c.msgKind === 'thankyou' ? buildFallbackThankYou(c.job, lang)
+            : c.msgKind === 'followup' ? buildFallbackFollowUp(c.job, lang)
+            : buildFallbackReminder(c.job, c.rem, c.daysOverdue, lang);
         setAiReminderStatus('ok', t(noteKey));
         refreshAiReminderButtons(false);
     }
@@ -4476,14 +4583,20 @@
 
     // The buttons open WhatsApp / Messages directly from the tap, so the phone never blocks them as pop-ups.
     function openExternal(url, newTab) { if (newTab) window.open(url, '_blank'); else window.location.href = url; }
+    function emailSubjectKeyFor(msgKind) {
+        if (msgKind === 'thankyou') return 'emailThankYouSubjectPrefix';
+        if (msgKind === 'followup') return 'emailFollowUpSubjectPrefix';
+        return 'emailReminderSubjectPrefix';
+    }
     function sendAiReminder(kind) {
         const c = aiReminderCtx;
         const text = document.getElementById('aiReminderText').value.trim();
         if (!c || !text) return;
         if (kind === 'email') {
             if (!c.job.clientEmail) { alert(t('alertJobHasNoEmail')); return; }
-            const subject = encodeURIComponent(`${t(c.msgKind === 'thankyou' ? 'emailThankYouSubjectPrefix' : 'emailReminderSubjectPrefix')} ${companyDisplayName()}`);
+            const subject = encodeURIComponent(`${t(emailSubjectKeyFor(c.msgKind))} ${companyDisplayName()}`);
             openExternal(`mailto:${c.job.clientEmail}?subject=${subject}&body=${encodeURIComponent(text)}`, false);
+            markFollowUpSent(c);
             return;
         }
         let digits = normalizePhone(c.job.clientPhone);
@@ -4491,6 +4604,25 @@
         const enc = encodeURIComponent(text);
         if (kind === 'whatsapp') openExternal(digits ? `https://wa.me/${digits}?text=${enc}` : `https://wa.me/?text=${enc}`, true);
         else openExternal(digits ? `sms:${digits}&body=${enc}` : `sms:&body=${enc}`, false);
+        markFollowUpSent(c);
+    }
+    // A direct phone call bypasses the AI-written text entirely, so it's offered as its own
+    // button whenever the client has a phone number saved — same idea as the message buttons,
+    // just dialing instead of handing text to WhatsApp/SMS/Email.
+    function callAiReminderClient() {
+        const c = aiReminderCtx;
+        if (!c || !c.job.clientPhone) return;
+        openExternal(`tel:${c.job.clientPhone.replace(/[^+\d]/g, '')}`, false);
+        markFollowUpSent(c);
+    }
+    // Stamps "last followed up" on the appointment the moment the user actually acts on it
+    // (sends/calls) — best-effort, never blocks the send itself if the save fails.
+    async function markFollowUpSent(c) {
+        if (!c || c.msgKind !== 'followup' || !c.apptId) return;
+        const appt = appointments.find(a => a.id === c.apptId);
+        if (!appt) return;
+        appt.followUpLastSentAt = new Date().toISOString();
+        try { await APPOINTMENTS_DOC.set({ entries: appointments }); safeCall(renderAppointments); } catch (e) { console.error('markFollowUpSent error:', e); }
     }
     async function copyAiReminder() {
         const el = document.getElementById('aiReminderText');
@@ -8895,17 +9027,73 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         refreshAllViews();
     }
 
+    /* ---------------- Follow-up marking (🔔) ---------------- */
+    let followUpReasonApptId = '';
+    const FOLLOW_UP_BADGE_KEYS = { quote_sent: 'followUpBadgeQuoteSent', visited_waiting: 'followUpBadgeVisitedWaiting', called_no_answer: 'followUpBadgeCalledNoAnswer', appointment_reminder: 'followUpBadgeApptReminder', other: 'followUpBadgeOther' };
+    function followUpReasonBadgeKey(reason) { return FOLLOW_UP_BADGE_KEYS[reason] || FOLLOW_UP_BADGE_KEYS.other; }
+    function openFollowUpReasonModal(apptId) {
+        const appt = appointments.find(a => a.id === apptId);
+        if (!appt) return;
+        followUpReasonApptId = apptId;
+        document.getElementById('followUpReasonSelect').value = appt.followUpReason || 'quote_sent';
+        document.getElementById('followUpReasonNote').value = appt.followUpReasonNote || '';
+        document.getElementById('followUpReasonModal').style.display = 'flex';
+    }
+    function closeFollowUpReasonModal() { document.getElementById('followUpReasonModal').style.display = 'none'; }
+    async function saveFollowUpReason() {
+        const appt = appointments.find(a => a.id === followUpReasonApptId);
+        if (!appt) return;
+        const prevState = { followUpNeeded: appt.followUpNeeded, followUpReason: appt.followUpReason, followUpReasonNote: appt.followUpReasonNote };
+        appt.followUpNeeded = true;
+        appt.followUpReason = document.getElementById('followUpReasonSelect').value;
+        appt.followUpReasonNote = document.getElementById('followUpReasonNote').value.trim();
+        try {
+            await APPOINTMENTS_DOC.set({ entries: appointments });
+            closeFollowUpReasonModal();
+            renderAppointments();
+        } catch (err) { Object.assign(appt, prevState); alertSaveError(err); }
+    }
+    // "Done" clears the flag (and the AI context) once the client has responded — doesn't delete
+    // the reason/note, so re-marking it later (if they go quiet again) reopens the picker pre-filled.
+    async function clearFollowUp(apptId) {
+        const appt = appointments.find(a => a.id === apptId);
+        if (!appt) return;
+        const wasNeeded = appt.followUpNeeded;
+        appt.followUpNeeded = false;
+        try { await APPOINTMENTS_DOC.set({ entries: appointments }); renderAppointments(); }
+        catch (err) { appt.followUpNeeded = wasNeeded; alertSaveError(err); }
+    }
+
     function renderAppointments() {
         const container = document.getElementById('appointmentsContent');
         if (appointments.length === 0) { container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:15px;">${t('noAppointmentsYet')}</p>`; return; }
 
-        const sorted = [...appointments].sort((a, b) => (a.requestedDate || '9999').localeCompare(b.requestedDate || '9999'));
+        // Appointments flagged 🔔 float to the top (newest-flagged first), so the people waiting
+        // on a follow-up are never buried under a long list sorted purely by date.
+        const sorted = [...appointments].sort((a, b) => {
+            if (!!b.followUpNeeded !== !!a.followUpNeeded) return (b.followUpNeeded ? 1 : 0) - (a.followUpNeeded ? 1 : 0);
+            return (a.requestedDate || '9999').localeCompare(b.requestedDate || '9999');
+        });
         let html = '';
         sorted.forEach(appt => {
             const serviceTags = (appt.services && appt.services.length > 0)
                 ? `<div style="margin-top:6px; display:flex; flex-wrap:wrap; gap:5px;">${appt.services.map(s => `<span style="background:rgba(14,165,233,0.15); color:#38bdf8; border-radius:6px; padding:2px 8px; font-size:0.72rem;">${s}</span>`).join('')}</div>`
                 : '';
-            html += `<div class="tech-card">
+            const followUpBlock = appt.followUpNeeded
+                ? `<div style="margin-top:8px; background:rgba(217,119,6,0.14); border:1px solid var(--warning); border-radius:8px; padding:8px 10px;">
+                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+                       <span style="color:#fbbf24; font-weight:700; font-size:0.78rem;">${t(followUpReasonBadgeKey(appt.followUpReason))}</span>
+                       <div style="display:flex; gap:4px;">
+                         <button class="secondary" onclick="openFollowUpReasonModal('${appt.id}')" style="padding:3px 8px; font-size:0.72rem;" title="${t('editFollowUpBtn')}">${t('editFollowUpBtn')}</button>
+                         <button class="secondary" onclick="clearFollowUp('${appt.id}')" style="padding:3px 8px; font-size:0.72rem; background:#16a34a;">${t('clearFollowUpBtn')}</button>
+                       </div>
+                     </div>
+                     ${appt.followUpReasonNote ? `<div style="font-size:0.74rem; color:var(--text-muted); margin-top:4px;">${escHtml(appt.followUpReasonNote)}</div>` : ''}
+                     ${appt.followUpLastSentAt ? `<div style="font-size:0.7rem; color:var(--text-muted); margin-top:4px;">${t('followUpLastSentLabel')} ${new Date(appt.followUpLastSentAt).toLocaleDateString()}</div>` : ''}
+                     <button class="success" onclick="sendAppointmentFollowUp('${appt.id}')" style="width:100%; margin-top:6px; padding:7px; font-size:0.78rem; background:linear-gradient(135deg,#7c3aed,#38bdf8);">${t('followUpAiBtn')}</button>
+                   </div>`
+                : '';
+            html += `<div class="tech-card" style="${appt.followUpNeeded ? 'border-color:var(--warning);' : ''}">
                 <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
                     <div>
                         <strong>${appt.clientName}</strong><br>
@@ -8913,8 +9101,10 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                         <span style="font-size:0.78rem; color:#38bdf8;">${appt.requestedDate || t('noDateSet')} ${appt.requestedTime || ''}</span>
                         ${serviceTags}
                         ${appt.note ? `<div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">${appt.note}</div>` : ''}
+                        ${followUpBlock}
                     </div>
-                    <div style="display:flex; gap:6px; align-self:center;">
+                    <div style="display:flex; gap:6px; align-self:center; flex-wrap:wrap;">
+                        ${!appt.followUpNeeded ? `<button class="secondary" onclick="openFollowUpReasonModal('${appt.id}')" style="padding:6px 10px; font-size:0.78rem; background:#d97706;">${t('followUpBtn')}</button>` : ''}
                         <button class="success" onclick="convertAppointmentToJob('${appt.id}')" style="padding:6px 12px; font-size:0.78rem;">${t('convertToJobBtn')}</button>
                         <button class="secondary" onclick="editAppointment('${appt.id}')" style="padding:6px 10px; font-size:0.78rem; background:#0284c7;">${t('editBtn')}</button>
                         <button class="danger" onclick="deleteAppointment('${appt.id}')" style="padding:6px 10px; font-size:0.78rem;">${t('deleteBtn')}</button>
