@@ -1804,6 +1804,7 @@
         invoiceSavedInvoicesTitle: { ar: 'الفواتير المحفوظة', en: 'Saved Invoices' },
         invoiceNoSavedInvoices: { ar: 'لسه مفيش فواتير محفوظة لشغلانة', en: 'No saved invoices yet' },
         invoiceLoadBtn: { ar: 'فتح', en: 'Load' },
+        invoiceViewBtn: { ar: 'عرض سريع', en: 'View' },
         invoiceDeleteSavedBtn: { ar: 'مسح', en: 'Delete' },
         invoiceNewDraftBtn: { ar: '+ فاتورة جديدة', en: '+ New Invoice' },
         confirmDeleteSavedInvoice: { ar: 'تمسح الفاتورة المحفوظة دي؟ مش هينفع ترجعها تاني.', en: "Delete this saved invoice? This can't be undone." },
@@ -6369,6 +6370,36 @@
         renderInvoiceModalContent();
     }
 
+    // Quick visual look at a saved invoice exactly as it would print — without touching
+    // whatever's currently open in the editor. Swaps invoiceState to the saved snapshot just
+    // long enough to build the printable HTML, then puts the original state right back, so
+    // an unsaved draft currently being edited is never disturbed.
+    function viewSavedInvoice(savedId) {
+        if (!invoiceState) return;
+        const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
+        if (!job) return;
+        const saved = (job.savedInvoices || []).find(inv => inv.id === savedId);
+        if (!saved) return;
+        // Opened synchronously, before any other work, so mobile browsers don't treat the
+        // eventual document.write() as a popup-blocker-worthy delayed open.
+        const win = window.open('', '_blank');
+        if (!win) { alert(t('alertSelectOneToPrint')); return; }
+        const originalState = invoiceState;
+        const jobId = invoiceState.jobId;
+        const previewState = JSON.parse(JSON.stringify(saved));
+        previewState.jobId = jobId;
+        previewState.savedId = saved.id;
+        if (!previewState.credits) previewState.credits = [];
+        if (previewState.paidMark === undefined) previewState.paidMark = jobRemaining(job) <= 0.005;
+        invoiceState = previewState;
+        const html = buildInvoiceHtmlDoc(false);
+        invoiceState = originalState; // restore immediately — this was only ever a peek
+        if (!html) { win.close(); return; }
+        win.document.open();
+        win.document.write(html);
+        win.document.close();
+    }
+
     function startNewInvoiceDraft() {
         if (!invoiceState) return;
         openInvoiceModal(invoiceState.jobId);
@@ -6556,6 +6587,7 @@
                             <span style="color:var(--text-muted);"> · $${invTotal.toFixed(2)}</span>
                         </div>
                         <div style="display:flex; gap:6px;">
+                            <button type="button" class="secondary" onclick="viewSavedInvoice('${inv.id}')" style="padding:5px 10px; font-size:0.75rem; background:#0284c7;">👁️ ${t('invoiceViewBtn')}</button>
                             <button type="button" class="secondary" onclick="loadSavedInvoice('${inv.id}')" style="padding:5px 10px; font-size:0.75rem;">${t('invoiceLoadBtn')}</button>
                             <button type="button" onclick="deleteSavedInvoice('${inv.id}')" style="padding:5px 10px; font-size:0.75rem; background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid rgba(225,29,72,0.4); border-radius:8px; cursor:pointer;">${t('invoiceDeleteSavedBtn')}</button>
                         </div>
