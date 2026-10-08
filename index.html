@@ -357,7 +357,10 @@
 
     <div id="screenAppointments" class="no-print" style="display:none; max-width:750px; margin:0 auto;">
         <div class="card">
-            <h2 style="margin:0 0 15px; border:none; padding:0;" data-i18n="appointmentsTitle"></h2>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px;">
+                <h2 style="margin:0; border:none; padding:0;" data-i18n="appointmentsTitle"></h2>
+                <button class="secondary" onclick="openAppointmentsListModal()" style="padding:8px 14px; font-size:0.85rem; background:#0284c7;">📋 <span data-i18n="viewAppointmentsListBtn"></span><span id="appointmentsListCountBadge"></span></button>
+            </div>
             <div style="background:var(--panel-bg); border:1px solid var(--border-color); padding:15px; border-radius:10px; margin-bottom:18px;">
                 <h3 style="color:#38bdf8; font-size:0.95rem; margin-bottom:10px;" id="addAppointmentTitle" data-i18n="addAppointmentTitle"></h3>
                 <div class="grid-2" style="margin-bottom:10px;">
@@ -395,7 +398,6 @@
                     <button class="secondary" onclick="resetAppointmentForm()" data-i18n="cancelBtn"></button>
                 </div>
             </div>
-            <div id="appointmentsContent"></div>
         </div>
     </div>
 
@@ -774,6 +776,16 @@
         </div>
 </div>
 
+<div id="appointmentsListModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+    <div class="tg-modal-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.2rem;">📋 <span data-i18n="appointmentsTitle"></span></h2>
+            <button class="danger" onclick="closeAppointmentsListModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+        <div id="appointmentsContent"></div>
+    </div>
+</div>
+
 <div id="techGuideModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
     <div class="tg-modal-box">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
@@ -950,11 +962,12 @@
         </div>
         <div class="screen-subtitle" data-i18n="techPartnerReportSubtitle"></div>
 
-        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:15px;">
-            <div class="form-group" style="flex:1; min-width:160px; margin-bottom:0;">
-                <label data-i18n="techPartnerSelectLabel"></label>
-                <select id="techPartnerReportSelect" onchange="renderTechPartnerReportContent()"></select>
-            </div>
+        <div class="form-group">
+            <label data-i18n="techPartnerSelectLabel"></label>
+            <select id="techPartnerReportSelect" onchange="renderTechPartnerReportContent()"></select>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:12px;">
             <div class="form-group" style="margin-bottom:0;">
                 <label data-i18n="techPartnerFromLabel"></label>
                 <input type="date" id="techPartnerReportFrom" onchange="renderTechPartnerReportContent()">
@@ -963,14 +976,20 @@
                 <label data-i18n="techPartnerToLabel"></label>
                 <input type="date" id="techPartnerReportTo" onchange="renderTechPartnerReportContent()">
             </div>
-            <button class="secondary" onclick="setTechPartnerDateRange('today')" style="padding:9px 12px; font-size:0.8rem;" data-i18n="presetTodayBtn"></button>
-            <button class="secondary" onclick="shiftTechPartnerWeek(-1)" style="padding:9px 12px; font-size:0.8rem;">◀</button>
-            <button class="secondary" onclick="setTechPartnerDateRange('week')" style="padding:9px 12px; font-size:0.8rem;" data-i18n="presetWeekBtn"></button>
-            <button class="secondary" onclick="setTechPartnerDateRange('lastweek')" style="padding:9px 12px; font-size:0.8rem;" data-i18n="presetLastWeekBtn"></button>
-            <button class="secondary" onclick="shiftTechPartnerWeek(1)" style="padding:9px 12px; font-size:0.8rem;">▶</button>
-            <button class="secondary" onclick="clearTechPartnerReportDates()" data-i18n="techPartnerClearDatesBtn" style="padding:9px 12px; font-size:0.8rem;"></button>
-            <button class="secondary" style="background:#16a34a; padding:9px 12px; font-size:0.8rem;" onclick="payTechPartnerReportPerson()" data-i18n="techPayBtn"></button>
-            <button class="secondary" style="background:#f87171; color:#fff;" onclick="downloadTechPartnerReportPDF()" data-i18n="partnerReportDownloadBtn"></button>
+        </div>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:15px;">
+            <button class="secondary" onclick="setTechPartnerDateRange('today')" style="flex:1; min-width:80px; padding:9px 10px; font-size:0.78rem;" data-i18n="presetTodayBtn"></button>
+            <button class="secondary" onclick="shiftTechPartnerWeek(-1)" style="padding:9px 14px; font-size:0.8rem;">◀</button>
+            <button class="secondary" onclick="setTechPartnerDateRange('week')" style="flex:1; min-width:100px; padding:9px 10px; font-size:0.78rem;" data-i18n="presetWeekBtn"></button>
+            <button class="secondary" onclick="setTechPartnerDateRange('lastweek')" style="flex:1; min-width:100px; padding:9px 10px; font-size:0.78rem;" data-i18n="presetLastWeekBtn"></button>
+            <button class="secondary" onclick="shiftTechPartnerWeek(1)" style="padding:9px 14px; font-size:0.8rem;">▶</button>
+            <button class="secondary" onclick="clearTechPartnerReportDates()" data-i18n="techPartnerClearDatesBtn" style="flex:1; min-width:100px; padding:9px 10px; font-size:0.78rem;"></button>
+        </div>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:15px; padding-top:12px; border-top:1px solid var(--border-color);">
+            <button class="secondary" style="flex:1; min-width:140px; background:#16a34a; padding:10px 12px; font-size:0.82rem;" onclick="payTechPartnerReportPerson()" data-i18n="techPayBtn"></button>
+            <button class="secondary" style="flex:1; min-width:140px; background:#f87171; color:#fff; padding:10px 12px; font-size:0.82rem;" onclick="downloadTechPartnerReportPDF()" data-i18n="partnerReportDownloadBtn"></button>
         </div>
 
         <div id="techPartnerReportContent" style="font-size:0.85rem; line-height:1.6; color:var(--text-main);"></div>
@@ -1720,6 +1739,7 @@
         phoneChoiceCallBtn: { ar: 'اتصال', en: 'Call' },
         phoneChoiceMsgBtn: { ar: 'رسالة', en: 'Message' },
         appointmentsTitle: { ar: '📆 مواعيد وطلبات العملاء', en: '📆 Customer Appointments & Requests' },
+        viewAppointmentsListBtn: { ar: 'عرض قائمة المواعيد', en: 'View Appointments List' },
         addAppointmentTitle: { ar: 'إضافة طلب ميعاد جديد', en: 'Add New Appointment Request' },
         editAppointmentTitle: { ar: 'تعديل الميعاد', en: 'Edit Appointment' },
         updateAppointmentBtn: { ar: 'حفظ التعديلات', en: 'Update Appointment' },
@@ -3065,7 +3085,7 @@
     // (e.g. one opened without the other being closed first), the later one in the page would sit on
     // top and silently swallow every tap meant for the one underneath — including a job's name link.
     // Every one of them closes all the others first, so that can never happen.
-    const TOP_LEVEL_MODAL_IDS = ['techGuideModal', 'expenseReportModal', 'activityLogModal', 'partnerAccountModal', 'partnerReportModal', 'techPartnerReportModal', 'companyAccountModal', 'companyProfileModal', 'agendaModal', 'globalSearchModal', 'invoiceModal', 'jobPayModal', 'periodLockModal', 'bankReconModal'];
+    const TOP_LEVEL_MODAL_IDS = ['techGuideModal', 'expenseReportModal', 'activityLogModal', 'partnerAccountModal', 'partnerReportModal', 'techPartnerReportModal', 'companyAccountModal', 'companyProfileModal', 'agendaModal', 'globalSearchModal', 'invoiceModal', 'jobPayModal', 'periodLockModal', 'bankReconModal', 'appointmentsListModal'];
     function closeOtherTopModals(exceptId) {
         TOP_LEVEL_MODAL_IDS.forEach(id => { if (id !== exceptId) { const el = document.getElementById(id); if (el) el.style.display = 'none'; } });
     }
@@ -9079,16 +9099,37 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         catch (err) { appt.followUpNeeded = wasNeeded; alertSaveError(err); }
     }
 
+    // Opens the appointments list as its own full-screen window on top of the Appointments
+    // screen, so the "add new" form stays short and the (potentially long) list of existing
+    // appointments doesn't make the whole page scroll forever.
+    function openAppointmentsListModal() {
+        closeOtherTopModals('appointmentsListModal');
+        document.getElementById('appointmentsListModal').style.display = 'flex';
+        safeCall(renderAppointments);
+    }
+    function closeAppointmentsListModal() { document.getElementById('appointmentsListModal').style.display = 'none'; }
+
+    // Shows how many appointments are waiting on the "view list" button, so it's useful to
+    // glance at even before opening the modal — and highlights it in orange when some of
+    // those are flagged for follow-up.
+    function updateAppointmentsListBadge() {
+        const badge = document.getElementById('appointmentsListCountBadge');
+        if (!badge) return;
+        const flaggedCount = appointments.filter(a => a.followUpNeeded).length;
+        if (appointments.length === 0) { badge.textContent = ''; return; }
+        badge.textContent = flaggedCount > 0 ? ` (${appointments.length} · 🔔${flaggedCount})` : ` (${appointments.length})`;
+    }
+
     function renderAppointments() {
         const container = document.getElementById('appointmentsContent');
+        safeCall(updateAppointmentsListBadge);
         if (appointments.length === 0) { container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:15px;">${t('noAppointmentsYet')}</p>`; return; }
 
-        // Appointments flagged 🔔 float to the top (newest-flagged first), so the people waiting
-        // on a follow-up are never buried under a long list sorted purely by date.
-        const sorted = [...appointments].sort((a, b) => {
-            if (!!b.followUpNeeded !== !!a.followUpNeeded) return (b.followUpNeeded ? 1 : 0) - (a.followUpNeeded ? 1 : 0);
-            return (a.requestedDate || '9999').localeCompare(b.requestedDate || '9999');
-        });
+        // Appointments flagged 🔔 float to the top. Within each group (flagged / not flagged),
+        // the original array order is kept as-is (sort is stable) — and since a brand-new
+        // appointment is unshift()'d to the front of the array when saved, that means every
+        // newly registered customer lands right under the flagged ones, newest first.
+        const sorted = [...appointments].sort((a, b) => (b.followUpNeeded ? 1 : 0) - (a.followUpNeeded ? 1 : 0));
         let html = '';
         sorted.forEach(appt => {
             const serviceTags = (appt.services && appt.services.length > 0)
