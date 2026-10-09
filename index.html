@@ -1248,6 +1248,43 @@
     </div>
 </div>
 
+<div id="appointmentQuoteModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10000; justify-content:center; align-items:center;" onclick="if(event.target===this) closeAppointmentQuoteModal();">
+    <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:92%; max-width:640px; max-height:88vh; overflow-y:auto; padding:22px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+            <h2 style="color:#0891b2; margin:0; font-size:1.1rem;" data-i18n="appointmentQuoteModalTitle"></h2>
+            <button class="danger" onclick="closeAppointmentQuoteModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="quoteCloseBtn"></button>
+        </div>
+        <div id="quoteClientLine" style="font-weight:700; margin-bottom:12px;"></div>
+
+        <div class="form-group">
+            <label data-i18n="quotePriceLabel"></label>
+            <input type="text" id="quotePriceInput" placeholder="0" onfocus="this.select()" oninput="onQuotePriceInput()">
+        </div>
+
+        <div class="form-group">
+            <label data-i18n="quoteItemsLabel"></label>
+            <div id="quoteItemsContainer"></div>
+            <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+                <button type="button" class="secondary" onclick="addQuoteItemRow()" data-i18n="quoteAddItemBtn" style="padding:7px 12px; font-size:0.8rem;"></button>
+                <button type="button" id="quoteAnalyzePhotoBtn" class="secondary" onclick="document.getElementById('quotePhotoInput').click()" data-i18n="quoteAnalyzePhotoBtn" style="padding:7px 12px; font-size:0.8rem; background:#7c3aed;"></button>
+                <input type="file" id="quotePhotoInput" accept="image/*" style="display:none;" onchange="analyzeQuotePhotoAndSplit(event)">
+            </div>
+            <div id="quotePhotoGallery" style="display:none; gap:8px; flex-wrap:wrap; margin-top:10px;"></div>
+        </div>
+
+        <div class="form-group">
+            <label data-i18n="quoteNoteLabel"></label>
+            <textarea id="quoteNoteInput" dir="auto" data-i18n-ph="quoteNotePh" rows="2"></textarea>
+        </div>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+            <button class="secondary" onclick="saveAppointmentQuote(quoteApptId, true)" data-i18n="quoteSaveBtn" style="flex:1; min-width:110px; padding:10px;"></button>
+            <button class="success" onclick="sendAppointmentQuoteMessage(quoteApptId)" data-i18n="quoteSendMsgBtn" style="flex:1; min-width:150px; padding:10px; background:linear-gradient(135deg,#7c3aed,#38bdf8);"></button>
+            <button class="success" onclick="sendAppointmentQuoteDocument(quoteApptId)" data-i18n="quoteSendDocBtn" style="flex:1; min-width:150px; padding:10px; background:#0891b2;"></button>
+        </div>
+    </div>
+</div>
+
 <div id="sendMethodModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center;" onclick="if(event.target===this) closeSendMethodModal();">
     <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:85%; max-width:320px; padding:20px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
         <h3 style="color:#38bdf8; margin:0 0 14px; font-size:1rem; text-align:center;" data-i18n="sendMethodTitle"></h3>
@@ -2133,7 +2170,28 @@
         emailThankYouSubjectPrefix: { ar: 'شكرًا لتعاملك مع', en: 'Thank You -' },
         emailReminderSubjectPrefix: { ar: 'تذكير بالدفع -', en: 'Payment Reminder -' },
         emailFollowUpSubjectPrefix: { ar: 'متابعة -', en: 'Follow-up -' },
+        emailQuoteSubjectPrefix: { ar: 'عرض سعر -', en: 'Price Quote -' },
         aiCallBtn: { ar: '📞 اتصل', en: '📞 Call' },
+        sendQuoteBtn: { ar: '🏷️ ابعت عرض سعر', en: '🏷️ Send Quote' },
+        quoteBadgeLabel: { ar: '🏷️ عرض سعر:', en: '🏷️ Quote:' },
+        quoteSentLabel: { ar: 'اتبعت للعميل:', en: 'Sent to client:' },
+        appointmentQuoteModalTitle: { ar: '🏷️ عرض سعر للعميل', en: '🏷️ Send Price Quote' },
+        quotePriceLabel: { ar: 'السعر الإجمالي ($):', en: 'Total price ($):' },
+        quoteItemsLabel: { ar: 'تفاصيل السعر (اختياري):', en: 'Price breakdown (optional):' },
+        quoteAddItemBtn: { ar: '+ ضيف بند', en: '+ Add item' },
+        quoteAnalyzePhotoBtn: { ar: '📷 حلل صورة واقسم السعر بالـ AI', en: '📷 Analyze photo & split price (AI)' },
+        quoteAnalyzingPhoto: { ar: '⏳ بيحلل الصورة ويقسم السعر...', en: '⏳ Analyzing photo & splitting price...' },
+        quoteNoteLabel: { ar: 'ملاحظات على العرض (اختياري):', en: 'Notes on the quote (optional):' },
+        quoteNotePh: { ar: 'مثال: السعر يشمل الخامات، سداد 50% مقدم...', en: 'e.g. price includes materials, 50% deposit required...' },
+        quoteNoItemsYet: { ar: 'لسه مفيش تفاصيل سعر مضافة.', en: 'No price breakdown added yet.' },
+        quoteSaveBtn: { ar: '💾 حفظ', en: '💾 Save' },
+        quoteSendMsgBtn: { ar: '✨ ابعت رسالة سريعة', en: '✨ Send quick message' },
+        quoteSendDocBtn: { ar: '📄 ابعت عرض سعر رسمي', en: '📄 Send formal quote' },
+        quoteCloseBtn: { ar: 'قفل', en: 'Close' },
+        alertQuoteNeedsPrice: { ar: 'لازم تحدد السعر الإجمالي الأول.', en: 'Please enter the total price first.' },
+        alertQuoteSaveFailed: { ar: 'فشل حفظ عرض السعر. حاول تاني.', en: 'Failed to save the quote. Please try again.' },
+        quoteDocEstimateFor: { ar: 'عرض سعر لـ', en: 'Price quote for' },
+        quoteSavedToast: { ar: '💾 اتحفظ عرض السعر', en: '💾 Quote saved' },
         followUpBtn: { ar: '🔔 متابعة', en: '🔔 Follow Up' },
         followUpBadgeQuoteSent: { ar: '🔔 بستنى رد على عرض السعر', en: '🔔 Waiting on quote response' },
         followUpBadgeVisitedWaiting: { ar: '🔔 عملت زيارة وبستنى قرار', en: '🔔 Visited — waiting on decision' },
@@ -4323,6 +4381,7 @@
     // editing an existing record, cleared on a fresh form, and saved along with it.
     let currentJobPhotos = [];
     let currentApptPhotos = [];
+    let currentQuotePhotos = [];
 
     // Resizes/compresses an image client-side before it's stored — since there's no
     // Firebase Storage set up, photos live as base64 inside the record itself, so
@@ -4364,7 +4423,11 @@
         `).join('');
     }
 
-    function getPhotosArrayFor(containerId) { return containerId === 'apptPhotoGallery' ? currentApptPhotos : currentJobPhotos; }
+    function getPhotosArrayFor(containerId) {
+        if (containerId === 'apptPhotoGallery') return currentApptPhotos;
+        if (containerId === 'quotePhotoGallery') return currentQuotePhotos;
+        return currentJobPhotos;
+    }
 
     function viewFullPhoto(containerId, index) {
         const arr = getPhotosArrayFor(containerId);
@@ -4494,6 +4557,29 @@
         if (lang === 'ar') return `اكتب رسالة متابعة ودّية ومختصرة (2-4 جمل) للعميل ${appt.clientName}، ${ctx}${servicesText ? `، بخصوص خدمة "${servicesText}"` : ''}. النبرة ودّية ومحترمة، مش ضاغطة على العميل.${extra ? ` تعليمات إضافية من صاحب الشغل لازم تاخد بالك منها: ${extra}.` : ''} من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`;
         return `Write a friendly, concise (2-4 sentence) follow-up message to client ${appt.clientName} — ${ctx}${servicesText ? `, regarding "${servicesText}"` : ''}. Keep the tone warm and respectful, not pushy.${extra ? ` Extra instructions from the business owner to follow: ${extra}.` : ''} No preamble or headers, just the message.`;
     }
+    // Quote message: tells the client the total price (and, if a breakdown was built, lists
+    // the items) and invites them to approve it. Separate from buildFollowUpPrompt/Context above —
+    // a quote is the first message about the price, a follow-up is chasing a reply to one already sent.
+    function buildQuotePrompt(appt, lang, customInstructions) {
+        const extra = (customInstructions || '').trim();
+        const price = parseVal(appt.quotedPrice).toFixed(2);
+        const items = appt.quoteItems || [];
+        const itemsLine = items.length
+            ? (lang === 'ar' ? ` التفاصيل: ${items.map(it => `${it.desc} ($${parseVal(it.amount).toFixed(2)})`).join('، ')}.` : ` Breakdown: ${items.map(it => `${it.desc} ($${parseVal(it.amount).toFixed(2)})`).join(', ')}.`)
+            : '';
+        const servicesText = (appt.services && appt.services.length) ? appt.services.join(lang === 'ar' ? '، ' : ', ') : '';
+        if (lang === 'ar') return `اكتب رسالة ودّية ومختصرة (3-5 جمل) للعميل ${appt.clientName}، تقدّم فيها عرض سعر بمبلغ $${price}${servicesText ? ` لخدمة "${servicesText}"` : ''}.${itemsLine} اطلب منه بأدب يراجع العرض ويرد بالموافقة أو أي استفسار.${extra ? ` تعليمات إضافية من صاحب الشغل لازم تاخد بالك منها: ${extra}.` : ''} من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`;
+        return `Write a friendly, concise (3-5 sentence) message to client ${appt.clientName}, presenting a price quote of $${price}${servicesText ? ` for "${servicesText}"` : ''}.${itemsLine} Politely ask them to review it and reply with approval or any questions.${extra ? ` Extra instructions from the business owner to follow: ${extra}.` : ''} No preamble or headers, just the message.`;
+    }
+    function buildFallbackQuote(appt, lang) {
+        const price = parseVal(appt.quotedPrice).toFixed(2);
+        const items = appt.quoteItems || [];
+        const itemsLine = items.length
+            ? (lang === 'ar' ? ` (${items.map(it => `${it.desc}: $${parseVal(it.amount).toFixed(2)}`).join(' — ')})` : ` (${items.map(it => `${it.desc}: $${parseVal(it.amount).toFixed(2)}`).join(' — ')})`)
+            : '';
+        if (lang === 'ar') return `أهلاً ${appt.clientName || ''}، معاك ${companyDisplayName()}. ده عرض السعر بتاعك: $${price}${itemsLine}. لو موافق قولنا نبدأ، أو لو عندك أي سؤال إحنا موجودين. شكرًا ليك!`;
+        return `Hello ${appt.clientName || ''}, this is ${companyDisplayName()}. Here's your price quote: $${price}${itemsLine}. Let us know if you'd like to go ahead, or if you have any questions. Thank you!`;
+    }
     // The same message without AI, so a follow-up can always be sent even with no AI key.
     function buildFallbackFollowUp(appt, lang) {
         const lines = {
@@ -4599,6 +4685,7 @@
             const customInstructions = document.getElementById('aiCustomInstructions').value;
             const prompt = c.msgKind === 'thankyou' ? buildThankYouPrompt(c.job, lang, customInstructions)
                 : c.msgKind === 'followup' ? buildFollowUpPrompt(c.job, lang, customInstructions)
+                : c.msgKind === 'quote' ? buildQuotePrompt(c.job, lang, customInstructions)
                 : buildReminderPrompt(c.job, c.rem, c.daysOverdue, lang, customInstructions);
             const text = await aiGenerate(c.apiKey, prompt);
             if (myRun !== c.run || aiReminderCtx !== c) return;   // closed, or a newer request took over
@@ -4620,6 +4707,7 @@
         const lang = document.getElementById('aiReminderLang').value;
         document.getElementById('aiReminderText').value = c.msgKind === 'thankyou' ? buildFallbackThankYou(c.job, lang)
             : c.msgKind === 'followup' ? buildFallbackFollowUp(c.job, lang)
+            : c.msgKind === 'quote' ? buildFallbackQuote(c.job, lang)
             : buildFallbackReminder(c.job, c.rem, c.daysOverdue, lang);
         setAiReminderStatus('ok', t(noteKey));
         refreshAiReminderButtons(false);
@@ -4635,6 +4723,7 @@
     function emailSubjectKeyFor(msgKind) {
         if (msgKind === 'thankyou') return 'emailThankYouSubjectPrefix';
         if (msgKind === 'followup') return 'emailFollowUpSubjectPrefix';
+        if (msgKind === 'quote') return 'emailQuoteSubjectPrefix';
         return 'emailReminderSubjectPrefix';
     }
     function sendAiReminder(kind) {
@@ -4667,10 +4756,11 @@
     // Stamps "last followed up" on the appointment the moment the user actually acts on it
     // (sends/calls) — best-effort, never blocks the send itself if the save fails.
     async function markFollowUpSent(c) {
-        if (!c || c.msgKind !== 'followup' || !c.apptId) return;
+        if (!c || !c.apptId || (c.msgKind !== 'followup' && c.msgKind !== 'quote')) return;
         const appt = appointments.find(a => a.id === c.apptId);
         if (!appt) return;
-        appt.followUpLastSentAt = new Date().toISOString();
+        if (c.msgKind === 'quote') appt.quoteSentAt = new Date().toISOString();
+        else appt.followUpLastSentAt = new Date().toISOString();
         try { await APPOINTMENTS_DOC.set({ entries: appointments }); safeCall(renderAppointments); } catch (e) { console.error('markFollowUpSent error:', e); }
     }
     async function copyAiReminder() {
@@ -9113,7 +9203,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             startDate: appt.requestedDate || '',
             endDate: appt.requestedDate || '',
             dailySchedule: appt.requestedDate ? [{ date: appt.requestedDate, time: appt.requestedTime || '', team: [], dayOrder: 0 }] : [],
-            totalRevenue: 0, amountReceived: 0, amountRemaining: 0,
+            totalRevenue: parseVal(appt.quotedPrice) || 0, amountReceived: 0, amountRemaining: 0,
             followUpDate: '', materialCost: 0, extraExpenses: 0,
             expenseItems: [], technicians: [],
             photos: JSON.parse(JSON.stringify(appt.photos || [])),
@@ -9228,6 +9318,256 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         catch (err) { appt.followUpNeeded = wasNeeded; alertSaveError(err); }
     }
 
+    /* ---------------- Appointment price quotes (🏷️) ----------------
+       An appointment can carry a quoted total price + an optional itemized breakdown
+       (appt.quotedPrice / appt.quoteItems / appt.quoteNote / appt.quotePhotos), built here
+       and either sent as a quick AI message (reusing the aiReminderCtx/msgKind infra, same
+       as 'followup') or as a formal printable document (buildAppointmentQuoteHtmlDoc below,
+       mirroring buildInvoiceHtmlDoc's standalone-HTML-in-a-new-tab approach). Once sent, the
+       price carries over into convertAppointmentToJob's totalRevenue. */
+    let quoteApptId = '';
+    let quoteItemsState = [];
+
+    function openAppointmentQuoteModal(apptId) {
+        const appt = appointments.find(a => a.id === apptId);
+        if (!appt) return;
+        quoteApptId = apptId;
+        document.getElementById('quoteClientLine').textContent = appt.clientName || '';
+        document.getElementById('quotePriceInput').value = appt.quotedPrice || '';
+        quoteItemsState = JSON.parse(JSON.stringify(appt.quoteItems || []));
+        renderQuoteItemsTable();
+        document.getElementById('quoteNoteInput').value = appt.quoteNote || '';
+        currentQuotePhotos = JSON.parse(JSON.stringify(appt.quotePhotos || []));
+        renderPhotoGallery(currentQuotePhotos, 'quotePhotoGallery');
+        closeOtherTopModals('appointmentsListModal'); // keep the appointments list open underneath, just like the follow-up picker does
+        document.getElementById('appointmentQuoteModal').style.display = 'flex';
+    }
+    function closeAppointmentQuoteModal() {
+        document.getElementById('appointmentQuoteModal').style.display = 'none';
+        quoteApptId = '';
+    }
+    function onQuotePriceInput() { /* hook kept for future validation; price itself is only read on save/send */ }
+
+    function renderQuoteItemsTable() {
+        const container = document.getElementById('quoteItemsContainer');
+        if (!container) return;
+        if (quoteItemsState.length === 0) { container.innerHTML = `<div style="font-size:0.78rem; color:var(--text-muted); padding:6px 0;">${t('quoteNoItemsYet')}</div>`; return; }
+        container.innerHTML = quoteItemsState.map((it, index) => `
+            <div class="tech-card" style="margin-bottom:8px;">
+                <div style="display:grid; grid-template-columns: 1fr 110px 40px; gap:10px; align-items:end;">
+                    <div>
+                        <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColDesc')}</label>
+                        <input type="text" value="${escHtml(it.desc)}" oninput="updateQuoteItemField(${index}, 'desc', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColAmount')}</label>
+                        <input type="text" value="${it.amount !== undefined ? it.amount : ''}" onfocus="this.select()" oninput="updateQuoteItemField(${index}, 'amount', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; text-align:center;">
+                    </div>
+                    <div style="display:flex; align-items:stretch; height:40px;">
+                        <button type="button" onclick="removeQuoteItemRow(${index})" style="background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid rgba(225,29,72,0.4); padding:9px 0; border-radius:8px; width:100%; cursor:pointer; font-size:14px;">✕</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+    function updateQuoteItemField(index, field, value) { if (quoteItemsState[index]) quoteItemsState[index][field] = value; }
+    function addQuoteItemRow() { quoteItemsState.push({ desc: '', amount: '' }); renderQuoteItemsTable(); }
+    function removeQuoteItemRow(index) { quoteItemsState.splice(index, 1); renderQuoteItemsTable(); }
+
+    // Sends the quote photo + the already-entered total price to the AI, asking it to split
+    // that exact total into a believable itemized breakdown based on what's visible in the
+    // photo — replacing whatever rows were there before. Amounts are normalized (the last
+    // item absorbs any rounding cents) so they always sum to exactly the entered price.
+    async function analyzeQuotePhotoAndSplit(event) {
+        const file = event.target.files && event.target.files[0];
+        event.target.value = '';
+        if (!file) return;
+        const apiKey = getGeminiApiKey();
+        if (!apiKey) { alert(t('aiNoKeyNote')); return; }
+        const price = parseVal(document.getElementById('quotePriceInput').value);
+        if (!price) { alert(t('alertQuoteNeedsPrice')); return; }
+
+        const btn = document.getElementById('quoteAnalyzePhotoBtn');
+        const originalLabel = btn.innerHTML;
+        btn.disabled = true; btn.innerHTML = t('quoteAnalyzingPhoto');
+
+        try {
+            const dataUrl = await compressImageToBase64(file);
+            const base64Data = dataUrl.split(',')[1];
+            const promptText = currentLang === 'ar'
+                ? `اتفرج على صورة موقع شغل الصيانة/المقاولات دي، وقسّم السعر الإجمالي $${price.toFixed(2)} على بنود منطقية حسب اللي شايفه (تصليحات، خامات، تشطيب، إلخ)، بحيث مجموع البنود يساوي $${price.toFixed(2)} بالظبط. رجّعلي JSON فقط، من غير أي نص تاني ولا \`\`\`، بالشكل ده: [{"desc":"وصف البند","amount":123.45}, ...]`
+                : `Look at this handyman/contracting job-site photo and split the total price $${price.toFixed(2)} into logical line items based on what's visible (repairs, materials, finishing, etc.), so the items sum to exactly $${price.toFixed(2)}. Return ONLY JSON, no other text and no \`\`\`, in this shape: [{"desc":"item description","amount":123.45}, ...]`;
+
+            const resultText = await aiGenerate(apiKey, [{ inlineData: { mimeType: 'image/jpeg', data: base64Data } }, { text: promptText }]);
+            const jsonText = resultText.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+            let parsed = JSON.parse(jsonText);
+            if (!Array.isArray(parsed)) throw new Error('not an array');
+            parsed = parsed.map(it => ({ desc: String((it && it.desc) || '').trim(), amount: parseVal(it && it.amount) })).filter(it => it.desc);
+            if (parsed.length === 0) throw new Error('empty breakdown');
+
+            // Normalize so the items sum to exactly the entered price — the AI's own
+            // arithmetic can be a few cents off, and the last item absorbs that rounding.
+            const sum = parsed.reduce((s, it) => s + it.amount, 0);
+            const diff = price - sum;
+            if (Math.abs(diff) > 0.001) parsed[parsed.length - 1].amount = Math.round((parsed[parsed.length - 1].amount + diff) * 100) / 100;
+
+            quoteItemsState = parsed;
+            renderQuoteItemsTable();
+
+            currentQuotePhotos.push({ data: dataUrl, addedAt: new Date().toISOString() });
+            renderPhotoGallery(currentQuotePhotos, 'quotePhotoGallery');
+        } catch (err) {
+            const msg = (err && err.message) ? err.message : String(err);
+            if (/401|403|UNAUTHENTICATED|PERMISSION|API key/i.test(msg)) { try { localStorage.removeItem('geminiApiKey'); } catch (e) {} }
+            alert(t('alertAiFailed') + ' (' + msg + ')');
+        } finally {
+            btn.disabled = false; btn.innerHTML = originalLabel;
+        }
+    }
+
+    // Persists price/items/note/photos onto the appointment itself. Returns true/false so the
+    // send functions below know whether it's safe to go on and actually send.
+    async function saveAppointmentQuote(apptId, showSavedToast) {
+        const appt = appointments.find(a => a.id === apptId);
+        if (!appt) return false;
+        const prevState = { quotedPrice: appt.quotedPrice, quoteItems: appt.quoteItems, quoteNote: appt.quoteNote, quotePhotos: appt.quotePhotos };
+        appt.quotedPrice = parseVal(document.getElementById('quotePriceInput').value);
+        appt.quoteItems = quoteItemsState.map(it => ({ desc: (it.desc || '').trim(), amount: parseVal(it.amount) })).filter(it => it.desc || it.amount);
+        appt.quoteNote = document.getElementById('quoteNoteInput').value.trim();
+        appt.quotePhotos = JSON.parse(JSON.stringify(currentQuotePhotos));
+        try {
+            await APPOINTMENTS_DOC.set({ entries: appointments });
+            safeCall(renderAppointments);
+            if (showSavedToast) showToast(t('quoteSavedToast'));
+            return true;
+        } catch (err) {
+            Object.assign(appt, prevState);
+            alert(t('alertQuoteSaveFailed'));
+            return false;
+        }
+    }
+
+    // Quick path: save the quote fields, then open the same AI-composer modal used for payment
+    // reminders/follow-ups/thank-yous — msgKind 'quote' drives buildQuotePrompt/buildFallbackQuote.
+    async function sendAppointmentQuoteMessage(apptId) {
+        const appt = appointments.find(a => a.id === apptId);
+        if (!appt) return;
+        if (!parseVal(document.getElementById('quotePriceInput').value)) { alert(t('alertQuoteNeedsPrice')); return; }
+        const ok = await saveAppointmentQuote(apptId, false);
+        if (!ok) return;
+        closeAppointmentQuoteModal();
+
+        aiReminderCtx = { job: appt, rem: 0, daysOverdue: null, apiKey: getGeminiApiKey(), run: 0, mode: 'ai', msgKind: 'quote', fromInvoice: false, apptId: appt.id };
+        document.getElementById('aiReminderLang').value = currentLang === 'ar' ? 'ar' : 'en';
+        document.getElementById('aiReminderJob').textContent = `${appt.clientName || ''} — $${parseVal(appt.quotedPrice).toFixed(2)}`;
+        document.getElementById('aiReminderText').value = '';
+        document.getElementById('aiCustomInstructions').value = '';
+        document.getElementById('aiShareBtn').style.display = 'none';
+        document.getElementById('aiCallBtn').style.display = appt.clientPhone ? '' : 'none';
+        document.getElementById('aiReminderModal').style.display = 'flex';
+        if (!aiReminderCtx.apiKey) { useTemplateReminder('aiNoKeyNote'); return; }
+        await regenerateAiReminder();
+    }
+
+    // Formal path: save the quote fields, then open a standalone printable "ESTIMATE" document
+    // in a new tab — same convention as printInvoice()/viewSavedInvoice() (open the tab
+    // synchronously first, so phone browsers never treat the later document.write as a popup).
+    async function sendAppointmentQuoteDocument(apptId) {
+        const appt = appointments.find(a => a.id === apptId);
+        if (!appt) return;
+        if (!parseVal(document.getElementById('quotePriceInput').value)) { alert(t('alertQuoteNeedsPrice')); return; }
+        const win = window.open('', '_blank');
+        const ok = await saveAppointmentQuote(apptId, false);
+        if (!ok) { if (win) win.close(); return; }
+
+        const html = buildAppointmentQuoteHtmlDoc(appt);
+        if (win) { win.document.write(html); win.document.close(); }
+
+        appt.quoteSentAt = new Date().toISOString();
+        try { await APPOINTMENTS_DOC.set({ entries: appointments }); safeCall(renderAppointments); } catch (e) { console.error('quote doc sent-stamp error:', e); }
+        closeAppointmentQuoteModal();
+    }
+
+    // A simplified, appointment-specific cousin of buildInvoiceHtmlDoc — not tied to
+    // invoiceState or a job in savedJobs, just the appointment's own quote fields and the
+    // company profile. Same visual language (colors, fonts, close button) as the real invoice.
+    function buildAppointmentQuoteHtmlDoc(appt) {
+        const price = parseVal(appt.quotedPrice);
+        const items = appt.quoteItems || [];
+        const accent = '#2C6B45';
+        const companyName = companyDisplayName();
+        const companyTagline = companyProfile.tagline || '';
+        const companyLogo = companyProfile.logo || '';
+        const footerLine = [...(companyProfile.phones || []), companyProfile.email].filter(Boolean).join('  |  ');
+        const websitePart = companyProfile.website ? `<span style="white-space:nowrap;">${escHtml(companyProfile.website)}</span>` : '';
+        const footerParts = [footerLine, websitePart].filter(Boolean).join('   &bull;   ');
+        const itemsRowsHtml = items.map((it, i) => `<div style="display:grid; grid-template-columns: 1fr 100px; gap:10px; padding:10px 12px; font-size:12.5px; border-bottom:1px solid #E7E1D6; ${i % 2 === 1 ? 'background:#F6F1E8;' : ''}"><div>${escHtml(it.desc)}</div><div style="text-align:right;">$${parseVal(it.amount).toFixed(2)}</div></div>`).join('');
+        const noteBox = appt.quoteNote ? `<div style="background:#F6F1E8; border:1px dashed ${accent}; border-radius:6px; padding:14px 16px;"><div style="font-weight:700; font-size:11.5px; letter-spacing:0.5px; margin-bottom:6px; color:${accent};">${escHtml(t('invoiceNoteLabel')).toUpperCase()}</div><div style="font-size:12.5px; line-height:1.7; color:#3A332B;">${escHtml(appt.quoteNote).replace(/\n/g, '<br>')}</div></div>` : '';
+        const logoHeaderHtml = companyLogo ? `<img src="${companyLogo}" style="width:70px; height:70px; object-fit:contain; flex-shrink:0;">` : '';
+        const closeLabel = currentLang === 'ar' ? 'إغلاق' : 'Close';
+        const closeBtnHtml = `<button type="button" onclick="window.close()" title="${closeLabel}" style="position:fixed; top:14px; right:14px; z-index:999; background:#241F1A; color:#fff; border:none; border-radius:50%; width:38px; height:38px; font-size:18px; line-height:1; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.35);">✕</button>`;
+        const todayStr = isoDate(new Date());
+
+        return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escHtml(invoiceDocTypeDisplay('ESTIMATE'))} - ${escHtml(appt.clientName || '')}</title>
+<style>
+  body{margin:0; font-family: Georgia, 'Times New Roman', serif; background:#FDFBF6;}
+  .ui{font-family: Arial, Helvetica, sans-serif;}
+  @media screen and (max-width: 900px) { .quote-page{ width:100% !important; } }
+  @media screen and (max-width: 480px) { .quote-inner{ padding:22px 18px 20px 18px !important; } }
+</style></head><body>
+${closeBtnHtml}
+<div class="quote-page" style="position:relative; width:850px; max-width:100%; min-height:1060px; margin:0 auto; background:#FDFBF6; color:#241F1A; box-sizing:border-box;">
+  <div style="height:10px; background:#1A1A1A;"></div>
+  <div class="quote-inner" style="width:100%; box-sizing:border-box; padding:36px 56px 30px 56px; display:flex; flex-direction:column; gap:16px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:20px;">
+      <div style="display:flex; gap:14px; align-items:center;">
+        ${logoHeaderHtml}
+        <div>
+          <div class="ui" style="font-weight:700; font-size:17px; letter-spacing:0.3px;">${escHtml(companyName).toUpperCase()}</div>
+          ${companyTagline ? `<div class="ui" style="font-size:12px; color:#3A332B; font-style:italic; margin-top:2px;">${escHtml(companyTagline)}</div>` : ''}
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div class="ui" style="font-size:30px; font-weight:700; letter-spacing:2px; color:${accent};">${escHtml(invoiceDocTypeDisplay('ESTIMATE')).toUpperCase()}</div>
+        <div class="ui" style="font-size:12px; color:#6B6257; margin-top:4px;">${escHtml(t('invoiceDateLbl'))}: <span style="color:#241F1A; font-weight:600;">${escHtml(todayStr)}</span></div>
+      </div>
+    </div>
+    <div style="height:2px; background:${accent};"></div>
+    <div style="display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:24px;">
+      <div class="ui" style="font-size:13px; line-height:1.9; min-width:0; overflow-wrap:break-word;">
+        <div><b>${escHtml(t('invoiceBillTo'))}</b> ${escHtml(appt.clientName || '')}</div>
+        <div><b>${escHtml(t('invoiceAddressLabel'))}:</b> ${escHtml(appt.clientAddress || '')}</div>
+        <div><b>${escHtml(t('invoicePhoneLabel'))}:</b> ${escHtml(appt.clientPhone || '')}</div>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px; min-width:0;">
+        <div style="background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 18px; text-align:center; width:100%; max-width:200px; box-sizing:border-box;">
+          <div class="ui" style="font-size:11px; letter-spacing:1px; opacity:0.9;">${escHtml(t('invoiceTotalDueLabel')).toUpperCase()}</div>
+          <div class="ui" style="font-size:24px; font-weight:700;">$${price.toFixed(2)}</div>
+        </div>
+      </div>
+    </div>
+    ${itemsRowsHtml ? `<div>
+      <div class="ui" style="display:grid; grid-template-columns: 1fr 100px; gap:10px; background:${accent}; color:#FDFBF6; font-size:11px; font-weight:700; letter-spacing:0.5px; padding:10px 12px; border-radius:6px 6px 0 0;">
+        <div>${escHtml(t('invoiceColDesc')).toUpperCase()}</div><div style="text-align:right;">${escHtml(t('invoiceColAmount')).toUpperCase()}</div>
+      </div>
+      ${itemsRowsHtml}
+    </div>` : ''}
+    ${noteBox}
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:16px; gap:24px;">
+      <div style="flex-grow:1;"><div style="border-bottom:1px solid #241F1A; height:36px;"></div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">Customer Approval</div></div>
+      <div style="width:180px;"><div style="border-bottom:1px solid #241F1A; height:36px; display:flex; align-items:flex-end; justify-content:center;">${companyProfile.signature ? `<img src="${companyProfile.signature}" style="max-height:34px; max-width:100%; object-fit:contain;">` : ''}</div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">${escHtml(companyName)} Representative</div></div>
+      <div style="width:120px;"><div style="border-bottom:1px solid #241F1A; height:36px;"></div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">Date</div></div>
+    </div>
+    <div style="margin-top:14px; padding-top:18px; border-top:1px solid #E7E1D6; text-align:center;">
+      ${footerParts ? `<div class="ui" style="font-size:11px; color:#6B6257; letter-spacing:0.3px;">${footerParts}</div>` : ''}
+      <div style="font-size:13px; margin-top:6px;">${escHtml(t('invoiceThankYou'))}</div>
+    </div>
+  </div>
+</div>
+</body></html>`;
+    }
+
     // Opens the appointments list as its own full-screen window on top of the Appointments
     // screen, so the "add new" form stays short and the (potentially long) list of existing
     // appointments doesn't make the whole page scroll forever.
@@ -9278,6 +9618,9 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                      <button class="success" onclick="sendAppointmentFollowUp('${appt.id}')" style="width:100%; margin-top:6px; padding:7px; font-size:0.78rem; background:linear-gradient(135deg,#7c3aed,#38bdf8);">${t('followUpAiBtn')}</button>
                    </div>`
                 : '';
+            const quoteBlock = parseVal(appt.quotedPrice) > 0
+                ? `<div style="margin-top:6px; font-size:0.76rem; color:#22d3ee;">${t('quoteBadgeLabel')} $${parseVal(appt.quotedPrice).toFixed(2)}${appt.quoteSentAt ? ` · ${t('quoteSentLabel')} ${new Date(appt.quoteSentAt).toLocaleDateString()}` : ''}</div>`
+                : '';
             html += `<div class="tech-card" style="${appt.followUpNeeded ? 'border-color:var(--warning);' : ''}">
                 <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
                     <div>
@@ -9286,10 +9629,12 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                         <span style="font-size:0.78rem; color:#38bdf8;">${appt.requestedDate || t('noDateSet')} ${appt.requestedTime || ''}</span>
                         ${serviceTags}
                         ${appt.note ? `<div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">${appt.note}</div>` : ''}
+                        ${quoteBlock}
                         ${followUpBlock}
                     </div>
                     <div style="display:flex; gap:6px; align-self:center; flex-wrap:wrap;">
                         ${!appt.followUpNeeded ? `<button class="secondary" onclick="openFollowUpReasonModal('${appt.id}')" style="padding:6px 10px; font-size:0.78rem; background:#d97706;">${t('followUpBtn')}</button>` : ''}
+                        <button class="secondary" onclick="openAppointmentQuoteModal('${appt.id}')" style="padding:6px 10px; font-size:0.78rem; background:#0891b2;">${t('sendQuoteBtn')}</button>
                         <button class="success" onclick="convertAppointmentToJob('${appt.id}')" style="padding:6px 12px; font-size:0.78rem;">${t('convertToJobBtn')}</button>
                         <button class="secondary" onclick="editAppointment('${appt.id}')" style="padding:6px 10px; font-size:0.78rem; background:#0284c7;">${t('editBtn')}</button>
                         <button class="danger" onclick="deleteAppointment('${appt.id}')" style="padding:6px 10px; font-size:0.78rem;">${t('deleteBtn')}</button>
