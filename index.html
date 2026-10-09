@@ -847,7 +847,7 @@
     <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:95%; max-width:800px; max-height:90vh; overflow-y:auto; padding:25px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
             <h2 style="color:#38bdf8; margin:0; font-size:1.2rem;">🧾 <span data-i18n="invoiceModalTitle"></span></h2>
-            <button class="danger" onclick="closeInvoiceModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+            <button class="danger" onclick="requestCloseInvoiceModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
         </div>
         <div id="invoiceModalContent" style="font-size:0.9rem; line-height:1.6; color:var(--text-main);"></div>
     </div>
@@ -1424,6 +1424,16 @@
         <button class="success" style="width:100%; padding:11px; margin-bottom:8px;" onclick="unsavedChoice('save')" data-i18n="unsavedSaveOpen"></button>
         <button class="secondary" style="width:100%; padding:11px; margin-bottom:8px;" onclick="unsavedChoice('discard')" data-i18n="unsavedOpenNoSave"></button>
         <button class="danger" style="width:100%; padding:8px; font-size:0.85rem;" onclick="unsavedChoice('back')" data-i18n="unsavedBack"></button>
+    </div>
+</div>
+
+<div id="unsavedInvoiceModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10002; justify-content:center; align-items:center;">
+    <div class="tg-modal-box" style="max-width:420px;">
+        <h3 style="color:#fbbf24; margin:0 0 10px; font-size:1.05rem;">⚠️ <span data-i18n="unsavedInvoiceTitle"></span></h3>
+        <p style="font-size:0.88rem; margin-bottom:16px; line-height:1.6;" data-i18n="unsavedInvoiceMsg"></p>
+        <button class="success" style="width:100%; padding:11px; margin-bottom:8px;" onclick="unsavedInvoiceChoice('save')" data-i18n="unsavedInvoiceSave"></button>
+        <button class="secondary" style="width:100%; padding:11px; margin-bottom:8px; background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid rgba(225,29,72,0.4);" onclick="unsavedInvoiceChoice('discard')" data-i18n="unsavedInvoiceDiscard"></button>
+        <button class="danger" style="width:100%; padding:8px; font-size:0.85rem;" onclick="unsavedInvoiceChoice('cancel')" data-i18n="unsavedBack"></button>
     </div>
 </div>
 
@@ -2097,6 +2107,10 @@
         unsavedSaveOpen: { ar: 'احفظ وافتح الشغلانة', en: 'Save and open the job' },
         unsavedOpenNoSave: { ar: 'افتح من غير حفظ', en: 'Open without saving' },
         unsavedBack: { ar: 'رجوع', en: 'Go back' },
+        unsavedInvoiceTitle: { ar: 'الفاتورة دي لسه ما اتحفظتش', en: 'This invoice has not been saved' },
+        unsavedInvoiceMsg: { ar: 'عملت تعديلات على الفاتورة دي ومحفظتهاش في "الفواتير المحفوظة" — لو خرجت كده من غير حفظ هتضيع. تحفظها الأول؟', en: "You made changes to this invoice that aren't saved to \"Saved Invoices\" yet — leaving now will lose them. Save first?" },
+        unsavedInvoiceSave: { ar: '💾 احفظ واخرج', en: '💾 Save and leave' },
+        unsavedInvoiceDiscard: { ar: 'اخرج من غير حفظ', en: 'Leave without saving' },
         aiReminderLangLabel: { ar: 'لغة الرسالة:', en: 'Message language:' },
         aiCustomInstructionsLabel: { ar: 'توجيهات إضافية للـ AI (اختياري):', en: 'Extra instructions for the AI (optional):' },
         aiCustomInstructionsPh: { ar: 'مثال: خليها أقصر، أو اذكر إن فيه خصم لو دفع بسرعة...', en: 'e.g. make it shorter, or mention a discount for quick payment...' },
@@ -6211,6 +6225,38 @@
 
     // ===== Branded, itemized client invoice (replaces the old plain PDF invoice) =====
     let invoiceState = null;
+    // A snapshot of invoiceState taken every time it's freshly loaded/saved — compared against
+    // the live invoiceState to tell whether there are unsaved changes before letting the user
+    // leave the invoice screen (close it, load a different saved invoice, or start a new draft).
+    let invoiceStateSnapshot = null;
+    let pendingInvoiceExitAction = null;
+
+    function invoiceIsDirty() {
+        return !!invoiceState && JSON.stringify(invoiceState) !== invoiceStateSnapshot;
+    }
+
+    // Runs `action` (closing the modal, loading another saved invoice, starting a new draft)
+    // right away if there's nothing unsaved — otherwise asks first via unsavedInvoiceModal.
+    function guardInvoiceExit(action) {
+        if (invoiceIsDirty()) {
+            pendingInvoiceExitAction = action;
+            document.getElementById('unsavedInvoiceModal').style.display = 'flex';
+            return;
+        }
+        action();
+    }
+
+    async function unsavedInvoiceChoice(choice) {
+        document.getElementById('unsavedInvoiceModal').style.display = 'none';
+        if (choice === 'cancel') { pendingInvoiceExitAction = null; return; }
+        if (choice === 'save') {
+            const ok = await saveCurrentInvoice();
+            if (!ok) { pendingInvoiceExitAction = null; return; } // save failed: stay put, nothing lost
+        }
+        const action = pendingInvoiceExitAction;
+        pendingInvoiceExitAction = null;
+        if (action) action();
+    }
 
     function defaultInvoiceItemsForJob(job) {
         if (job.expenseItems && job.expenseItems.length > 0) {
@@ -6269,13 +6315,23 @@
             // invoice screen, and that choice is what actually shows and gets saved/printed.
             paidMark: jobRemaining(job) <= 0.005
         };
+        invoiceStateSnapshot = JSON.stringify(invoiceState);
         renderInvoiceModalContent();
     }
 
+    // Closes the modal outright — only ever called once there's nothing unsaved to lose (either
+    // guardInvoiceExit already confirmed that, or the choice was explicitly "leave without saving").
     function closeInvoiceModal() {
         document.getElementById('invoiceModal').style.display = 'none';
         invoiceState = null;
+        invoiceStateSnapshot = null;
     }
+
+    // What the Close button (and anything else meaning to leave the invoice screen) actually
+    // calls — asks first if there's an unsaved change, per the invoice screen's whole reason for
+    // having this guard: an invoice gets typed up, sent to the client, and then closed before
+    // remembering to hit "Save", silently losing it.
+    function requestCloseInvoiceModal() { guardInvoiceExit(closeInvoiceModal); }
 
     // ---------- Saved invoices: a job can keep several (e.g. the original invoice plus a later
     // "Additional Work" one) so you can reopen and reprint any of them without retyping the items.
@@ -6291,7 +6347,7 @@
     // atomically — if someone else wrote in between, Firestore retries the transaction instead of
     // letting either side clobber the other.
     async function saveCurrentInvoice() {
-        if (!invoiceState) return;
+        if (!invoiceState) return false;
         const jobId = invoiceState.jobId;
         const snapshot = JSON.parse(JSON.stringify(invoiceState));
         delete snapshot.jobId; delete snapshot.savedId;
@@ -6317,7 +6373,7 @@
             });
         } catch (err) {
             alertSaveError(err);
-            return;
+            return false;
         }
 
         // Transaction succeeded — mirror the same change onto the local in-memory copy so the
@@ -6343,16 +6399,21 @@
             const serverJobs = (serverDoc.exists && serverDoc.data().jobs) ? serverDoc.data().jobs : [];
             const serverJob = serverJobs.find(j => String(j.id) === String(jobId));
             const confirmed = serverJob && (serverJob.savedInvoices || []).some(inv => inv.id === targetId);
-            if (!confirmed) { alert(t('alertInvoiceSaveNotConfirmed')); return; }
+            if (!confirmed) { alert(t('alertInvoiceSaveNotConfirmed')); return false; }
         } catch (e) {
             // Couldn't reach the server to verify (offline, etc.) — the write is still queued
             // locally and will sync once back online, so say that plainly instead of claiming success.
+            // It's still a real save (queued to sync), so the "unsaved changes" guard should treat
+            // it as clean and let the user leave if that's what they chose.
+            invoiceStateSnapshot = JSON.stringify(invoiceState);
             showToast(t('invoiceSavedOfflineToast'));
             renderInvoiceModalContent();
-            return;
+            return true;
         }
+        invoiceStateSnapshot = JSON.stringify(invoiceState);
         showToast(t('invoiceSavedToast'));
         renderInvoiceModalContent();
+        return true;
     }
 
     function loadSavedInvoice(savedId) {
@@ -6367,8 +6428,13 @@
         invoiceState.savedId = saved.id;
         if (!invoiceState.credits) invoiceState.credits = []; // older saved invoices, if any, predate the credits list
         if (invoiceState.paidMark === undefined) invoiceState.paidMark = jobRemaining(job) <= 0.005; // older saved invoices predate the manual mark — fall back to the job's actual payment status
+        invoiceStateSnapshot = JSON.stringify(invoiceState);
         renderInvoiceModalContent();
     }
+
+    // What the "Load" button actually calls — asks first if the invoice currently open has an
+    // unsaved change that loading a different one would silently throw away.
+    function requestLoadSavedInvoice(savedId) { guardInvoiceExit(() => loadSavedInvoice(savedId)); }
 
     // Quick visual look at a saved invoice exactly as it would print — without touching
     // whatever's currently open in the editor. Swaps invoiceState to the saved snapshot just
@@ -6404,6 +6470,10 @@
         if (!invoiceState) return;
         openInvoiceModal(invoiceState.jobId);
     }
+
+    // What the "+ New Invoice" button actually calls — same unsaved-changes check as closing
+    // or loading a different one, since starting a fresh draft throws away the current one too.
+    function requestStartNewInvoiceDraft() { guardInvoiceExit(startNewInvoiceDraft); }
 
     // Pulls the job's own "Scope of Work" text into the invoice's Note field — the same
     // "Use job description" action already offered when scheduling a visit (useJobScopeFor),
@@ -6588,7 +6658,7 @@
                         </div>
                         <div style="display:flex; gap:6px;">
                             <button type="button" class="secondary" onclick="viewSavedInvoice('${inv.id}')" style="padding:5px 10px; font-size:0.75rem; background:#0284c7;">👁️ ${t('invoiceViewBtn')}</button>
-                            <button type="button" class="secondary" onclick="loadSavedInvoice('${inv.id}')" style="padding:5px 10px; font-size:0.75rem;">${t('invoiceLoadBtn')}</button>
+                            <button type="button" class="secondary" onclick="requestLoadSavedInvoice('${inv.id}')" style="padding:5px 10px; font-size:0.75rem;">${t('invoiceLoadBtn')}</button>
                             <button type="button" onclick="deleteSavedInvoice('${inv.id}')" style="padding:5px 10px; font-size:0.75rem; background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid rgba(225,29,72,0.4); border-radius:8px; cursor:pointer;">${t('invoiceDeleteSavedBtn')}</button>
                         </div>
                     </div>
@@ -6598,7 +6668,7 @@
         container.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                 <h3 style="color:#38bdf8; font-size:0.95rem; margin:0;">${t('invoiceSavedInvoicesTitle')}</h3>
-                ${savedInvoices.length > 0 ? `<button type="button" class="secondary" onclick="startNewInvoiceDraft()" style="padding:5px 10px; font-size:0.75rem;">${t('invoiceNewDraftBtn')}</button>` : ''}
+                ${savedInvoices.length > 0 ? `<button type="button" class="secondary" onclick="requestStartNewInvoiceDraft()" style="padding:5px 10px; font-size:0.75rem;">${t('invoiceNewDraftBtn')}</button>` : ''}
             </div>
             <div style="margin-bottom:16px;">${savedListHtml}</div>
 
