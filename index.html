@@ -3582,13 +3582,20 @@
         banner.style.display = 'flex';
     }
 
+    // The in-page banner stays live (updates on every Firestore change, like the rest of the
+    // app), but the OS/browser popup notification is far more intrusive — it was firing again
+    // on every single Firestore change (any job edit, by anyone, re-triggers this listener),
+    // which felt like constant spam. It now fires at most once per browser session: the first
+    // time the app loads with an outstanding balance, never again until the tab/app is reopened.
+    let debtPopupNotifiedThisSession = false;
     function checkDebtReminders() {
         refreshDebtReminderBanner();
         const message = buildDebtReminderMessage();
         if (!message) return;
+        if (debtPopupNotifiedThisSession) return;
 
         if ('Notification' in window) {
-            const fire = () => new Notification(t('notifTitle'), { body: message });
+            const fire = () => { debtPopupNotifiedThisSession = true; new Notification(t('notifTitle'), { body: message }); };
             if (Notification.permission === 'granted') fire();
             else if (Notification.permission === 'default') {
                 Notification.requestPermission().then(perm => { if (perm === 'granted') fire(); });
