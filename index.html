@@ -7365,6 +7365,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         // overwriting real saved data with blanks before.
         if (!companyProfileLoaded) { alert(t('alertCompanyProfileNotLoadedYet')); return; }
         companyProfile.name = document.getElementById('companyProfileName').value.trim();
+        companyProfile.tagline = document.getElementById('companyProfileTagline').value.trim();
         companyProfile.address = document.getElementById('companyProfileAddress').value.trim();
         companyProfile.phones = companyProfilePhonesWorking.map(p => p.trim()).filter(Boolean);
         companyProfile.email = document.getElementById('companyProfileEmail').value.trim();
