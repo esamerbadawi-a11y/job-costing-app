@@ -2209,7 +2209,7 @@
         aiCopyBtn: { ar: '📋 نسخ', en: '📋 Copy' },
         aiCopied: { ar: 'اتنسخت الرسالة', en: 'Message copied' },
         aiCopyFailed: { ar: 'مقدرش ينسخ. اضغط مطولًا على النص وانسخه بإيدك.', en: 'Could not copy. Long-press the text and copy it yourself.' },
-        aiShareBtn: { ar: '📎 شارك مع صورة الفاتورة', en: '📎 Share with invoice image' },
+        aiShareBtn: { ar: '📎 إرفاق وإرسال', en: '📎 Attach & Share' },
         aiSharing: { ar: 'بيجهّز الصورة...', en: 'Preparing image...' },
         alertShareNotSupported: { ar: 'المشاركة بالصورة مش متاحة على الجهاز/المتصفح ده. جرّب من الموبايل، أو استخدم أزرار الإرسال التانية.', en: 'Sharing with an image isn\'t supported on this device/browser. Try from a phone, or use the other send buttons.' },
         aiUseTemplateBtn: { ar: 'رسالة جاهزة (من غير AI)', en: 'Ready-made message (no AI)' },
@@ -7262,14 +7262,15 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         win.document.close();
     }
 
-    // Renders the invoice to a PNG image off-screen (via html2canvas, in a hidden iframe so the
-    // real styling/layout is reused as-is) and hands it to the device's native Share sheet
-    // together with the message text, so WhatsApp/Mail/Messages/etc. get the picture AND the
-    // text together in one share, instead of two separate manual steps.
-    async function shareInvoiceImageWithText(text, filenameBase) {
-        if (!invoiceState) return false;
+    // Renders a built document (invoice OR estimate) to a PNG image off-screen (via html2canvas,
+    // in a hidden iframe so the real styling/layout is reused as-is) and hands it to the device's
+    // native Share sheet together with the message text, so WhatsApp/Mail/Messages/etc. get the
+    // picture AND the text together in one share, instead of two separate manual steps. This is
+    // also, practically, the only way to get a real attachment out of this app at all: mailto:/
+    // wa.me/sms: links only ever carry text — no browser lets a link attach a file — so the
+    // device's own native Share sheet (which DOES support real attachments) is the one path in.
+    async function shareDocImageWithText(text, filenameBase, html, pageSelector, bgColor) {
         if (typeof html2canvas === 'undefined' || !navigator.share || !navigator.canShare) { alert(t('alertShareNotSupported')); return false; }
-        const html = buildInvoiceHtmlDoc(false);
         if (!html) return false;
 
         const iframe = document.createElement('iframe');
@@ -7283,36 +7284,47 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                 setTimeout(() => reject(new Error('timeout')), 8000);
             });
             await new Promise(r => setTimeout(r, 150));   // let any <img> (logo/watermark data URLs) finish painting
-            const target = iframe.contentDocument.querySelector('.invoice-page');
+            const target = iframe.contentDocument.querySelector(pageSelector);
             if (!target) return false;
-            const canvas = await html2canvas(target, { backgroundColor: '#FDFBF6', scale: 2, useCORS: true });
+            const canvas = await html2canvas(target, { backgroundColor: bgColor || '#FDFBF6', scale: 2, useCORS: true });
             const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
             if (!blob) return false;
-            const file = new File([blob], `${filenameBase || 'invoice'}.png`, { type: 'image/png' });
+            const file = new File([blob], `${filenameBase || 'document'}.png`, { type: 'image/png' });
             if (!navigator.canShare({ files: [file] })) { alert(t('alertShareNotSupported')); return false; }
             await navigator.share({ files: [file], text });
             return true;
         } catch (e) {
-            if (e && e.name !== 'AbortError') { console.error('shareInvoiceImageWithText error:', e); alert(t('alertShareNotSupported')); }  // AbortError = user just cancelled the share sheet, not a real failure
+            if (e && e.name !== 'AbortError') { console.error('shareDocImageWithText error:', e); alert(t('alertShareNotSupported')); }  // AbortError = user just cancelled the share sheet, not a real failure
             return false;
         } finally {
             iframe.remove();
         }
     }
+    // Kept as a thin wrapper — old name, same behavior — in case anything else still calls it directly.
+    async function shareInvoiceImageWithText(text, filenameBase) {
+        if (!invoiceState) return false;
+        return shareDocImageWithText(text, filenameBase, buildInvoiceHtmlDoc(false), '.invoice-page', '#FDFBF6');
+    }
 
-    // Hooked to the AI-reminder modal's Share button (only shown when that modal was opened from
-    // the Invoice screen, so there's an invoice to render — see sendInvoiceClientMessage).
+    // Hooked to the AI-reminder modal's Share button — shown whenever there's an actual document
+    // to render: either the Invoice screen's current invoice, or an appointment's quote/estimate.
     async function shareAiReminderWithInvoice() {
         const c = aiReminderCtx;
         const text = document.getElementById('aiReminderText').value.trim();
-        if (!c || !text || !c.fromInvoice) return;
+        if (!c || !text) return;
+        if (!c.fromInvoice && !(c.msgKind === 'quote' && c.apptId)) return;
         const btn = document.getElementById('aiShareBtn');
         const prevLabel = btn.textContent;
         btn.disabled = true;
         btn.textContent = t('aiSharing');
         try {
             const nameSlug = (c.job.clientName || 'client').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'client';
-            await shareInvoiceImageWithText(text, `${companyFileSlug()}_Invoice_${nameSlug}`);
+            if (c.fromInvoice) {
+                await shareDocImageWithText(text, `${companyFileSlug()}_Invoice_${nameSlug}`, buildInvoiceHtmlDoc(false), '.invoice-page', '#FDFBF6');
+            } else {
+                const appt = appointments.find(a => a.id === c.apptId);
+                if (appt) await shareDocImageWithText(text, `${companyFileSlug()}_Estimate_${nameSlug}`, buildAppointmentQuoteHtmlDoc(appt), '.quote-page', '#FDFBF6');
+            }
         } finally {
             btn.disabled = false;
             btn.textContent = prevLabel;
@@ -9838,7 +9850,10 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('aiReminderJob').textContent = `${appt.clientName || ''} — $${parseVal(appt.quotedPrice).toFixed(2)}`;
         document.getElementById('aiReminderText').value = '';
         document.getElementById('aiCustomInstructions').value = '';
-        document.getElementById('aiShareBtn').style.display = 'none';
+        // Sharing an image only makes sense when there's a quote to render, and only on devices
+        // whose share sheet can take a file (desktop Chrome, for example, cannot) — same check
+        // sendInvoiceClientMessage uses.
+        document.getElementById('aiShareBtn').style.display = (navigator.share && navigator.canShare) ? '' : 'none';
         document.getElementById('aiCallBtn').style.display = appt.clientPhone ? '' : 'none';
         document.getElementById('aiReminderModal').style.display = 'flex';
         if (!aiReminderCtx.apiKey) { useTemplateReminder('aiNoKeyNote'); return; }
