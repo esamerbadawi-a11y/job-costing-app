@@ -1349,7 +1349,7 @@
             <button class="secondary" onclick="previewAppointmentQuote(quoteApptId)" data-i18n="quoteViewBtn" style="flex:1; min-width:100px; padding:10px; background:#64748b;"></button>
             <button class="secondary" onclick="saveAppointmentQuote(quoteApptId, true)" data-i18n="quoteSaveBtn" style="flex:1; min-width:110px; padding:10px;"></button>
             <button class="success" onclick="sendAppointmentQuoteMessage(quoteApptId)" data-i18n="quoteSendMsgBtn" style="flex:1; min-width:150px; padding:10px; background:linear-gradient(135deg,#7c3aed,#38bdf8);"></button>
-            <button class="success" onclick="sendAppointmentQuoteDocument(quoteApptId)" data-i18n="quoteSendDocBtn" style="flex:1; min-width:150px; padding:10px; background:#0891b2;"></button>
+            <button class="success" id="quoteSendPdfFileBtn" onclick="shareAppointmentQuotePdf(quoteApptId)" data-i18n="quoteSendDocBtn" style="flex:1; min-width:150px; padding:10px; background:#0891b2;"></button>
         </div>
     </div>
 </div>
@@ -2321,6 +2321,7 @@
         quoteSaveBtn: { ar: '💾 حفظ', en: '💾 Save' },
         quoteSendMsgBtn: { ar: '✨ ابعت رسالة سريعة', en: '✨ Send quick message' },
         quoteSendDocBtn: { ar: '📄 ابعت عرض سعر رسمي', en: '📄 Send formal quote' },
+        quotePdfPreparing: { ar: 'بيجهّز ملف PDF...', en: 'Preparing PDF...' },
         quoteCloseBtn: { ar: 'قفل', en: 'Close' },
         alertQuoteNeedsPrice: { ar: 'لازم تحدد السعر الإجمالي الأول.', en: 'Please enter the total price first.' },
         alertQuoteSaveFailed: { ar: 'فشل حفظ عرض السعر. حاول تاني.', en: 'Failed to save the quote. Please try again.' },
@@ -10185,27 +10186,102 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         await regenerateAiReminder();
     }
 
-    // Formal path: save the quote fields, then open a standalone printable "ESTIMATE" document
-    // in a new tab — same convention as printInvoice()/viewSavedInvoice() (open the tab
-    // synchronously first, so phone browsers never treat the later document.write as a popup).
-    async function sendAppointmentQuoteDocument(apptId) {
+    // Real-attachment path: unlike "Attach & Share" (shareDocImageWithText), which flattens the
+    // document to a PNG and so can never carry a clickable link, this builds an actual PDF file
+    // (same visual, via the same iframe + html2canvas screenshot) and lays a real jsPDF link
+    // annotation on top, exactly where the Pay Now button sits in the screenshot — so the button
+    // stays tappable once the PDF lands in WhatsApp/Mail/Files on the other end. The file then
+    // goes out through the device's native Share sheet (navigator.share), which is the OS's own
+    // method-choice menu — WhatsApp, Email, Messages, Drive, whatever's installed — so no custom
+    // channel list needs to be hardcoded or kept in sync here.
+    async function shareAppointmentQuotePdf(apptId) {
         const appt = appointments.find(a => a.id === apptId);
         if (!appt) return;
         if (!parseVal(document.getElementById('quotePriceInput').value)) { alert(t('alertQuoteNeedsPrice')); return; }
-        const win = window.open('', '_blank');
+        if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') { alert(t('alertShareNotSupported')); return; }
+
+        const btn = document.getElementById('quoteSendPdfFileBtn');
+        const prevLabel = btn ? btn.textContent : '';
+        if (btn) { btn.disabled = true; btn.textContent = t('quotePdfPreparing'); }
+
         const ok = await saveAppointmentQuote(apptId, false);
-        if (!ok) { if (win) win.close(); return; }
+        if (!ok) { if (btn) { btn.disabled = false; btn.textContent = prevLabel; } return; }
 
         const html = buildAppointmentQuoteHtmlDoc(appt);
-        if (win) { win.document.write(html); win.document.close(); }
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:fixed; left:-10000px; top:0; width:900px; height:1200px; border:0; visibility:hidden;';
+        document.body.appendChild(iframe);
+        let sent = false;
+        try {
+            await new Promise((resolve, reject) => {
+                iframe.onload = resolve;
+                iframe.onerror = () => reject(new Error('iframe load failed'));
+                iframe.srcdoc = html;
+                setTimeout(() => reject(new Error('timeout')), 8000);
+            });
+            await new Promise(r => setTimeout(r, 150));   // let the logo/photos finish painting
+            const target = iframe.contentDocument.querySelector('.quote-page');
+            if (!target) throw new Error('quote page not found');
+            const targetRect = target.getBoundingClientRect();
 
-        appt.quoteSentAt = new Date().toISOString();
-        // Stamp the sent time on the matching saved-quote entry too, so its history row carries
-        // it (saveAppointmentQuote, just above, already upserted this exact entry).
-        const sentEntry = (appt.savedQuotes || []).find(q => q.id === quoteDraftSavedId);
-        if (sentEntry) sentEntry.sentAt = appt.quoteSentAt;
-        try { await APPOINTMENTS_DOC.set({ entries: appointments }); safeCall(renderAppointments); } catch (e) { console.error('quote doc sent-stamp error:', e); }
-        closeAppointmentQuoteModal();
+            // Locate the actual Pay Now <a> rendered in this same document, if one is showing
+            // (only present when a Company Profile payment link is set).
+            let linkEl = null;
+            if (companyProfile.paymentLink) {
+                linkEl = Array.from(target.querySelectorAll('a[href]')).find(a => a.getAttribute('href') === companyProfile.paymentLink) || null;
+            }
+
+            const canvas = await html2canvas(target, { backgroundColor: '#FDFBF6', scale: 2, useCORS: true });
+            const imgData = canvas.toDataURL('image/png');
+
+            const { jsPDF } = window.jspdf;
+            const pdfWidthMm = 210; // A4 width — the image is scaled to fit it, keeping its aspect ratio
+            const scale = pdfWidthMm / targetRect.width;
+            const pdfHeightMm = targetRect.height * scale;
+            const doc = new jsPDF({ unit: 'mm', format: [pdfWidthMm, pdfHeightMm] });
+            doc.addImage(imgData, 'PNG', 0, 0, pdfWidthMm, pdfHeightMm);
+            if (linkEl) {
+                const linkRect = linkEl.getBoundingClientRect();
+                doc.link(
+                    (linkRect.left - targetRect.left) * scale,
+                    (linkRect.top - targetRect.top) * scale,
+                    linkRect.width * scale,
+                    linkRect.height * scale,
+                    { url: companyProfile.paymentLink }
+                );
+            }
+
+            const nameSlug = (appt.clientName || 'client').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'client';
+            const filename = `${companyFileSlug()}_Estimate_${nameSlug}.pdf`;
+
+            if (navigator.share && navigator.canShare) {
+                const blob = doc.output('blob');
+                const file = new File([blob], filename, { type: 'application/pdf' });
+                if (navigator.canShare({ files: [file] })) {
+                    await navigator.share({ files: [file] });
+                    sent = true;
+                } else {
+                    doc.save(filename);
+                    sent = true;
+                }
+            } else {
+                doc.save(filename); // desktop fallback: a real download, still with the clickable link inside it
+                sent = true;
+            }
+        } catch (e) {
+            if (e && e.name !== 'AbortError') { console.error('shareAppointmentQuotePdf error:', e); alert(t('alertShareNotSupported')); }  // AbortError = user cancelled the share sheet, not a real failure
+        } finally {
+            iframe.remove();
+            if (btn) { btn.disabled = false; btn.textContent = prevLabel; }
+        }
+
+        if (sent) {
+            appt.quoteSentAt = new Date().toISOString();
+            const sentEntry = (appt.savedQuotes || []).find(q => q.id === quoteDraftSavedId);
+            if (sentEntry) sentEntry.sentAt = appt.quoteSentAt;
+            try { await APPOINTMENTS_DOC.set({ entries: appointments }); safeCall(renderAppointments); } catch (e) { console.error('quote pdf sent-stamp error:', e); }
+            closeAppointmentQuoteModal();
+        }
     }
 
     // Quick look at the quote exactly as it'll print, using whatever's on screen right now
