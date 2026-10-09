@@ -1270,6 +1270,11 @@
                 <input type="file" id="quotePhotoInput" accept="image/*" style="display:none;" onchange="analyzeQuotePhotoAndSplit(event)">
             </div>
             <div id="quotePhotoGallery" style="display:none; gap:8px; flex-wrap:wrap; margin-top:10px;"></div>
+            <div style="margin-top:12px;">
+                <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;" data-i18n="quoteAiInstructionsLabel"></label>
+                <input type="text" id="quoteAiInstructions" dir="auto" data-i18n-ph="quoteAiInstructionsPh">
+                <button type="button" id="quoteAdjustAiBtn" class="secondary" onclick="adjustQuoteItemsWithAI()" data-i18n="quoteAdjustAiBtn" style="width:100%; padding:8px; font-size:0.8rem; margin-top:6px; background:#7c3aed;"></button>
+            </div>
         </div>
 
         <div class="form-group">
@@ -2194,6 +2199,11 @@
         quoteDocEstimateFor: { ar: 'عرض سعر لـ', en: 'Price quote for' },
         quoteSavedToast: { ar: '💾 اتحفظ عرض السعر', en: '💾 Quote saved' },
         quoteViewBtn: { ar: '👁️ شوف شكله', en: '👁️ Preview' },
+        quoteAiInstructionsLabel: { ar: 'توجيهات للـ AI (اختياري):', en: 'Instructions for the AI (optional):' },
+        quoteAiInstructionsPh: { ar: 'مثال: خلي بند الدهان أعلى شوية، ضيف بند تنظيف، ادمج أول بندين...', en: 'e.g. raise the paint item a bit, add a cleanup item, merge the first two items...' },
+        quoteAdjustAiBtn: { ar: '🔄 عدّل التفاصيل بالـ AI', en: '🔄 Adjust breakdown (AI)' },
+        quoteAdjusting: { ar: '⏳ بيعدّل...', en: '⏳ Adjusting...' },
+        alertQuoteAdjustNeedsInput: { ar: 'اكتب توجيه للـ AI الأول، أو ضيف صورة بدل كده.', en: 'Write an instruction for the AI first, or add a photo instead.' },
         followUpBtn: { ar: '🔔 متابعة', en: '🔔 Follow Up' },
         followUpBadgeQuoteSent: { ar: '🔔 بستنى رد على عرض السعر', en: '🔔 Waiting on quote response' },
         followUpBadgeVisitedWaiting: { ar: '🔔 عملت زيارة وبستنى قرار', en: '🔔 Visited — waiting on decision' },
@@ -9339,6 +9349,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         quoteItemsState = JSON.parse(JSON.stringify(appt.quoteItems || []));
         renderQuoteItemsTable();
         document.getElementById('quoteNoteInput').value = appt.quoteNote || '';
+        document.getElementById('quoteAiInstructions').value = '';
         currentQuotePhotos = JSON.parse(JSON.stringify(appt.quotePhotos || []));
         renderPhotoGallery(currentQuotePhotos, 'quotePhotoGallery');
         closeOtherTopModals('appointmentsListModal'); // keep the appointments list open underneath, just like the follow-up picker does
@@ -9393,31 +9404,74 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const originalLabel = btn.innerHTML;
         btn.disabled = true; btn.innerHTML = t('quoteAnalyzingPhoto');
 
+        const instructions = (document.getElementById('quoteAiInstructions').value || '').trim();
         try {
             const dataUrl = await compressImageToBase64(file);
             const base64Data = dataUrl.split(',')[1];
-            const promptText = currentLang === 'ar'
-                ? `اتفرج على صورة موقع شغل الصيانة/المقاولات دي، وقسّم السعر الإجمالي $${price.toFixed(2)} على بنود منطقية حسب اللي شايفه (تصليحات، خامات، تشطيب، إلخ)، بحيث مجموع البنود يساوي $${price.toFixed(2)} بالظبط. رجّعلي JSON فقط، من غير أي نص تاني ولا \`\`\`، بالشكل ده: [{"desc":"وصف البند","amount":123.45}, ...]`
-                : `Look at this handyman/contracting job-site photo and split the total price $${price.toFixed(2)} into logical line items based on what's visible (repairs, materials, finishing, etc.), so the items sum to exactly $${price.toFixed(2)}. Return ONLY JSON, no other text and no \`\`\`, in this shape: [{"desc":"item description","amount":123.45}, ...]`;
+            const instructionsLine = instructions
+                ? (currentLang === 'ar' ? ` خد بالك كمان من التوجيه ده من صاحب الشغل: ${instructions}.` : ` Also follow this instruction from the business owner: ${instructions}.`)
+                : '';
+            const promptText = (currentLang === 'ar'
+                ? `اتفرج على صورة موقع شغل الصيانة/المقاولات دي، وقسّم السعر الإجمالي $${price.toFixed(2)} على بنود منطقية حسب اللي شايفه (تصليحات، خامات، تشطيب، إلخ)، بحيث مجموع البنود يساوي $${price.toFixed(2)} بالظبط.${instructionsLine} رجّعلي JSON فقط، من غير أي نص تاني ولا \`\`\`، بالشكل ده: [{"desc":"وصف البند","amount":123.45}, ...]`
+                : `Look at this handyman/contracting job-site photo and split the total price $${price.toFixed(2)} into logical line items based on what's visible (repairs, materials, finishing, etc.), so the items sum to exactly $${price.toFixed(2)}.${instructionsLine} Return ONLY JSON, no other text and no \`\`\`, in this shape: [{"desc":"item description","amount":123.45}, ...]`);
 
             const resultText = await aiGenerate(apiKey, [{ inlineData: { mimeType: 'image/jpeg', data: base64Data } }, { text: promptText }]);
-            const jsonText = resultText.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
-            let parsed = JSON.parse(jsonText);
-            if (!Array.isArray(parsed)) throw new Error('not an array');
-            parsed = parsed.map(it => ({ desc: String((it && it.desc) || '').trim(), amount: parseVal(it && it.amount) })).filter(it => it.desc);
-            if (parsed.length === 0) throw new Error('empty breakdown');
-
-            // Normalize so the items sum to exactly the entered price — the AI's own
-            // arithmetic can be a few cents off, and the last item absorbs that rounding.
-            const sum = parsed.reduce((s, it) => s + it.amount, 0);
-            const diff = price - sum;
-            if (Math.abs(diff) > 0.001) parsed[parsed.length - 1].amount = Math.round((parsed[parsed.length - 1].amount + diff) * 100) / 100;
+            const parsed = parseAndNormalizeQuoteItemsJson(resultText, price);
 
             quoteItemsState = parsed;
             renderQuoteItemsTable();
 
             currentQuotePhotos.push({ data: dataUrl, addedAt: new Date().toISOString() });
             renderPhotoGallery(currentQuotePhotos, 'quotePhotoGallery');
+        } catch (err) {
+            const msg = (err && err.message) ? err.message : String(err);
+            if (/401|403|UNAUTHENTICATED|PERMISSION|API key/i.test(msg)) { try { localStorage.removeItem('geminiApiKey'); } catch (e) {} }
+            alert(t('alertAiFailed') + ' (' + msg + ')');
+        } finally {
+            btn.disabled = false; btn.innerHTML = originalLabel;
+        }
+    }
+
+    // Shared by analyzeQuotePhotoAndSplit and adjustQuoteItemsWithAI: strips a stray ``` fence
+    // if the model added one anyway, parses the JSON array, and normalizes amounts so they sum
+    // to exactly the entered price (the last item absorbs any rounding cents).
+    function parseAndNormalizeQuoteItemsJson(resultText, price) {
+        const jsonText = resultText.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+        let parsed = JSON.parse(jsonText);
+        if (!Array.isArray(parsed)) throw new Error('not an array');
+        parsed = parsed.map(it => ({ desc: String((it && it.desc) || '').trim(), amount: parseVal(it && it.amount) })).filter(it => it.desc);
+        if (parsed.length === 0) throw new Error('empty breakdown');
+        const sum = parsed.reduce((s, it) => s + it.amount, 0);
+        const diff = price - sum;
+        if (Math.abs(diff) > 0.001) parsed[parsed.length - 1].amount = Math.round((parsed[parsed.length - 1].amount + diff) * 100) / 100;
+        return parsed;
+    }
+
+    // Lets the user tell the AI what to change about the breakdown already on screen (reorder,
+    // rename, merge/split items, shift amounts around) WITHOUT needing a new photo — text-only,
+    // working off the current price + items + whatever instruction was typed.
+    async function adjustQuoteItemsWithAI() {
+        const apiKey = getGeminiApiKey();
+        if (!apiKey) { alert(t('aiNoKeyNote')); return; }
+        const price = parseVal(document.getElementById('quotePriceInput').value);
+        if (!price) { alert(t('alertQuoteNeedsPrice')); return; }
+        const instructions = (document.getElementById('quoteAiInstructions').value || '').trim();
+        if (!instructions && quoteItemsState.length === 0) { alert(t('alertQuoteAdjustNeedsInput')); return; }
+
+        const btn = document.getElementById('quoteAdjustAiBtn');
+        const originalLabel = btn.innerHTML;
+        btn.disabled = true; btn.innerHTML = t('quoteAdjusting');
+
+        try {
+            const currentItemsJson = JSON.stringify(quoteItemsState.map(it => ({ desc: it.desc, amount: parseVal(it.amount) })));
+            const promptText = currentLang === 'ar'
+                ? `دي تفاصيل عرض سعر شغل صيانة/مقاولات حاليًا (JSON): ${currentItemsJson}. السعر الإجمالي ثابت عند $${price.toFixed(2)}. عدّل البنود دي حسب التوجيه ده من صاحب الشغل: "${instructions}"، مع إنك تخلي مجموع البنود يساوي $${price.toFixed(2)} بالظبط. رجّعلي JSON فقط، من غير أي نص تاني ولا \`\`\`، بالشكل ده: [{"desc":"وصف البند","amount":123.45}, ...]`
+                : `Here is the current price breakdown for a handyman/contracting quote (JSON): ${currentItemsJson}. The total price is fixed at $${price.toFixed(2)}. Adjust these items per this instruction from the business owner: "${instructions}", keeping the items summing to exactly $${price.toFixed(2)}. Return ONLY JSON, no other text and no \`\`\`, in this shape: [{"desc":"item description","amount":123.45}, ...]`;
+
+            const resultText = await aiGenerate(apiKey, promptText);
+            const parsed = parseAndNormalizeQuoteItemsJson(resultText, price);
+            quoteItemsState = parsed;
+            renderQuoteItemsTable();
         } catch (err) {
             const msg = (err && err.message) ? err.message : String(err);
             if (/401|403|UNAUTHENTICATED|PERMISSION|API key/i.test(msg)) { try { localStorage.removeItem('geminiApiKey'); } catch (e) {} }
