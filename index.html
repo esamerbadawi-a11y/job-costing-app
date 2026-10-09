@@ -9433,10 +9433,33 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         return `${companyInvoicePrefix()}-${isoDate(new Date()).replace(/-/g, '')}-${seq}`;
     }
 
+    // Appointments that got a quote BEFORE the saved-quotes list existed only have the old
+    // top-level fields (quotedPrice/quoteItems/etc.) with nothing in appt.savedQuotes — which
+    // made them look "deleted" once the list UI shipped, since the list only ever reads
+    // savedQuotes. This folds that legacy quote into a proper savedQuotes entry, once, the
+    // first time the screen opens for that appointment, and persists it so it's permanent.
+    function migrateLegacyQuoteIfNeeded(appt) {
+        if ((appt.savedQuotes || []).length > 0) return; // already has saved entries, nothing to migrate
+        const hasLegacyQuote = appt.quotedPrice || (appt.quoteItems && appt.quoteItems.length > 0);
+        if (!hasLegacyQuote) return;
+        appt.savedQuotes = [{
+            id: newLedgerId(),
+            quoteNumber: appt.quoteNumber || suggestQuoteNumber(appt.id),
+            quotedPrice: appt.quotedPrice || 0,
+            items: appt.quoteItems || [],
+            note: appt.quoteNote || '',
+            photos: appt.quotePhotos || [],
+            savedAt: appt.quoteSentAt || new Date().toISOString(),
+            sentAt: appt.quoteSentAt || null
+        }];
+        safeCall(() => { APPOINTMENTS_DOC.set({ entries: appointments }); });
+    }
+
     function openAppointmentQuoteModal(apptId) {
         const appt = appointments.find(a => a.id === apptId);
         if (!appt) return;
         appt.savedQuotes = appt.savedQuotes || [];
+        migrateLegacyQuoteIfNeeded(appt);
         quoteApptId = apptId;
         document.getElementById('quoteClientLine').textContent = appt.clientName || '';
         startNewQuoteDraft(apptId); // every open starts a fresh, blank quote — exactly like opening the Invoice screen; pick a saved one from the list above to continue editing it instead
