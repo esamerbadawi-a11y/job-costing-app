@@ -1326,6 +1326,25 @@
             <textarea id="quoteNoteInput" dir="auto" data-i18n-ph="quoteNotePh" rows="2"></textarea>
         </div>
 
+        <h3 style="color:#38bdf8; font-size:0.9rem; margin:4px 0 10px;" data-i18n="invoiceOptionalFieldsTitle"></h3>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:6px;">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <input type="checkbox" id="quoteShowPayment" onchange="toggleQuoteOptionalField('Payment', this.checked)">
+                <label for="quoteShowPayment" style="font-size:0.85rem; min-width:150px;" data-i18n="invoicePaymentMethodToggle"></label>
+                <input type="text" id="quotePaymentMethodText" style="display:none; background:#11141d; color:#fff; border:1px solid var(--border-color); padding:7px 10px; border-radius:8px; flex-grow:1; min-width:150px;">
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <input type="checkbox" id="quoteShowFollowUp" onchange="toggleQuoteOptionalField('FollowUp', this.checked)">
+                <label for="quoteShowFollowUp" style="font-size:0.85rem; min-width:150px;" data-i18n="invoiceFollowUpToggle"></label>
+                <input type="text" id="quoteFollowUpText" style="display:none; background:#11141d; color:#fff; border:1px solid var(--border-color); padding:7px 10px; border-radius:8px; flex-grow:1; min-width:150px;">
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <input type="checkbox" id="quoteShowValidity" onchange="toggleQuoteOptionalField('Validity', this.checked)">
+                <label for="quoteShowValidity" style="font-size:0.85rem; min-width:150px;" data-i18n="invoiceValidityToggle"></label>
+                <input type="text" id="quoteValidityText" style="display:none; background:#11141d; color:#fff; border:1px solid var(--border-color); padding:7px 10px; border-radius:8px; flex-grow:1; min-width:150px;">
+            </div>
+        </div>
+
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
             <button class="secondary" onclick="previewAppointmentQuote(quoteApptId)" data-i18n="quoteViewBtn" style="flex:1; min-width:100px; padding:10px; background:#64748b;"></button>
             <button class="secondary" onclick="saveAppointmentQuote(quoteApptId, true)" data-i18n="quoteSaveBtn" style="flex:1; min-width:110px; padding:10px;"></button>
@@ -4801,19 +4820,31 @@
     // ---------- AI payment reminder: a window that shows progress, the message (editable) and the send buttons ----------
     let aiReminderCtx = null;
 
+    // Appended to a client-facing message's text (never into the picture an Attach & Share
+    // sends — an image can never be clickable, so the live link has to ride along in the text
+    // instead) whenever a Payment Link is saved in Company Profile. Used by the quote message
+    // and the payment-reminder message, not the thank-you note (that's sent after a job is
+    // already paid in full).
+    function paymentLinkMessageLine(lang) {
+        if (!companyProfile.paymentLink) return '';
+        return lang === 'ar' ? `\n\nتقدر تدفع أونلاين من هنا: ${companyProfile.paymentLink}` : `\n\nYou can pay online here: ${companyProfile.paymentLink}`;
+    }
     function buildReminderPrompt(job, rem, daysOverdue, lang, customInstructions) {
         const long = daysOverdue && daysOverdue > 14;
         const extra = (customInstructions || '').trim();
-        if (lang === 'ar') return `اكتب رسالة تذكير بدفعة متأخرة، مهذبة ومختصرة (2-4 جمل)، للعميل ${job.clientName}، بخصوص شغلانة "${job.clientDescription || 'صيانة'}"، المبلغ المتبقي $${rem.toFixed(2)}${daysOverdue ? `، ومتأخر عن الموعد بـ ${daysOverdue} يوم` : ''}. النبرة تتناسب مع ${long ? 'تأخير طويل نسبيًا لكن لسه محترمة' : 'تذكير ودّي بسيط'}.${extra ? ` تعليمات إضافية من صاحب الشغل لازم تاخد بالك منها: ${extra}.` : ''} من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`;
-        return `Write a polite, concise (2-4 sentence) payment reminder to client ${job.clientName}, regarding a "${job.clientDescription || 'service'}" job, outstanding balance $${rem.toFixed(2)}${daysOverdue ? `, ${daysOverdue} days past the follow-up date` : ''}. Tone should be ${long ? 'a bit firmer given the longer delay, but still respectful' : 'a gentle, friendly nudge'}.${extra ? ` Extra instructions from the business owner to follow: ${extra}.` : ''} No preamble or headers, just the message.`;
+        const linkInstruction = companyProfile.paymentLink
+            ? (lang === 'ar' ? ` ولازم تخلّص الرسالة بالسطر ده بالظبط من غير أي تغيير فيه: "تقدر تدفع أونلاين من هنا: ${companyProfile.paymentLink}".` : ` End the message with this exact line, unchanged: "You can pay online here: ${companyProfile.paymentLink}".`)
+            : '';
+        if (lang === 'ar') return `اكتب رسالة تذكير بدفعة متأخرة، مهذبة ومختصرة (2-4 جمل)، للعميل ${job.clientName}، بخصوص شغلانة "${job.clientDescription || 'صيانة'}"، المبلغ المتبقي $${rem.toFixed(2)}${daysOverdue ? `، ومتأخر عن الموعد بـ ${daysOverdue} يوم` : ''}. النبرة تتناسب مع ${long ? 'تأخير طويل نسبيًا لكن لسه محترمة' : 'تذكير ودّي بسيط'}.${extra ? ` تعليمات إضافية من صاحب الشغل لازم تاخد بالك منها: ${extra}.` : ''}${linkInstruction} من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`;
+        return `Write a polite, concise (2-4 sentence) payment reminder to client ${job.clientName}, regarding a "${job.clientDescription || 'service'}" job, outstanding balance $${rem.toFixed(2)}${daysOverdue ? `, ${daysOverdue} days past the follow-up date` : ''}. Tone should be ${long ? 'a bit firmer given the longer delay, but still respectful' : 'a gentle, friendly nudge'}.${extra ? ` Extra instructions from the business owner to follow: ${extra}.` : ''}${linkInstruction} No preamble or headers, just the message.`;
     }
     // The same message without AI, so the reminder can always be sent.
     function buildFallbackReminder(job, rem, daysOverdue, lang) {
         const what = (job.clientDescription || '').split('\n')[0].slice(0, 80).trim();
         const amount = '$' + rem.toFixed(2);
         const long = daysOverdue && daysOverdue > 14;
-        if (lang === 'ar') return `أهلاً، معاك ${companyDisplayName()}. تذكير ودّي بالمبلغ المتبقي ${amount}${what ? ' عن ' + what : ''}${daysOverdue ? `، وعدّى ${daysOverdue} يوم على موعد المتابعة` : ''}. ${long ? 'ياريت نرتب السداد في أقرب وقت.' : 'ياريت تبلغنا إمتى نقدر نستلمه.'} شكرًا لتعاونك.`;
-        return `Hello, this is ${companyDisplayName()}. A friendly reminder about the remaining balance of ${amount}${what ? ' for ' + what : ''}${daysOverdue ? `, now ${daysOverdue} days past the follow-up date` : ''}. ${long ? 'Please arrange payment as soon as you can.' : 'Please let us know when we can expect it.'} Thank you!`;
+        if (lang === 'ar') return `أهلاً، معاك ${companyDisplayName()}. تذكير ودّي بالمبلغ المتبقي ${amount}${what ? ' عن ' + what : ''}${daysOverdue ? `، وعدّى ${daysOverdue} يوم على موعد المتابعة` : ''}. ${long ? 'ياريت نرتب السداد في أقرب وقت.' : 'ياريت تبلغنا إمتى نقدر نستلمه.'} شكرًا لتعاونك.` + paymentLinkMessageLine(lang);
+        return `Hello, this is ${companyDisplayName()}. A friendly reminder about the remaining balance of ${amount}${what ? ' for ' + what : ''}${daysOverdue ? `, now ${daysOverdue} days past the follow-up date` : ''}. ${long ? 'Please arrange payment as soon as you can.' : 'Please let us know when we can expect it.'} Thank you!` + paymentLinkMessageLine(lang);
     }
     function buildThankYouPrompt(job, lang, customInstructions) {
         const extra = (customInstructions || '').trim();
@@ -4860,8 +4891,11 @@
             ? (lang === 'ar' ? ` التفاصيل: ${items.map(it => `${it.desc} ($${parseVal(it.amount).toFixed(2)})`).join('، ')}.` : ` Breakdown: ${items.map(it => `${it.desc} ($${parseVal(it.amount).toFixed(2)})`).join(', ')}.`)
             : '';
         const servicesText = (appt.services && appt.services.length) ? appt.services.join(lang === 'ar' ? '، ' : ', ') : '';
-        if (lang === 'ar') return `اكتب رسالة ودّية ومختصرة (3-5 جمل) للعميل ${appt.clientName}، تقدّم فيها عرض سعر بمبلغ $${price}${servicesText ? ` لخدمة "${servicesText}"` : ''}.${itemsLine} اطلب منه بأدب يراجع العرض ويرد بالموافقة أو أي استفسار.${extra ? ` تعليمات إضافية من صاحب الشغل لازم تاخد بالك منها: ${extra}.` : ''} من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`;
-        return `Write a friendly, concise (3-5 sentence) message to client ${appt.clientName}, presenting a price quote of $${price}${servicesText ? ` for "${servicesText}"` : ''}.${itemsLine} Politely ask them to review it and reply with approval or any questions.${extra ? ` Extra instructions from the business owner to follow: ${extra}.` : ''} No preamble or headers, just the message.`;
+        const linkInstruction = companyProfile.paymentLink
+            ? (lang === 'ar' ? ` ولازم تخلّص الرسالة بالسطر ده بالظبط من غير أي تغيير فيه: "تقدر تدفع أونلاين من هنا: ${companyProfile.paymentLink}".` : ` End the message with this exact line, unchanged: "You can pay online here: ${companyProfile.paymentLink}".`)
+            : '';
+        if (lang === 'ar') return `اكتب رسالة ودّية ومختصرة (3-5 جمل) للعميل ${appt.clientName}، تقدّم فيها عرض سعر بمبلغ $${price}${servicesText ? ` لخدمة "${servicesText}"` : ''}.${itemsLine} اطلب منه بأدب يراجع العرض ويرد بالموافقة أو أي استفسار.${extra ? ` تعليمات إضافية من صاحب الشغل لازم تاخد بالك منها: ${extra}.` : ''}${linkInstruction} من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`;
+        return `Write a friendly, concise (3-5 sentence) message to client ${appt.clientName}, presenting a price quote of $${price}${servicesText ? ` for "${servicesText}"` : ''}.${itemsLine} Politely ask them to review it and reply with approval or any questions.${extra ? ` Extra instructions from the business owner to follow: ${extra}.` : ''}${linkInstruction} No preamble or headers, just the message.`;
     }
     function buildFallbackQuote(appt, lang) {
         const price = parseVal(appt.quotedPrice).toFixed(2);
@@ -4869,8 +4903,8 @@
         const itemsLine = items.length
             ? (lang === 'ar' ? ` (${items.map(it => `${it.desc}: $${parseVal(it.amount).toFixed(2)}`).join(' — ')})` : ` (${items.map(it => `${it.desc}: $${parseVal(it.amount).toFixed(2)}`).join(' — ')})`)
             : '';
-        if (lang === 'ar') return `أهلاً ${appt.clientName || ''}، معاك ${companyDisplayName()}. ده عرض السعر بتاعك: $${price}${itemsLine}. لو موافق قولنا نبدأ، أو لو عندك أي سؤال إحنا موجودين. شكرًا ليك!`;
-        return `Hello ${appt.clientName || ''}, this is ${companyDisplayName()}. Here's your price quote: $${price}${itemsLine}. Let us know if you'd like to go ahead, or if you have any questions. Thank you!`;
+        if (lang === 'ar') return `أهلاً ${appt.clientName || ''}، معاك ${companyDisplayName()}. ده عرض السعر بتاعك: $${price}${itemsLine}. لو موافق قولنا نبدأ، أو لو عندك أي سؤال إحنا موجودين. شكرًا ليك!` + paymentLinkMessageLine(lang);
+        return `Hello ${appt.clientName || ''}, this is ${companyDisplayName()}. Here's your price quote: $${price}${itemsLine}. Let us know if you'd like to go ahead, or if you have any questions. Thank you!` + paymentLinkMessageLine(lang);
     }
     // The same message without AI, so a follow-up can always be sent even with no AI key.
     function buildFallbackFollowUp(appt, lang) {
@@ -9696,7 +9730,13 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             quotedPrice: document.getElementById('quotePriceInput').value.trim(),
             items: quoteItemsState,
             note: document.getElementById('quoteNoteInput').value.trim(),
-            photos: currentQuotePhotos
+            photos: currentQuotePhotos,
+            showPaymentMethod: document.getElementById('quoteShowPayment').checked,
+            paymentMethodText: document.getElementById('quotePaymentMethodText').value.trim(),
+            showFollowUp: document.getElementById('quoteShowFollowUp').checked,
+            followUpText: document.getElementById('quoteFollowUpText').value.trim(),
+            showValidity: document.getElementById('quoteShowValidity').checked,
+            validityText: document.getElementById('quoteValidityText').value.trim()
         };
     }
     function markQuoteDraftClean() { quoteDraftSnapshot = JSON.stringify(quoteDraftSnapshotObj()); }
@@ -9794,6 +9834,12 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('quoteAiInstructions').value = '';
         currentQuotePhotos = [];
         renderPhotoGallery(currentQuotePhotos, 'quotePhotoGallery');
+        QUOTE_OPTIONAL_FIELDS.forEach(cfg => {
+            document.getElementById(cfg.checkboxId).checked = false;
+            const input = document.getElementById(cfg.textId);
+            input.value = '';
+            input.style.display = 'none';
+        });
         renderQuoteSavedList(apptId);
         markQuoteDraftClean();
     }
@@ -9815,6 +9861,12 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('quoteAiInstructions').value = '';
         currentQuotePhotos = JSON.parse(JSON.stringify(saved.photos || []));
         renderPhotoGallery(currentQuotePhotos, 'quotePhotoGallery');
+        QUOTE_OPTIONAL_FIELDS.forEach(cfg => {
+            document.getElementById(cfg.checkboxId).checked = !!saved[cfg.showField];
+            const input = document.getElementById(cfg.textId);
+            input.value = saved[cfg.textField] || '';
+            input.style.display = saved[cfg.showField] ? '' : 'none';
+        });
         renderQuoteSavedList(apptId); // refresh the highlighted/selected entry
         markQuoteDraftClean();
     }
@@ -9843,7 +9895,10 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         if (!saved) return;
         const win = window.open('', '_blank');
         const snapshotAppt = Object.assign({}, appt, {
-            quoteNumber: saved.quoteNumber, quotedPrice: saved.quotedPrice, quoteItems: saved.items, quoteNote: saved.note
+            quoteNumber: saved.quoteNumber, quotedPrice: saved.quotedPrice, quoteItems: saved.items, quoteNote: saved.note,
+            quoteShowPaymentMethod: saved.showPaymentMethod, quotePaymentMethodText: saved.paymentMethodText,
+            quoteShowFollowUp: saved.showFollowUp, quoteFollowUpText: saved.followUpText,
+            quoteShowValidity: saved.showValidity, quoteValidityText: saved.validityText
         });
         const html = buildAppointmentQuoteHtmlDoc(snapshotAppt);
         if (win) { win.document.write(html); win.document.close(); }
@@ -9919,6 +9974,27 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             </div>
         `).join('');
         safeCall(updateQuoteItemsTotalDisplay);
+    }
+    // Shows/hides the free-text field next to one of the quote's optional checkboxes (Payment
+    // Method / Follow-up Date / Validity Note) — same three optional fields the Invoice screen
+    // already has, just driven directly off plain DOM elements here instead of a re-rendered
+    // invoiceState object, since the quote modal's HTML is static rather than rebuilt each time.
+    // Same three optional fields as the Invoice screen (Payment Method / Follow-up Date /
+    // Validity Note), kept here as one explicit lookup table instead of building ids by string
+    // concatenation (that broke for "Payment" -> "quotePaymentMethodText" not matching the
+    // "quote"+key+"Text" pattern the other two keys happened to follow).
+    const QUOTE_OPTIONAL_FIELDS = [
+        { key: 'Payment', checkboxId: 'quoteShowPayment', textId: 'quotePaymentMethodText', showField: 'showPaymentMethod', textField: 'paymentMethodText', placeholderKey: 'invoicePaymentMethodPlaceholder' },
+        { key: 'FollowUp', checkboxId: 'quoteShowFollowUp', textId: 'quoteFollowUpText', showField: 'showFollowUp', textField: 'followUpText', placeholderKey: null },
+        { key: 'Validity', checkboxId: 'quoteShowValidity', textId: 'quoteValidityText', showField: 'showValidity', textField: 'validityText', placeholderKey: 'invoiceValidityPlaceholder' }
+    ];
+    function toggleQuoteOptionalField(key, checked) {
+        const cfg = QUOTE_OPTIONAL_FIELDS.find(f => f.key === key);
+        if (!cfg) return;
+        const input = document.getElementById(cfg.textId);
+        if (!input) return;
+        input.style.display = checked ? '' : 'none';
+        if (checked && !input.value && cfg.placeholderKey) input.value = t(cfg.placeholderKey);
     }
     function updateQuoteItemField(index, field, value) { if (quoteItemsState[index]) quoteItemsState[index][field] = value; }
     function addQuoteItemRow() { quoteItemsState.push({ desc: '', amount: '' }); renderQuoteItemsTable(); }
@@ -10030,27 +10106,42 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     async function saveAppointmentQuote(apptId, showSavedToast) {
         const appt = appointments.find(a => a.id === apptId);
         if (!appt) return false;
-        const prevAppt = JSON.parse(JSON.stringify({ quotedPrice: appt.quotedPrice, quoteItems: appt.quoteItems, quoteNote: appt.quoteNote, quotePhotos: appt.quotePhotos, quoteNumber: appt.quoteNumber, savedQuotes: appt.savedQuotes }));
+        const prevAppt = JSON.parse(JSON.stringify({ quotedPrice: appt.quotedPrice, quoteItems: appt.quoteItems, quoteNote: appt.quoteNote, quotePhotos: appt.quotePhotos, quoteNumber: appt.quoteNumber, savedQuotes: appt.savedQuotes,
+            quoteShowPaymentMethod: appt.quoteShowPaymentMethod, quotePaymentMethodText: appt.quotePaymentMethodText, quoteShowFollowUp: appt.quoteShowFollowUp, quoteFollowUpText: appt.quoteFollowUpText, quoteShowValidity: appt.quoteShowValidity, quoteValidityText: appt.quoteValidityText }));
 
         const quoteNumber = document.getElementById('quoteNumberInput').value.trim() || suggestQuoteNumber(apptId);
         const quotedPrice = parseVal(document.getElementById('quotePriceInput').value);
         const items = quoteItemsState.map(it => ({ desc: (it.desc || '').trim(), amount: parseVal(it.amount) })).filter(it => it.desc || it.amount);
         const note = document.getElementById('quoteNoteInput').value.trim();
         const photos = JSON.parse(JSON.stringify(currentQuotePhotos));
+        // Same three optional fields as the Invoice screen (Payment Method / Follow-up Date /
+        // Validity Note) — see toggleQuoteOptionalField() above.
+        const showPaymentMethod = document.getElementById('quoteShowPayment').checked;
+        const paymentMethodText = document.getElementById('quotePaymentMethodText').value.trim();
+        const showFollowUp = document.getElementById('quoteShowFollowUp').checked;
+        const followUpText = document.getElementById('quoteFollowUpText').value.trim();
+        const showValidity = document.getElementById('quoteShowValidity').checked;
+        const validityText = document.getElementById('quoteValidityText').value.trim();
 
         appt.quoteNumber = quoteNumber;
         appt.quotedPrice = quotedPrice;
         appt.quoteItems = items;
         appt.quoteNote = note;
         appt.quotePhotos = photos;
+        appt.quoteShowPaymentMethod = showPaymentMethod;
+        appt.quotePaymentMethodText = paymentMethodText;
+        appt.quoteShowFollowUp = showFollowUp;
+        appt.quoteFollowUpText = followUpText;
+        appt.quoteShowValidity = showValidity;
+        appt.quoteValidityText = validityText;
 
         appt.savedQuotes = appt.savedQuotes || [];
         const existingIdx = quoteDraftSavedId ? appt.savedQuotes.findIndex(q => q.id === quoteDraftSavedId) : -1;
         if (existingIdx !== -1) {
-            appt.savedQuotes[existingIdx] = { ...appt.savedQuotes[existingIdx], quoteNumber, quotedPrice, items, note, photos, savedAt: new Date().toISOString() };
+            appt.savedQuotes[existingIdx] = { ...appt.savedQuotes[existingIdx], quoteNumber, quotedPrice, items, note, photos, showPaymentMethod, paymentMethodText, showFollowUp, followUpText, showValidity, validityText, savedAt: new Date().toISOString() };
         } else {
             quoteDraftSavedId = newLedgerId();
-            appt.savedQuotes.push({ id: quoteDraftSavedId, quoteNumber, quotedPrice, items, note, photos, savedAt: new Date().toISOString() });
+            appt.savedQuotes.push({ id: quoteDraftSavedId, quoteNumber, quotedPrice, items, note, photos, showPaymentMethod, paymentMethodText, showFollowUp, followUpText, showValidity, validityText, savedAt: new Date().toISOString() });
         }
 
         try {
@@ -10131,7 +10222,13 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             quoteNumber: document.getElementById('quoteNumberInput').value.trim() || suggestQuoteNumber(apptId),
             quotedPrice: parseVal(document.getElementById('quotePriceInput').value),
             quoteItems: quoteItemsState.map(it => ({ desc: (it.desc || '').trim(), amount: parseVal(it.amount) })).filter(it => it.desc || it.amount),
-            quoteNote: document.getElementById('quoteNoteInput').value.trim()
+            quoteNote: document.getElementById('quoteNoteInput').value.trim(),
+            quoteShowPaymentMethod: document.getElementById('quoteShowPayment').checked,
+            quotePaymentMethodText: document.getElementById('quotePaymentMethodText').value.trim(),
+            quoteShowFollowUp: document.getElementById('quoteShowFollowUp').checked,
+            quoteFollowUpText: document.getElementById('quoteFollowUpText').value.trim(),
+            quoteShowValidity: document.getElementById('quoteShowValidity').checked,
+            quoteValidityText: document.getElementById('quoteValidityText').value.trim()
         });
         const html = buildAppointmentQuoteHtmlDoc(draftAppt);
         if (win) { win.document.write(html); win.document.close(); }
@@ -10151,6 +10248,11 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const websitePart = companyProfile.website ? `<span style="white-space:nowrap;">${escHtml(companyProfile.website)}</span>` : '';
         const footerParts = [footerLine, websitePart].filter(Boolean).join('   &bull;   ');
         const itemsRowsHtml = items.map((it, i) => `<div style="display:grid; grid-template-columns: 1fr 100px; gap:10px; padding:10px 12px; font-size:12.5px; border-bottom:1px solid #E7E1D6; ${i % 2 === 1 ? 'background:#F6F1E8;' : ''}"><div>${escHtml(it.desc)}</div><div style="text-align:right;">$${parseVal(it.amount).toFixed(2)}</div></div>`).join('');
+        // Same three optional fields as the Invoice document (Payment Method / Follow-up Date /
+        // Validity Note) — see toggleQuoteOptionalField() in the quote modal.
+        const paymentMethodRow = appt.quoteShowPaymentMethod ? `<div style="font-size:11.5px; color:#6B6257;"><b>${t('invoicePaymentMethodToggle')}:</b> ${escHtml(appt.quotePaymentMethodText)}</div>` : '';
+        const followUpRow = appt.quoteShowFollowUp ? `<div style="font-size:11.5px; color:#6B6257;"><b>${t('invoiceFollowUpToggle')}:</b> ${escHtml(appt.quoteFollowUpText)}</div>` : '';
+        const validityRow = appt.quoteShowValidity ? `<div style="display:flex; justify-content:flex-end;"><div style="font-size:11px; color:#6B6257; font-style:italic; width:300px; text-align:right;">${escHtml(appt.quoteValidityText)}</div></div>` : '';
         const noteBox = appt.quoteNote ? `<div style="background:#F6F1E8; border:1px dashed ${accent}; border-radius:6px; padding:14px 16px;"><div style="font-weight:700; font-size:11.5px; letter-spacing:0.5px; margin-bottom:6px; color:${accent};">${escHtml(t('invoiceNoteLabel')).toUpperCase()}</div><div style="font-size:12.5px; line-height:1.7; color:#3A332B;">${escHtml(appt.quoteNote).replace(/\n/g, '<br>')}</div></div>` : '';
         const logoHeaderHtml = companyLogo ? `<img src="${companyLogo}" style="width:70px; height:70px; object-fit:contain; flex-shrink:0;">` : '';
         const watermarkHtml = companyLogo ? `<img src="${companyLogo}" style="position:absolute; top:50%; left:50%; width:560px; height:560px; transform:translate(-50%,-50%); opacity:0.06; pointer-events:none;">` : '';
@@ -10197,6 +10299,8 @@ ${closeBtnHtml}
           <div class="ui" style="font-size:24px; font-weight:700;">$${price.toFixed(2)}</div>
         </div>
         ${companyProfile.paymentLink ? `<a href="${escHtml(companyProfile.paymentLink)}" target="_blank" class="ui" style="display:inline-block; background:${accent}; color:#FDFBF6; text-decoration:none; font-weight:700; font-size:12.5px; padding:8px 16px; border-radius:6px;">${escHtml(t('payNowBtn'))}</a>` : ''}
+        ${paymentMethodRow}
+        ${followUpRow}
       </div>
     </div>
     ${itemsRowsHtml ? `<div>
@@ -10205,6 +10309,7 @@ ${closeBtnHtml}
       </div>
       ${itemsRowsHtml}
     </div>` : ''}
+    ${validityRow}
     ${noteBox}
     ${termsConditionsHtml()}
     <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:8px; gap:24px;">
