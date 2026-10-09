@@ -1278,6 +1278,7 @@
         </div>
 
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+            <button class="secondary" onclick="previewAppointmentQuote(quoteApptId)" data-i18n="quoteViewBtn" style="flex:1; min-width:100px; padding:10px; background:#64748b;"></button>
             <button class="secondary" onclick="saveAppointmentQuote(quoteApptId, true)" data-i18n="quoteSaveBtn" style="flex:1; min-width:110px; padding:10px;"></button>
             <button class="success" onclick="sendAppointmentQuoteMessage(quoteApptId)" data-i18n="quoteSendMsgBtn" style="flex:1; min-width:150px; padding:10px; background:linear-gradient(135deg,#7c3aed,#38bdf8);"></button>
             <button class="success" onclick="sendAppointmentQuoteDocument(quoteApptId)" data-i18n="quoteSendDocBtn" style="flex:1; min-width:150px; padding:10px; background:#0891b2;"></button>
@@ -2192,6 +2193,7 @@
         alertQuoteSaveFailed: { ar: 'فشل حفظ عرض السعر. حاول تاني.', en: 'Failed to save the quote. Please try again.' },
         quoteDocEstimateFor: { ar: 'عرض سعر لـ', en: 'Price quote for' },
         quoteSavedToast: { ar: '💾 اتحفظ عرض السعر', en: '💾 Quote saved' },
+        quoteViewBtn: { ar: '👁️ شوف شكله', en: '👁️ Preview' },
         followUpBtn: { ar: '🔔 متابعة', en: '🔔 Follow Up' },
         followUpBadgeQuoteSent: { ar: '🔔 بستنى رد على عرض السعر', en: '🔔 Waiting on quote response' },
         followUpBadgeVisitedWaiting: { ar: '🔔 عملت زيارة وبستنى قرار', en: '🔔 Visited — waiting on decision' },
@@ -9486,6 +9488,25 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         appt.quoteSentAt = new Date().toISOString();
         try { await APPOINTMENTS_DOC.set({ entries: appointments }); safeCall(renderAppointments); } catch (e) { console.error('quote doc sent-stamp error:', e); }
         closeAppointmentQuoteModal();
+    }
+
+    // Quick look at the quote exactly as it'll print, using whatever's on screen right now
+    // (price/items/note), without saving or sending anything — same idea as the invoice's own
+    // "View" button, just built from the live draft instead of an already-saved snapshot since
+    // a quote here has no separate saved/unsaved pair to load from.
+    function previewAppointmentQuote(apptId) {
+        const appt = appointments.find(a => a.id === apptId);
+        if (!appt) return;
+        // Opened synchronously, before anything else, so phone browsers never treat the
+        // eventual document.write() as a popup-blocker-worthy delayed open.
+        const win = window.open('', '_blank');
+        const draftAppt = Object.assign({}, appt, {
+            quotedPrice: parseVal(document.getElementById('quotePriceInput').value),
+            quoteItems: quoteItemsState.map(it => ({ desc: (it.desc || '').trim(), amount: parseVal(it.amount) })).filter(it => it.desc || it.amount),
+            quoteNote: document.getElementById('quoteNoteInput').value.trim()
+        });
+        const html = buildAppointmentQuoteHtmlDoc(draftAppt);
+        if (win) { win.document.write(html); win.document.close(); }
     }
 
     // A simplified, appointment-specific cousin of buildInvoiceHtmlDoc — not tied to
