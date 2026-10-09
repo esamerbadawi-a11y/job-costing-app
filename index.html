@@ -1183,6 +1183,12 @@
         </div>
 
         <div class="form-group">
+            <label data-i18n="lblPaymentLink"></label>
+            <input type="text" id="companyProfilePaymentLink" placeholder="https://buy.stripe.com/... or https://squareup.com/...">
+            <div class="ag-meta" style="margin-top:4px;" data-i18n="paymentLinkHint"></div>
+        </div>
+
+        <div class="form-group">
             <label data-i18n="lblMarginAlertThreshold"></label>
             <input type="text" inputmode="decimal" id="companyProfileMarginThreshold" data-i18n-ph="phMarginAlertThreshold" onfocus="this.select()">
             <div class="ag-meta" style="margin-top:4px;" data-i18n="marginAlertThresholdHint"></div>
@@ -1670,6 +1676,9 @@
         lblCompanyWebsite: { ar: 'الموقع الإلكتروني (اختياري)', en: 'Website (optional)' },
         lblTermsConditions: { ar: 'الشروط والأحكام (Terms & Conditions)', en: 'Terms & Conditions' },
         termsConditionsHint: { ar: 'بتتظهر تلقائيًا في آخر كل عرض سعر وفاتورة. مش استشارة قانونية — يفضل تراجعها محامي مرخص في فلوريدا قبل الاعتماد عليها بشكل نهائي.', en: 'Shown automatically at the bottom of every Estimate and Invoice. This is not legal advice — have a Florida-licensed attorney review it before relying on it.' },
+        lblPaymentLink: { ar: 'رابط الدفع (Payment Link)', en: 'Payment Link' },
+        paymentLinkHint: { ar: 'رابط دفع جاهز من Stripe أو Square أو أي خدمة تانية (مثال: buy.stripe.com/xxxx). لو حطيته، هيظهر زرار "💳 Pay Now" تلقائيًا في كل فاتورة وعرض سعر.', en: 'A ready-made payment link from Stripe, Square, or another service (e.g. buy.stripe.com/xxxx). If set, a "💳 Pay Now" button appears automatically on every Invoice and Estimate.' },
+        payNowBtn: { ar: '💳 ادفع دلوقتي', en: '💳 Pay Now' },
         resetTermsConditionsBtn: { ar: '↺ رجّع النص المقترح', en: '↺ Reset to suggested text' },
         confirmResetTerms: { ar: 'هيتم استبدال النص الحالي بالنص المقترح (من غير حفظ لسه). متأكد؟', en: 'This will replace the current text with the suggested text (not saved yet). Continue?' },
         lblMarginAlertThreshold: { ar: 'تنبيه هامش الربح لو نزل تحت (%)', en: 'Alert if profit margin drops below (%)' },
@@ -2804,7 +2813,7 @@
     // The company's own identity — name, logo and contact info — used to put a real header
     // on client-facing invoices/reports instead of generic text. One shared record, synced
     // the same way as everything else, so either partner can edit it.
-    let companyProfile = { name: '', logo: '', signature: '', tagline: '', taglineColor: '', taglineFontSize: '', taglineStyle: '', address: '', phones: [], email: '', taxId: '', website: '', termsConditions: '' };
+    let companyProfile = { name: '', logo: '', signature: '', tagline: '', taglineColor: '', taglineFontSize: '', taglineStyle: '', address: '', phones: [], email: '', taxId: '', website: '', termsConditions: '', paymentLink: '' };
     // Standard, editable Terms & Conditions suggested text (not legal advice — the user should
     // have a Florida-licensed attorney review before relying on this). {{COMPANY}} is replaced
     // with the company's display name wherever it appears.
@@ -3022,7 +3031,7 @@
             // form is auto-refreshed only on that FIRST arrival — never again afterwards, so a
             // partner's edit elsewhere can't silently wipe out text you're still typing.
             const wasLoaded = companyProfileLoaded;
-            companyProfile = doc.exists ? Object.assign({ name: '', logo: '', signature: '', tagline: '', taglineColor: '', taglineFontSize: '', taglineStyle: '', address: '', phones: [], email: '', taxId: '', website: '', marginAlertThreshold: null, termsConditions: '' }, doc.data()) : companyProfile;
+            companyProfile = doc.exists ? Object.assign({ name: '', logo: '', signature: '', tagline: '', taglineColor: '', taglineFontSize: '', taglineStyle: '', address: '', phones: [], email: '', taxId: '', website: '', marginAlertThreshold: null, termsConditions: '', paymentLink: '' }, doc.data()) : companyProfile;
             if (!Array.isArray(companyProfile.phones)) companyProfile.phones = companyProfile.phone ? [companyProfile.phone] : [];
             refreshCompanyLogoAspect();
             companyProfileLoaded = true;
@@ -7275,6 +7284,13 @@
             ? `<div style="text-align:right;"><span class="ui" style="font-size:15px; font-weight:700;">${escHtml(t('invoiceTotalDueAmountLine')).toUpperCase()}: $${totalDue.toFixed(2)}</span></div>`
             : '';
 
+        // A clickable "Pay Now" button to the company's own payment link (Stripe/Square/etc,
+        // set once in Company Profile) — shown only when a link is actually saved and the
+        // invoice isn't already marked paid. This is just a plain link to a page the payment
+        // provider hosts and runs entirely themselves — WorkTally never talks to any payment
+        // API directly, so no account key of any kind is ever stored in this file.
+        const payNowBtnHtml = (companyProfile.paymentLink && !isPaid) ? `<div style="text-align:${isAdditionalWork ? 'right' : 'right'}; margin-top:8px;"><a href="${escHtml(companyProfile.paymentLink)}" target="_blank" class="ui" style="display:inline-block; background:${accent}; color:#FDFBF6; text-decoration:none; font-weight:700; font-size:13px; padding:9px 18px; border-radius:6px;">${escHtml(t('payNowBtn'))}</a></div>` : '';
+
         // A fixed boilerplate block (not editable per-invoice) on Invoice/Estimate/Proposal only —
         // "Additional Work" keeps its own distinct layout and note section untouched.
         const scopeClarificationsHtml = isAdditionalWork ? '' : `
@@ -7375,6 +7391,7 @@ ${closeBtnHtml}
     <div style="display:flex; justify-content:${isAdditionalWork ? 'stretch' : 'flex-end'};">
       ${totalsBlockHtml}
     </div>
+    ${payNowBtnHtml}
     ${validityRow}
 
     ${scopeClarificationsHtml}
@@ -7571,6 +7588,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('companyProfileTerms').value = (companyProfile.termsConditions !== undefined && companyProfile.termsConditions !== '')
             ? companyProfile.termsConditions
             : defaultTermsConditionsText(companyProfile.name || 'the Company');
+        document.getElementById('companyProfilePaymentLink').value = companyProfile.paymentLink || '';
         document.getElementById('companyProfileMarginThreshold').value = (companyProfile.marginAlertThreshold !== undefined && companyProfile.marginAlertThreshold !== null) ? companyProfile.marginAlertThreshold : '';
         companyProfilePhonesWorking = (companyProfile.phones && companyProfile.phones.length > 0) ? [...companyProfile.phones] : [''];
         renderCompanyPhones();
@@ -7678,6 +7696,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         companyProfile.taxId = document.getElementById('companyProfileTaxId').value.trim();
         companyProfile.website = document.getElementById('companyProfileWebsite').value.trim();
         companyProfile.termsConditions = document.getElementById('companyProfileTerms').value;
+        companyProfile.paymentLink = document.getElementById('companyProfilePaymentLink').value.trim();
         const marginThresholdRaw = document.getElementById('companyProfileMarginThreshold').value.trim();
         companyProfile.marginAlertThreshold = marginThresholdRaw === '' ? null : parseVal(marginThresholdRaw);
         delete companyProfile.phone; // retire the old single-phone field now that phones[] replaces it
@@ -10177,6 +10196,7 @@ ${closeBtnHtml}
           <div class="ui" style="font-size:11px; letter-spacing:1px; opacity:0.9;">${escHtml(t('invoiceTotalDueLabel')).toUpperCase()}</div>
           <div class="ui" style="font-size:24px; font-weight:700;">$${price.toFixed(2)}</div>
         </div>
+        ${companyProfile.paymentLink ? `<a href="${escHtml(companyProfile.paymentLink)}" target="_blank" class="ui" style="display:inline-block; background:${accent}; color:#FDFBF6; text-decoration:none; font-weight:700; font-size:12.5px; padding:8px 16px; border-radius:6px;">${escHtml(t('payNowBtn'))}</a>` : ''}
       </div>
     </div>
     ${itemsRowsHtml ? `<div>
