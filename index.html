@@ -1264,6 +1264,7 @@
         <div class="form-group">
             <label data-i18n="quoteItemsLabel"></label>
             <div id="quoteItemsContainer"></div>
+            <div id="quoteItemsTotalDisplay" style="font-size:0.8rem; margin-top:6px; padding:6px 10px; border-radius:8px;"></div>
             <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
                 <button type="button" class="secondary" onclick="addQuoteItemRow()" data-i18n="quoteAddItemBtn" style="padding:7px 12px; font-size:0.8rem;"></button>
                 <button type="button" id="quoteAnalyzePhotoBtn" class="secondary" onclick="document.getElementById('quotePhotoInput').click()" data-i18n="quoteAnalyzePhotoBtn" style="padding:7px 12px; font-size:0.8rem; background:#7c3aed;"></button>
@@ -2204,6 +2205,10 @@
         quoteAdjustAiBtn: { ar: '🔄 عدّل التفاصيل بالـ AI', en: '🔄 Adjust breakdown (AI)' },
         quoteAdjusting: { ar: '⏳ بيعدّل...', en: '⏳ Adjusting...' },
         alertQuoteAdjustNeedsInput: { ar: 'اكتب توجيه للـ AI الأول، أو ضيف صورة بدل كده.', en: 'Write an instruction for the AI first, or add a photo instead.' },
+        quoteItemsTotalLabel: { ar: 'مجموع البنود الموزّعة:', en: 'Items distributed so far:' },
+        quoteItemsTotalMatch: { ar: '✓ مطابق للسعر الإجمالي', en: '✓ Matches the total price' },
+        quoteItemsTotalShort: { ar: 'ناقص', en: 'short of total' },
+        quoteItemsTotalOver: { ar: 'زيادة عن الإجمالي', en: 'over the total' },
         followUpBtn: { ar: '🔔 متابعة', en: '🔔 Follow Up' },
         followUpBadgeQuoteSent: { ar: '🔔 بستنى رد على عرض السعر', en: '🔔 Waiting on quote response' },
         followUpBadgeVisitedWaiting: { ar: '🔔 عملت زيارة وبستنى قرار', en: '🔔 Visited — waiting on decision' },
@@ -9359,12 +9364,37 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('appointmentQuoteModal').style.display = 'none';
         quoteApptId = '';
     }
-    function onQuotePriceInput() { /* hook kept for future validation; price itself is only read on save/send */ }
+    function onQuotePriceInput() { updateQuoteItemsTotalDisplay(); }
+
+    // A running "items so far" total, shown right under the breakdown table, so a mismatch
+    // (like deleting a row and forgetting to make up the difference elsewhere) is obvious at a
+    // glance instead of something you only notice after sending the quote.
+    function updateQuoteItemsTotalDisplay() {
+        const el = document.getElementById('quoteItemsTotalDisplay');
+        if (!el) return;
+        const price = parseVal(document.getElementById('quotePriceInput').value);
+        const itemsSum = quoteItemsState.reduce((s, it) => s + parseVal(it.amount), 0);
+        const diff = Math.round((price - itemsSum) * 100) / 100;
+        let statusHtml;
+        if (quoteItemsState.length === 0) {
+            el.style.background = 'transparent'; el.style.border = 'none'; el.innerHTML = ''; return;
+        } else if (Math.abs(diff) < 0.005) {
+            el.style.background = 'rgba(22,163,74,0.14)'; el.style.border = '1px solid #16a34a';
+            statusHtml = `<span style="color:#4ade80;">${t('quoteItemsTotalMatch')}</span>`;
+        } else if (diff > 0) {
+            el.style.background = 'rgba(217,119,6,0.14)'; el.style.border = '1px solid var(--warning)';
+            statusHtml = `<span style="color:#fbbf24;">$${diff.toFixed(2)} ${t('quoteItemsTotalShort')}</span>`;
+        } else {
+            el.style.background = 'rgba(225,29,72,0.14)'; el.style.border = '1px solid #e11d48';
+            statusHtml = `<span style="color:#f87171;">$${Math.abs(diff).toFixed(2)} ${t('quoteItemsTotalOver')}</span>`;
+        }
+        el.innerHTML = `${t('quoteItemsTotalLabel')} $${itemsSum.toFixed(2)} / $${price.toFixed(2)} — ${statusHtml}`;
+    }
 
     function renderQuoteItemsTable() {
         const container = document.getElementById('quoteItemsContainer');
         if (!container) return;
-        if (quoteItemsState.length === 0) { container.innerHTML = `<div style="font-size:0.78rem; color:var(--text-muted); padding:6px 0;">${t('quoteNoItemsYet')}</div>`; return; }
+        if (quoteItemsState.length === 0) { container.innerHTML = `<div style="font-size:0.78rem; color:var(--text-muted); padding:6px 0;">${t('quoteNoItemsYet')}</div>`; safeCall(updateQuoteItemsTotalDisplay); return; }
         container.innerHTML = quoteItemsState.map((it, index) => `
             <div class="tech-card" style="margin-bottom:8px;">
                 <div style="display:grid; grid-template-columns: 1fr 110px 40px; gap:10px; align-items:end;">
@@ -9374,7 +9404,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                     </div>
                     <div>
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColAmount')}</label>
-                        <input type="text" value="${it.amount !== undefined ? it.amount : ''}" onfocus="this.select()" oninput="updateQuoteItemField(${index}, 'amount', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; text-align:center;">
+                        <input type="text" value="${it.amount !== undefined ? it.amount : ''}" onfocus="this.select()" oninput="updateQuoteItemField(${index}, 'amount', this.value); updateQuoteItemsTotalDisplay();" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; text-align:center;">
                     </div>
                     <div style="display:flex; align-items:stretch; height:40px;">
                         <button type="button" onclick="removeQuoteItemRow(${index})" style="background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid rgba(225,29,72,0.4); padding:9px 0; border-radius:8px; width:100%; cursor:pointer; font-size:14px;">✕</button>
@@ -9382,6 +9412,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                 </div>
             </div>
         `).join('');
+        safeCall(updateQuoteItemsTotalDisplay);
     }
     function updateQuoteItemField(index, field, value) { if (quoteItemsState[index]) quoteItemsState[index][field] = value; }
     function addQuoteItemRow() { quoteItemsState.push({ desc: '', amount: '' }); renderQuoteItemsTable(); }
