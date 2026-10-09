@@ -1131,6 +1131,25 @@
         <div class="form-group">
             <label data-i18n="lblCompanyTagline"></label>
             <input type="text" id="companyProfileTagline" data-i18n-ph="phCompanyTagline">
+            <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap; align-items:flex-end;">
+                <div>
+                    <label style="font-size:0.72rem; color:var(--text-muted); margin-bottom:3px; display:block;" data-i18n="lblTaglineColor"></label>
+                    <input type="color" id="companyProfileTaglineColor" style="width:48px; height:32px; padding:2px; border-radius:6px; border:1px solid var(--border-color); background:#11141d; cursor:pointer;">
+                </div>
+                <div>
+                    <label style="font-size:0.72rem; color:var(--text-muted); margin-bottom:3px; display:block;" data-i18n="lblTaglineFontSize"></label>
+                    <input type="number" id="companyProfileTaglineFontSize" placeholder="12" style="width:70px; padding:7px 8px;">
+                </div>
+                <div>
+                    <label style="font-size:0.72rem; color:var(--text-muted); margin-bottom:3px; display:block;" data-i18n="lblTaglineStyle"></label>
+                    <select id="companyProfileTaglineStyle" style="padding:7px 8px;">
+                        <option value="italic" data-i18n="taglineStyleItalic"></option>
+                        <option value="normal" data-i18n="taglineStyleNormal"></option>
+                        <option value="bold" data-i18n="taglineStyleBold"></option>
+                        <option value="bold italic" data-i18n="taglineStyleBoldItalic"></option>
+                    </select>
+                </div>
+            </div>
         </div>
         <div class="form-group">
             <label data-i18n="lblCompanyAddress"></label>
@@ -1254,7 +1273,18 @@
             <h2 style="color:#0891b2; margin:0; font-size:1.1rem;" data-i18n="appointmentQuoteModalTitle"></h2>
             <button class="danger" onclick="closeAppointmentQuoteModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="quoteCloseBtn"></button>
         </div>
-        <div id="quoteClientLine" style="font-weight:700; margin-bottom:12px;"></div>
+        <div id="quoteClientLine" style="font-weight:700; margin-bottom:10px;"></div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <h3 style="color:#38bdf8; font-size:0.9rem; margin:0;" data-i18n="quoteSavedQuotesTitle"></h3>
+            <button type="button" class="secondary" onclick="startNewQuoteDraft(quoteApptId)" style="padding:5px 10px; font-size:0.75rem;" data-i18n="quoteNewDraftBtn"></button>
+        </div>
+        <div id="quoteSavedListContainer" style="margin-bottom:16px;"></div>
+
+        <div class="form-group">
+            <label data-i18n="quoteNumberLbl"></label>
+            <input type="text" id="quoteNumberInput">
+        </div>
 
         <div class="form-group">
             <label data-i18n="quotePriceLabel"></label>
@@ -1584,6 +1614,8 @@
         companyProfileHint: { ar: 'البيانات دي هتظهر على الفواتير والتقارير اللي بتطلع للعميل.', en: 'This info will appear on invoices and reports shown to clients.' },
         lblCompanyLogo: { ar: 'لوجو الشركة', en: 'Company Logo' },
         lblCompanyName: { ar: 'اسم الشركة', en: 'Company Name' },
+        lblCompanyTagline: { ar: 'الشعار (Tagline)', en: 'Tagline' },
+        phCompanyTagline: { ar: 'مثال: نصلّح اللي غيرنا مايعرفش', en: 'e.g. Engineered to fix what others fudge' },
         lblCompanyAddress: { ar: 'عنوان الشركة', en: 'Company Address' },
         lblCompanyPhone: { ar: 'تليفون الشركة', en: 'Company Phone' },
         lblCompanyEmail: { ar: 'إيميل الشركة', en: 'Company Email' },
@@ -2209,6 +2241,22 @@
         quoteItemsTotalMatch: { ar: '✓ مطابق للسعر الإجمالي', en: '✓ Matches the total price' },
         quoteItemsTotalShort: { ar: 'ناقص', en: 'short of total' },
         quoteItemsTotalOver: { ar: 'زيادة عن الإجمالي', en: 'over the total' },
+        lblTaglineColor: { ar: 'لون الشعار:', en: 'Tagline color:' },
+        lblTaglineFontSize: { ar: 'حجم الخط:', en: 'Font size:' },
+        lblTaglineStyle: { ar: 'شكل الخط:', en: 'Font style:' },
+        taglineStyleItalic: { ar: 'مائل', en: 'Italic' },
+        taglineStyleNormal: { ar: 'عادي', en: 'Normal' },
+        taglineStyleBold: { ar: 'عريض', en: 'Bold' },
+        taglineStyleBoldItalic: { ar: 'عريض ومائل', en: 'Bold Italic' },
+        quoteNumberLbl: { ar: 'رقم عرض السعر:', en: 'Quote #:' },
+        quoteNumberPending: { ar: 'رقم عرض السعر: هيتحدد وقت الإرسال', en: 'Quote #: assigned when sent' },
+        quoteSavedQuotesTitle: { ar: 'عروض الأسعار المحفوظة', en: 'Saved Quotes' },
+        quoteNewDraftBtn: { ar: '+ عرض سعر جديد', en: '+ New Quote' },
+        quoteDeleteSavedBtn: { ar: 'مسح', en: 'Delete' },
+        confirmDeleteSavedQuote: { ar: 'تمسح عرض السعر المحفوظ ده؟ مش هينفع ترجعه تاني.', en: "Delete this saved quote? This can't be undone." },
+        quoteNoSavedQuotes: { ar: 'لسه مفيش عروض أسعار محفوظة للموعد ده.', en: 'No saved quotes yet for this appointment.' },
+        activityQuoteSaved: { ar: 'اتحفظ عرض سعر:', en: 'Quote saved:' },
+        activityQuoteDeleted: { ar: 'اتمسح عرض سعر محفوظ:', en: 'Saved quote deleted:' },
         followUpBtn: { ar: '🔔 متابعة', en: '🔔 Follow Up' },
         followUpBadgeQuoteSent: { ar: '🔔 بستنى رد على عرض السعر', en: '🔔 Waiting on quote response' },
         followUpBadgeVisitedWaiting: { ar: '🔔 عملت زيارة وبستنى قرار', en: '🔔 Visited — waiting on decision' },
@@ -2689,7 +2737,19 @@
     // The company's own identity — name, logo and contact info — used to put a real header
     // on client-facing invoices/reports instead of generic text. One shared record, synced
     // the same way as everything else, so either partner can edit it.
-    let companyProfile = { name: '', logo: '', signature: '', tagline: '', address: '', phones: [], email: '', taxId: '', website: '' };
+    let companyProfile = { name: '', logo: '', signature: '', tagline: '', taglineColor: '', taglineFontSize: '', taglineStyle: '', address: '', phones: [], email: '', taxId: '', website: '' };
+    // Tagline appearance (color/size/style) on the invoice and the estimate document — both
+    // fall back to the original look (dark grey, 12px, italic) when the user hasn't customized it.
+    function taglineStyleCss() {
+        const color = companyProfile.taglineColor || '#3A332B';
+        const size = parseVal(companyProfile.taglineFontSize) || 12;
+        const styleVal = companyProfile.taglineStyle || 'italic';
+        let fontStyle = 'normal', fontWeight = 'normal';
+        if (styleVal === 'italic') fontStyle = 'italic';
+        else if (styleVal === 'bold') fontWeight = '700';
+        else if (styleVal === 'bold italic') { fontStyle = 'italic'; fontWeight = '700'; }
+        return `font-size:${size}px; color:${color}; font-style:${fontStyle}; font-weight:${fontWeight};`;
+    }
     let companyProfileLoaded = false; // true once the first Firestore snapshot of it has arrived
     let companyProfilePhonesWorking = []; // the phone-number rows currently shown in the open form
     // The one source of truth for "what's the company called" everywhere it appears to a client or
@@ -2703,7 +2763,10 @@
     function companyInvoicePrefix() {
         const name = (companyProfile.name || '').trim();
         if (!name) return 'AHA';
-        const initials = name.split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 6);
+        // Take each word's first LETTER (skipping a leading "(" or other punctuation, e.g. in
+        // "... Approach (AHA)") so a parenthesized nickname in the company name doesn't leak a
+        // stray "(" into every invoice/estimate number.
+        const initials = name.split(/\s+/).map(w => (w.match(/[A-Za-z]/) || [''])[0]).join('').toUpperCase().slice(0, 6);
         return initials || 'AHA';
     }
     // Cached width/height ratio of the company logo, so every PDF can place it as a watermark
@@ -2852,7 +2915,7 @@
             // form is auto-refreshed only on that FIRST arrival — never again afterwards, so a
             // partner's edit elsewhere can't silently wipe out text you're still typing.
             const wasLoaded = companyProfileLoaded;
-            companyProfile = doc.exists ? Object.assign({ name: '', logo: '', signature: '', tagline: '', address: '', phones: [], email: '', taxId: '', website: '', marginAlertThreshold: null }, doc.data()) : companyProfile;
+            companyProfile = doc.exists ? Object.assign({ name: '', logo: '', signature: '', tagline: '', taglineColor: '', taglineFontSize: '', taglineStyle: '', address: '', phones: [], email: '', taxId: '', website: '', marginAlertThreshold: null }, doc.data()) : companyProfile;
             if (!Array.isArray(companyProfile.phones)) companyProfile.phones = companyProfile.phone ? [companyProfile.phone] : [];
             refreshCompanyLogoAspect();
             companyProfileLoaded = true;
@@ -4776,7 +4839,11 @@
         if (!c || !c.apptId || (c.msgKind !== 'followup' && c.msgKind !== 'quote')) return;
         const appt = appointments.find(a => a.id === c.apptId);
         if (!appt) return;
-        if (c.msgKind === 'quote') appt.quoteSentAt = new Date().toISOString();
+        if (c.msgKind === 'quote') {
+            appt.quoteSentAt = new Date().toISOString();
+            const entry = c.savedQuoteId && (appt.savedQuotes || []).find(q => q.id === c.savedQuoteId);
+            if (entry) entry.sentAt = appt.quoteSentAt;
+        }
         else appt.followUpLastSentAt = new Date().toISOString();
         try { await APPOINTMENTS_DOC.set({ entries: appointments }); safeCall(renderAppointments); } catch (e) { console.error('markFollowUpSent error:', e); }
     }
@@ -7082,7 +7149,7 @@ ${closeBtnHtml}
         ${logoHeaderHtml}
         <div>
           <div class="ui" style="font-weight:700; font-size:17px; letter-spacing:0.3px;">${escHtml(companyName).toUpperCase()}</div>
-          ${companyTagline ? `<div class="ui" style="font-size:12px; color:#3A332B; font-style:italic; margin-top:2px;">${escHtml(companyTagline)}</div>` : ''}
+          ${companyTagline ? `<div class="ui" style="${taglineStyleCss()} margin-top:2px;">${escHtml(companyTagline)}</div>` : ''}
         </div>
       </div>
       ${isAdditionalWork ? '' : titleBlockHtml}
@@ -7272,6 +7339,9 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     function renderCompanyProfileForm() {
         document.getElementById('companyProfileName').value = companyProfile.name || '';
         document.getElementById('companyProfileTagline').value = companyProfile.tagline || '';
+        document.getElementById('companyProfileTaglineColor').value = companyProfile.taglineColor || '#3a332b';
+        document.getElementById('companyProfileTaglineFontSize').value = companyProfile.taglineFontSize || '';
+        document.getElementById('companyProfileTaglineStyle').value = companyProfile.taglineStyle || 'italic';
         document.getElementById('companyProfileAddress').value = companyProfile.address || '';
         document.getElementById('companyProfileEmail').value = companyProfile.email || '';
         document.getElementById('companyProfileTaxId').value = companyProfile.taxId || '';
@@ -7366,6 +7436,9 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         if (!companyProfileLoaded) { alert(t('alertCompanyProfileNotLoadedYet')); return; }
         companyProfile.name = document.getElementById('companyProfileName').value.trim();
         companyProfile.tagline = document.getElementById('companyProfileTagline').value.trim();
+        companyProfile.taglineColor = document.getElementById('companyProfileTaglineColor').value;
+        companyProfile.taglineFontSize = parseVal(document.getElementById('companyProfileTaglineFontSize').value) || '';
+        companyProfile.taglineStyle = document.getElementById('companyProfileTaglineStyle').value;
         companyProfile.address = document.getElementById('companyProfileAddress').value.trim();
         companyProfile.phones = companyProfilePhonesWorking.map(p => p.trim()).filter(Boolean);
         companyProfile.email = document.getElementById('companyProfileEmail').value.trim();
@@ -9345,27 +9418,127 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
        price carries over into convertAppointmentToJob's totalRevenue. */
     let quoteApptId = '';
     let quoteItemsState = [];
+    // null = the form on screen is a brand-new, not-yet-saved quote. Once Save/Send succeeds (or
+    // "Load" pulls up an existing one), this holds that entry's id in appt.savedQuotes, so the
+    // next Save updates that same entry instead of creating a duplicate — same role invoiceState's
+    // own savedId plays for invoices.
+    let quoteDraftSavedId = null;
+
+    // A starting suggestion for a brand-new quote's number — company initials + the full date
+    // it's being drafted on + the last 4 digits of the appointment's own id, e.g.
+    // "AHAA-20261009-9606". It's just a default in an editable field, exactly like the invoice
+    // number: the user can change it before saving if they want something else.
+    function suggestQuoteNumber(apptId) {
+        const seq = String(apptId).replace(/\D/g, '').slice(-4).padStart(4, '0') || '0001';
+        return `${companyInvoicePrefix()}-${isoDate(new Date()).replace(/-/g, '')}-${seq}`;
+    }
 
     function openAppointmentQuoteModal(apptId) {
         const appt = appointments.find(a => a.id === apptId);
         if (!appt) return;
+        appt.savedQuotes = appt.savedQuotes || [];
         quoteApptId = apptId;
         document.getElementById('quoteClientLine').textContent = appt.clientName || '';
-        document.getElementById('quotePriceInput').value = appt.quotedPrice || '';
-        quoteItemsState = JSON.parse(JSON.stringify(appt.quoteItems || []));
-        renderQuoteItemsTable();
-        document.getElementById('quoteNoteInput').value = appt.quoteNote || '';
-        document.getElementById('quoteAiInstructions').value = '';
-        currentQuotePhotos = JSON.parse(JSON.stringify(appt.quotePhotos || []));
-        renderPhotoGallery(currentQuotePhotos, 'quotePhotoGallery');
+        startNewQuoteDraft(apptId); // every open starts a fresh, blank quote — exactly like opening the Invoice screen; pick a saved one from the list above to continue editing it instead
         closeOtherTopModals('appointmentsListModal'); // keep the appointments list open underneath, just like the follow-up picker does
         document.getElementById('appointmentQuoteModal').style.display = 'flex';
     }
     function closeAppointmentQuoteModal() {
         document.getElementById('appointmentQuoteModal').style.display = 'none';
         quoteApptId = '';
+        quoteDraftSavedId = null;
     }
     function onQuotePriceInput() { updateQuoteItemsTotalDisplay(); }
+
+    // Clears the form back to a blank, unsaved quote (new suggested number, no price/items/note/
+    // photos) without closing the modal — same job "+ New Invoice" does for invoices.
+    function startNewQuoteDraft(apptId) {
+        const appt = appointments.find(a => a.id === apptId);
+        if (!appt) return;
+        quoteDraftSavedId = null;
+        document.getElementById('quoteNumberInput').value = suggestQuoteNumber(apptId);
+        document.getElementById('quotePriceInput').value = '';
+        quoteItemsState = [];
+        renderQuoteItemsTable();
+        document.getElementById('quoteNoteInput').value = '';
+        document.getElementById('quoteAiInstructions').value = '';
+        currentQuotePhotos = [];
+        renderPhotoGallery(currentQuotePhotos, 'quotePhotoGallery');
+        renderQuoteSavedList(apptId);
+    }
+
+    // Loads one previously-saved quote (from appt.savedQuotes) into the form for further editing
+    // — does NOT touch the appointment's own fields until Save/Send is pressed again, same as
+    // loadSavedInvoice only changing the draft, not the job, until it's saved.
+    function loadSavedQuote(apptId, savedId) {
+        const appt = appointments.find(a => a.id === apptId);
+        if (!appt) return;
+        const saved = (appt.savedQuotes || []).find(q => q.id === savedId);
+        if (!saved) return;
+        quoteDraftSavedId = saved.id;
+        document.getElementById('quoteNumberInput').value = saved.quoteNumber || suggestQuoteNumber(apptId);
+        document.getElementById('quotePriceInput').value = saved.quotedPrice || '';
+        quoteItemsState = JSON.parse(JSON.stringify(saved.items || []));
+        renderQuoteItemsTable();
+        document.getElementById('quoteNoteInput').value = saved.note || '';
+        document.getElementById('quoteAiInstructions').value = '';
+        currentQuotePhotos = JSON.parse(JSON.stringify(saved.photos || []));
+        renderPhotoGallery(currentQuotePhotos, 'quotePhotoGallery');
+        renderQuoteSavedList(apptId); // refresh the highlighted/selected entry
+    }
+
+    async function deleteSavedQuote(apptId, savedId) {
+        if (!confirm(t('confirmDeleteSavedQuote'))) return;
+        const appt = appointments.find(a => a.id === apptId);
+        if (!appt) return;
+        const prevList = appt.savedQuotes;
+        appt.savedQuotes = (appt.savedQuotes || []).filter(q => q.id !== savedId);
+        try {
+            await APPOINTMENTS_DOC.set({ entries: appointments });
+            logActivity('delete', appt.clientName, t('activityQuoteDeleted'));
+        } catch (err) { appt.savedQuotes = prevList; alertSaveError(err); return; }
+        if (quoteDraftSavedId === savedId) startNewQuoteDraft(apptId); // the entry being edited just got deleted — fall back to a blank draft instead of an orphaned one
+        renderQuoteSavedList(apptId);
+        safeCall(renderAppointments);
+    }
+
+    // Quick look at a SAVED version exactly as it was when saved — not the live draft — same role
+    // viewSavedInvoice plays for a saved invoice.
+    function viewSavedQuote(apptId, savedId) {
+        const appt = appointments.find(a => a.id === apptId);
+        if (!appt) return;
+        const saved = (appt.savedQuotes || []).find(q => q.id === savedId);
+        if (!saved) return;
+        const win = window.open('', '_blank');
+        const snapshotAppt = Object.assign({}, appt, {
+            quoteNumber: saved.quoteNumber, quotedPrice: saved.quotedPrice, quoteItems: saved.items, quoteNote: saved.note
+        });
+        const html = buildAppointmentQuoteHtmlDoc(snapshotAppt);
+        if (win) { win.document.write(html); win.document.close(); }
+    }
+
+    function renderQuoteSavedList(apptId) {
+        const container = document.getElementById('quoteSavedListContainer');
+        if (!container) return;
+        const appt = appointments.find(a => a.id === apptId);
+        const saved = (appt && appt.savedQuotes) || [];
+        if (saved.length === 0) { container.innerHTML = `<div style="font-size:0.8rem; color:var(--text-muted); padding:8px 0;">${t('quoteNoSavedQuotes')}</div>`; return; }
+        container.innerHTML = saved.map(q => `
+            <div class="tech-card" style="margin-bottom:6px; ${quoteDraftSavedId === q.id ? 'border-color:#38bdf8;' : ''}">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <div style="font-size:0.8rem;">
+                        <b>${escHtml(q.quoteNumber || '')}</b>
+                        <span style="color:var(--text-muted);"> · $${parseVal(q.quotedPrice).toFixed(2)}</span>
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                        <button type="button" class="secondary" onclick="viewSavedQuote('${apptId}', '${q.id}')" style="padding:5px 10px; font-size:0.75rem; background:#0284c7;">👁️ ${t('invoiceViewBtn')}</button>
+                        <button type="button" class="secondary" onclick="loadSavedQuote('${apptId}', '${q.id}')" style="padding:5px 10px; font-size:0.75rem;">${t('invoiceLoadBtn')}</button>
+                        <button type="button" onclick="deleteSavedQuote('${apptId}', '${q.id}')" style="padding:5px 10px; font-size:0.75rem; background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid rgba(225,29,72,0.4); border-radius:8px; cursor:pointer;">${t('quoteDeleteSavedBtn')}</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
 
     // A running "items so far" total, shown right under the breakdown table, so a mismatch
     // (like deleting a row and forgetting to make up the difference elsewhere) is obvious at a
@@ -9515,21 +9688,48 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
 
     // Persists price/items/note/photos onto the appointment itself. Returns true/false so the
     // send functions below know whether it's safe to go on and actually send.
+    // Saves the form on screen both as "the appointment's current quote" (appt.quotedPrice/
+    // quoteItems/quoteNote/quotePhotos/quoteNumber — what the card badge, convertAppointmentToJob,
+    // and the quick-message AI prompt all read) AND as an entry in appt.savedQuotes (the
+    // View/Load/Delete history) — updating the entry in place if quoteDraftSavedId is already
+    // set, or creating a new one otherwise. Same two-part role saveCurrentInvoice plays for
+    // invoices (invoiceState.savedId + job.savedInvoices), just without the Firestore transaction
+    // since appointments are saved as one simple document, same as everywhere else in this screen.
     async function saveAppointmentQuote(apptId, showSavedToast) {
         const appt = appointments.find(a => a.id === apptId);
         if (!appt) return false;
-        const prevState = { quotedPrice: appt.quotedPrice, quoteItems: appt.quoteItems, quoteNote: appt.quoteNote, quotePhotos: appt.quotePhotos };
-        appt.quotedPrice = parseVal(document.getElementById('quotePriceInput').value);
-        appt.quoteItems = quoteItemsState.map(it => ({ desc: (it.desc || '').trim(), amount: parseVal(it.amount) })).filter(it => it.desc || it.amount);
-        appt.quoteNote = document.getElementById('quoteNoteInput').value.trim();
-        appt.quotePhotos = JSON.parse(JSON.stringify(currentQuotePhotos));
+        const prevAppt = JSON.parse(JSON.stringify({ quotedPrice: appt.quotedPrice, quoteItems: appt.quoteItems, quoteNote: appt.quoteNote, quotePhotos: appt.quotePhotos, quoteNumber: appt.quoteNumber, savedQuotes: appt.savedQuotes }));
+
+        const quoteNumber = document.getElementById('quoteNumberInput').value.trim() || suggestQuoteNumber(apptId);
+        const quotedPrice = parseVal(document.getElementById('quotePriceInput').value);
+        const items = quoteItemsState.map(it => ({ desc: (it.desc || '').trim(), amount: parseVal(it.amount) })).filter(it => it.desc || it.amount);
+        const note = document.getElementById('quoteNoteInput').value.trim();
+        const photos = JSON.parse(JSON.stringify(currentQuotePhotos));
+
+        appt.quoteNumber = quoteNumber;
+        appt.quotedPrice = quotedPrice;
+        appt.quoteItems = items;
+        appt.quoteNote = note;
+        appt.quotePhotos = photos;
+
+        appt.savedQuotes = appt.savedQuotes || [];
+        const existingIdx = quoteDraftSavedId ? appt.savedQuotes.findIndex(q => q.id === quoteDraftSavedId) : -1;
+        if (existingIdx !== -1) {
+            appt.savedQuotes[existingIdx] = { ...appt.savedQuotes[existingIdx], quoteNumber, quotedPrice, items, note, photos, savedAt: new Date().toISOString() };
+        } else {
+            quoteDraftSavedId = newLedgerId();
+            appt.savedQuotes.push({ id: quoteDraftSavedId, quoteNumber, quotedPrice, items, note, photos, savedAt: new Date().toISOString() });
+        }
+
         try {
             await APPOINTMENTS_DOC.set({ entries: appointments });
+            logActivity('edit', appt.clientName, `${t('activityQuoteSaved')} ${quoteNumber}`);
             safeCall(renderAppointments);
+            safeCall(() => renderQuoteSavedList(apptId));
             if (showSavedToast) showToast(t('quoteSavedToast'));
             return true;
         } catch (err) {
-            Object.assign(appt, prevState);
+            Object.assign(appt, prevAppt);
             alert(t('alertQuoteSaveFailed'));
             return false;
         }
@@ -9545,7 +9745,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         if (!ok) return;
         closeAppointmentQuoteModal();
 
-        aiReminderCtx = { job: appt, rem: 0, daysOverdue: null, apiKey: getGeminiApiKey(), run: 0, mode: 'ai', msgKind: 'quote', fromInvoice: false, apptId: appt.id };
+        aiReminderCtx = { job: appt, rem: 0, daysOverdue: null, apiKey: getGeminiApiKey(), run: 0, mode: 'ai', msgKind: 'quote', fromInvoice: false, apptId: appt.id, savedQuoteId: quoteDraftSavedId };
         document.getElementById('aiReminderLang').value = currentLang === 'ar' ? 'ar' : 'en';
         document.getElementById('aiReminderJob').textContent = `${appt.clientName || ''} — $${parseVal(appt.quotedPrice).toFixed(2)}`;
         document.getElementById('aiReminderText').value = '';
@@ -9572,6 +9772,10 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         if (win) { win.document.write(html); win.document.close(); }
 
         appt.quoteSentAt = new Date().toISOString();
+        // Stamp the sent time on the matching saved-quote entry too, so its history row carries
+        // it (saveAppointmentQuote, just above, already upserted this exact entry).
+        const sentEntry = (appt.savedQuotes || []).find(q => q.id === quoteDraftSavedId);
+        if (sentEntry) sentEntry.sentAt = appt.quoteSentAt;
         try { await APPOINTMENTS_DOC.set({ entries: appointments }); safeCall(renderAppointments); } catch (e) { console.error('quote doc sent-stamp error:', e); }
         closeAppointmentQuoteModal();
     }
@@ -9587,6 +9791,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         // eventual document.write() as a popup-blocker-worthy delayed open.
         const win = window.open('', '_blank');
         const draftAppt = Object.assign({}, appt, {
+            quoteNumber: document.getElementById('quoteNumberInput').value.trim() || suggestQuoteNumber(apptId),
             quotedPrice: parseVal(document.getElementById('quotePriceInput').value),
             quoteItems: quoteItemsState.map(it => ({ desc: (it.desc || '').trim(), amount: parseVal(it.amount) })).filter(it => it.desc || it.amount),
             quoteNote: document.getElementById('quoteNoteInput').value.trim()
@@ -9632,12 +9837,13 @@ ${closeBtnHtml}
         ${logoHeaderHtml}
         <div>
           <div class="ui" style="font-weight:700; font-size:17px; letter-spacing:0.3px;">${escHtml(companyName).toUpperCase()}</div>
-          ${companyTagline ? `<div class="ui" style="font-size:12px; color:#3A332B; font-style:italic; margin-top:2px;">${escHtml(companyTagline)}</div>` : ''}
+          ${companyTagline ? `<div class="ui" style="${taglineStyleCss()} margin-top:2px;">${escHtml(companyTagline)}</div>` : ''}
         </div>
       </div>
       <div style="text-align:right;">
         <div class="ui" style="font-size:30px; font-weight:700; letter-spacing:2px; color:${accent};">${escHtml(invoiceDocTypeDisplay('ESTIMATE')).toUpperCase()}</div>
-        <div class="ui" style="font-size:12px; color:#6B6257; margin-top:4px;">${escHtml(t('invoiceDateLbl'))}: <span style="color:#241F1A; font-weight:600;">${escHtml(todayStr)}</span></div>
+        <div class="ui" style="font-size:12px; color:#6B6257; margin-top:4px;">${escHtml(t('quoteNumberLbl'))} <span style="color:#241F1A; font-weight:600;">${escHtml(appt.quoteNumber || '')}</span></div>
+        <div class="ui" style="font-size:12px; color:#6B6257;">${escHtml(t('invoiceDateLbl'))}: <span style="color:#241F1A; font-weight:600;">${escHtml(todayStr)}</span></div>
       </div>
     </div>
     <div style="height:2px; background:${accent};"></div>
