@@ -1176,6 +1176,13 @@
         </div>
 
         <div class="form-group">
+            <label data-i18n="lblTermsConditions"></label>
+            <textarea id="companyProfileTerms" rows="9" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:0.82rem; padding:8px 10px; border-radius:8px; border:1px solid var(--border-color); background:#11141d; color:var(--text-main); resize:vertical;"></textarea>
+            <div class="ag-meta" style="margin-top:4px;" data-i18n="termsConditionsHint"></div>
+            <button type="button" class="secondary" onclick="resetTermsConditionsToDefault()" style="margin-top:6px; padding:6px 12px; font-size:0.78rem;" data-i18n="resetTermsConditionsBtn"></button>
+        </div>
+
+        <div class="form-group">
             <label data-i18n="lblMarginAlertThreshold"></label>
             <input type="text" inputmode="decimal" id="companyProfileMarginThreshold" data-i18n-ph="phMarginAlertThreshold" onfocus="this.select()">
             <div class="ag-meta" style="margin-top:4px;" data-i18n="marginAlertThresholdHint"></div>
@@ -1621,6 +1628,10 @@
         lblCompanyEmail: { ar: 'إيميل الشركة', en: 'Company Email' },
         lblCompanyTaxId: { ar: 'رقم ضريبي/ترخيص (اختياري)', en: 'Tax ID / License # (optional)' },
         lblCompanyWebsite: { ar: 'الموقع الإلكتروني (اختياري)', en: 'Website (optional)' },
+        lblTermsConditions: { ar: 'الشروط والأحكام (Terms & Conditions)', en: 'Terms & Conditions' },
+        termsConditionsHint: { ar: 'بتتظهر تلقائيًا في آخر كل عرض سعر وفاتورة. مش استشارة قانونية — يفضل تراجعها محامي مرخص في فلوريدا قبل الاعتماد عليها بشكل نهائي.', en: 'Shown automatically at the bottom of every Estimate and Invoice. This is not legal advice — have a Florida-licensed attorney review it before relying on it.' },
+        resetTermsConditionsBtn: { ar: '↺ رجّع النص المقترح', en: '↺ Reset to suggested text' },
+        confirmResetTerms: { ar: 'هيتم استبدال النص الحالي بالنص المقترح (من غير حفظ لسه). متأكد؟', en: 'This will replace the current text with the suggested text (not saved yet). Continue?' },
         lblMarginAlertThreshold: { ar: 'تنبيه هامش الربح لو نزل تحت (%)', en: 'Alert if profit margin drops below (%)' },
         phMarginAlertThreshold: { ar: 'مثلاً: 15', en: 'e.g. 15' },
         marginAlertThresholdHint: { ar: 'سيبها فاضية عشان توقف التنبيه. لو محدد نسبة، هيظهرلك تحذير وإنت بتضيف شغلانة جديدة لو هامش ربحها المتوقع (من قيمة العقد الكلية) نزل تحت النسبة دي.', en: "Leave empty to turn the alert off. If set, you'll get a warning while adding a new job if its expected profit margin (based on the full contract value) drops below this percentage." },
@@ -2737,7 +2748,40 @@
     // The company's own identity — name, logo and contact info — used to put a real header
     // on client-facing invoices/reports instead of generic text. One shared record, synced
     // the same way as everything else, so either partner can edit it.
-    let companyProfile = { name: '', logo: '', signature: '', tagline: '', taglineColor: '', taglineFontSize: '', taglineStyle: '', address: '', phones: [], email: '', taxId: '', website: '' };
+    let companyProfile = { name: '', logo: '', signature: '', tagline: '', taglineColor: '', taglineFontSize: '', taglineStyle: '', address: '', phones: [], email: '', taxId: '', website: '', termsConditions: '' };
+    // Standard, editable Terms & Conditions suggested text (not legal advice — the user should
+    // have a Florida-licensed attorney review before relying on this). {{COMPANY}} is replaced
+    // with the company's display name wherever it appears.
+    function defaultTermsConditionsText(companyNameForText) {
+        const lines = [
+            '1. Estimate Validity: This estimate is valid for 30 days from the date issued above. Prices are subject to change after this period due to material cost fluctuations.',
+            '2. Scope of Work: This estimate is based on a visual inspection and the information available at the time of the estimate. It does not include repair of damage, code violations, or conditions discovered only after work begins (including but not limited to issues hidden behind walls, under flooring, or within plumbing/electrical systems). Any such findings will be documented with photos and communicated to the client, along with a revised estimate, before additional work proceeds.',
+            '3. Deposit & Payment Terms: A deposit of fifty percent (50%) of the total estimated price is required before work is scheduled or materials are ordered. The remaining balance is due in full upon completion of the work. Deposits are non-refundable once materials have been purchased or labor has been scheduled on the client’s behalf.',
+            '4. Change Orders: Any changes to the agreed scope of work — whether requested by the client or required due to unforeseen conditions — must be documented in writing (including by text message or email) and agreed to by both parties before being performed. Verbal requests alone do not modify this agreement or its price.',
+            '5. Workmanship Warranty: Labor is warranted against defects in workmanship for ninety (90) days from the date of completion. This warranty does not cover damage caused by normal wear and tear, misuse, lack of maintenance, acts of nature, or work performed by others after completion.',
+            `6. Materials Warranty: Materials and products installed are covered solely by their respective manufacturer's warranty, if any. ${companyNameForText} is not the manufacturer and makes no independent warranty on materials or products.`,
+            `7. Right to Suspend Work: ${companyNameForText} reserves the right to pause or stop work, without penalty, if payment is not received according to the terms above, or if site conditions present a safety or health hazard to our technicians.`,
+            '8. Cancellation Policy: The client may cancel this estimate at no charge at any time before a deposit is paid. Once a deposit has been paid and work has been scheduled, cancellation within 48 hours of the scheduled start date may result in a cancellation fee of up to the amount of the deposit, to cover materials already ordered and labor already scheduled.',
+            '9. Site Access: The client agrees to provide reasonable access to the work area, including water and electricity as needed to complete the work. Delays caused by lack of access, pets, or occupants may result in rescheduling and/or additional charges.',
+            `10. Limitation of Liability: ${companyNameForText} is not responsible for pre-existing damage, mold, or code violations that are not part of and not caused by the scope of work described in this estimate. ${companyNameForText}'s total liability for any claim arising from this work is limited to the amount paid by the client for the specific service giving rise to the claim.`,
+            `11. Permits: Unless a permit is explicitly included in the written scope of work above, obtaining any required permit is the client's responsibility. If ${companyNameForText} agrees in writing to obtain a permit on the client's behalf, any associated fees will be billed separately.`,
+            `12. Photo Documentation: ${companyNameForText} may take before-and-after photos of the work area for quality assurance and invoicing purposes, and, unless the client objects in writing, for portfolio and marketing use.`,
+            '13. Governing Law: This agreement is governed by the laws of the State of Florida. Any dispute arising from this agreement will first be addressed through good-faith discussion between the parties before any other action is taken.',
+            '14. Entire Agreement: This estimate, once approved by the client, together with any signed written change orders, is the entire agreement between the parties and replaces any prior verbal discussion.'
+        ];
+        return lines.join('\n');
+    }
+    // Renders companyProfile.termsConditions (if any) as a small-print block for the bottom of
+    // the Estimate and Invoice documents, one line per paragraph.
+    function termsConditionsHtml() {
+        const text = (companyProfile.termsConditions || '').trim();
+        if (!text) return '';
+        const paragraphs = text.split(/\n+/).filter(Boolean).map(p => `<div style="margin-bottom:5px;">${escHtml(p)}</div>`).join('');
+        return `<div class="ui" style="margin-top:14px; padding-top:12px; border-top:1px solid #E7E1D6; font-size:9px; line-height:1.5; color:#6B6257;">
+          <div style="font-weight:700; letter-spacing:0.5px; margin-bottom:5px; color:#3A332B;">${escHtml(t('lblTermsConditions')).toUpperCase()}</div>
+          ${paragraphs}
+        </div>`;
+    }
     // Tagline appearance (color/size/style) on the invoice and the estimate document — both
     // fall back to the original look (dark grey, 12px, italic) when the user hasn't customized it.
     function taglineStyleCss() {
@@ -2915,7 +2959,7 @@
             // form is auto-refreshed only on that FIRST arrival — never again afterwards, so a
             // partner's edit elsewhere can't silently wipe out text you're still typing.
             const wasLoaded = companyProfileLoaded;
-            companyProfile = doc.exists ? Object.assign({ name: '', logo: '', signature: '', tagline: '', taglineColor: '', taglineFontSize: '', taglineStyle: '', address: '', phones: [], email: '', taxId: '', website: '', marginAlertThreshold: null }, doc.data()) : companyProfile;
+            companyProfile = doc.exists ? Object.assign({ name: '', logo: '', signature: '', tagline: '', taglineColor: '', taglineFontSize: '', taglineStyle: '', address: '', phones: [], email: '', taxId: '', website: '', marginAlertThreshold: null, termsConditions: '' }, doc.data()) : companyProfile;
             if (!Array.isArray(companyProfile.phones)) companyProfile.phones = companyProfile.phone ? [companyProfile.phone] : [];
             refreshCompanyLogoAspect();
             companyProfileLoaded = true;
@@ -7181,6 +7225,8 @@ ${closeBtnHtml}
 
     ${paidStampBottomHtml}
 
+    ${termsConditionsHtml()}
+
     <div class="invoice-sigrow" style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:16px; gap:24px;">
       <div style="flex-grow:1;"><div class="invoice-sigline" style="border-bottom:1px solid #241F1A; height:36px;"></div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">Customer Approval</div></div>
       <div style="width:180px;"><div class="invoice-sigline" style="border-bottom:1px solid #241F1A; height:36px; display:flex; align-items:flex-end; justify-content:center;">${companyProfile.signature ? `<img src="${companyProfile.signature}" style="max-height:34px; max-width:100%; object-fit:contain;">` : ''}</div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">${escHtml(companyName)} Representative</div></div>
@@ -7346,6 +7392,13 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('companyProfileEmail').value = companyProfile.email || '';
         document.getElementById('companyProfileTaxId').value = companyProfile.taxId || '';
         document.getElementById('companyProfileWebsite').value = companyProfile.website || '';
+        // First time this field is opened (nothing saved yet), pre-fill it with the suggested
+        // standard terms so the client-facing documents aren't blank by default — the user can
+        // edit or clear it freely before saving. Once something has been saved, that saved text
+        // (even if empty) is shown as-is and never silently replaced.
+        document.getElementById('companyProfileTerms').value = (companyProfile.termsConditions !== undefined && companyProfile.termsConditions !== '')
+            ? companyProfile.termsConditions
+            : defaultTermsConditionsText(companyProfile.name || 'the Company');
         document.getElementById('companyProfileMarginThreshold').value = (companyProfile.marginAlertThreshold !== undefined && companyProfile.marginAlertThreshold !== null) ? companyProfile.marginAlertThreshold : '';
         companyProfilePhonesWorking = (companyProfile.phones && companyProfile.phones.length > 0) ? [...companyProfile.phones] : [''];
         renderCompanyPhones();
@@ -7429,6 +7482,14 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         } catch (e) { alert(t('alertPhotoFailed')); }
     }
     function removeCompanySignature() { companyProfile.signature = ''; renderCompanyProfileForm(); }
+    // Refills the Terms & Conditions textarea with the suggested standard text (using the
+    // CURRENT name typed in the Company Name field above, even if not saved yet) — does not
+    // save by itself; the user still has to press Save Profile to make it permanent.
+    function resetTermsConditionsToDefault() {
+        if (!confirm(t('confirmResetTerms'))) return;
+        const nameNow = document.getElementById('companyProfileName').value.trim() || 'the Company';
+        document.getElementById('companyProfileTerms').value = defaultTermsConditionsText(nameNow);
+    }
     async function saveCompanyProfile() {
         // Belt-and-braces: even if the button was somehow clicked while disabled, never let a
         // save go through before we actually know what's in Firestore — that's exactly what was
@@ -7444,6 +7505,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         companyProfile.email = document.getElementById('companyProfileEmail').value.trim();
         companyProfile.taxId = document.getElementById('companyProfileTaxId').value.trim();
         companyProfile.website = document.getElementById('companyProfileWebsite').value.trim();
+        companyProfile.termsConditions = document.getElementById('companyProfileTerms').value;
         const marginThresholdRaw = document.getElementById('companyProfileMarginThreshold').value.trim();
         companyProfile.marginAlertThreshold = marginThresholdRaw === '' ? null : parseVal(marginThresholdRaw);
         delete companyProfile.phone; // retire the old single-phone field now that phones[] replaces it
@@ -9890,6 +9952,7 @@ ${closeBtnHtml}
       ${itemsRowsHtml}
     </div>` : ''}
     ${noteBox}
+    ${termsConditionsHtml()}
     <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:16px; gap:24px;">
       <div style="flex-grow:1;"><div style="border-bottom:1px solid #241F1A; height:36px;"></div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">Customer Approval</div></div>
       <div style="width:180px;"><div style="border-bottom:1px solid #241F1A; height:36px; display:flex; align-items:flex-end; justify-content:center;">${companyProfile.signature ? `<img src="${companyProfile.signature}" style="max-height:34px; max-width:100%; object-fit:contain;">` : ''}</div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">${escHtml(companyName)} Representative</div></div>
