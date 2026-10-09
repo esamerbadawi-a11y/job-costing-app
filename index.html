@@ -395,7 +395,7 @@
                 <div id="apptPhotoGallery" style="display:none; gap:8px; flex-wrap:wrap; margin-bottom:10px;"></div>
                 <div style="display:flex; gap:8px;">
                     <button class="success" onclick="saveAppointment()"><span id="saveAppointmentBtnLabel" data-i18n="saveAppointmentBtn"></span></button>
-                    <button class="secondary" onclick="resetAppointmentForm()" data-i18n="cancelBtn"></button>
+                    <button class="secondary" onclick="requestCancelAppointmentEdit()" data-i18n="cancelBtn"></button>
                 </div>
             </div>
         </div>
@@ -777,7 +777,7 @@
                     <button type="button" class="secondary" onclick="goToJobStep(currentJobStep - 1)" id="jobStepPrevBtn" style="flex: 1; padding: 12px; margin-top: 5px; display:none;" data-i18n="jobStepPrevBtn"></button>
                     <button type="button" class="secondary" onclick="goToJobStep(currentJobStep + 1)" id="jobStepNextBtn" style="flex: 1; padding: 12px; margin-top: 5px;" data-i18n="jobStepNextBtn"></button>
                     <button class="success" onclick="saveJob()" id="saveBtn" style="flex: 2; padding: 12px; margin-top: 5px;"></button>
-                    <button class="secondary" onclick="cancelJobEdit()" id="cancelEditBtn" style="flex: 1; padding: 12px; margin-top: 5px; display: none;" data-i18n="cancelEditBtn"></button>
+                    <button class="secondary" onclick="requestCancelJobEdit()" id="cancelEditBtn" style="flex: 1; padding: 12px; margin-top: 5px; display: none;" data-i18n="cancelEditBtn"></button>
                 </div>
                 </div>
             </div>
@@ -1274,17 +1274,17 @@
     </div>
 </div>
 
-<div id="appointmentQuoteModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10000; justify-content:center; align-items:center;" onclick="if(event.target===this) closeAppointmentQuoteModal();">
+<div id="appointmentQuoteModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10000; justify-content:center; align-items:center;" onclick="if(event.target===this) requestCloseAppointmentQuoteModal();">
     <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:92%; max-width:640px; max-height:88vh; overflow-y:auto; padding:22px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
             <h2 style="color:#0891b2; margin:0; font-size:1.1rem;" data-i18n="appointmentQuoteModalTitle"></h2>
-            <button class="danger" onclick="closeAppointmentQuoteModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="quoteCloseBtn"></button>
+            <button class="danger" onclick="requestCloseAppointmentQuoteModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="quoteCloseBtn"></button>
         </div>
         <div id="quoteClientLine" style="font-weight:700; margin-bottom:10px;"></div>
 
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <h3 style="color:#38bdf8; font-size:0.9rem; margin:0;" data-i18n="quoteSavedQuotesTitle"></h3>
-            <button type="button" class="secondary" onclick="startNewQuoteDraft(quoteApptId)" style="padding:5px 10px; font-size:0.75rem;" data-i18n="quoteNewDraftBtn"></button>
+            <button type="button" class="secondary" onclick="requestStartNewQuoteDraft(quoteApptId)" style="padding:5px 10px; font-size:0.75rem;" data-i18n="quoteNewDraftBtn"></button>
         </div>
         <div id="quoteSavedListContainer" style="margin-bottom:16px;"></div>
 
@@ -1515,6 +1515,46 @@
         <button class="success" style="width:100%; padding:11px; margin-bottom:8px;" onclick="unsavedInvoiceChoice('save')" data-i18n="unsavedInvoiceSave"></button>
         <button class="secondary" style="width:100%; padding:11px; margin-bottom:8px; background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid rgba(225,29,72,0.4);" onclick="unsavedInvoiceChoice('discard')" data-i18n="unsavedInvoiceDiscard"></button>
         <button class="danger" style="width:100%; padding:8px; font-size:0.85rem;" onclick="unsavedInvoiceChoice('cancel')" data-i18n="unsavedBack"></button>
+    </div>
+</div>
+
+<div id="unsavedQuoteModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10002; justify-content:center; align-items:center;">
+    <div class="tg-modal-box" style="max-width:420px;">
+        <h3 style="color:#fbbf24; margin:0 0 10px; font-size:1.05rem;">⚠️ <span data-i18n="unsavedQuoteTitle"></span></h3>
+        <p style="font-size:0.88rem; margin-bottom:16px; line-height:1.6;" data-i18n="unsavedQuoteMsg"></p>
+        <button class="success" style="width:100%; padding:11px; margin-bottom:8px;" onclick="unsavedQuoteChoice('save')" data-i18n="unsavedQuoteSave"></button>
+        <button class="secondary" style="width:100%; padding:11px; margin-bottom:8px; background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid rgba(225,29,72,0.4);" onclick="unsavedQuoteChoice('discard')" data-i18n="unsavedQuoteDiscard"></button>
+        <button class="danger" style="width:100%; padding:8px; font-size:0.85rem;" onclick="unsavedQuoteChoice('cancel')" data-i18n="unsavedBack"></button>
+    </div>
+</div>
+
+<div id="unsavedJobFormModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10002; justify-content:center; align-items:center;">
+    <div class="tg-modal-box" style="max-width:420px;">
+        <h3 style="color:#fbbf24; margin:0 0 10px; font-size:1.05rem;">⚠️ <span data-i18n="unsavedJobFormTitle"></span></h3>
+        <p style="font-size:0.88rem; margin-bottom:16px; line-height:1.6;" data-i18n="unsavedJobFormMsg"></p>
+        <button class="success" style="width:100%; padding:11px; margin-bottom:8px;" onclick="unsavedJobFormChoice('save')" data-i18n="unsavedJobFormSave"></button>
+        <button class="secondary" style="width:100%; padding:11px; margin-bottom:8px; background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid rgba(225,29,72,0.4);" onclick="unsavedJobFormChoice('discard')" data-i18n="unsavedJobFormDiscard"></button>
+        <button class="danger" style="width:100%; padding:8px; font-size:0.85rem;" onclick="unsavedJobFormChoice('cancel')" data-i18n="unsavedBack"></button>
+    </div>
+</div>
+
+<div id="unsavedApptFormModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10002; justify-content:center; align-items:center;">
+    <div class="tg-modal-box" style="max-width:420px;">
+        <h3 style="color:#fbbf24; margin:0 0 10px; font-size:1.05rem;">⚠️ <span data-i18n="unsavedApptFormTitle"></span></h3>
+        <p style="font-size:0.88rem; margin-bottom:16px; line-height:1.6;" data-i18n="unsavedApptFormMsg"></p>
+        <button class="success" style="width:100%; padding:11px; margin-bottom:8px;" onclick="unsavedApptFormChoice('save')" data-i18n="unsavedApptFormSave"></button>
+        <button class="secondary" style="width:100%; padding:11px; margin-bottom:8px; background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid rgba(225,29,72,0.4);" onclick="unsavedApptFormChoice('discard')" data-i18n="unsavedApptFormDiscard"></button>
+        <button class="danger" style="width:100%; padding:8px; font-size:0.85rem;" onclick="unsavedApptFormChoice('cancel')" data-i18n="unsavedBack"></button>
+    </div>
+</div>
+
+<div id="unsavedContactFormModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10002; justify-content:center; align-items:center;">
+    <div class="tg-modal-box" style="max-width:420px;">
+        <h3 style="color:#fbbf24; margin:0 0 10px; font-size:1.05rem;">⚠️ <span data-i18n="unsavedContactFormTitle"></span></h3>
+        <p style="font-size:0.88rem; margin-bottom:16px; line-height:1.6;" data-i18n="unsavedContactFormMsg"></p>
+        <button class="success" style="width:100%; padding:11px; margin-bottom:8px;" onclick="unsavedContactFormChoice('save')" data-i18n="unsavedContactFormSave"></button>
+        <button class="secondary" style="width:100%; padding:11px; margin-bottom:8px; background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid rgba(225,29,72,0.4);" onclick="unsavedContactFormChoice('discard')" data-i18n="unsavedContactFormDiscard"></button>
+        <button class="danger" style="width:100%; padding:8px; font-size:0.85rem;" onclick="unsavedContactFormChoice('cancel')" data-i18n="unsavedBack"></button>
     </div>
 </div>
 
@@ -2198,6 +2238,22 @@
         unsavedInvoiceMsg: { ar: 'عملت تعديلات على الفاتورة دي ومحفظتهاش في "الفواتير المحفوظة" — لو خرجت كده من غير حفظ هتضيع. تحفظها الأول؟', en: "You made changes to this invoice that aren't saved to \"Saved Invoices\" yet — leaving now will lose them. Save first?" },
         unsavedInvoiceSave: { ar: '💾 احفظ واخرج', en: '💾 Save and leave' },
         unsavedInvoiceDiscard: { ar: 'اخرج من غير حفظ', en: 'Leave without saving' },
+        unsavedQuoteTitle: { ar: 'عرض السعر ده لسه ما اتحفظش', en: 'This quote has not been saved' },
+        unsavedQuoteMsg: { ar: 'عملت تعديلات على عرض السعر ده ومحفظتهوش — لو خرجت كده من غير حفظ هيضيع. تحفظه الأول؟', en: "You made changes to this quote that aren't saved yet — leaving now will lose them. Save first?" },
+        unsavedQuoteSave: { ar: '💾 احفظ واخرج', en: '💾 Save and leave' },
+        unsavedQuoteDiscard: { ar: 'اخرج من غير حفظ', en: 'Leave without saving' },
+        unsavedJobFormTitle: { ar: 'الشغلانة دي لسه ما اتحفظتش', en: 'This job has not been saved' },
+        unsavedJobFormMsg: { ar: 'عملت تعديلات على الشغلانة دي ومحفظتهاش — لو خرجت كده من غير حفظ هتضيع. تحفظها الأول؟', en: "You made changes to this job that aren't saved yet — leaving now will lose them. Save first?" },
+        unsavedJobFormSave: { ar: '💾 احفظ واخرج', en: '💾 Save and leave' },
+        unsavedJobFormDiscard: { ar: 'اخرج من غير حفظ', en: 'Leave without saving' },
+        unsavedApptFormTitle: { ar: 'الموعد ده لسه ما اتحفظش', en: 'This appointment has not been saved' },
+        unsavedApptFormMsg: { ar: 'عملت تعديلات على الموعد ده ومحفظتهوش — لو خرجت كده من غير حفظ هيضيع. تحفظه الأول؟', en: "You made changes to this appointment that aren't saved yet — leaving now will lose them. Save first?" },
+        unsavedApptFormSave: { ar: '💾 احفظ واخرج', en: '💾 Save and leave' },
+        unsavedApptFormDiscard: { ar: 'اخرج من غير حفظ', en: 'Leave without saving' },
+        unsavedContactFormTitle: { ar: 'العميل ده لسه ما اتحفظش', en: 'This contact has not been saved' },
+        unsavedContactFormMsg: { ar: 'عملت تعديلات على بيانات العميل دي ومحفظتهاش — لو خرجت كده من غير حفظ هتضيع. تحفظها الأول؟', en: "You made changes to this contact that aren't saved yet — leaving now will lose them. Save first?" },
+        unsavedContactFormSave: { ar: '💾 احفظ واخرج', en: '💾 Save and leave' },
+        unsavedContactFormDiscard: { ar: 'اخرج من غير حفظ', en: 'Leave without saving' },
         aiReminderLangLabel: { ar: 'لغة الرسالة:', en: 'Message language:' },
         aiCustomInstructionsLabel: { ar: 'توجيهات إضافية للـ AI (اختياري):', en: 'Extra instructions for the AI (optional):' },
         aiCustomInstructionsPh: { ar: 'مثال: خليها أقصر، أو اذكر إن فيه خصم لو دفع بسرعة...', en: 'e.g. make it shorter, or mention a discount for quick payment...' },
@@ -2854,7 +2910,17 @@
     safeCall(initLedgerDates);
 
     let currentScreen = 'log';
+    // Single choke point for every tab/navigation change in the app — guarded below so that
+    // leaving the Job form, the Appointment form, or the Contact form with unsaved typed-in
+    // edits prompts to save first, instead of silently losing them.
     function switchScreen(name) {
+        if (name === currentScreen) { switchScreenNow(name); return; }
+        if (currentScreen === 'entry' && jobFormDirty) { guardJobFormExit(() => switchScreenNow(name)); return; }
+        if (currentScreen === 'appointments' && apptFormDirty) { guardApptFormExit(() => switchScreenNow(name)); return; }
+        if (currentScreen === 'contacts' && contactFormDirty) { guardContactFormExit(() => switchScreenNow(name)); return; }
+        switchScreenNow(name);
+    }
+    function switchScreenNow(name) {
         currentScreen = name;
         document.getElementById('screenLog').style.display = name === 'log' ? 'block' : 'none';
         document.getElementById('screenEntry').style.display = name === 'entry' ? 'block' : 'none';
@@ -3101,6 +3167,95 @@
         entryScreen.addEventListener('input', markJobFormDirty);
         entryScreen.addEventListener('change', markJobFormDirty);
     });
+
+    // ----- "Unsaved changes" guards for the Job / Appointment / Contact forms -----
+    // Same idea as the Invoice/Quote guards above: don't let someone silently lose typed-in
+    // data by navigating away (switching tabs, opening a different record, hitting Cancel)
+    // while a form still has edits that were never saved. Job/Appointment/Contact don't live in
+    // their own modal like Invoice/Quote do, so instead of snapshotting field values we reuse a
+    // simple "dirty" flag set by any input/change event bubbling up from the form's own
+    // container — jobFormDirty already existed (for the beforeunload/draft-recovery feature
+    // above); apptFormDirty/contactFormDirty are the same idea, added fresh here.
+    let apptFormDirty = false;
+    let contactFormDirty = false;
+    let pendingJobFormExitAction = null;
+    let pendingApptFormExitAction = null;
+    let pendingContactFormExitAction = null;
+
+    safeCall(() => {
+        const apptScreen = document.getElementById('screenAppointments');
+        apptScreen.addEventListener('input', () => { apptFormDirty = true; });
+        apptScreen.addEventListener('change', () => { apptFormDirty = true; });
+        const contactBox = document.getElementById('contactFormBox');
+        contactBox.addEventListener('input', () => { contactFormDirty = true; });
+        contactBox.addEventListener('change', () => { contactFormDirty = true; });
+    });
+
+    function guardJobFormExit(action) {
+        if (currentScreen === 'entry' && jobFormDirty) {
+            pendingJobFormExitAction = action;
+            document.getElementById('unsavedJobFormModal').style.display = 'flex';
+            return;
+        }
+        action();
+    }
+    async function unsavedJobFormChoice(choice) {
+        document.getElementById('unsavedJobFormModal').style.display = 'none';
+        if (choice === 'cancel') { pendingJobFormExitAction = null; return; }
+        if (choice === 'discard') { jobFormDirty = false; }
+        if (choice === 'save') {
+            await saveJob();
+            if (jobFormDirty) { pendingJobFormExitAction = null; return; } // blocked (validation/error) — stay put
+        }
+        const action = pendingJobFormExitAction;
+        pendingJobFormExitAction = null;
+        if (action) action();
+    }
+    function requestCancelJobEdit() { guardJobFormExit(() => cancelJobEdit()); }
+
+    function guardApptFormExit(action) {
+        if (currentScreen === 'appointments' && apptFormDirty) {
+            pendingApptFormExitAction = action;
+            document.getElementById('unsavedApptFormModal').style.display = 'flex';
+            return;
+        }
+        action();
+    }
+    async function unsavedApptFormChoice(choice) {
+        document.getElementById('unsavedApptFormModal').style.display = 'none';
+        if (choice === 'cancel') { pendingApptFormExitAction = null; return; }
+        if (choice === 'discard') { apptFormDirty = false; }
+        if (choice === 'save') {
+            await saveAppointment();
+            if (apptFormDirty) { pendingApptFormExitAction = null; return; } // blocked — stay put
+        }
+        const action = pendingApptFormExitAction;
+        pendingApptFormExitAction = null;
+        if (action) action();
+    }
+    function requestCancelAppointmentEdit() { guardApptFormExit(() => resetAppointmentForm()); }
+
+    function guardContactFormExit(action) {
+        if (currentScreen === 'contacts' && contactFormDirty) {
+            pendingContactFormExitAction = action;
+            document.getElementById('unsavedContactFormModal').style.display = 'flex';
+            return;
+        }
+        action();
+    }
+    async function unsavedContactFormChoice(choice) {
+        document.getElementById('unsavedContactFormModal').style.display = 'none';
+        if (choice === 'cancel') { pendingContactFormExitAction = null; return; }
+        if (choice === 'discard') { contactFormDirty = false; }
+        if (choice === 'save') {
+            await saveContact();
+            if (contactFormDirty) { pendingContactFormExitAction = null; return; } // blocked — stay put
+        }
+        const action = pendingContactFormExitAction;
+        pendingContactFormExitAction = null;
+        if (action) action();
+    }
+
     let currentReceipts = [];
     let currentMaterialEntries = [];
     const LEDGERS = {
@@ -5903,7 +6058,8 @@
         document.getElementById('selActualRemaining').innerText = '$' + (selReceived - selMat - selTech - selExtra).toFixed(2);
     }
 
-    function duplicateJob(id) {
+    function duplicateJob(id) { guardJobFormExit(() => duplicateJobNow(id)); }
+    function duplicateJobNow(id) {
         id = String(id);
         const job = savedJobs.find(j => String(j.id) === id);
         if (!job) return;
@@ -5927,7 +6083,8 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    async function editJob(id) {
+    function editJob(id) { guardJobFormExit(() => editJobNow(id)); }
+    async function editJobNow(id) {
         id = String(id);
         const job = savedJobs.find(j => String(j.id) === id);
         if (!job) return;
@@ -8713,7 +8870,8 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         });
     }
 
-    function toggleContactForm(forceClose) {
+    function toggleContactForm(forceClose) { guardContactFormExit(() => toggleContactFormNow(forceClose)); }
+    function toggleContactFormNow(forceClose) {
         const box = document.getElementById('contactFormBox');
         const isOpen = box.style.display === 'block';
         if (forceClose || isOpen) {
@@ -8722,13 +8880,15 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             ['contactName', 'contactCompany', 'contactPhone', 'contactEmail', 'contactAddress', 'contactNote'].forEach(id => document.getElementById(id).value = '');
             document.getElementById('contactFormTitle').innerText = t('addContactBtn');
             document.getElementById('saveContactBtnLabel').innerText = t('saveContactBtn');
+            contactFormDirty = false;
         } else {
             box.style.display = 'block';
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     }
 
-    function editContact(id) {
+    function editContact(id) { guardContactFormExit(() => editContactNow(id)); }
+    function editContactNow(id) {
         const c = contacts.find(x => x.id === id);
         if (!c) return;
         closeContactsListModal(); // the edit form lives on the Contacts screen itself, underneath the list modal
@@ -8743,6 +8903,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('saveContactBtnLabel').innerText = t('updateContactBtn');
         document.getElementById('contactFormBox').style.display = 'block';
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        contactFormDirty = false;
     }
 
     async function saveContact() {
@@ -8770,7 +8931,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                 contacts.unshift({ id: Date.now().toString() + Math.random().toString(36).substr(2, 5), ...fields });
             }
             await CONTACTS_DOC.set({ entries: contacts });
-            toggleContactForm(true);
+            toggleContactFormNow(true);
             renderContacts();
         } catch (err) {
             alertSaveError(err);
@@ -9278,7 +9439,8 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         input.value = '';
     }
 
-    function editAppointment(id) {
+    function editAppointment(id) { guardApptFormExit(() => editAppointmentNow(id)); }
+    function editAppointmentNow(id) {
         const appt = appointments.find(a => a.id === id);
         if (!appt) return;
         editingApptId = id;
@@ -9295,6 +9457,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('addAppointmentTitle').innerText = t('editAppointmentTitle');
         document.getElementById('saveAppointmentBtnLabel').innerText = t('updateAppointmentBtn');
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        apptFormDirty = false;
     }
 
     function resetAppointmentForm() {
@@ -9312,6 +9475,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         renderApptServiceCheckboxes([]);
         document.getElementById('addAppointmentTitle').innerText = t('addAppointmentTitle');
         document.getElementById('saveAppointmentBtnLabel').innerText = t('saveAppointmentBtn');
+        apptFormDirty = false;
     }
 
     async function saveAppointment() {
@@ -9500,6 +9664,52 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     // next Save updates that same entry instead of creating a duplicate — same role invoiceState's
     // own savedId plays for invoices.
     let quoteDraftSavedId = null;
+    // A snapshot of the draft's fields taken every time it's freshly started/loaded/saved —
+    // compared against the live form to tell whether there are unsaved changes before letting
+    // the user leave the quote screen (close it, load a different saved quote, or start a new
+    // draft) — same pattern as invoiceStateSnapshot/guardInvoiceExit for the Invoice screen.
+    let quoteDraftSnapshot = null;
+    let pendingQuoteExitAction = null;
+
+    function quoteDraftSnapshotObj() {
+        return {
+            quoteNumber: document.getElementById('quoteNumberInput').value.trim(),
+            quotedPrice: document.getElementById('quotePriceInput').value.trim(),
+            items: quoteItemsState,
+            note: document.getElementById('quoteNoteInput').value.trim(),
+            photos: currentQuotePhotos
+        };
+    }
+    function markQuoteDraftClean() { quoteDraftSnapshot = JSON.stringify(quoteDraftSnapshotObj()); }
+    function quoteDraftIsDirty() {
+        if (!quoteApptId || quoteDraftSnapshot === null) return false; // nothing open, or not yet initialized
+        return JSON.stringify(quoteDraftSnapshotObj()) !== quoteDraftSnapshot;
+    }
+    // Runs `action` (closing the modal, loading another saved quote, starting a new draft) right
+    // away if there's nothing unsaved — otherwise asks first via unsavedQuoteModal.
+    function guardQuoteExit(action) {
+        if (quoteDraftIsDirty()) {
+            pendingQuoteExitAction = action;
+            document.getElementById('unsavedQuoteModal').style.display = 'flex';
+            return;
+        }
+        action();
+    }
+    async function unsavedQuoteChoice(choice) {
+        document.getElementById('unsavedQuoteModal').style.display = 'none';
+        if (choice === 'cancel') { pendingQuoteExitAction = null; return; }
+        if (choice === 'save') {
+            if (!parseVal(document.getElementById('quotePriceInput').value)) { alert(t('alertQuoteNeedsPrice')); pendingQuoteExitAction = null; return; }
+            const ok = await saveAppointmentQuote(quoteApptId, false);
+            if (!ok) { pendingQuoteExitAction = null; return; } // save failed: stay put, nothing lost
+        }
+        const action = pendingQuoteExitAction;
+        pendingQuoteExitAction = null;
+        if (action) action();
+    }
+    function requestCloseAppointmentQuoteModal() { guardQuoteExit(closeAppointmentQuoteModal); }
+    function requestStartNewQuoteDraft(apptId) { guardQuoteExit(() => startNewQuoteDraft(apptId)); }
+    function requestLoadSavedQuote(apptId, savedId) { guardQuoteExit(() => loadSavedQuote(apptId, savedId)); }
 
     // A starting suggestion for a brand-new quote's number — company initials + the full date
     // it's being drafted on + the last 4 digits of the appointment's own id, e.g.
@@ -9547,6 +9757,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('appointmentQuoteModal').style.display = 'none';
         quoteApptId = '';
         quoteDraftSavedId = null;
+        quoteDraftSnapshot = null;
     }
     function onQuotePriceInput() { updateQuoteItemsTotalDisplay(); }
 
@@ -9565,6 +9776,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         currentQuotePhotos = [];
         renderPhotoGallery(currentQuotePhotos, 'quotePhotoGallery');
         renderQuoteSavedList(apptId);
+        markQuoteDraftClean();
     }
 
     // Loads one previously-saved quote (from appt.savedQuotes) into the form for further editing
@@ -9585,6 +9797,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         currentQuotePhotos = JSON.parse(JSON.stringify(saved.photos || []));
         renderPhotoGallery(currentQuotePhotos, 'quotePhotoGallery');
         renderQuoteSavedList(apptId); // refresh the highlighted/selected entry
+        markQuoteDraftClean();
     }
 
     async function deleteSavedQuote(apptId, savedId) {
@@ -9632,7 +9845,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                     </div>
                     <div style="display:flex; gap:6px;">
                         <button type="button" class="secondary" onclick="viewSavedQuote('${apptId}', '${q.id}')" style="padding:5px 10px; font-size:0.75rem; background:#0284c7;">👁️ ${t('invoiceViewBtn')}</button>
-                        <button type="button" class="secondary" onclick="loadSavedQuote('${apptId}', '${q.id}')" style="padding:5px 10px; font-size:0.75rem;">${t('invoiceLoadBtn')}</button>
+                        <button type="button" class="secondary" onclick="requestLoadSavedQuote('${apptId}', '${q.id}')" style="padding:5px 10px; font-size:0.75rem;">${t('invoiceLoadBtn')}</button>
                         <button type="button" onclick="deleteSavedQuote('${apptId}', '${q.id}')" style="padding:5px 10px; font-size:0.75rem; background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid rgba(225,29,72,0.4); border-radius:8px; cursor:pointer;">${t('quoteDeleteSavedBtn')}</button>
                     </div>
                 </div>
@@ -9826,6 +10039,8 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             logActivity('edit', appt.clientName, `${t('activityQuoteSaved')} ${quoteNumber}`);
             safeCall(renderAppointments);
             safeCall(() => renderQuoteSavedList(apptId));
+            document.getElementById('quoteNumberInput').value = quoteNumber; // reflect the auto-suggested number if the field was left blank, so the dirty-check below matches exactly what was just saved
+            markQuoteDraftClean();
             if (showSavedToast) showToast(t('quoteSavedToast'));
             return true;
         } catch (err) {
