@@ -2160,6 +2160,8 @@
         guideThDuesInPeriod: { ar: 'المستحق في الفترة دي', en: 'Dues in Period' },
         guideThPaidInPeriod: { ar: 'المدفوع في الفترة دي', en: 'Paid in Period' },
         guideThRemainingInPeriod: { ar: 'الباقي في الفترة دي', en: 'Remaining in Period' },
+        guideThPriorBalance: { ar: 'متبقي من قبل', en: 'Prior Balance' },
+        guidePriorBalanceNote: { ar: 'متبقي له لحد', en: 'owed through' },
         techPaymentTitle: { ar: '💵 تسجيل دفعة لفني', en: '💵 Record Technician Payment' },
         techPaymentJobLabel: { ar: 'الدفعة دي خاصة بإيه؟', en: 'What is this payment for?' },
         techPaymentAllJobsOption: { ar: 'كل الشغلانات اللي هو داخل فيها', en: 'All jobs he is in' },
@@ -11619,7 +11621,16 @@ ${closeBtnHtml}
         const shownNames = selectedTech ? [selectedTech] : [...allNames];
         if (allNames.size === 0) { container.innerHTML = periodLabel + `<p style="text-align:center; color:var(--text-muted); padding:20px;">${t('guideEmpty')}</p>`; return; }
 
-        let html = periodLabel + `<table style="width:100%; border-collapse:collapse; margin-top:10px;"><thead><tr><th>${t('guideThName')}</th><th>${t('guideThPhone')}</th><th>${t('guideThDuesInPeriod')}</th><th>${t('guideThBonusInPeriod')}</th><th>${t('guideThPaidInPeriod')}</th><th>${t('guideThRemainingInPeriod')}</th><th>${t('guideThActions')}</th></tr></thead><tbody>`;
+        // "Prior Balance": what a technician was still owed from BEFORE this period's own start
+        // date (all his dues+bonuses minus all his payments, dated any time up through the day
+        // before "From") — separate from "Remaining in Period" above, which only looks inside the
+        // selected range. Only meaningful once a "From" date is actually set (otherwise the
+        // current period already covers everything there is), and only shown per technician when
+        // that carried-over amount is actually still positive.
+        const priorDateTo = dateFrom ? addDaysISO(dateFrom, -1) : '';
+        const priorStats = dateFrom ? computeTechPeriodStats('', priorDateTo) : {};
+
+        let html = periodLabel + `<table style="width:100%; border-collapse:collapse; margin-top:10px;"><thead><tr><th>${t('guideThName')}</th><th>${t('guideThPhone')}</th><th>${t('guideThDuesInPeriod')}</th><th>${t('guideThBonusInPeriod')}</th><th>${t('guideThPaidInPeriod')}</th><th>${t('guideThRemainingInPeriod')}</th>${dateFrom ? `<th>${t('guideThPriorBalance')}</th>` : ''}<th>${t('guideThActions')}</th></tr></thead><tbody>`;
         shownNames.forEach(name => {
             const dues = stats[name] ? stats[name].dues : 0;
             const bonus = techBonusTotalInPeriod(name, dateFrom, dateTo);
@@ -11628,11 +11639,22 @@ ${closeBtnHtml}
             const rawPhone = technicianPhones[name] || '';
             const phoneDisplay = rawPhone ? (() => { const { code, local } = splitPhoneForEdit(rawPhone); return code === 'other' ? rawPhone : `+${code} ${local}`; })() : t('guideNA');
             const phoneHtml = rawPhone ? `<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${phoneDisplay}</span>` : phoneDisplay;
+            let priorBalanceHtml = '';
+            if (dateFrom) {
+                const priorDues = priorStats[name] ? priorStats[name].dues : 0;
+                const priorBonus = techBonusTotalInPeriod(name, '', priorDateTo);
+                const priorPaid = techPaymentsInPeriod(name, '', priorDateTo).reduce((sum, p) => sum + parseVal(p.amount), 0);
+                const priorBalance = round2(priorDues + priorBonus - priorPaid);
+                priorBalanceHtml = priorBalance > 0.005
+                    ? `<td data-label="${t('guideThPriorBalance')}" style="color:#f87171; font-weight:700;">⚠️ $${priorBalance.toFixed(2)}<div class="ag-meta" style="font-weight:400;">${t('guidePriorBalanceNote')} <span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${escHtml(priorDateTo)}</span></div></td>`
+                    : `<td data-label="${t('guideThPriorBalance')}" style="color:var(--text-muted);">—</td>`;
+            }
             html += `<tr><td data-label=""><strong>${name}</strong></td><td data-label="${t('guideThPhone')}">${phoneHtml}</td>
                 <td data-label="${t('guideThDuesInPeriod')}" style="color:#fbbf24; font-weight:700;">$${dues.toFixed(2)}</td>
                 <td data-label="${t('guideThBonusInPeriod')}" style="color:${bonus > 0.005 ? '#fbbf24' : 'var(--text-muted)'}; font-weight:700;">${bonus > 0.005 ? '🎁 $' + bonus.toFixed(2) : '—'}</td>
                 <td data-label="${t('guideThPaidInPeriod')}" style="color:#34d399; font-weight:700;">$${paidInPeriod.toFixed(2)}</td>
                 <td data-label="${t('guideThRemainingInPeriod')}" style="color:${remainingInPeriod > 0 ? '#f87171' : '#94a3b8'}; font-weight:700;">$${remainingInPeriod.toFixed(2)}</td>
+                ${priorBalanceHtml}
                 <td data-label="" class="tg-actions-cell"><div class="tg-actions">
                     <button class="secondary" onclick="showTechDetails('${jsArg(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#475569;">🔎 ${t('guideDetailsBtn')}</button>
                     <button class="secondary" onclick="openTechPaymentPrompt('${jsArg(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#16a34a;">${t('techPayBtn')}</button>
