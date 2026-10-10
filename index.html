@@ -9960,9 +9960,9 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         container.innerHTML = quoteItemsState.map((it, index) => `
             <div class="tech-card" style="margin-bottom:8px;">
                 <div style="display:grid; grid-template-columns: 1fr 110px 40px; gap:10px; align-items:end;">
-                    <div>
+                    <div class="quote-item-desc-cell">
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColDesc')}</label>
-                        <input type="text" value="${escHtml(it.desc)}" oninput="updateQuoteItemField(${index}, 'desc', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
+                        <textarea rows="1" oninput="updateQuoteItemField(${index}, 'desc', this.value); autoGrowTextarea(this);" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; resize:vertical; min-height:40px; font-family:inherit; font-size:0.9rem; line-height:1.4;">${escHtml(it.desc)}</textarea>
                     </div>
                     <div>
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColAmount')}</label>
@@ -9974,6 +9974,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                 </div>
             </div>
         `).join('');
+        container.querySelectorAll('.quote-item-desc-cell textarea').forEach(autoGrowTextarea);
         safeCall(updateQuoteItemsTotalDisplay);
     }
     // Shows/hides the free-text field next to one of the quote's optional checkboxes (Payment
