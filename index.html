@@ -6457,6 +6457,31 @@
         doc.text(`Total Paid: $${totalPaid.toFixed(2)}`, 14, lineY);
         doc.setFont("helvetica", "bold");
         doc.text(`Remaining Balance: $${(totalDues + totalMaterials + totalBonus - totalPaid).toFixed(2)}`, 14, lineY + 7);
+        lineY += 7;
+
+        // Same "Prior Balance" figure shown on the Technician Report card: what he was still
+        // owed from BEFORE this period's own start date, so it's not lost just because this
+        // printout only covers the period dates picked above.
+        if (dateFrom) {
+            const priorDateTo = addDaysISO(dateFrom, -1);
+            const priorStats = computeTechPeriodStats('', priorDateTo)[techName];
+            const priorDues = priorStats ? priorStats.dues : 0;
+            const priorBonus = techBonusTotalInPeriod(techName, '', priorDateTo);
+            const priorPaid = techPaymentsInPeriod(techName, '', priorDateTo).reduce((sum, p) => sum + parseVal(p.amount), 0);
+            const priorBalance = round2(priorDues + priorBonus - priorPaid);
+            if (priorBalance > 0.005) {
+                lineY += 7;
+                const priorText = `Prior Balance (owed through ${priorDateTo}): $${priorBalance.toFixed(2)}`;
+                doc.setFont("helvetica", "bold");
+                const tw = doc.getTextWidth(priorText);
+                doc.setFillColor(254, 226, 226);
+                doc.rect(13, lineY - 4.5, tw + 4, 6, 'F');
+                doc.setTextColor(185, 28, 28);
+                doc.text(priorText, 14, lineY);
+                doc.setTextColor(0, 0, 0);
+                doc.setFont("helvetica", "normal");
+            }
+        }
 
         addLogoWatermark(doc);
         doc.autoPrint();
