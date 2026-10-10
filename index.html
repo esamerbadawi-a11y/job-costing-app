@@ -9959,7 +9959,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         if (quoteItemsState.length === 0) { container.innerHTML = `<div style="font-size:0.78rem; color:var(--text-muted); padding:6px 0;">${t('quoteNoItemsYet')}</div>`; safeCall(updateQuoteItemsTotalDisplay); return; }
         container.innerHTML = quoteItemsState.map((it, index) => `
             <div class="tech-card" style="margin-bottom:8px;">
-                <div style="display:grid; grid-template-columns: 1fr 110px 40px; gap:10px; align-items:end;">
+                <div class="invoice-item-grid" style="display:grid; grid-template-columns: 1fr 110px 40px; gap:10px; align-items:end;">
                     <div class="quote-item-desc-cell">
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColDesc')}</label>
                         <textarea rows="1" oninput="updateQuoteItemField(${index}, 'desc', this.value); autoGrowTextarea(this);" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; resize:vertical; min-height:40px; font-family:inherit; font-size:0.9rem; line-height:1.4;">${escHtml(it.desc)}</textarea>
