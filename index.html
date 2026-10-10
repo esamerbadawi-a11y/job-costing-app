@@ -2859,9 +2859,9 @@
         const text = (companyProfile.termsConditions || '').trim();
         if (!text) return '';
         const paragraphs = text.split(/\n+/).filter(Boolean).map(p => `<div style="margin-bottom:3px;">${escHtml(p)}</div>`).join('');
-        return `<div class="ui" style="margin-top:8px; padding-top:8px; border-top:1px solid #E7E1D6; font-size:8px; line-height:1.3; color:#6B6257;">
+        return `<div class="ui invoice-terms-block" style="margin-top:8px; padding-top:8px; border-top:1px solid #E7E1D6; font-size:8px; line-height:1.3; color:#6B6257;">
           <div style="font-weight:700; letter-spacing:0.5px; margin-bottom:3px; color:#3A332B;">${escHtml(t('lblTermsConditions')).toUpperCase()}</div>
-          ${paragraphs}
+          <div class="invoice-terms-body">${paragraphs}</div>
         </div>`;
     }
     // Tagline appearance (color/size/style) on the invoice and the estimate document — both
@@ -7174,7 +7174,7 @@
 
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button type="button" onclick="saveCurrentInvoice()" style="padding:10px 20px; font-size:0.9rem; background:#38bdf8; color:#0a0e17; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoiceSaveBtn')}</button>
-                <button type="button" onclick="printInvoice()" style="padding:10px 20px; font-size:0.9rem; background:#2C6B45; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoicePrintBtn')}</button>
+                <button type="button" id="invoicePrintBtn" onclick="shareInvoicePdf()" style="padding:10px 20px; font-size:0.9rem; background:#2C6B45; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoicePrintBtn')}</button>
                 <button type="button" onclick="sendInvoiceClientMessage()" style="padding:10px 20px; font-size:0.9rem; background:#7c3aed; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoiceSendMsgBtn')}</button>
             </div>
         `;
@@ -7324,7 +7324,7 @@
         // invoice isn't already marked paid. This is just a plain link to a page the payment
         // provider hosts and runs entirely themselves — WorkTally never talks to any payment
         // API directly, so no account key of any kind is ever stored in this file.
-        const payNowBtnHtml = (companyProfile.paymentLink && !isPaid) ? `<div style="text-align:${isAdditionalWork ? 'right' : 'right'}; margin-top:8px;"><a href="${escHtml(companyProfile.paymentLink)}" target="_blank" class="ui" style="display:inline-block; background:${accent}; color:#FDFBF6; text-decoration:none; font-weight:700; font-size:13px; padding:9px 18px; border-radius:6px;">${escHtml(t('payNowBtn'))}</a></div>` : '';
+        const payNowBtnHtml = (companyProfile.paymentLink && !isPaid) ? `<div class="invoice-paynow-row" style="text-align:${isAdditionalWork ? 'right' : 'right'}; margin-top:8px;"><a href="${escHtml(companyProfile.paymentLink)}" target="_blank" class="ui invoice-paynow-btn" style="display:inline-block; background:${accent}; color:#FDFBF6; text-decoration:none; font-weight:700; font-size:13px; padding:9px 18px; border-radius:6px;">${escHtml(t('payNowBtn'))}</a></div>` : '';
 
         // A fixed boilerplate block (not editable per-invoice) on Invoice/Estimate/Proposal only —
         // "Additional Work" keeps its own distinct layout and note section untouched.
@@ -7458,17 +7458,87 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         return html;
     }
 
-    function printInvoice() {
+    // Same real-attachment approach as the Estimate's "Send formal quote" button
+    // (shareAppointmentQuotePdf): instead of just opening a print tab, this builds an actual PDF
+    // file (via the same iframe + html2canvas screenshot as the on-screen invoice) and lays a real
+    // jsPDF link annotation over the Pay Now button's position, so it stays tappable once the PDF
+    // lands in WhatsApp/Mail/Files. The file goes out through the device's native Share sheet.
+    async function shareInvoicePdf() {
         if (!invoiceState) return;
-        // Opened synchronously, before anything else, so mobile browsers don't treat the
-        // eventual document.write() as a popup-blocker-worthy delayed open.
-        const win = window.open('', '_blank');
-        if (!win) { alert(t('alertSelectOneToPrint')); return; }
-        const html = buildInvoiceHtmlDoc(true);
-        if (!html) { win.close(); return; }
-        win.document.open();
-        win.document.write(html);
-        win.document.close();
+        const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
+        if (!job) return;
+        if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') { alert(t('alertShareNotSupported')); return; }
+
+        const btn = document.getElementById('invoicePrintBtn');
+        const prevLabel = btn ? btn.textContent : '';
+        if (btn) { btn.disabled = true; btn.textContent = t('quotePdfPreparing'); }
+
+        const ok = await saveCurrentInvoice();
+        if (!ok) { if (btn) { btn.disabled = false; btn.textContent = prevLabel; } return; }
+
+        const html = buildInvoiceHtmlDoc(false);
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:fixed; left:-10000px; top:0; width:900px; height:1200px; border:0; visibility:hidden;';
+        document.body.appendChild(iframe);
+        try {
+            await new Promise((resolve, reject) => {
+                iframe.onload = resolve;
+                iframe.onerror = () => reject(new Error('iframe load failed'));
+                iframe.srcdoc = html;
+                setTimeout(() => reject(new Error('timeout')), 8000);
+            });
+            await new Promise(r => setTimeout(r, 150));   // let the logo/watermark finish painting
+            const target = iframe.contentDocument.querySelector('.invoice-page');
+            if (!target) throw new Error('invoice page not found');
+            const targetRect = target.getBoundingClientRect();
+
+            // Locate the actual Pay Now <a> rendered in this same document, if one is showing
+            // (only present when a Company Profile payment link is set, and the invoice isn't paid).
+            let linkEl = null;
+            if (companyProfile.paymentLink) {
+                linkEl = Array.from(target.querySelectorAll('a[href]')).find(a => a.getAttribute('href') === companyProfile.paymentLink) || null;
+            }
+
+            const canvas = await html2canvas(target, { backgroundColor: '#FDFBF6', scale: 2, useCORS: true });
+            const imgData = canvas.toDataURL('image/png');
+
+            const { jsPDF } = window.jspdf;
+            const pdfWidthMm = 210; // A4 width — the image is scaled to fit it, keeping its aspect ratio
+            const scale = pdfWidthMm / targetRect.width;
+            const pdfHeightMm = targetRect.height * scale;
+            const doc = new jsPDF({ unit: 'mm', format: [pdfWidthMm, pdfHeightMm] });
+            doc.addImage(imgData, 'PNG', 0, 0, pdfWidthMm, pdfHeightMm);
+            if (linkEl) {
+                const linkRect = linkEl.getBoundingClientRect();
+                doc.link(
+                    (linkRect.left - targetRect.left) * scale,
+                    (linkRect.top - targetRect.top) * scale,
+                    linkRect.width * scale,
+                    linkRect.height * scale,
+                    { url: companyProfile.paymentLink }
+                );
+            }
+
+            const nameSlug = (job.clientName || 'client').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'client';
+            const filename = `${companyFileSlug()}_Invoice_${nameSlug}.pdf`;
+
+            if (navigator.share && navigator.canShare) {
+                const blob = doc.output('blob');
+                const file = new File([blob], filename, { type: 'application/pdf' });
+                if (navigator.canShare({ files: [file] })) {
+                    await navigator.share({ files: [file] });
+                } else {
+                    doc.save(filename);
+                }
+            } else {
+                doc.save(filename); // desktop fallback: a real download, still with the clickable link inside it
+            }
+        } catch (e) {
+            if (e && e.name !== 'AbortError') { console.error('shareInvoicePdf error:', e); alert(t('alertShareNotSupported')); }  // AbortError = user cancelled the share sheet, not a real failure
+        } finally {
+            iframe.remove();
+            if (btn) { btn.disabled = false; btn.textContent = prevLabel; }
+        }
     }
 
     // Renders a built document (invoice OR estimate) to a PNG image off-screen (via html2canvas,
