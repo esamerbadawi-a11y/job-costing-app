@@ -341,10 +341,10 @@
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
                     <button class="secondary" id="showAllPendingBtn" onclick="toggleAllPendingMode()" data-i18n="showAllPendingBtn"></button>
                     <span style="display:inline-flex; gap:8px;">
-                        <button class="secondary" onclick="shiftWeek(-1)">◀</button>
+                        <button class="secondary" onclick="shiftWeek(1)">◀</button>
                         <button class="secondary" onclick="shiftWeek(0)" data-i18n="thisWeekBtn"></button>
                         <button class="secondary" onclick="goToLastWeek()" data-i18n="presetLastWeekBtn"></button>
-                        <button class="secondary" onclick="shiftWeek(1)">▶</button>
+                        <button class="secondary" onclick="shiftWeek(-1)">▶</button>
                     </span>
                     <button class="success" onclick="openNewScheduleModal()" data-i18n="newScheduleBtn"></button>
                     <button class="secondary" style="background:#059669;" onclick="openSendScheduleModal()" data-i18n="sendScheduleBtn"></button>
@@ -829,10 +829,10 @@
                 <input type="date" id="guideDateTo" onchange="renderTechGuideContent()" style="min-width:130px;">
             </div>
             <button class="secondary" onclick="setGuideDateRange('today')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetTodayBtn"></button>
-            <button class="secondary" onclick="shiftGuideWeek(-1)" style="padding:6px 12px; font-size:0.75rem;">◀</button>
+            <button class="secondary" onclick="shiftGuideWeek(1)" style="padding:6px 12px; font-size:0.75rem;">◀</button>
             <button class="secondary" onclick="setGuideDateRange('week')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetWeekBtn"></button>
             <button class="secondary" onclick="setGuideDateRange('lastweek')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetLastWeekBtn"></button>
-            <button class="secondary" onclick="shiftGuideWeek(1)" style="padding:6px 12px; font-size:0.75rem;">▶</button>
+            <button class="secondary" onclick="shiftGuideWeek(-1)" style="padding:6px 12px; font-size:0.75rem;">▶</button>
             <button class="secondary" onclick="setGuideDateRange('clear')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
             <div style="display:flex; align-items:center; gap:6px;">
                 <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="lblTechShort"></label>
@@ -917,10 +917,10 @@
                 <input type="date" id="wdFilterTo" onchange="renderPartnerAccountContent()" style="min-width:130px;">
             </div>
             <button class="secondary" onclick="setPartnerDateRange('today')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetTodayBtn"></button>
-            <button class="secondary" onclick="shiftPartnerWeek(-1)" style="padding:6px 12px; font-size:0.75rem;">◀</button>
+            <button class="secondary" onclick="shiftPartnerWeek(1)" style="padding:6px 12px; font-size:0.75rem;">◀</button>
             <button class="secondary" onclick="setPartnerDateRange('week')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetWeekBtn"></button>
             <button class="secondary" onclick="setPartnerDateRange('lastweek')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetLastWeekBtn"></button>
-            <button class="secondary" onclick="shiftPartnerWeek(1)" style="padding:6px 12px; font-size:0.75rem;">▶</button>
+            <button class="secondary" onclick="shiftPartnerWeek(-1)" style="padding:6px 12px; font-size:0.75rem;">▶</button>
             <button class="secondary" onclick="document.getElementById('wdFilterPartner').value=''; setPartnerDateRange('clear');" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
         </div>
 
@@ -988,10 +988,10 @@
 
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:15px;">
             <button class="secondary" onclick="setTechPartnerDateRange('today')" style="flex:1; min-width:80px; padding:9px 10px; font-size:0.78rem;" data-i18n="presetTodayBtn"></button>
-            <button class="secondary" onclick="shiftTechPartnerWeek(-1)" style="padding:9px 14px; font-size:0.8rem;">◀</button>
+            <button class="secondary" onclick="shiftTechPartnerWeek(1)" style="padding:9px 14px; font-size:0.8rem;">◀</button>
             <button class="secondary" onclick="setTechPartnerDateRange('week')" style="flex:1; min-width:100px; padding:9px 10px; font-size:0.78rem;" data-i18n="presetWeekBtn"></button>
             <button class="secondary" onclick="setTechPartnerDateRange('lastweek')" style="flex:1; min-width:100px; padding:9px 10px; font-size:0.78rem;" data-i18n="presetLastWeekBtn"></button>
-            <button class="secondary" onclick="shiftTechPartnerWeek(1)" style="padding:9px 14px; font-size:0.8rem;">▶</button>
+            <button class="secondary" onclick="shiftTechPartnerWeek(-1)" style="padding:9px 14px; font-size:0.8rem;">▶</button>
             <button class="secondary" onclick="clearTechPartnerReportDates()" data-i18n="techPartnerClearDatesBtn" style="flex:1; min-width:100px; padding:9px 10px; font-size:0.78rem;"></button>
         </div>
 
