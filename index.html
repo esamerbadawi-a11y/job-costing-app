@@ -880,9 +880,9 @@
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
             <h2 style="color:#38bdf8; margin:0; font-size:1.2rem;">💰 <span data-i18n="partnerAccountTitle"></span></h2>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <button class="success" onclick="sendWhatsAppSharePartner('S','wdFilterFrom','wdFilterTo')" style="padding:6px 12px; font-size:0.8rem; background:#059669;" data-i18n="guideSendShareSBtn"></button>
-                <button class="success" onclick="sendWhatsAppSharePartner('M','wdFilterFrom','wdFilterTo')" style="padding:6px 12px; font-size:0.8rem; background:#059669;" data-i18n="guideSendShareMBtn"></button>
-                <button class="success" onclick="sendWhatsAppShareCombined('wdFilterFrom','wdFilterTo')" style="padding:6px 12px; font-size:0.8rem; background:#0891b2;" data-i18n="guideSendShareBothBtn"></button>
+                <button class="success" id="sendShareSBtn" onclick="sharePartnerSharePdf('S','wdFilterFrom','wdFilterTo','sendShareSBtn')" style="padding:6px 12px; font-size:0.8rem; background:#059669;" data-i18n="guideSendShareSBtn"></button>
+                <button class="success" id="sendShareMBtn" onclick="sharePartnerSharePdf('M','wdFilterFrom','wdFilterTo','sendShareMBtn')" style="padding:6px 12px; font-size:0.8rem; background:#059669;" data-i18n="guideSendShareMBtn"></button>
+                <button class="success" id="sendShareBothBtn" onclick="shareBothPartnerSharePdf('wdFilterFrom','wdFilterTo','sendShareBothBtn')" style="padding:6px 12px; font-size:0.8rem; background:#0891b2;" data-i18n="guideSendShareBothBtn"></button>
                 <button class="danger" onclick="closePartnerAccountModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
             </div>
         </div>
@@ -11809,35 +11809,136 @@ ${closeBtnHtml}
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
-    // Sends S and M's shares together in one message, each with its own per-job breakdown —
-    // for when the two of them are fine getting the same message (unlike the separate S-only /
-    // M-only buttons, which exist so each can be sent privately to just that one person).
-    function sendWhatsAppShareCombined(dateFromId, dateToId) {
-        const dateFrom = document.getElementById(dateFromId).value;
-        const dateTo = document.getElementById(dateToId).value;
+    // Draws ONE partner's "Earned vs Withdrawn" section (title, period line, a row per job he
+    // earned from in the period plus a row per withdrawal he took in it — so the report answers
+    // both "how much" and "why" (the withdrawal's own note), not just a single total — then the
+    // Total Earned / Total Withdrawn / Remaining Balance figures, matching the same numbers the
+    // Partner Account screen itself shows for this exact period. Returns the Y position right
+    // after everything it drew, so a second section (used by the combined S+M report) can start
+    // right below it.
+    function buildPartnerShareReportSection(doc, partner, dateFrom, dateTo, startY) {
         const hasDateFilter = !!(dateFrom || dateTo);
         const { totalShareS, totalShareM, jobBreakdown } = computeSAndMPeriodShare(dateFrom, dateTo);
-        const periodLine = hasDateFilter
-            ? (currentLang === 'ar' ? `\nالفترة: ${dateFrom || '...'} → ${dateTo || '...'}` : `\nPeriod: ${dateFrom || '...'} → ${dateTo || '...'}`)
-            : '';
-        const buildLines = key => (jobBreakdown || []).map(b => {
-            const amt = b[key];
-            if (Math.abs(amt) < 0.005) return null;
-            const label = b.generalBonus
-                ? (currentLang === 'ar' ? 'بونص عام' : 'General bonus')
-                : `${b.job.clientName || ''}${b.job.startDate ? ' (' + b.job.startDate + ')' : ''}`;
-            return `${label}: $${amt.toFixed(2)}`;
-        }).filter(Boolean);
-        const totalLabel = currentLang === 'ar' ? 'الإجمالي' : 'Total';
-        const sLabel = currentLang === 'ar' ? 'حصة S' : 'S Share';
-        const mLabel = currentLang === 'ar' ? 'حصة M' : 'M Share';
-        const parts = [
-            `${currentLang === 'ar' ? 'تقرير حصص الأرباح' : 'Profit Share Report'}:${periodLine}`,
-            '', `${sLabel}:`, ...buildLines('shareS'), `${totalLabel}: $${totalShareS.toFixed(2)}`,
-            '', `${mLabel}:`, ...buildLines('shareM'), `${totalLabel}: $${totalShareM.toFixed(2)}`
-        ];
-        const msg = parts.join('\n');
-        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+        const totalEarned = partner === 'M' ? totalShareM : totalShareS;
+        const shareKey = partner === 'M' ? 'shareM' : 'shareS';
+
+        const rows = [];
+        (jobBreakdown || []).forEach(b => {
+            const amt = b[shareKey];
+            if (Math.abs(amt) < 0.005) return;
+            const label = b.generalBonus ? 'General bonus' : (b.job.clientName || '');
+            rows.push({ date: b.generalBonus ? '' : (b.job.startDate || ''), desc: label, type: 'Earned', amount: round2(amt) });
+        });
+        let totalWithdrawn = 0;
+        partnerWithdrawals.forEach(w => {
+            if (w.partner !== partner) return;
+            if (dateFrom && !(w.date && w.date >= dateFrom)) return;
+            if (dateTo && !(w.date && w.date <= dateTo)) return;
+            const amt = parseVal(w.amount);
+            totalWithdrawn += amt;
+            rows.push({ date: w.date || '', desc: w.note || '-', type: 'Withdrawn', amount: -round2(amt) });
+        });
+        rows.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(0, 0, 0);
+        doc.text(`${partner} - Earned vs Withdrawn`, 14, startY);
+        doc.setFont('helvetica', 'italic'); doc.setFontSize(8.5); doc.setTextColor(90, 90, 90);
+        doc.text(hasDateFilter ? `Period: ${dateFrom || '...'} to ${dateTo || '...'}` : 'Period: All time', 14, startY + 5.5);
+        doc.setTextColor(0, 0, 0);
+
+        const headers = [["Date", "Description", "Type", "Amount"]];
+        const money = v => (v < 0 ? '-$' : '+$') + Math.abs(v).toFixed(2);
+        const data = rows.length ? rows.map(r => [r.date, r.desc, r.type, money(r.amount)]) : [['-', 'No activity in this period', '-', '-']];
+        const EARNED_RGB = [5, 150, 105], WITHDRAWN_RGB = [185, 28, 28];
+
+        doc.autoTable({
+            head: headers, body: data, startY: startY + 9, theme: 'grid',
+            styles: { fontSize: 9, cellPadding: 2, halign: 'center' },
+            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+            didParseCell: function (cellData) {
+                if (cellData.section !== 'body' || !rows.length || cellData.column.index !== 3) return;
+                cellData.cell.styles.fontStyle = 'bold';
+                cellData.cell.styles.textColor = cellData.row.raw[2] === 'Withdrawn' ? WITHDRAWN_RGB : EARNED_RGB;
+            }
+        });
+
+        let finalY = doc.lastAutoTable.finalY + 8;
+        const remaining = round2(totalEarned - totalWithdrawn);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
+        doc.setTextColor(...EARNED_RGB); doc.text(`Total Earned: $${totalEarned.toFixed(2)}`, 14, finalY);
+        doc.setTextColor(...WITHDRAWN_RGB); doc.text(`Total Withdrawn: $${totalWithdrawn.toFixed(2)}`, 14, finalY + 7);
+        doc.setTextColor(0, 0, 0); doc.setFont('helvetica', 'bold');
+        doc.text(`Remaining Balance: $${remaining.toFixed(2)}`, 14, finalY + 14);
+        doc.setFont('helvetica', 'normal');
+
+        return finalY + 14;
+    }
+
+    // Native share sheet when available (same pattern as the Quote/Invoice PDF share flow),
+    // otherwise a direct download. Cancelling the share sheet (AbortError) is not an error.
+    async function sharePdfDocOrSave(doc, filename) {
+        if (navigator.share && navigator.canShare) {
+            const blob = doc.output('blob');
+            const file = new File([blob], filename, { type: 'application/pdf' });
+            if (navigator.canShare({ files: [file] })) {
+                try { await navigator.share({ files: [file] }); } catch (e) { if (e && e.name === 'AbortError') return; throw e; }
+                return;
+            }
+        }
+        doc.save(filename);
+    }
+
+    // "Send S Share" / "Send M Share" — builds that partner's own Earned-vs-Withdrawn report for
+    // whatever period is currently picked on the Partner Account screen, as a real PDF (same
+    // formal-document approach as the Quote and Invoice "send" buttons), then shares or saves it.
+    async function sharePartnerSharePdf(partner, dateFromId, dateToId, btnId) {
+        if (typeof window.jspdf === 'undefined') { alert(t('alertShareNotSupported')); return; }
+        const dateFrom = document.getElementById(dateFromId).value;
+        const dateTo = document.getElementById(dateToId).value;
+        const btn = document.getElementById(btnId);
+        const prevLabel = btn ? btn.textContent : '';
+        if (btn) { btn.disabled = true; btn.textContent = t('quotePdfPreparing'); }
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+            buildPartnerShareReportSection(doc, partner, dateFrom, dateTo, 18);
+            addLogoWatermark(doc);
+            const filename = `${companyFileSlug()}_${partner}_Share_${dateFrom || 'all'}_${dateTo || 'all'}.pdf`;
+            await sharePdfDocOrSave(doc, filename);
+        } catch (e) {
+            console.error('sharePartnerSharePdf error:', e);
+            alert(t('alertShareNotSupported'));
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = prevLabel; }
+        }
+    }
+
+    // "Send Both Together" — one PDF with S's full section followed by M's, so the two of them
+    // can get the same single file (unlike the separate S-only / M-only buttons, which exist so
+    // each can be sent privately to just that one person).
+    async function shareBothPartnerSharePdf(dateFromId, dateToId, btnId) {
+        if (typeof window.jspdf === 'undefined') { alert(t('alertShareNotSupported')); return; }
+        const dateFrom = document.getElementById(dateFromId).value;
+        const dateTo = document.getElementById(dateToId).value;
+        const btn = document.getElementById(btnId);
+        const prevLabel = btn ? btn.textContent : '';
+        if (btn) { btn.disabled = true; btn.textContent = t('quotePdfPreparing'); }
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+            let y = buildPartnerShareReportSection(doc, 'S', dateFrom, dateTo, 18);
+            y += 14;
+            if (y > 250) { doc.addPage(); y = 18; }
+            buildPartnerShareReportSection(doc, 'M', dateFrom, dateTo, y);
+            addLogoWatermark(doc);
+            const filename = `${companyFileSlug()}_S_and_M_Share_${dateFrom || 'all'}_${dateTo || 'all'}.pdf`;
+            await sharePdfDocOrSave(doc, filename);
+        } catch (e) {
+            console.error('shareBothPartnerSharePdf error:', e);
+            alert(t('alertShareNotSupported'));
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = prevLabel; }
+        }
     }
 </script>
 </body>
