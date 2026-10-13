@@ -10131,7 +10131,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                     </div>
                     <div>
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColAmount')}</label>
-                        <input type="text" value="${it.amount !== undefined ? it.amount : ''}" onfocus="this.select()" oninput="updateQuoteItemField(${index}, 'amount', this.value); updateQuoteItemsTotalDisplay();" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; text-align:center;">
+                        <input type="text" value="${it.amount !== undefined ? it.amount : ''}" onfocus="this.select()" oninput="updateQuoteItemField(${index}, 'amount', this.value); syncQuotePriceFromItems();" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; text-align:center;">
                     </div>
                     <div style="display:flex; align-items:stretch; height:40px;">
                         <button type="button" onclick="removeQuoteItemRow(${index})" style="background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid rgba(225,29,72,0.4); padding:9px 0; border-radius:8px; width:100%; cursor:pointer; font-size:14px;">✕</button>
@@ -10165,7 +10165,20 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     }
     function updateQuoteItemField(index, field, value) { if (quoteItemsState[index]) quoteItemsState[index][field] = value; }
     function addQuoteItemRow() { quoteItemsState.push({ desc: '', amount: '' }); renderQuoteItemsTable(); }
-    function removeQuoteItemRow(index) { quoteItemsState.splice(index, 1); renderQuoteItemsTable(); }
+    function removeQuoteItemRow(index) { quoteItemsState.splice(index, 1); renderQuoteItemsTable(); syncQuotePriceFromItems(); }
+
+    // Keeps "Total price" in step with the item amounts as they're typed, so a quote built item by
+    // item never needs its own separate price typed in too — the total IS the sum of the items.
+    // The field stays a normal, freely-editable input: typing in it directly (after items are
+    // already filled in) still works as a manual override, right up until the next item amount
+    // changes, at which point the running sum takes over it again.
+    function syncQuotePriceFromItems() {
+        const priceInput = document.getElementById('quotePriceInput');
+        if (!priceInput) return;
+        const sum = round2(quoteItemsState.reduce((s, it) => s + parseVal(it.amount), 0));
+        priceInput.value = sum;
+        updateQuoteItemsTotalDisplay();
+    }
 
     // Sends the quote photo + the already-entered total price to the AI, asking it to split
     // that exact total into a believable itemized breakdown based on what's visible in the
