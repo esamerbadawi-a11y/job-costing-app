@@ -48,7 +48,7 @@
         .stats-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 12px; margin-bottom: 20px; }
         @media(max-width: 1300px) { .stats-grid { grid-template-columns: repeat(4, 1fr); } }
         @media(max-width: 700px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media(max-width: 600px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+        @media(max-width: 600px) { .grid-2, .grid-3 { grid-template-columns: 1fr !important; } }
         /* Invoice item row (Description/Qty/Amount/✕): on a narrow phone the fixed-width Qty/
            Amount/✕ columns left almost no room for the Description box, where the long text
            people actually type gets cramped. Stacking it to one field per line here gives
