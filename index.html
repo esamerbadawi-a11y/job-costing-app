@@ -625,6 +625,24 @@
                     <input type="email" id="clientEmail" data-i18n-ph="apptEmailPh">
                 </div>
 
+                <div class="form-group" style="background: rgba(14, 165, 233, 0.06); border: 1px dashed var(--border-color); border-radius: 10px; padding: 12px;">
+                    <label data-i18n="lblCcSectionTitle" style="margin-bottom:10px;"></label>
+                    <div class="grid-3">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label data-i18n="lblCcName" style="font-size:0.75rem;"></label>
+                            <input type="text" id="ccContactName" data-i18n-ph="phCcName">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label data-i18n="lblCcPhone" style="font-size:0.75rem;"></label>
+                            <input type="text" id="ccContactPhone" placeholder="(555) 123-4567">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label data-i18n="lblCcEmail" style="font-size:0.75rem;"></label>
+                            <input type="email" id="ccContactEmail" data-i18n-ph="phCcEmail">
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-group" style="position: relative;">
                     <label data-i18n="lblAddress"></label>
                     <input type="text" id="clientAddress" data-i18n-ph="phAddress" oninput="onAddressInput('clientAddress','addressAutocompleteList')" autocomplete="off">
@@ -1940,6 +1958,12 @@
         lblTenantName: { ar: 'اسم المستأجر/الساكن (اختياري):', en: 'Tenant/Occupant Name (optional):' },
         phTenantName: { ar: 'لو العميل مش هو الساكن فعليًا في العنوان', en: "If the client isn't the one actually living at the address" },
         lblTenantPhone: { ar: 'تلفون المستأجر/الساكن (اختياري):', en: 'Tenant/Occupant Phone (optional):' },
+        lblCcSectionTitle: { ar: 'شخص تاني يتابع على الإيميل (اختياري)', en: 'Someone else to CC on emails (optional)' },
+        lblCcName: { ar: 'اسمه:', en: 'Name:' },
+        phCcName: { ar: 'اسم الشخص اللي هيتابع', en: 'Name of the person following up' },
+        lblCcPhone: { ar: 'تلفونه (اختياري):', en: 'Phone (optional):' },
+        lblCcEmail: { ar: 'إيميله:', en: 'Email:' },
+        phCcEmail: { ar: 'هيتحط CC تلقائي في أي إيميل بيتبعت للعميل', en: "Gets added as CC automatically on emails sent to the client" },
         addrNoMatches: { ar: 'مفيش عنوان مطابق — جرب تكتب أكمل (رقم المبنى + الشارع + المدينة)', en: 'No matching address — try typing more (house number + street + city)' },
         addrSearchFailed: { ar: '⚠️ تعذر البحث عن العنوان (مشكلة اتصال) — جرب تاني', en: '⚠️ Address search failed (connection issue) — try again' },
         invoiceTitle: { ar: 'فاتورة', en: 'INVOICE' },
@@ -4163,9 +4187,21 @@
                 if (oIdx === -1) throw new Error('other-job-not-found');
                 const hJob = freshJobs[hIdx];
                 const oJob = freshJobs[oIdx];
-                const hTech = (hJob.technicians || []).find(t2 => (t2.name || '').trim() === techName);
+                hJob.technicians = hJob.technicians || [];
+                let hTech = hJob.technicians.find(t2 => (t2.name || '').trim() === techName);
+                // This job's own technician list in Firestore can be missing the one being split if
+                // he was just added on this open form and the job hasn't been saved again since —
+                // the overlap warning only needs him to be SCHEDULED (Weekly Board), not yet on the
+                // pay list. Rather than fail the split, carry over the open form's own entry for him
+                // (its rate/type/etc. are what the person is looking at right now) so nothing typed
+                // here is lost.
+                if (!hTech) {
+                    const localTech = technicians[index];
+                    if (!localTech || (localTech.name || '').trim() !== techName) throw new Error('this-tech-not-found');
+                    hTech = JSON.parse(JSON.stringify(localTech));
+                    hJob.technicians.push(hTech);
+                }
                 const oTech = (oJob.technicians || []).find(t2 => (t2.name || '').trim() === techName);
-                if (!hTech) throw new Error('this-tech-not-found');
                 if (!oTech) throw new Error('other-tech-not-found');
                 hTech.dailyAlloc = hTech.dailyAlloc || [];
                 oTech.dailyAlloc = oTech.dailyAlloc || [];
@@ -4184,6 +4220,10 @@
                 alert(currentLang === 'ar' ? 'فيه مبلغ متحط فعلاً لنفس اليوم في الشغلانة التانية — راجعها الأول.' : 'An amount already exists for that day on the other job — check it first.');
             } else if (err && err.message === 'this-already-has-amount') {
                 alert(currentLang === 'ar' ? 'فيه مبلغ متحط فعلاً لنفس اليوم في الشغلانة دي — راجعها الأول.' : 'An amount already exists for that day on this job — check it first.');
+            } else if (err && err.message === 'other-tech-not-found') {
+                alert(currentLang === 'ar' ? 'الفني ده لسه مش مضاف في قائمة فنيين الشغلانة التانية — ضيفه هناك الأول وبعدين جرب تقسيم اليومية تاني.' : "This technician isn't on the other job's technician list yet — add him there first, then try splitting the day again.");
+            } else if (err && err.message === 'this-tech-not-found') {
+                alert(currentLang === 'ar' ? 'حصل خطأ في تحديد الفني في الشغلانة دي. اقفل النافذة وجرب تاني.' : "Couldn't match this technician on this job. Close this and try again.");
             } else {
                 alertSaveError(err);
             }
@@ -5073,7 +5113,8 @@
         if (kind === 'email') {
             if (!c.job.clientEmail) { alert(t('alertJobHasNoEmail')); return; }
             const subject = encodeURIComponent(`${t(emailSubjectKeyFor(c.msgKind))} ${companyDisplayName()}`);
-            openExternal(`mailto:${c.job.clientEmail}?subject=${subject}&body=${encodeURIComponent(text)}`, false);
+            const cc = c.job.ccContactEmail ? `&cc=${encodeURIComponent(c.job.ccContactEmail)}` : '';
+            openExternal(`mailto:${c.job.clientEmail}?subject=${subject}${cc}&body=${encodeURIComponent(text)}`, false);
             markFollowUpSent(c);
             return;
         }
@@ -5549,6 +5590,9 @@
             tenantName: document.getElementById('tenantName').value.trim(),
             tenantPhone: document.getElementById('tenantPhone').value.trim(),
             clientEmail: document.getElementById('clientEmail').value.trim(),
+            ccContactName: document.getElementById('ccContactName').value.trim(),
+            ccContactPhone: document.getElementById('ccContactPhone').value.trim(),
+            ccContactEmail: document.getElementById('ccContactEmail').value.trim(),
             jobStatus: document.getElementById('jobStatus').value,
             clientAddress: document.getElementById('clientAddress').value.trim(),
             clientDescription: document.getElementById('clientDescription').value.trim(),
@@ -5655,6 +5699,9 @@
         document.getElementById('tenantName').value = '';
         document.getElementById('tenantPhone').value = '';
         document.getElementById('clientEmail').value = '';
+        document.getElementById('ccContactName').value = '';
+        document.getElementById('ccContactPhone').value = '';
+        document.getElementById('ccContactEmail').value = '';
         document.getElementById('jobStatus').value = 'شغال';
         document.getElementById('clientAddress').value = '';
         document.getElementById('clientDescription').value = '';
@@ -6131,6 +6178,9 @@
         document.getElementById('tenantName').value = job.tenantName || '';
         document.getElementById('tenantPhone').value = job.tenantPhone || '';
         document.getElementById('clientEmail').value = job.clientEmail || '';
+        document.getElementById('ccContactName').value = job.ccContactName || '';
+        document.getElementById('ccContactPhone').value = job.ccContactPhone || '';
+        document.getElementById('ccContactEmail').value = job.ccContactEmail || '';
         document.getElementById('clientAddress').value = job.clientAddress || '';
         checkCrmCustomerData();
 
@@ -6151,6 +6201,9 @@
         document.getElementById('tenantName').value = job.tenantName || '';
         document.getElementById('tenantPhone').value = job.tenantPhone || '';
         document.getElementById('clientEmail').value = job.clientEmail || '';
+        document.getElementById('ccContactName').value = job.ccContactName || '';
+        document.getElementById('ccContactPhone').value = job.ccContactPhone || '';
+        document.getElementById('ccContactEmail').value = job.ccContactEmail || '';
         document.getElementById('jobStatus').value = job.jobStatus || 'شغال';
         document.getElementById('clientAddress').value = job.clientAddress || '';
         document.getElementById('clientDescription').value = job.clientDescription || '';
@@ -9673,6 +9726,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     function editAppointmentNow(id) {
         const appt = appointments.find(a => a.id === id);
         if (!appt) return;
+        closeAppointmentsListModal(); // the edit form lives on the Appointments screen itself, underneath the list modal
         editingApptId = id;
         document.getElementById('apptClientName').value = appt.clientName || '';
         document.getElementById('apptClientPhone').value = appt.clientPhone || '';
