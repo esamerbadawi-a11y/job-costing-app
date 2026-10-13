@@ -4823,14 +4823,25 @@
     // ---------- AI payment reminder: a window that shows progress, the message (editable) and the send buttons ----------
     let aiReminderCtx = null;
 
-    // Appended to a client-facing message's text (never into the picture an Attach & Share
-    // sends — an image can never be clickable, so the live link has to ride along in the text
-    // instead) whenever a Payment Link is saved in Company Profile. Used by the quote message
-    // and the payment-reminder message, not the thank-you note (that's sent after a job is
-    // already paid in full).
+    // Appended to a client-facing message's text whenever a Payment Link is saved in Company
+    // Profile, so WhatsApp/SMS/Email — which never carry a file attachment — still hand the
+    // client a working link. Used by the quote message and the payment-reminder message, not the
+    // thank-you note (that's sent after a job is already paid in full). See stripPaymentLinkLine()
+    // below for the one channel (Attach & Share) where this line gets taken back out again.
     function paymentLinkMessageLine(lang) {
         if (!companyProfile.paymentLink) return '';
         return lang === 'ar' ? `\n\nتقدر تدفع أونلاين من هنا: ${companyProfile.paymentLink}` : `\n\nYou can pay online here: ${companyProfile.paymentLink}`;
+    }
+    // Attach & Share's PDF attachment already carries a real, clickable Pay Now button (see
+    // buildLinkedPdfFile), so the raw URL paymentLinkMessageLine() added to the text — there only
+    // as a fallback for the text-only channels (WhatsApp/SMS/Email), which can't attach a file at
+    // all — would just be noise repeated right next to the message. This strips that one line back
+    // out of a copy of the text before it goes into the share sheet alongside the PDF; the textarea
+    // itself (and the WhatsApp/SMS/Email/Copy buttons) still use the untouched, full text.
+    function stripPaymentLinkLine(text) {
+        if (!companyProfile.paymentLink || !text) return text;
+        const esc = companyProfile.paymentLink.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return text.replace(new RegExp(`\\n*\\s*(You can pay online here:|تقدر تدفع أونلاين من هنا:)\\s*${esc}\\s*`, 'i'), '').trim();
     }
     function buildReminderPrompt(job, rem, daysOverdue, lang, customInstructions) {
         const long = daysOverdue && daysOverdue > 14;
@@ -7695,7 +7706,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             }
             if (!file || !navigator.canShare({ files: [file] })) { alert(t('alertShareNotSupported')); return; }
             try {
-                await navigator.share({ files: [file], text });
+                await navigator.share({ files: [file], text: stripPaymentLinkLine(text) });
             } catch (e) {
                 if (e && e.name !== 'AbortError') { console.error('shareAiReminderWithInvoice error:', e); alert(t('alertShareNotSupported')); }
             }
