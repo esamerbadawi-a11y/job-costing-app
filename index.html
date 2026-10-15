@@ -2725,7 +2725,19 @@
     const TECH_BONUSES_DOC = db.collection('jobCostingApp').doc('techBonuses');
     const COMPANY_PROFILE_DOC = db.collection('jobCostingApp').doc('companyProfile');
 
-    async function saveSavedJobsData(){ await JOBS_DOC.set({ jobs: savedJobs }); }
+    // SAFETY NET — see the identical, much longer comment above saveAppointmentsData for why
+    // this exists: a stale/incomplete local Firestore cache snapshot could otherwise get written
+    // straight over the real, complete data and silently wipe jobs with no activity-log trace.
+    let lastKnownGoodJobCount = null;
+    async function saveSavedJobsData(){
+        if (lastKnownGoodJobCount !== null && lastKnownGoodJobCount > 3 && savedJobs.length < lastKnownGoodJobCount * 0.5) {
+            const msg = `Refusing to save jobs: list shrank from ${lastKnownGoodJobCount} to ${savedJobs.length} unexpectedly — this looks like data loss, not a real edit.`;
+            console.error(msg);
+            alert('⚠️ ' + msg);
+            throw new Error(msg);
+        }
+        await JOBS_DOC.set({ jobs: savedJobs });
+    }
 
     // Firestore caps a single document at 1MB, and base64 photos/PDF receipts embedded
     // directly in each job were pushing the one shared "savedJobs" document over that
@@ -2837,7 +2849,23 @@
     // document, then keeps the in-memory copy just as slim so it can never drift back over the
     // cap between saves — the appointment actively being edited only ever holds its own photos
     // briefly, in currentApptPhotos/currentQuotePhotos, exactly like the job form's currentJobPhotos.
+    // SAFETY NET: Firestore's offline persistence can hand the app a STALE/INCOMPLETE local
+    // cache for one brief moment before the real server data arrives (e.g. right after a fresh
+    // page load). Because saveAppointmentsData() below OVERWRITES the entire shared document,
+    // any write that fires while `appointments` is holding that incomplete cache snapshot would
+    // silently wipe out every appointment not in it — with no "Deleted" activity-log entry, since
+    // it isn't going through deleteAppointment(). lastKnownGoodApptCount is only ever updated from
+    // a snapshot Firestore confirms is NOT from cache (the real, authoritative server state), and
+    // saveAppointmentsData refuses to write anything that looks like a mass loss relative to it.
+    let lastKnownGoodApptCount = null;
+
     async function saveAppointmentsData() {
+        if (lastKnownGoodApptCount !== null && lastKnownGoodApptCount > 3 && appointments.length < lastKnownGoodApptCount * 0.5) {
+            const msg = `Refusing to save appointments: list shrank from ${lastKnownGoodApptCount} to ${appointments.length} unexpectedly — this looks like data loss, not a real edit.`;
+            console.error(msg);
+            alert('⚠️ ' + msg);
+            throw new Error(msg);
+        }
         const attachmentsToSave = [];
         const slimEntries = appointments.map(appt => {
             const { slimAppt, attachments, hasAttachments } = splitApptAttachments(appt);
@@ -2849,28 +2877,6 @@
         for (const { id, attachments } of attachmentsToSave) {
             try { await saveApptAttachments(id, attachments); }
             catch (err) { console.error('Appointment attachments save failed:', id, err); }
-        }
-    }
-
-    // One-time, automatic cleanup: if any appointment already in Firestore still has photos
-    // embedded inline (saved before this fix), move them out to their own document and re-save
-    // the now-slim main document — same recovery migrateJobAttachmentsIfNeeded does for jobs.
-    let apptAttachmentsMigrationAttempted = false;
-    async function migrateApptAttachmentsIfNeeded() {
-        if (apptAttachmentsMigrationAttempted) return;
-        const needsMigration = appointments.some(a =>
-            (a.photos && a.photos.length > 0) ||
-            (a.quotePhotos && a.quotePhotos.length > 0) ||
-            (a.savedQuotes || []).some(q => q.photos && q.photos.length > 0)
-        );
-        if (!needsMigration) return;
-        apptAttachmentsMigrationAttempted = true;
-        try {
-            await saveAppointmentsData();
-            console.log('Appointment photo attachments migrated out of the main appointments document.');
-        } catch (err) {
-            console.error('Appointment attachments migration failed:', err);
-            apptAttachmentsMigrationAttempted = false; // allow a retry on the next snapshot
         }
     }
 
@@ -3137,7 +3143,15 @@
             savedJobs = jobs;
             refreshAllViews();
             safeCall(checkDebtReminders);
-            migrateJobAttachmentsIfNeeded(); // manages its own errors; fire-and-forget
+            // Only trust/act on a snapshot Firestore confirms came from the server — never the
+            // local offline cache, which can briefly hand back a stale/incomplete list right
+            // after a page load, before migrateJobAttachmentsIfNeeded's automatic save (or the
+            // count guard inside saveSavedJobsData, which this also feeds) would have anything
+            // real to compare against.
+            if (!doc.metadata.fromCache) {
+                lastKnownGoodJobCount = savedJobs.length;
+                migrateJobAttachmentsIfNeeded(); // manages its own errors; fire-and-forget
+            }
         }, err => console.error('Firestore jobs sync error:', err));
 
         TECHS_DOC.onSnapshot(doc => {
@@ -3163,7 +3177,10 @@
         APPOINTMENTS_DOC.onSnapshot(doc => {
             appointments = (doc.exists && doc.data().entries) ? doc.data().entries : [];
             if (document.getElementById('screenAppointments').style.display !== 'none') safeCall(renderAppointments);
-            migrateApptAttachmentsIfNeeded(); // manages its own errors; fire-and-forget
+            // Only trust a snapshot Firestore confirms came from the server (not the local
+            // offline cache) to set the "known good" count saveAppointmentsData() guards
+            // against — see the safety-net comment above saveAppointmentsData.
+            if (!doc.metadata.fromCache) lastKnownGoodApptCount = appointments.length;
         }, err => console.error('Firestore appointments sync error:', err));
 
         SERVICE_TYPES_DOC.onSnapshot(doc => {
