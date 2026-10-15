@@ -373,6 +373,28 @@
                     <input type="text" id="apptClientPhone" placeholder="(555) 123-4567">
                 </div>
                 <input type="email" id="apptClientEmail" data-i18n-ph="apptEmailPh" style="margin-bottom:10px;">
+
+                <div class="chip-row" style="margin-bottom:10px;">
+                    <button type="button" class="secondary" id="apptToggleCcBtn" onclick="toggleApptCcSection()" data-i18n="btnToggleCc"></button>
+                </div>
+                <div class="form-group" id="apptCcSection" style="display:none; background: rgba(14, 165, 233, 0.06); border: 1px dashed var(--border-color); border-radius: 10px; padding: 12px;">
+                    <label data-i18n="lblCcSectionTitle" style="margin-bottom:10px;"></label>
+                    <div class="grid-3">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label data-i18n="lblCcName" style="font-size:0.75rem;"></label>
+                            <input type="text" id="apptCcContactName" data-i18n-ph="phCcName">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label data-i18n="lblCcPhone" style="font-size:0.75rem;"></label>
+                            <input type="text" id="apptCcContactPhone" placeholder="(555) 123-4567">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label data-i18n="lblCcEmail" style="font-size:0.75rem;"></label>
+                            <input type="email" id="apptCcContactEmail" data-i18n-ph="phCcEmail">
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-group" style="position: relative;">
                     <input type="text" id="apptClientAddress" data-i18n-ph="apptAddressPh" oninput="onAddressInput('apptClientAddress','apptAddressAutocompleteList')" autocomplete="off">
                     <div id="apptAddressAutocompleteList" class="autocomplete-items" style="display: none;"></div>
@@ -9764,6 +9786,15 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         input.value = '';
     }
 
+    // Same collapsed-by-default idea as the job form's Tenant/CC buttons: keeps this already-long
+    // form shorter, and auto-expands on its own whenever the appointment being edited already has
+    // someone in it, so existing data is never hidden out of sight.
+    function toggleApptCcSection() {
+        const el = document.getElementById('apptCcSection');
+        if (!el) return;
+        el.style.display = el.style.display === 'none' ? '' : 'none';
+    }
+
     function editAppointment(id) { guardApptFormExit(() => editAppointmentNow(id)); }
     function editAppointmentNow(id) {
         const appt = appointments.find(a => a.id === id);
@@ -9773,6 +9804,10 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('apptClientName').value = appt.clientName || '';
         document.getElementById('apptClientPhone').value = appt.clientPhone || '';
         document.getElementById('apptClientEmail').value = appt.clientEmail || '';
+        document.getElementById('apptCcContactName').value = appt.ccContactName || '';
+        document.getElementById('apptCcContactPhone').value = appt.ccContactPhone || '';
+        document.getElementById('apptCcContactEmail').value = appt.ccContactEmail || '';
+        document.getElementById('apptCcSection').style.display = (appt.ccContactName || appt.ccContactPhone || appt.ccContactEmail) ? '' : 'none';
         document.getElementById('apptClientAddress').value = appt.clientAddress || '';
         document.getElementById('apptDate').value = appt.requestedDate || '';
         document.getElementById('apptTime').value = appt.requestedTime || '';
@@ -9791,6 +9826,10 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('apptClientName').value = '';
         document.getElementById('apptClientPhone').value = '';
         document.getElementById('apptClientEmail').value = '';
+        document.getElementById('apptCcContactName').value = '';
+        document.getElementById('apptCcContactPhone').value = '';
+        document.getElementById('apptCcContactEmail').value = '';
+        document.getElementById('apptCcSection').style.display = 'none';
         document.getElementById('apptClientAddress').value = '';
         document.getElementById('apptDate').value = '';
         document.getElementById('apptTime').value = '';
@@ -9812,6 +9851,9 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             clientName,
             clientPhone: document.getElementById('apptClientPhone').value.trim(),
             clientEmail: document.getElementById('apptClientEmail').value.trim(),
+            ccContactName: document.getElementById('apptCcContactName').value.trim(),
+            ccContactPhone: document.getElementById('apptCcContactPhone').value.trim(),
+            ccContactEmail: document.getElementById('apptCcContactEmail').value.trim(),
             clientAddress: document.getElementById('apptClientAddress').value.trim(),
             requestedDate: document.getElementById('apptDate').value,
             requestedTime: document.getElementById('apptTime').value,
@@ -9855,6 +9897,9 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             clientName: appt.clientName || '',
             clientPhone: appt.clientPhone || '',
             clientEmail: appt.clientEmail || '',
+            ccContactName: appt.ccContactName || '',
+            ccContactPhone: appt.ccContactPhone || '',
+            ccContactEmail: appt.ccContactEmail || '',
             jobStatus: 'شغال',
             clientAddress: appt.clientAddress || '',
             clientDescription: [servicesLine, appt.note || ''].filter(Boolean).join('\n'),
