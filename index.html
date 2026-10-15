@@ -5682,7 +5682,10 @@
             catch (err) { alert(t('alertAttachmentsSaveFailed')); }
         }
         resetForm();
-        refreshAllViews();
+        // No manual refreshAllViews() here: the JOBS_DOC real-time listener (setupRealtimeSync)
+        // already re-renders everything the instant this write lands — calling it again here was
+        // a full jobs-table rebuild + stats recompute happening TWICE back-to-back on every single
+        // Save, which is exactly what got slower and more "hang"-y as the number of saved jobs grew.
         if (jobOverlayOpen) { closeJobOverlay(); showToast(t('toastJobSaved')); }
     }
 
@@ -6321,7 +6324,7 @@
         selectedJobIds.delete(id);
         await saveSavedJobsData();
         logActivity('delete', deletedClientName);
-        refreshAllViews();
+        // No manual refreshAllViews() — the JOBS_DOC listener already re-renders once this write lands.
         jobAttachmentsDocRef(id).delete().catch(() => {}); // best-effort; not critical if it fails
     }
 
@@ -6341,7 +6344,7 @@
             alertSaveError(err);
             return;
         }
-        refreshAllViews();
+        // No manual refreshAllViews() — the JOBS_DOC listener already re-renders once this write lands.
         showToast(t('toastMarkedDone').replace('{n}', targets.length));
     }
 
@@ -6364,7 +6367,7 @@
         selectedJobIds.clear();
         await saveSavedJobsData();
         logActivity('delete', deletedNames);
-        refreshAllViews();
+        // No manual refreshAllViews() — the JOBS_DOC listener already re-renders once this write lands.
         const master = document.getElementById('selectAllMaster');
         if (master) master.checked = false;
     }
@@ -6375,7 +6378,7 @@
         lastDeletedJobs = [];
         updateUndoButtonUI();
         await saveSavedJobsData();
-        refreshAllViews();
+        // No manual refreshAllViews() — the JOBS_DOC listener already re-renders once this write lands.
     }
 
     function updateUndoButtonUI() {
@@ -9730,7 +9733,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         }
 
         closeQuickScheduleModal();
-        refreshAllViews();
+        // No manual refreshAllViews() — the JOBS_DOC listener already re-renders once this write lands.
         renderWeeklyBoard();
     }
 
@@ -9876,7 +9879,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             return;
         }
 
-        refreshAllViews();
+        // No manual refreshAllViews() — the JOBS_DOC listener already re-renders once this write lands.
         editJob(newJob.id); // opens it pre-filled, in edit mode, so refining it later never creates a duplicate
         switchScreen('entry');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -9933,7 +9936,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             return;
         }
 
-        refreshAllViews();
+        // No manual refreshAllViews() — the JOBS_DOC listener already re-renders once this write lands.
     }
 
     /* ---------------- Follow-up marking (🔔) ---------------- */
