@@ -609,7 +609,12 @@
                     </div>
                 </div>
 
-                <div class="grid-2">
+                <div class="chip-row" style="margin-bottom:12px;">
+                    <button type="button" class="secondary" id="toggleTenantBtn" onclick="toggleOptionalContactSection('tenant')" data-i18n="btnToggleTenant"></button>
+                    <button type="button" class="secondary" id="toggleCcBtn" onclick="toggleOptionalContactSection('cc')" data-i18n="btnToggleCc"></button>
+                </div>
+
+                <div class="grid-2" id="tenantSection" style="display:none;">
                     <div class="form-group">
                         <label data-i18n="lblTenantName"></label>
                         <input type="text" id="tenantName" data-i18n-ph="phTenantName">
@@ -625,7 +630,7 @@
                     <input type="email" id="clientEmail" data-i18n-ph="apptEmailPh">
                 </div>
 
-                <div class="form-group" style="background: rgba(14, 165, 233, 0.06); border: 1px dashed var(--border-color); border-radius: 10px; padding: 12px;">
+                <div class="form-group" id="ccSection" style="display:none; background: rgba(14, 165, 233, 0.06); border: 1px dashed var(--border-color); border-radius: 10px; padding: 12px;">
                     <label data-i18n="lblCcSectionTitle" style="margin-bottom:10px;"></label>
                     <div class="grid-3">
                         <div class="form-group" style="margin-bottom:0;">
@@ -1959,6 +1964,8 @@
         phTenantName: { ar: 'لو العميل مش هو الساكن فعليًا في العنوان', en: "If the client isn't the one actually living at the address" },
         lblTenantPhone: { ar: 'تلفون المستأجر/الساكن (اختياري):', en: 'Tenant/Occupant Phone (optional):' },
         lblCcSectionTitle: { ar: 'شخص تاني يتابع على الإيميل (اختياري)', en: 'Someone else to CC on emails (optional)' },
+        btnToggleTenant: { ar: '👤 Tenant (المستأجر/الساكن)', en: '👤 Tenant' },
+        btnToggleCc: { ar: '📧 CC on emails (نسخة فى الإيميلات)', en: '📧 CC on emails' },
         lblCcName: { ar: 'اسمه:', en: 'Name:' },
         phCcName: { ar: 'اسم الشخص اللي هيتابع', en: 'Name of the person following up' },
         lblCcPhone: { ar: 'تلفونه (اختياري):', en: 'Phone (optional):' },
@@ -5689,6 +5696,21 @@
         if (nextBtn) nextBtn.style.display = n === JOB_STEP_COUNT ? 'none' : '';
     }
 
+    // Tenant and CC-contact are both collapsed behind a button by default so an empty job form
+    // stays short — most jobs need neither. Clicking a button just flips that one section's
+    // own visibility; the other one is untouched.
+    function toggleOptionalContactSection(which) {
+        const el = document.getElementById(which === 'tenant' ? 'tenantSection' : 'ccSection');
+        if (!el) return;
+        el.style.display = el.style.display === 'none' ? '' : 'none';
+    }
+    // Opens a section automatically when the job being loaded already has data in it, so existing
+    // info is never hidden out of sight behind a collapsed button.
+    function showOptionalContactSectionsFor(job) {
+        document.getElementById('tenantSection').style.display = (job.tenantName || job.tenantPhone) ? '' : 'none';
+        document.getElementById('ccSection').style.display = (job.ccContactName || job.ccContactPhone || job.ccContactEmail) ? '' : 'none';
+    }
+
     function resetForm() {
         jobFormDirty = false;
         clearJobDraft();
@@ -5702,6 +5724,8 @@
         document.getElementById('ccContactName').value = '';
         document.getElementById('ccContactPhone').value = '';
         document.getElementById('ccContactEmail').value = '';
+        document.getElementById('tenantSection').style.display = 'none';
+        document.getElementById('ccSection').style.display = 'none';
         document.getElementById('jobStatus').value = 'شغال';
         document.getElementById('clientAddress').value = '';
         document.getElementById('clientDescription').value = '';
@@ -6181,6 +6205,7 @@
         document.getElementById('ccContactName').value = job.ccContactName || '';
         document.getElementById('ccContactPhone').value = job.ccContactPhone || '';
         document.getElementById('ccContactEmail').value = job.ccContactEmail || '';
+        showOptionalContactSectionsFor(job);
         document.getElementById('clientAddress').value = job.clientAddress || '';
         checkCrmCustomerData();
 
@@ -6204,6 +6229,7 @@
         document.getElementById('ccContactName').value = job.ccContactName || '';
         document.getElementById('ccContactPhone').value = job.ccContactPhone || '';
         document.getElementById('ccContactEmail').value = job.ccContactEmail || '';
+        showOptionalContactSectionsFor(job);
         document.getElementById('jobStatus').value = job.jobStatus || 'شغال';
         document.getElementById('clientAddress').value = job.clientAddress || '';
         document.getElementById('clientDescription').value = job.clientDescription || '';
