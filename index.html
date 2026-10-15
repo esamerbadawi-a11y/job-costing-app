@@ -1367,7 +1367,7 @@
             <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
                 <button type="button" class="secondary" onclick="addQuoteItemRow()" data-i18n="quoteAddItemBtn" style="padding:7px 12px; font-size:0.8rem;"></button>
                 <button type="button" id="quoteAnalyzePhotoBtn" class="secondary" onclick="document.getElementById('quotePhotoInput').click()" data-i18n="quoteAnalyzePhotoBtn" style="padding:7px 12px; font-size:0.8rem; background:#7c3aed;"></button>
-                <input type="file" id="quotePhotoInput" accept="image/*" style="display:none;" onchange="analyzeQuotePhotoAndSplit(event)">
+                <input type="file" id="quotePhotoInput" accept="image/*" multiple style="display:none;" onchange="analyzeQuotePhotoAndSplit(event)">
             </div>
             <div id="quotePhotoGallery" style="display:none; gap:8px; flex-wrap:wrap; margin-top:10px;"></div>
             <div style="margin-top:12px;">
@@ -2381,8 +2381,9 @@
         quotePriceLabel: { ar: 'السعر الإجمالي ($):', en: 'Total price ($):' },
         quoteItemsLabel: { ar: 'تفاصيل السعر (اختياري):', en: 'Price breakdown (optional):' },
         quoteAddItemBtn: { ar: '+ ضيف بند', en: '+ Add item' },
-        quoteAnalyzePhotoBtn: { ar: '📷 حلل صورة واقسم السعر بالـ AI', en: '📷 Analyze photo & split price (AI)' },
-        quoteAnalyzingPhoto: { ar: '⏳ بيحلل الصورة ويقسم السعر...', en: '⏳ Analyzing photo & splitting price...' },
+        quoteAnalyzePhotoBtn: { ar: '📷 حلل الصور واعمل عرض سعر بالـ AI', en: '📷 Analyze photos & quote (AI)' },
+        quoteAnalyzingPhoto: { ar: '⏳ بيحلل ويعمل عرض السعر...', en: '⏳ Analyzing & building the quote...' },
+        alertQuoteAnalyzeNeedsInput: { ar: 'ضيف صورة، أو حدد السعر الإجمالي، أو اكتب توجيه للـ AI الأول.', en: 'Add a photo, enter the total price, or write an instruction for the AI first.' },
         quoteNoteLabel: { ar: 'ملاحظات على العرض (اختياري):', en: 'Notes on the quote (optional):' },
         quoteNotePh: { ar: 'مثال: السعر يشمل الخامات، سداد 50% مقدم...', en: 'e.g. price includes materials, 50% deposit required...' },
         quoteNoItemsYet: { ar: 'لسه مفيش تفاصيل سعر مضافة.', en: 'No price breakdown added yet.' },
@@ -2789,6 +2790,90 @@
     async function saveTechPhonesData(){ await TECHS_DOC.set({ phones: technicianPhones }); }
     async function saveCompanyProfileData(){ await COMPANY_PROFILE_DOC.set(companyProfile); }
 
+    // Same 1MB fix as jobAttachmentsDocRef/splitJobAttachments above, applied to appointments:
+    // every appointment keeps base64 photos in up to three places (its own "photos", the legacy
+    // top-level "quotePhotos" field, and each saved quote's own "photos" snapshot) and ALL
+    // appointments share one "entries" document — so those blobs piling up (saved quotes
+    // especially, since nothing ever deletes old ones) eventually push that shared document over
+    // Firestore's cap, exactly the error this was built to fix. Fix: every appointment's photo
+    // blobs live in their OWN small document instead, keyed by appointment id.
+    function apptAttachmentsDocRef(apptId) { return db.collection('jobCostingApp').doc('apptAttachments_' + apptId); }
+
+    // Strips the heavy base64 blobs off an appointment object: returns a slim copy safe to
+    // store in the shared document, plus the blobs themselves, keyed so they can be matched
+    // back up later (each saved quote's photos keyed by that quote's own id).
+    function splitApptAttachments(apptData) {
+        const photos = (apptData.photos || []).map(p => ({ ...p }));
+        const quotePhotos = (apptData.quotePhotos || []).map(p => ({ ...p }));
+        const savedQuotePhotos = {};
+        const slimSavedQuotes = (apptData.savedQuotes || []).map(q => {
+            const slim = { ...q };
+            if (slim.photos && slim.photos.length > 0) savedQuotePhotos[q.id] = slim.photos;
+            delete slim.photos;
+            return slim;
+        });
+        const hasAttachments = photos.length > 0 || quotePhotos.length > 0 || Object.keys(savedQuotePhotos).length > 0;
+        const slimAppt = { ...apptData, photos: [], quotePhotos: [], savedQuotes: slimSavedQuotes };
+        return { slimAppt, attachments: { photos, quotePhotos, savedQuotePhotos }, hasAttachments };
+    }
+
+    async function saveApptAttachments(apptId, attachments) { await apptAttachmentsDocRef(apptId).set(attachments); }
+
+    // On-demand read, mirroring editJob's lazy load of jobAttachmentsDocRef — used wherever a
+    // screen actually needs an appointment's photos (editing it, loading a saved quote,
+    // converting it to a job), instead of keeping every appointment's photos in memory all the
+    // time. Returns {} (never null) so callers can destructure straight off the result.
+    async function loadApptAttachments(apptId) {
+        try {
+            const doc = await apptAttachmentsDocRef(apptId).get();
+            return doc.exists ? doc.data() : {};
+        } catch (err) { console.error('Could not load appointment attachments:', apptId, err); return {}; }
+    }
+
+    // The ONE place that writes the appointments list to Firestore — every save site below calls
+    // this instead of writing APPOINTMENTS_DOC directly, so the attachments split always happens,
+    // the same way saveSavedJobsData is the one place jobs get written. Splits attachments off
+    // EVERY appointment (not just whichever one was just touched) before writing the shared
+    // document, then keeps the in-memory copy just as slim so it can never drift back over the
+    // cap between saves — the appointment actively being edited only ever holds its own photos
+    // briefly, in currentApptPhotos/currentQuotePhotos, exactly like the job form's currentJobPhotos.
+    async function saveAppointmentsData() {
+        const attachmentsToSave = [];
+        const slimEntries = appointments.map(appt => {
+            const { slimAppt, attachments, hasAttachments } = splitApptAttachments(appt);
+            if (hasAttachments) attachmentsToSave.push({ id: appt.id, attachments });
+            return slimAppt;
+        });
+        await APPOINTMENTS_DOC.set({ entries: slimEntries });
+        appointments.forEach((appt, i) => Object.assign(appt, slimEntries[i]));
+        for (const { id, attachments } of attachmentsToSave) {
+            try { await saveApptAttachments(id, attachments); }
+            catch (err) { console.error('Appointment attachments save failed:', id, err); }
+        }
+    }
+
+    // One-time, automatic cleanup: if any appointment already in Firestore still has photos
+    // embedded inline (saved before this fix), move them out to their own document and re-save
+    // the now-slim main document — same recovery migrateJobAttachmentsIfNeeded does for jobs.
+    let apptAttachmentsMigrationAttempted = false;
+    async function migrateApptAttachmentsIfNeeded() {
+        if (apptAttachmentsMigrationAttempted) return;
+        const needsMigration = appointments.some(a =>
+            (a.photos && a.photos.length > 0) ||
+            (a.quotePhotos && a.quotePhotos.length > 0) ||
+            (a.savedQuotes || []).some(q => q.photos && q.photos.length > 0)
+        );
+        if (!needsMigration) return;
+        apptAttachmentsMigrationAttempted = true;
+        try {
+            await saveAppointmentsData();
+            console.log('Appointment photo attachments migrated out of the main appointments document.');
+        } catch (err) {
+            console.error('Appointment attachments migration failed:', err);
+            apptAttachmentsMigrationAttempted = false; // allow a retry on the next snapshot
+        }
+    }
+
     let currentUserEmail = null;
     let editingApptId = '';
     let activityLogEntries = [];
@@ -3078,6 +3163,7 @@
         APPOINTMENTS_DOC.onSnapshot(doc => {
             appointments = (doc.exists && doc.data().entries) ? doc.data().entries : [];
             if (document.getElementById('screenAppointments').style.display !== 'none') safeCall(renderAppointments);
+            migrateApptAttachmentsIfNeeded(); // manages its own errors; fire-and-forget
         }, err => console.error('Firestore appointments sync error:', err));
 
         SERVICE_TYPES_DOC.onSnapshot(doc => {
@@ -5188,7 +5274,7 @@
             if (entry) entry.sentAt = appt.quoteSentAt;
         }
         else appt.followUpLastSentAt = new Date().toISOString();
-        try { await APPOINTMENTS_DOC.set({ entries: appointments }); safeCall(renderAppointments); } catch (e) { console.error('markFollowUpSent error:', e); }
+        try { await saveAppointmentsData(); safeCall(renderAppointments); } catch (e) { console.error('markFollowUpSent error:', e); }
     }
     async function copyAiReminder() {
         const el = document.getElementById('aiReminderText');
@@ -9796,7 +9882,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     }
 
     function editAppointment(id) { guardApptFormExit(() => editAppointmentNow(id)); }
-    function editAppointmentNow(id) {
+    async function editAppointmentNow(id) {
         const appt = appointments.find(a => a.id === id);
         if (!appt) return;
         closeAppointmentsListModal(); // the edit form lives on the Appointments screen itself, underneath the list modal
@@ -9819,6 +9905,15 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('saveAppointmentBtnLabel').innerText = t('updateAppointmentBtn');
         window.scrollTo({ top: 0, behavior: 'smooth' });
         apptFormDirty = false;
+
+        // Photos now live in their own document (see splitApptAttachments) — the form above
+        // opens immediately; the attached images fill in a moment later without blocking anything.
+        const a = await loadApptAttachments(id);
+        if (editingApptId !== id) return; // user moved on already
+        if (a.photos && a.photos.length) {
+            currentApptPhotos = a.photos;
+            renderPhotoGallery(currentApptPhotos, 'apptPhotoGallery');
+        }
     }
 
     function resetAppointmentForm() {
@@ -9870,7 +9965,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             } else {
                 appointments.unshift({ id: Date.now().toString() + Math.random().toString(36).substr(2, 5), ...fields });
             }
-            await APPOINTMENTS_DOC.set({ entries: appointments });
+            await saveAppointmentsData();
             resetAppointmentForm();
             renderAppointments();
         } catch (err) {
@@ -9881,8 +9976,9 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     async function deleteAppointment(id) {
         if (!confirm(t('confirmDeleteAppointment'))) return;
         appointments = appointments.filter(a => a.id !== id);
-        try { await APPOINTMENTS_DOC.set({ entries: appointments }); renderAppointments(); }
-        catch (err) { alertSaveError(err); }
+        try { await saveAppointmentsData(); renderAppointments(); }
+        catch (err) { alertSaveError(err); return; }
+        apptAttachmentsDocRef(id).delete().catch(() => {}); // best-effort; not critical if it fails
     }
 
     // Pulls an appointment's details straight into a fresh job entry form, then removes
@@ -9890,6 +9986,12 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     async function convertAppointmentToJob(id) {
         const appt = appointments.find(a => a.id === id);
         if (!appt) return;
+
+        // The appointment's photos live in its own attachments document now (see
+        // splitApptAttachments), not on appt.photos directly — fetch them so they actually
+        // carry over to the new job instead of silently coming through empty.
+        const apptAttachments = await loadApptAttachments(id);
+        const apptPhotos = (apptAttachments.photos && apptAttachments.photos.length) ? apptAttachments.photos : (appt.photos || []);
 
         const servicesLine = (appt.services && appt.services.length > 0) ? `${t('apptServicesLabel')} ${appt.services.join(', ')}` : '';
         const newJob = {
@@ -9909,15 +10011,20 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             totalRevenue: parseVal(appt.quotedPrice) || 0, amountReceived: 0, amountRemaining: 0,
             followUpDate: '', materialCost: 0, extraExpenses: 0,
             expenseItems: [], technicians: [],
-            photos: JSON.parse(JSON.stringify(appt.photos || [])),
+            photos: JSON.parse(JSON.stringify(apptPhotos)),
             createdBy: currentUserEmail, lastEditedBy: currentUserEmail
         };
 
-        savedJobs.unshift(newJob);
+        // Same split as saveJob() — a photo-heavy appointment converting straight into a job
+        // shouldn't be able to push the shared jobs document over the 1MB cap either.
+        const { slimJob, attachments: jobAttachments, hasAttachments: jobHasAttachments } = splitJobAttachments(newJob);
+        savedJobs.unshift(slimJob);
         appointments = appointments.filter(a => a.id !== id);
         try {
             await saveSavedJobsData();
-            await APPOINTMENTS_DOC.set({ entries: appointments });
+            await saveAppointmentsData();
+            if (jobHasAttachments) await saveJobAttachments(slimJob.id, jobAttachments);
+            apptAttachmentsDocRef(id).delete().catch(() => {}); // best-effort cleanup, mirrors deleteJob()
             logActivity('add', newJob.clientName);
         } catch (e) {
             alert(t('alertJobSaveFailed'));
@@ -9974,7 +10081,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         appointments.unshift(newAppt);
         try {
             await saveSavedJobsData();
-            await APPOINTMENTS_DOC.set({ entries: appointments });
+            await saveAppointmentsData();
             logActivity('delete', job.clientName, t('activityRevertedToAppointment'));
         } catch (err) {
             alertSaveError(err);
@@ -10005,7 +10112,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         appt.followUpReason = document.getElementById('followUpReasonSelect').value;
         appt.followUpReasonNote = document.getElementById('followUpReasonNote').value.trim();
         try {
-            await APPOINTMENTS_DOC.set({ entries: appointments });
+            await saveAppointmentsData();
             closeFollowUpReasonModal();
             renderAppointments();
         } catch (err) { Object.assign(appt, prevState); alertSaveError(err); }
@@ -10017,7 +10124,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         if (!appt) return;
         const wasNeeded = appt.followUpNeeded;
         appt.followUpNeeded = false;
-        try { await APPOINTMENTS_DOC.set({ entries: appointments }); renderAppointments(); }
+        try { await saveAppointmentsData(); renderAppointments(); }
         catch (err) { appt.followUpNeeded = wasNeeded; alertSaveError(err); }
     }
 
@@ -10102,21 +10209,25 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     // made them look "deleted" once the list UI shipped, since the list only ever reads
     // savedQuotes. This folds that legacy quote into a proper savedQuotes entry, once, the
     // first time the screen opens for that appointment, and persists it so it's permanent.
-    function migrateLegacyQuoteIfNeeded(appt) {
+    async function migrateLegacyQuoteIfNeeded(appt) {
         if ((appt.savedQuotes || []).length > 0) return; // already has saved entries, nothing to migrate
         const hasLegacyQuote = appt.quotedPrice || (appt.quoteItems && appt.quoteItems.length > 0);
         if (!hasLegacyQuote) return;
+        // The legacy quote's photos may already live in this appointment's attachments document
+        // (see splitApptAttachments) rather than inline on appt.quotePhotos, if the attachments
+        // migration already ran — fetch either way so they aren't dropped by this migration.
+        const a = await loadApptAttachments(appt.id);
         appt.savedQuotes = [{
             id: newLedgerId(),
             quoteNumber: appt.quoteNumber || suggestQuoteNumber(appt.id),
             quotedPrice: appt.quotedPrice || 0,
             items: appt.quoteItems || [],
             note: appt.quoteNote || '',
-            photos: appt.quotePhotos || [],
+            photos: (a.quotePhotos && a.quotePhotos.length ? a.quotePhotos : appt.quotePhotos) || [],
             savedAt: appt.quoteSentAt || new Date().toISOString(),
             sentAt: appt.quoteSentAt || null
         }];
-        safeCall(() => { APPOINTMENTS_DOC.set({ entries: appointments }); });
+        safeCall(() => { saveAppointmentsData(); });
     }
 
     function openAppointmentQuoteModal(apptId) {
@@ -10165,7 +10276,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     // Loads one previously-saved quote (from appt.savedQuotes) into the form for further editing
     // — does NOT touch the appointment's own fields until Save/Send is pressed again, same as
     // loadSavedInvoice only changing the draft, not the job, until it's saved.
-    function loadSavedQuote(apptId, savedId) {
+    async function loadSavedQuote(apptId, savedId) {
         const appt = appointments.find(a => a.id === apptId);
         if (!appt) return;
         const saved = (appt.savedQuotes || []).find(q => q.id === savedId);
@@ -10187,6 +10298,16 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         });
         renderQuoteSavedList(apptId); // refresh the highlighted/selected entry
         markQuoteDraftClean();
+
+        // This saved quote's own photos now live in the appointment's attachments document
+        // (see splitApptAttachments) — fill them in once fetched, same lazy pattern as editJob.
+        const a = await loadApptAttachments(apptId);
+        if (quoteDraftSavedId !== savedId) return; // user picked a different draft already
+        const photos = (a.savedQuotePhotos && a.savedQuotePhotos[savedId]) || [];
+        if (photos.length) {
+            currentQuotePhotos = photos;
+            renderPhotoGallery(currentQuotePhotos, 'quotePhotoGallery');
+        }
     }
 
     async function deleteSavedQuote(apptId, savedId) {
@@ -10196,9 +10317,14 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const prevList = appt.savedQuotes;
         appt.savedQuotes = (appt.savedQuotes || []).filter(q => q.id !== savedId);
         try {
-            await APPOINTMENTS_DOC.set({ entries: appointments });
+            await saveAppointmentsData();
             logActivity('delete', appt.clientName, t('activityQuoteDeleted'));
         } catch (err) { appt.savedQuotes = prevList; alertSaveError(err); return; }
+        // Best-effort: that quote's own photos (in the attachments doc — see splitApptAttachments)
+        // don't get cleared by saveAppointmentsData() unless this appointment's full photos happen
+        // to be loaded in memory right now, so clear this one key directly instead of leaving it
+        // as dead weight in the attachments document forever.
+        apptAttachmentsDocRef(apptId).update({ ['savedQuotePhotos.' + savedId]: firebase.firestore.FieldValue.delete() }).catch(() => {});
         if (quoteDraftSavedId === savedId) startNewQuoteDraft(apptId); // the entry being edited just got deleted — fall back to a blank draft instead of an orphaned one
         renderQuoteSavedList(apptId);
         safeCall(renderAppointments);
@@ -10248,11 +10374,17 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     // A running "items so far" total, shown right under the breakdown table, so a mismatch
     // (like deleting a row and forgetting to make up the difference elsewhere) is obvious at a
     // glance instead of something you only notice after sending the quote.
+    // "amount" on a quote item is the PRICE PER UNIT; "qty" (default 1, shown for every item —
+    // same idea as the Invoice screen's Qty column, except here it's actually multiplied in,
+    // so e.g. 4 identical patios at $50 each is qty 4 × $50 instead of retyping $200 by hand)
+    // multiplies into the line's real total. Missing/blank qty on older saved items == 1.
+    function quoteItemLineTotal(it) { return round2(parseVal(it.amount) * (parseVal(it.qty) || 1)); }
+
     function updateQuoteItemsTotalDisplay() {
         const el = document.getElementById('quoteItemsTotalDisplay');
         if (!el) return;
         const price = parseVal(document.getElementById('quotePriceInput').value);
-        const itemsSum = quoteItemsState.reduce((s, it) => s + parseVal(it.amount), 0);
+        const itemsSum = quoteItemsState.reduce((s, it) => s + quoteItemLineTotal(it), 0);
         const diff = Math.round((price - itemsSum) * 100) / 100;
         let statusHtml;
         if (quoteItemsState.length === 0) {
@@ -10274,12 +10406,19 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const container = document.getElementById('quoteItemsContainer');
         if (!container) return;
         if (quoteItemsState.length === 0) { container.innerHTML = `<div style="font-size:0.78rem; color:var(--text-muted); padding:6px 0;">${t('quoteNoItemsYet')}</div>`; safeCall(updateQuoteItemsTotalDisplay); return; }
-        container.innerHTML = quoteItemsState.map((it, index) => `
+        container.innerHTML = quoteItemsState.map((it, index) => {
+            const qty = it.qty !== undefined ? it.qty : '1';
+            const showLineTotal = (parseVal(qty) || 1) !== 1 && parseVal(it.amount) > 0;
+            return `
             <div class="tech-card" style="margin-bottom:8px;">
-                <div class="invoice-item-grid" style="display:grid; grid-template-columns: 1fr 110px 40px; gap:10px; align-items:end;">
+                <div class="invoice-item-grid" style="display:grid; grid-template-columns: 1fr 70px 110px 40px; gap:10px; align-items:end;">
                     <div class="quote-item-desc-cell">
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColDesc')}</label>
                         <textarea rows="1" oninput="updateQuoteItemField(${index}, 'desc', this.value); autoGrowTextarea(this);" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; resize:vertical; min-height:40px; font-family:inherit; font-size:0.9rem; line-height:1.4;">${escHtml(it.desc)}</textarea>
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColQty')}</label>
+                        <input type="text" value="${escHtml(qty)}" onfocus="this.select()" oninput="updateQuoteItemField(${index}, 'qty', this.value); syncQuotePriceFromItems();" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; text-align:center;">
                     </div>
                     <div>
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColAmount')}</label>
@@ -10289,8 +10428,9 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                         <button type="button" onclick="removeQuoteItemRow(${index})" style="background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid rgba(225,29,72,0.4); padding:9px 0; border-radius:8px; width:100%; cursor:pointer; font-size:14px;">✕</button>
                     </div>
                 </div>
+                ${showLineTotal ? `<div style="font-size:0.72rem; color:var(--text-muted); margin-top:4px; padding:0 2px;">${escHtml(qty)} × $${parseVal(it.amount).toFixed(2)} = $${quoteItemLineTotal(it).toFixed(2)}</div>` : ''}
             </div>
-        `).join('');
+        `; }).join('');
         container.querySelectorAll('.quote-item-desc-cell textarea').forEach(autoGrowTextarea);
         safeCall(updateQuoteItemsTotalDisplay);
     }
@@ -10316,7 +10456,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         if (checked && !input.value && cfg.placeholderKey) input.value = t(cfg.placeholderKey);
     }
     function updateQuoteItemField(index, field, value) { if (quoteItemsState[index]) quoteItemsState[index][field] = value; }
-    function addQuoteItemRow() { quoteItemsState.push({ desc: '', amount: '' }); renderQuoteItemsTable(); }
+    function addQuoteItemRow() { quoteItemsState.push({ desc: '', amount: '', qty: '1' }); renderQuoteItemsTable(); }
     function removeQuoteItemRow(index) { quoteItemsState.splice(index, 1); renderQuoteItemsTable(); syncQuotePriceFromItems(); }
 
     // Keeps "Total price" in step with the item amounts as they're typed, so a quote built item by
@@ -10327,47 +10467,62 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     function syncQuotePriceFromItems() {
         const priceInput = document.getElementById('quotePriceInput');
         if (!priceInput) return;
-        const sum = round2(quoteItemsState.reduce((s, it) => s + parseVal(it.amount), 0));
+        const sum = round2(quoteItemsState.reduce((s, it) => s + quoteItemLineTotal(it), 0));
         priceInput.value = sum;
         updateQuoteItemsTotalDisplay();
     }
 
-    // Sends the quote photo + the already-entered total price to the AI, asking it to split
-    // that exact total into a believable itemized breakdown based on what's visible in the
-    // photo — replacing whatever rows were there before. Amounts are normalized (the last
-    // item absorbs any rounding cents) so they always sum to exactly the entered price.
+    // Builds the quote from whatever the user gave it — any mix of photos (0 or more),
+    // an already-typed total price, and/or a free-text instruction — as long as at least
+    // one of those is present. If a price was already typed, the AI must split exactly that
+    // total; otherwise it proposes its own quick estimate for "Total price" too (which stays
+    // a normal, freely-editable field afterwards, exactly like a manually-typed one). Replaces
+    // whatever breakdown rows were on screen before.
     async function analyzeQuotePhotoAndSplit(event) {
-        const file = event.target.files && event.target.files[0];
+        const files = event.target.files ? Array.from(event.target.files) : [];
         event.target.value = '';
-        if (!file) return;
         const apiKey = getGeminiApiKey();
         if (!apiKey) { alert(t('aiNoKeyNote')); return; }
-        const price = parseVal(document.getElementById('quotePriceInput').value);
-        if (!price) { alert(t('alertQuoteNeedsPrice')); return; }
+
+        const priceInput = document.getElementById('quotePriceInput');
+        const existingPrice = parseVal(priceInput.value);
+        const instructions = (document.getElementById('quoteAiInstructions').value || '').trim();
+        if (files.length === 0 && !existingPrice && !instructions && quoteItemsState.length === 0) {
+            alert(t('alertQuoteAnalyzeNeedsInput'));
+            return;
+        }
 
         const btn = document.getElementById('quoteAnalyzePhotoBtn');
         const originalLabel = btn.innerHTML;
         btn.disabled = true; btn.innerHTML = t('quoteAnalyzingPhoto');
 
-        const instructions = (document.getElementById('quoteAiInstructions').value || '').trim();
         try {
-            const dataUrl = await compressImageToBase64(file);
-            const base64Data = dataUrl.split(',')[1];
+            const dataUrls = [];
+            for (const file of files) { dataUrls.push(await compressImageToBase64(file)); }
+            const imageParts = dataUrls.map(dataUrl => ({ inlineData: { mimeType: 'image/jpeg', data: dataUrl.split(',')[1] } }));
+
             const instructionsLine = instructions
                 ? (currentLang === 'ar' ? ` خد بالك كمان من التوجيه ده من صاحب الشغل: ${instructions}.` : ` Also follow this instruction from the business owner: ${instructions}.`)
                 : '';
+            const photosLine = dataUrls.length > 0
+                ? (currentLang === 'ar' ? ` اتفرج على صور موقع شغل الصيانة/المقاولات المرفقة.` : ` Look at the attached handyman/contracting job-site photo(s).`)
+                : '';
+            const priceLine = existingPrice
+                ? (currentLang === 'ar' ? ` السعر الإجمالي محدد عند $${existingPrice.toFixed(2)} بالظبط — لازم مجموع البنود يساوي الرقم ده بالظبط.` : ` The total price is fixed at exactly $${existingPrice.toFixed(2)} — the items must sum to exactly that number.`)
+                : (currentLang === 'ar' ? ` معدّش سعر إجمالي لسه، فاقترح سعر إجمالي واقعي أنت نفسك حسب اللي شايفه/قاريه.` : ` No total price has been entered yet, so propose a realistic total price yourself based on what you see/read.`);
             const promptText = (currentLang === 'ar'
-                ? `اتفرج على صورة موقع شغل الصيانة/المقاولات دي، وقسّم السعر الإجمالي $${price.toFixed(2)} على بنود منطقية حسب اللي شايفه (تصليحات، خامات، تشطيب، إلخ)، بحيث مجموع البنود يساوي $${price.toFixed(2)} بالظبط.${instructionsLine} رجّعلي JSON فقط، من غير أي نص تاني ولا \`\`\`، بالشكل ده: [{"desc":"وصف البند","amount":123.45}, ...]`
-                : `Look at this handyman/contracting job-site photo and split the total price $${price.toFixed(2)} into logical line items based on what's visible (repairs, materials, finishing, etc.), so the items sum to exactly $${price.toFixed(2)}.${instructionsLine} Return ONLY JSON, no other text and no \`\`\`, in this shape: [{"desc":"item description","amount":123.45}, ...]`);
+                ? `اعمل عرض سعر لشغل صيانة/مقاولات.${photosLine}${priceLine}${instructionsLine} قسّم السعر الإجمالي على بنود منطقية (تصليحات، خامات، تشطيب، إلخ) بحيث (سعر الوحدة × العدد) مجموعها يساوي الإجمالي بالظبط. كل بند له "amount" (سعر الوحدة الواحدة) و"qty" (عدد الوحدات، 1 لو بند واحد بس) — لو فيه أكتر من مكان/قطعة متطابقة (مثلاً نفس الشغلانة في 4 أماكن) اعتبرها بند واحد بـ qty=4 مش 4 بنود منفصلة. رجّعلي JSON فقط، من غير أي نص تاني ولا \`\`\`، بالشكل ده: {"totalPrice": 123.45, "items": [{"desc":"وصف البند","qty":1,"amount":67.89}, ...]}`
+                : `Build a price quote for a handyman/contracting job.${photosLine}${priceLine}${instructionsLine} Split the total price into logical line items (repairs, materials, finishing, etc.) so that (unit amount × qty) sums to exactly the total. Each item has "amount" (the PER-UNIT price) and "qty" (how many units, 1 if it's just one thing) — if the same task applies to several identical spots/pieces (e.g. the same job in 4 locations), make that ONE item with qty 4 rather than 4 separate items. Return ONLY JSON, no other text and no \`\`\`, in this shape: {"totalPrice": 123.45, "items": [{"desc":"item description","qty":1,"amount":67.89}, ...]}`);
 
-            const resultText = await aiGenerate(apiKey, [{ inlineData: { mimeType: 'image/jpeg', data: base64Data } }, { text: promptText }]);
-            const parsed = parseAndNormalizeQuoteItemsJson(resultText, price);
+            const resultText = await aiGenerate(apiKey, [...imageParts, { text: promptText }]);
+            const { totalPrice, items } = parseAndNormalizeQuoteWithTotal(resultText, existingPrice);
 
-            quoteItemsState = parsed;
+            priceInput.value = totalPrice;
+            quoteItemsState = items;
             renderQuoteItemsTable();
 
-            currentQuotePhotos.push({ data: dataUrl, addedAt: new Date().toISOString() });
-            renderPhotoGallery(currentQuotePhotos, 'quotePhotoGallery');
+            dataUrls.forEach(dataUrl => currentQuotePhotos.push({ data: dataUrl, addedAt: new Date().toISOString() }));
+            if (dataUrls.length > 0) renderPhotoGallery(currentQuotePhotos, 'quotePhotoGallery');
         } catch (err) {
             const msg = (err && err.message) ? err.message : String(err);
             if (/401|403|UNAUTHENTICATED|PERMISSION|API key/i.test(msg)) { try { localStorage.removeItem('geminiApiKey'); } catch (e) {} }
@@ -10378,18 +10533,37 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     }
 
     // Shared by analyzeQuotePhotoAndSplit and adjustQuoteItemsWithAI: strips a stray ``` fence
-    // if the model added one anyway, parses the JSON array, and normalizes amounts so they sum
-    // to exactly the entered price (the last item absorbs any rounding cents).
+    // if the model added one anyway, parses the JSON array, and normalizes line TOTALS (unit
+    // amount × qty) so they sum to exactly the entered price (the last item absorbs any
+    // rounding cents, adjusted on its unit amount so its qty stays whatever the AI picked).
     function parseAndNormalizeQuoteItemsJson(resultText, price) {
         const jsonText = resultText.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
         let parsed = JSON.parse(jsonText);
         if (!Array.isArray(parsed)) throw new Error('not an array');
-        parsed = parsed.map(it => ({ desc: String((it && it.desc) || '').trim(), amount: parseVal(it && it.amount) })).filter(it => it.desc);
+        parsed = parsed.map(it => ({ desc: String((it && it.desc) || '').trim(), amount: parseVal(it && it.amount), qty: parseVal(it && it.qty) || 1 })).filter(it => it.desc);
         if (parsed.length === 0) throw new Error('empty breakdown');
-        const sum = parsed.reduce((s, it) => s + it.amount, 0);
+        const sum = parsed.reduce((s, it) => s + quoteItemLineTotal(it), 0);
         const diff = price - sum;
-        if (Math.abs(diff) > 0.001) parsed[parsed.length - 1].amount = Math.round((parsed[parsed.length - 1].amount + diff) * 100) / 100;
+        if (Math.abs(diff) > 0.001) {
+            const last = parsed[parsed.length - 1];
+            last.amount = Math.round((last.amount + diff / (last.qty || 1)) * 100) / 100;
+        }
+        parsed.forEach(it => { if (it.qty === 1) delete it.qty; }); // keep the common case (qty 1) looking exactly like before
         return parsed;
+    }
+
+    // Like parseAndNormalizeQuoteItemsJson, but for the {"totalPrice":...,"items":[...]} shape
+    // analyzeQuotePhotoAndSplit asks for. If the user had already typed a price, that number
+    // always wins (the AI is told to match it, but this makes sure even if it doesn't); only
+    // when nothing was typed does the AI's own proposed total get used.
+    function parseAndNormalizeQuoteWithTotal(resultText, existingPrice) {
+        const jsonText = resultText.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+        const parsed = JSON.parse(jsonText);
+        if (!parsed || !Array.isArray(parsed.items)) throw new Error('bad shape');
+        const totalPrice = existingPrice || round2(parseVal(parsed.totalPrice));
+        if (!totalPrice) throw new Error('no price');
+        const items = parseAndNormalizeQuoteItemsJson(JSON.stringify(parsed.items), totalPrice);
+        return { totalPrice, items };
     }
 
     // Lets the user tell the AI what to change about the breakdown already on screen (reorder,
@@ -10408,10 +10582,10 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         btn.disabled = true; btn.innerHTML = t('quoteAdjusting');
 
         try {
-            const currentItemsJson = JSON.stringify(quoteItemsState.map(it => ({ desc: it.desc, amount: parseVal(it.amount) })));
+            const currentItemsJson = JSON.stringify(quoteItemsState.map(it => ({ desc: it.desc, qty: parseVal(it.qty) || 1, amount: parseVal(it.amount) })));
             const promptText = currentLang === 'ar'
-                ? `دي تفاصيل عرض سعر شغل صيانة/مقاولات حاليًا (JSON): ${currentItemsJson}. السعر الإجمالي ثابت عند $${price.toFixed(2)}. عدّل البنود دي حسب التوجيه ده من صاحب الشغل: "${instructions}"، مع إنك تخلي مجموع البنود يساوي $${price.toFixed(2)} بالظبط. رجّعلي JSON فقط، من غير أي نص تاني ولا \`\`\`، بالشكل ده: [{"desc":"وصف البند","amount":123.45}, ...]`
-                : `Here is the current price breakdown for a handyman/contracting quote (JSON): ${currentItemsJson}. The total price is fixed at $${price.toFixed(2)}. Adjust these items per this instruction from the business owner: "${instructions}", keeping the items summing to exactly $${price.toFixed(2)}. Return ONLY JSON, no other text and no \`\`\`, in this shape: [{"desc":"item description","amount":123.45}, ...]`;
+                ? `دي تفاصيل عرض سعر شغل صيانة/مقاولات حاليًا (JSON، "amount" سعر الوحدة و"qty" عدد الوحدات): ${currentItemsJson}. السعر الإجمالي ثابت عند $${price.toFixed(2)}. عدّل البنود دي حسب التوجيه ده من صاحب الشغل: "${instructions}"، مع إنك تخلي (سعر الوحدة × العدد) لكل البنود يساوي $${price.toFixed(2)} بالظبط. لو فيه نفس الشغلانة في أكتر من مكان خليها بند واحد بـ qty أعلى بدل ما تكررها. رجّعلي JSON فقط، من غير أي نص تاني ولا \`\`\`، بالشكل ده: [{"desc":"وصف البند","qty":1,"amount":123.45}, ...]`
+                : `Here is the current price breakdown for a handyman/contracting quote (JSON; "amount" is the per-unit price, "qty" is how many units): ${currentItemsJson}. The total price is fixed at $${price.toFixed(2)}. Adjust these items per this instruction from the business owner: "${instructions}", keeping (unit amount × qty) summing to exactly $${price.toFixed(2)}. If the same task applies in more than one spot, use one item with a higher qty instead of repeating it. Return ONLY JSON, no other text and no \`\`\`, in this shape: [{"desc":"item description","qty":1,"amount":123.45}, ...]`;
 
             const resultText = await aiGenerate(apiKey, promptText);
             const parsed = parseAndNormalizeQuoteItemsJson(resultText, price);
@@ -10443,7 +10617,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
 
         const quoteNumber = document.getElementById('quoteNumberInput').value.trim() || suggestQuoteNumber(apptId);
         const quotedPrice = parseVal(document.getElementById('quotePriceInput').value);
-        const items = quoteItemsState.map(it => ({ desc: (it.desc || '').trim(), amount: parseVal(it.amount) })).filter(it => it.desc || it.amount);
+        const items = quoteItemsState.map(it => { const qty = parseVal(it.qty) || 1; return { desc: (it.desc || '').trim(), amount: parseVal(it.amount), ...(qty !== 1 ? { qty } : {}) }; }).filter(it => it.desc || it.amount);
         const note = document.getElementById('quoteNoteInput').value.trim();
         const photos = JSON.parse(JSON.stringify(currentQuotePhotos));
         // Same three optional fields as the Invoice screen (Payment Method / Follow-up Date /
@@ -10477,7 +10651,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         }
 
         try {
-            await APPOINTMENTS_DOC.set({ entries: appointments });
+            await saveAppointmentsData();
             logActivity('edit', appt.clientName, `${t('activityQuoteSaved')} ${quoteNumber}`);
             safeCall(renderAppointments);
             safeCall(() => renderQuoteSavedList(apptId));
@@ -10610,7 +10784,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             appt.quoteSentAt = new Date().toISOString();
             const sentEntry = (appt.savedQuotes || []).find(q => q.id === quoteDraftSavedId);
             if (sentEntry) sentEntry.sentAt = appt.quoteSentAt;
-            try { await APPOINTMENTS_DOC.set({ entries: appointments }); safeCall(renderAppointments); } catch (e) { console.error('quote pdf sent-stamp error:', e); }
+            try { await saveAppointmentsData(); safeCall(renderAppointments); } catch (e) { console.error('quote pdf sent-stamp error:', e); }
             closeAppointmentQuoteModal();
         }
     }
@@ -10628,7 +10802,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const draftAppt = Object.assign({}, appt, {
             quoteNumber: document.getElementById('quoteNumberInput').value.trim() || suggestQuoteNumber(apptId),
             quotedPrice: parseVal(document.getElementById('quotePriceInput').value),
-            quoteItems: quoteItemsState.map(it => ({ desc: (it.desc || '').trim(), amount: parseVal(it.amount) })).filter(it => it.desc || it.amount),
+            quoteItems: quoteItemsState.map(it => { const qty = parseVal(it.qty) || 1; return { desc: (it.desc || '').trim(), amount: parseVal(it.amount), ...(qty !== 1 ? { qty } : {}) }; }).filter(it => it.desc || it.amount),
             quoteNote: document.getElementById('quoteNoteInput').value.trim(),
             quoteShowPaymentMethod: document.getElementById('quoteShowPayment').checked,
             quotePaymentMethodText: document.getElementById('quotePaymentMethodText').value.trim(),
@@ -10654,7 +10828,15 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const footerLine = [...(companyProfile.phones || []), companyProfile.email].filter(Boolean).join('  |  ');
         const websitePart = companyProfile.website ? `<span style="white-space:nowrap;">${escHtml(companyProfile.website)}</span>` : '';
         const footerParts = [footerLine, websitePart].filter(Boolean).join('   &bull;   ');
-        const itemsRowsHtml = items.map((it, i) => `<div style="display:grid; grid-template-columns: 1fr 100px; gap:10px; padding:10px 12px; font-size:12.5px; border-bottom:1px solid #E7E1D6; ${i % 2 === 1 ? 'background:#F6F1E8;' : ''}"><div>${escHtml(it.desc)}</div><div style="text-align:right;">$${parseVal(it.amount).toFixed(2)}</div></div>`).join('');
+        // Qty only ever shows up here when it's not 1 (every item saved before this feature, or
+        // saved since without touching Qty, has none — so this prints exactly as it always did
+        // for anyone who doesn't use the field).
+        const itemsRowsHtml = items.map((it, i) => {
+            const qty = parseVal(it.qty) || 1;
+            const lineTotal = qty !== 1 ? round2(parseVal(it.amount) * qty) : parseVal(it.amount);
+            const qtyNote = qty !== 1 ? `<div style="color:#6B6257; font-size:11px; margin-top:2px;">${escHtml(String(qty))} × $${parseVal(it.amount).toFixed(2)}</div>` : '';
+            return `<div style="display:grid; grid-template-columns: 1fr 100px; gap:10px; padding:10px 12px; font-size:12.5px; border-bottom:1px solid #E7E1D6; ${i % 2 === 1 ? 'background:#F6F1E8;' : ''}"><div>${escHtml(it.desc)}${qtyNote}</div><div style="text-align:right;">$${lineTotal.toFixed(2)}</div></div>`;
+        }).join('');
         // Same three optional fields as the Invoice document (Payment Method / Follow-up Date /
         // Validity Note) — see toggleQuoteOptionalField() in the quote modal.
         const paymentMethodRow = appt.quoteShowPaymentMethod ? `<div style="font-size:11.5px; color:#6B6257;"><b>${t('invoicePaymentMethodToggle')}:</b> ${escHtml(appt.quotePaymentMethodText)}</div>` : '';
