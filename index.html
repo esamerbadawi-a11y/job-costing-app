@@ -2391,6 +2391,9 @@
         quoteAnalyzePhotoBtn: { ar: '📷 حلل الصور واعمل عرض سعر بالـ AI', en: '📷 Analyze photos & quote (AI)' },
         quoteAnalyzingPhoto: { ar: '⏳ بيحلل ويعمل عرض السعر...', en: '⏳ Analyzing & building the quote...' },
         alertQuoteAnalyzeNeedsInput: { ar: 'ضيف صورة، أو حدد السعر الإجمالي، أو اكتب توجيه للـ AI الأول.', en: 'Add a photo, enter the total price, or write an instruction for the AI first.' },
+        invoiceAnalyzePhotoBtn: { ar: '📷 حلل الصور وضيف بنود (AI)', en: '📷 Analyze photos & add items (AI)' },
+        invoiceAnalyzingPhoto: { ar: '⏳ بيحلل ويضيف البنود...', en: '⏳ Analyzing & adding items...' },
+        alertInvoiceAnalyzeNeedsInput: { ar: 'ضيف صورة، أو اكتب توجيه للـ AI الأول.', en: 'Add a photo, or write an instruction for the AI first.' },
         quoteNoteLabel: { ar: 'ملاحظات على العرض (اختياري):', en: 'Notes on the quote (optional):' },
         quoteNotePh: { ar: 'مثال: السعر يشمل الخامات، سداد 50% مقدم...', en: 'e.g. price includes materials, 50% deposit required...' },
         quoteNoItemsYet: { ar: 'لسه مفيش تفاصيل سعر مضافة.', en: 'No price breakdown added yet.' },
@@ -5358,6 +5361,38 @@
         recognition.start();
     }
 
+    // Plain dictation into any text field — same Web Speech API/engine as startVoiceScope above,
+    // minus its "improve with AI" follow-up step (used for free-text instruction fields, like the
+    // AI-instructions box on the Invoice/Quote screens, that just need the words typed for you).
+    // onFilled (optional) is called with the field's new full value, e.g. to mirror it into a
+    // re-rendered screen's own state object so it survives the next re-render.
+    function startVoiceDictation(fieldId, btnId, onFilled) {
+        const SpeechRecognitionApi = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognitionApi) { alert(t('alertVoiceNotSupported')); return; }
+
+        const speakArabic = confirm(t('confirmVoiceLangArabic')); // OK = Arabic, Cancel = English
+        const recognition = new SpeechRecognitionApi();
+        recognition.lang = speakArabic ? 'ar-EG' : 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        const micBtn = document.getElementById(btnId);
+        const originalLabel = micBtn.innerHTML;
+        micBtn.disabled = true; micBtn.innerHTML = '🔴 ...';
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.value = (field.value.trim() ? field.value.trim() + ' ' : '') + transcript;
+                if (typeof onFilled === 'function') onFilled(field.value);
+            }
+        };
+        recognition.onerror = (event) => { alert(t('alertVoiceError') + ' (' + event.error + ')'); };
+        recognition.onend = () => { micBtn.disabled = false; micBtn.innerHTML = originalLabel; };
+        recognition.start();
+    }
+
     // Safety net on top of the prompt instructions below: the destination for all AI text in this
     // file is a plain <textarea>, which can't render Markdown/HTML. If the model still returns a
     // Markdown table or stray <br>/HTML tags, clean it up into plain readable lines instead of
@@ -7012,6 +7047,7 @@
             items: defaultInvoiceItemsForJob(job),
             credits: [], // each: { label: string, amount: number } — named deductions, e.g. "PVC Trim Credit — Not Installed"
             note: '',
+            aiInstructions: '', // free-text note for the "Analyze photos & add items (AI)" button below — typed or dictated by voice
             showPaymentMethod: false,
             paymentMethodText: t('invoicePaymentMethodPlaceholder'),
             showFollowUp: false,
@@ -7215,6 +7251,72 @@
         renderInvoiceModalContent();
     }
 
+    // Lets the AI look at job-site photo(s) and/or a typed/dictated instruction, and propose
+    // ready-made invoice line items instead of typing each one by hand — same idea as the
+    // appointment Quote screen's "Analyze photos & quote" button, except there's no fixed total
+    // to split here (an invoice's total is just whatever its items add up to), so the AI is free
+    // to price each item itself. New items are ADDED to whatever's already on the invoice (the
+    // job's own cost/revenue data is usually pre-filled there) rather than replacing them — unless
+    // the only thing there so far is the single default blank row, in which case they replace it.
+    // Note: on the Invoice screen "amount" is the LINE'S TOTAL price (qty is shown but doesn't
+    // multiply into it) — unlike the Quote screen's "amount", which is a PER-UNIT price — so the
+    // AI is asked for amounts accordingly here.
+    async function analyzeInvoicePhotoAndFillItems(event) {
+        const files = event.target.files ? Array.from(event.target.files) : [];
+        event.target.value = '';
+        if (!invoiceState) return;
+        const apiKey = getGeminiApiKey();
+        if (!apiKey) { alert(t('aiNoKeyNote')); return; }
+
+        const instructions = (document.getElementById('invoiceAiInstructions').value || '').trim();
+        if (files.length === 0 && !instructions) {
+            alert(t('alertInvoiceAnalyzeNeedsInput'));
+            return;
+        }
+
+        const btn = document.getElementById('invoiceAnalyzePhotoBtn');
+        const originalLabel = btn.innerHTML;
+        btn.disabled = true; btn.innerHTML = t('invoiceAnalyzingPhoto');
+
+        try {
+            const dataUrls = [];
+            for (const file of files) { dataUrls.push(await compressImageToBase64(file)); }
+            const imageParts = dataUrls.map(dataUrl => ({ inlineData: { mimeType: 'image/jpeg', data: dataUrl.split(',')[1] } }));
+
+            const instructionsLine = instructions
+                ? (currentLang === 'ar' ? ` خد بالك من التوجيه ده من صاحب الشغل: ${instructions}.` : ` Follow this instruction from the business owner: ${instructions}.`)
+                : '';
+            const photosLine = dataUrls.length > 0
+                ? (currentLang === 'ar' ? ` اتفرج على صور موقع شغل الصيانة/المقاولات المرفقة.` : ` Look at the attached handyman/contracting job-site photo(s).`)
+                : '';
+            const promptText = currentLang === 'ar'
+                ? `اعمل بنود فاتورة لشغل صيانة/مقاولات خلص شغله.${photosLine}${instructionsLine} اقترح بنود واقعية (تصليحات، خامات، عمالة، إلخ) بأسعار معقولة لسوق أمريكا. كل بند له "desc" (وصف قصير للعميل)، "qty" (العدد، 1 لو بند واحد)، و"amount" (السعر الإجمالي للبند كله — يعني لو qty أكتر من 1، amount هو ناتج ضرب سعر الوحدة في العدد، مش سعر الوحدة لوحدها). رجّعلي JSON فقط، من غير أي نص تاني ولا \`\`\`، بالشكل ده: [{"desc":"وصف البند","qty":1,"amount":123.45}, ...]`
+                : `Create invoice line items for a completed handyman/contracting job.${photosLine}${instructionsLine} Propose realistic items (repairs, materials, labor, etc.) with reasonable US market pricing. Each item has "desc" (a short client-facing description), "qty" (how many units, 1 if just one thing), and "amount" (the TOTAL price for that whole line — if qty is more than 1, amount is the per-unit price already multiplied by qty, not the per-unit price alone). Return ONLY JSON, no other text and no \`\`\`, in this shape: [{"desc":"item description","qty":1,"amount":123.45}, ...]`;
+
+            const resultText = await aiGenerate(apiKey, [...imageParts, { text: promptText }]);
+            const jsonText = resultText.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+            const parsed = JSON.parse(jsonText);
+            if (!Array.isArray(parsed)) throw new Error('not an array');
+            const newItems = parsed
+                .map(it => ({ desc: String((it && it.desc) || '').trim(), qty: String(parseVal(it && it.qty) || 1), amount: round2(parseVal(it && it.amount)) }))
+                .filter(it => it.desc);
+            if (newItems.length === 0) throw new Error('empty breakdown');
+
+            const onlyDefaultBlankRow = invoiceState.items.length === 1 && !invoiceState.items[0].desc && !parseVal(invoiceState.items[0].amount);
+            invoiceState.items = onlyDefaultBlankRow ? newItems : invoiceState.items.concat(newItems);
+            renderInvoiceModalContent();
+        } catch (err) {
+            const msg = (err && err.message) ? err.message : String(err);
+            if (/401|403|UNAUTHENTICATED|PERMISSION|API key/i.test(msg)) { try { localStorage.removeItem('geminiApiKey'); } catch (e) {} }
+            alert(t('alertAiFailed') + ' (' + msg + ')');
+        } finally {
+            // Re-queried rather than reusing `btn`: a successful run just re-rendered the whole
+            // invoice screen (including this button), so the original node may already be detached.
+            const btnEl = document.getElementById('invoiceAnalyzePhotoBtn');
+            if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = originalLabel; }
+        }
+    }
+
     function removeInvoiceItemRow(index) {
         if (!invoiceState) return;
         invoiceState.items.splice(index, 1);
@@ -7408,7 +7510,18 @@
 
             <h3 style="color:#38bdf8; font-size:0.95rem; margin-bottom:10px;">${t('invoiceItemsTitle')}</h3>
             <div id="invoiceItemsContainer">${itemsHtml}</div>
-            <button type="button" class="secondary" onclick="addInvoiceItemRow()" style="padding:6px 14px; font-size:0.8rem; margin-bottom:16px;">${t('invoiceAddItemBtn')}</button>
+            <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+                <button type="button" class="secondary" onclick="addInvoiceItemRow()" style="padding:6px 14px; font-size:0.8rem;">${t('invoiceAddItemBtn')}</button>
+                <button type="button" id="invoiceAnalyzePhotoBtn" class="secondary" onclick="document.getElementById('invoicePhotoInput').click()" style="padding:6px 14px; font-size:0.8rem; background:#7c3aed;">${t('invoiceAnalyzePhotoBtn')}</button>
+                <input type="file" id="invoicePhotoInput" accept="image/*" multiple style="display:none;" onchange="analyzeInvoicePhotoAndFillItems(event)">
+            </div>
+            <div style="margin-bottom:16px;">
+                <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('quoteAiInstructionsLabel')}</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input type="text" id="invoiceAiInstructions" dir="auto" value="${escHtml(invoiceState.aiInstructions || '')}" placeholder="${t('quoteAiInstructionsPh')}" oninput="setInvoiceField('aiInstructions', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; flex-grow:1;">
+                    <button type="button" id="invoiceVoiceInstructionsBtn" onclick="startVoiceDictation('invoiceAiInstructions','invoiceVoiceInstructionsBtn', v => setInvoiceField('aiInstructions', v))" style="background:linear-gradient(135deg,#dc2626,#f97316); color:#fff; border:none; border-radius:8px; padding:9px 12px; font-size:0.9rem; font-weight:700; cursor:pointer; white-space:nowrap;">🎤</button>
+                </div>
+            </div>
 
             <h3 style="color:#38bdf8; font-size:0.95rem; margin-bottom:10px;">${t('invoiceCreditLabel')}</h3>
             <div id="invoiceCreditsContainer">${creditsHtml}</div>
