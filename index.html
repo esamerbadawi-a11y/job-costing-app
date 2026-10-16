@@ -1297,6 +1297,12 @@
         <div id="aiReminderJob" style="font-weight:700; margin-bottom:10px; overflow-wrap:anywhere;"></div>
         <div class="form-group"><label data-i18n="aiReminderLangLabel"></label>
             <select id="aiReminderLang" onchange="onAiReminderLangChange()"><option value="en">English</option><option value="ar">العربية</option></select></div>
+        <div class="form-group" id="aiPaymentLinkToggleGroup" style="display:none;">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:400;">
+                <input type="checkbox" id="aiIncludePaymentLink" checked onchange="onAiIncludePaymentLinkChange()">
+                <span data-i18n="aiIncludePaymentLinkLabel"></span>
+            </label>
+        </div>
         <div class="form-group"><label data-i18n="aiCustomInstructionsLabel"></label>
             <input type="text" id="aiCustomInstructions" dir="auto" data-i18n-ph="aiCustomInstructionsPh"></div>
         <div id="aiReminderStatus" class="note-box" style="margin-bottom:10px;"></div>
@@ -2351,6 +2357,7 @@
         unsavedContactFormSave: { ar: '💾 احفظ واخرج', en: '💾 Save and leave' },
         unsavedContactFormDiscard: { ar: 'اخرج من غير حفظ', en: 'Leave without saving' },
         aiReminderLangLabel: { ar: 'لغة الرسالة:', en: 'Message language:' },
+        aiIncludePaymentLinkLabel: { ar: 'ضيف رابط الدفع أونلاين في الرسالة', en: 'Include the online payment link in this message' },
         aiCustomInstructionsLabel: { ar: 'توجيهات إضافية للـ AI (اختياري):', en: 'Extra instructions for the AI (optional):' },
         aiCustomInstructionsPh: { ar: 'مثال: خليها أقصر، أو اذكر إن فيه خصم لو دفع بسرعة...', en: 'e.g. make it shorter, or mention a discount for quick payment...' },
         aiWriting: { ar: '✨ الـ AI بيكتب الرسالة...', en: '✨ The AI is writing the message...' },
@@ -5013,8 +5020,8 @@
     // client a working link. Used by the quote message and the payment-reminder message, not the
     // thank-you note (that's sent after a job is already paid in full). See stripPaymentLinkLine()
     // below for the one channel (Attach & Share) where this line gets taken back out again.
-    function paymentLinkMessageLine(lang) {
-        if (!companyProfile.paymentLink) return '';
+    function paymentLinkMessageLine(lang, includeLink) {
+        if (includeLink === false || !companyProfile.paymentLink) return '';
         return lang === 'ar' ? `\n\nتقدر تدفع أونلاين من هنا: ${companyProfile.paymentLink}` : `\n\nYou can pay online here: ${companyProfile.paymentLink}`;
     }
     // Attach & Share's PDF attachment already carries a real, clickable Pay Now button (see
@@ -5028,22 +5035,22 @@
         const esc = companyProfile.paymentLink.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         return text.replace(new RegExp(`\\n*\\s*(You can pay online here:|تقدر تدفع أونلاين من هنا:)\\s*${esc}\\s*`, 'i'), '').trim();
     }
-    function buildReminderPrompt(job, rem, daysOverdue, lang, customInstructions) {
+    function buildReminderPrompt(job, rem, daysOverdue, lang, customInstructions, includeLink) {
         const long = daysOverdue && daysOverdue > 14;
         const extra = (customInstructions || '').trim();
-        const linkInstruction = companyProfile.paymentLink
+        const linkInstruction = (includeLink !== false && companyProfile.paymentLink)
             ? (lang === 'ar' ? ` ولازم تخلّص الرسالة بالسطر ده بالظبط من غير أي تغيير فيه: "تقدر تدفع أونلاين من هنا: ${companyProfile.paymentLink}".` : ` End the message with this exact line, unchanged: "You can pay online here: ${companyProfile.paymentLink}".`)
             : '';
         if (lang === 'ar') return `اكتب رسالة تذكير بدفعة متأخرة، مهذبة ومختصرة (2-4 جمل)، للعميل ${job.clientName}، بخصوص شغلانة "${job.clientDescription || 'صيانة'}"، المبلغ المتبقي $${rem.toFixed(2)}${daysOverdue ? `، ومتأخر عن الموعد بـ ${daysOverdue} يوم` : ''}. النبرة تتناسب مع ${long ? 'تأخير طويل نسبيًا لكن لسه محترمة' : 'تذكير ودّي بسيط'}.${extra ? ` تعليمات إضافية من صاحب الشغل لازم تاخد بالك منها: ${extra}.` : ''}${linkInstruction} من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`;
         return `Write a polite, concise (2-4 sentence) payment reminder to client ${job.clientName}, regarding a "${job.clientDescription || 'service'}" job, outstanding balance $${rem.toFixed(2)}${daysOverdue ? `, ${daysOverdue} days past the follow-up date` : ''}. Tone should be ${long ? 'a bit firmer given the longer delay, but still respectful' : 'a gentle, friendly nudge'}.${extra ? ` Extra instructions from the business owner to follow: ${extra}.` : ''}${linkInstruction} No preamble or headers, just the message.`;
     }
     // The same message without AI, so the reminder can always be sent.
-    function buildFallbackReminder(job, rem, daysOverdue, lang) {
+    function buildFallbackReminder(job, rem, daysOverdue, lang, includeLink) {
         const what = (job.clientDescription || '').split('\n')[0].slice(0, 80).trim();
         const amount = '$' + rem.toFixed(2);
         const long = daysOverdue && daysOverdue > 14;
-        if (lang === 'ar') return `أهلاً، معاك ${companyDisplayName()}. تذكير ودّي بالمبلغ المتبقي ${amount}${what ? ' عن ' + what : ''}${daysOverdue ? `، وعدّى ${daysOverdue} يوم على موعد المتابعة` : ''}. ${long ? 'ياريت نرتب السداد في أقرب وقت.' : 'ياريت تبلغنا إمتى نقدر نستلمه.'} شكرًا لتعاونك.` + paymentLinkMessageLine(lang);
-        return `Hello, this is ${companyDisplayName()}. A friendly reminder about the remaining balance of ${amount}${what ? ' for ' + what : ''}${daysOverdue ? `, now ${daysOverdue} days past the follow-up date` : ''}. ${long ? 'Please arrange payment as soon as you can.' : 'Please let us know when we can expect it.'} Thank you!` + paymentLinkMessageLine(lang);
+        if (lang === 'ar') return `أهلاً، معاك ${companyDisplayName()}. تذكير ودّي بالمبلغ المتبقي ${amount}${what ? ' عن ' + what : ''}${daysOverdue ? `، وعدّى ${daysOverdue} يوم على موعد المتابعة` : ''}. ${long ? 'ياريت نرتب السداد في أقرب وقت.' : 'ياريت تبلغنا إمتى نقدر نستلمه.'} شكرًا لتعاونك.` + paymentLinkMessageLine(lang, includeLink);
+        return `Hello, this is ${companyDisplayName()}. A friendly reminder about the remaining balance of ${amount}${what ? ' for ' + what : ''}${daysOverdue ? `, now ${daysOverdue} days past the follow-up date` : ''}. ${long ? 'Please arrange payment as soon as you can.' : 'Please let us know when we can expect it.'} Thank you!` + paymentLinkMessageLine(lang, includeLink);
     }
     function buildThankYouPrompt(job, lang, customInstructions) {
         const extra = (customInstructions || '').trim();
@@ -5082,7 +5089,7 @@
     // Quote message: tells the client the total price (and, if a breakdown was built, lists
     // the items) and invites them to approve it. Separate from buildFollowUpPrompt/Context above —
     // a quote is the first message about the price, a follow-up is chasing a reply to one already sent.
-    function buildQuotePrompt(appt, lang, customInstructions) {
+    function buildQuotePrompt(appt, lang, customInstructions, includeLink) {
         const extra = (customInstructions || '').trim();
         const price = parseVal(appt.quotedPrice).toFixed(2);
         const items = appt.quoteItems || [];
@@ -5090,20 +5097,20 @@
             ? (lang === 'ar' ? ` التفاصيل: ${items.map(it => `${it.desc} ($${parseVal(it.amount).toFixed(2)})`).join('، ')}.` : ` Breakdown: ${items.map(it => `${it.desc} ($${parseVal(it.amount).toFixed(2)})`).join(', ')}.`)
             : '';
         const servicesText = (appt.services && appt.services.length) ? appt.services.join(lang === 'ar' ? '، ' : ', ') : '';
-        const linkInstruction = companyProfile.paymentLink
+        const linkInstruction = (includeLink !== false && companyProfile.paymentLink)
             ? (lang === 'ar' ? ` ولازم تخلّص الرسالة بالسطر ده بالظبط من غير أي تغيير فيه: "تقدر تدفع أونلاين من هنا: ${companyProfile.paymentLink}".` : ` End the message with this exact line, unchanged: "You can pay online here: ${companyProfile.paymentLink}".`)
             : '';
         if (lang === 'ar') return `اكتب رسالة ودّية ومختصرة (3-5 جمل) للعميل ${appt.clientName}، تقدّم فيها عرض سعر بمبلغ $${price}${servicesText ? ` لخدمة "${servicesText}"` : ''}.${itemsLine} اطلب منه بأدب يراجع العرض ويرد بالموافقة أو أي استفسار.${extra ? ` تعليمات إضافية من صاحب الشغل لازم تاخد بالك منها: ${extra}.` : ''}${linkInstruction} من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`;
         return `Write a friendly, concise (3-5 sentence) message to client ${appt.clientName}, presenting a price quote of $${price}${servicesText ? ` for "${servicesText}"` : ''}.${itemsLine} Politely ask them to review it and reply with approval or any questions.${extra ? ` Extra instructions from the business owner to follow: ${extra}.` : ''}${linkInstruction} No preamble or headers, just the message.`;
     }
-    function buildFallbackQuote(appt, lang) {
+    function buildFallbackQuote(appt, lang, includeLink) {
         const price = parseVal(appt.quotedPrice).toFixed(2);
         const items = appt.quoteItems || [];
         const itemsLine = items.length
             ? (lang === 'ar' ? ` (${items.map(it => `${it.desc}: $${parseVal(it.amount).toFixed(2)}`).join(' — ')})` : ` (${items.map(it => `${it.desc}: $${parseVal(it.amount).toFixed(2)}`).join(' — ')})`)
             : '';
-        if (lang === 'ar') return `أهلاً ${appt.clientName || ''}، معاك ${companyDisplayName()}. ده عرض السعر بتاعك: $${price}${itemsLine}. لو موافق قولنا نبدأ، أو لو عندك أي سؤال إحنا موجودين. شكرًا ليك!` + paymentLinkMessageLine(lang);
-        return `Hello ${appt.clientName || ''}, this is ${companyDisplayName()}. Here's your price quote: $${price}${itemsLine}. Let us know if you'd like to go ahead, or if you have any questions. Thank you!` + paymentLinkMessageLine(lang);
+        if (lang === 'ar') return `أهلاً ${appt.clientName || ''}، معاك ${companyDisplayName()}. ده عرض السعر بتاعك: $${price}${itemsLine}. لو موافق قولنا نبدأ، أو لو عندك أي سؤال إحنا موجودين. شكرًا ليك!` + paymentLinkMessageLine(lang, includeLink);
+        return `Hello ${appt.clientName || ''}, this is ${companyDisplayName()}. Here's your price quote: $${price}${itemsLine}. Let us know if you'd like to go ahead, or if you have any questions. Thank you!` + paymentLinkMessageLine(lang, includeLink);
     }
     // The same message without AI, so a follow-up can always be sent even with no AI key.
     function buildFallbackFollowUp(appt, lang) {
@@ -5120,6 +5127,13 @@
         return `Hello ${appt.clientName || ''}, this is ${companyDisplayName()}. ${line}. Let us know if you have any questions or you'd like to move forward — we're happy to help. Thank you!`;
     }
 
+    // Only the payment-reminder and quote messages ever carry the payment link (thank-you/
+    // follow-up never did), and there's nothing to toggle if no link is even set up — so the
+    // checkbox only shows for those two, and always resets to checked on a fresh open.
+    function setAiPaymentLinkToggleVisibility(msgKind) {
+        document.getElementById('aiIncludePaymentLink').checked = true;
+        document.getElementById('aiPaymentLinkToggleGroup').style.display = (companyProfile.paymentLink && (msgKind === 'reminder' || msgKind === 'quote')) ? '' : 'none';
+    }
     function setAiReminderStatus(kind, text) {
         const el = document.getElementById('aiReminderStatus');
         el.textContent = text;
@@ -5148,6 +5162,7 @@
         document.getElementById('aiCustomInstructions').value = '';
         document.getElementById('aiShareBtn').style.display = 'none';   // no invoice open here (called from the jobs list), so there's nothing to share an image of
         document.getElementById('aiCallBtn').style.display = job.clientPhone ? '' : 'none';
+        setAiPaymentLinkToggleVisibility(aiReminderCtx.msgKind);
         document.getElementById('aiReminderModal').style.display = 'flex';
         if (!aiReminderCtx.apiKey) { useTemplateReminder('aiNoKeyNote'); return; }   // no key: don't leave the user stuck
         await regenerateAiReminder();
@@ -5174,6 +5189,7 @@
         // devices whose share sheet can take a file (desktop Chrome, for example, cannot).
         document.getElementById('aiShareBtn').style.display = (navigator.share && navigator.canShare) ? '' : 'none';
         document.getElementById('aiCallBtn').style.display = job.clientPhone ? '' : 'none';
+        setAiPaymentLinkToggleVisibility(aiReminderCtx.msgKind);
         document.getElementById('aiReminderModal').style.display = 'flex';
         if (!aiReminderCtx.apiKey) { useTemplateReminder('aiNoKeyNote'); return; }   // no key: don't leave the user stuck
         await regenerateAiReminder();
@@ -5192,6 +5208,7 @@
         document.getElementById('aiCustomInstructions').value = '';
         document.getElementById('aiShareBtn').style.display = 'none';
         document.getElementById('aiCallBtn').style.display = appt.clientPhone ? '' : 'none';
+        setAiPaymentLinkToggleVisibility(aiReminderCtx.msgKind);
         document.getElementById('aiReminderModal').style.display = 'flex';
         if (!aiReminderCtx.apiKey) { useTemplateReminder('aiNoKeyNote'); return; }
         await regenerateAiReminder();
@@ -5208,10 +5225,11 @@
         try {
             const lang = document.getElementById('aiReminderLang').value;
             const customInstructions = document.getElementById('aiCustomInstructions').value;
+            const includeLink = document.getElementById('aiIncludePaymentLink').checked;
             const prompt = c.msgKind === 'thankyou' ? buildThankYouPrompt(c.job, lang, customInstructions)
                 : c.msgKind === 'followup' ? buildFollowUpPrompt(c.job, lang, customInstructions)
-                : c.msgKind === 'quote' ? buildQuotePrompt(c.job, lang, customInstructions)
-                : buildReminderPrompt(c.job, c.rem, c.daysOverdue, lang, customInstructions);
+                : c.msgKind === 'quote' ? buildQuotePrompt(c.job, lang, customInstructions, includeLink)
+                : buildReminderPrompt(c.job, c.rem, c.daysOverdue, lang, customInstructions, includeLink);
             const text = await aiGenerate(c.apiKey, prompt);
             if (myRun !== c.run || aiReminderCtx !== c) return;   // closed, or a newer request took over
             document.getElementById('aiReminderText').value = text;
@@ -5230,14 +5248,23 @@
         if (!c) return;
         c.run++; c.mode = 'template';   // cancels any AI request still running
         const lang = document.getElementById('aiReminderLang').value;
+        const includeLink = document.getElementById('aiIncludePaymentLink').checked;
         document.getElementById('aiReminderText').value = c.msgKind === 'thankyou' ? buildFallbackThankYou(c.job, lang)
             : c.msgKind === 'followup' ? buildFallbackFollowUp(c.job, lang)
-            : c.msgKind === 'quote' ? buildFallbackQuote(c.job, lang)
-            : buildFallbackReminder(c.job, c.rem, c.daysOverdue, lang);
+            : c.msgKind === 'quote' ? buildFallbackQuote(c.job, lang, includeLink)
+            : buildFallbackReminder(c.job, c.rem, c.daysOverdue, lang, includeLink);
         setAiReminderStatus('ok', t(noteKey));
         refreshAiReminderButtons(false);
     }
     function onAiReminderLangChange() {
+        const c = aiReminderCtx;
+        if (!c) return;
+        if (c.mode === 'template') useTemplateReminder('aiTemplateNote'); else regenerateAiReminder();
+    }
+    // The payment-link checkbox only ever shows for msgKind 'reminder'/'quote' (see where each
+    // modal-opener sets its display), so re-running whichever mode is active here always has a
+    // real effect — same pattern as onAiReminderLangChange just above.
+    function onAiIncludePaymentLinkChange() {
         const c = aiReminderCtx;
         if (!c) return;
         if (c.mode === 'template') useTemplateReminder('aiTemplateNote'); else regenerateAiReminder();
@@ -10703,6 +10730,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         // sendInvoiceClientMessage uses.
         document.getElementById('aiShareBtn').style.display = (navigator.share && navigator.canShare) ? '' : 'none';
         document.getElementById('aiCallBtn').style.display = appt.clientPhone ? '' : 'none';
+        setAiPaymentLinkToggleVisibility(aiReminderCtx.msgKind);
         document.getElementById('aiReminderModal').style.display = 'flex';
         if (!aiReminderCtx.apiKey) { useTemplateReminder('aiNoKeyNote'); return; }
         await regenerateAiReminder();
