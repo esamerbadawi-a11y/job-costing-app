@@ -353,6 +353,7 @@
                     </span>
                     <button class="success" onclick="openNewScheduleModal()" data-i18n="newScheduleBtn"></button>
                     <button class="secondary" style="background:#059669;" onclick="openSendScheduleModal()" data-i18n="sendScheduleBtn"></button>
+                    <button class="secondary" style="background:#7c3aed;" onclick="openFindTechModal()">📍 <span data-i18n="findTechBtn"></span></button>
                 </div>
             </div>
             <div id="weeklyRangeLabel" style="color:var(--text-muted); font-size:0.85rem; margin-bottom:15px;"></div>
@@ -1526,6 +1527,20 @@
     </div>
 </div>
 
+<div id="findTechModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10001; justify-content:center; align-items:flex-start;" onclick="if(event.target===this) closeFindTechModal();">
+    <div class="tg-modal-box" style="max-width:520px; margin-top:8vh;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.1rem;">📍 <span data-i18n="findTechTitle"></span></h2>
+            <button class="danger" onclick="closeFindTechModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+        <div class="form-group" style="margin-bottom:12px;">
+            <label data-i18n="findTechPickLabel"></label>
+            <select id="findTechSelect" onchange="renderFindTechResults()"></select>
+        </div>
+        <div id="findTechResults"></div>
+    </div>
+</div>
+
 <div id="whatsNewModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10002; justify-content:center; align-items:center;" onclick="if(event.target===this) closeWhatsNewModal();">
     <div class="tg-modal-box" style="max-width:480px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px;">
@@ -1921,6 +1936,13 @@
         jobsWord: { ar: 'شغلانة', en: 'job(s)' },
         noJobsThisDay: { ar: 'مفيش شغل مسجل في اليوم ده.', en: 'No jobs scheduled this day.' },
         weeklyTechsLabel: { ar: 'الفنيين:', en: 'Techs:' },
+        weeklyNotPaidTechWarning: { ar: '⚠️ مش مضاف كفني مدفوع على الشغلانة دي، فمش هيتحسب له مستحقات على الأيام دي لحد ما تضيفه من جوه الشغلانة:', en: "⚠️ Not added as a paid technician on this job, so these days won't count toward his dues until you add him inside the job:" },
+        findTechBtn: { ar: 'فين الفني؟', en: "Where's a tech?" },
+        findTechTitle: { ar: 'فين الفني؟ (كل الأيام المجدول فيها)', en: "Where's a tech? (every day he's scheduled)" },
+        findTechPickLabel: { ar: 'اختار الفني:', en: 'Pick a technician:' },
+        findTechChooseOption: { ar: '— اختار —', en: '— choose —' },
+        findTechNoDays: { ar: 'مش مجدول على أي شغلانة خالص.', en: 'Not scheduled on any job at all.' },
+        findTechNotPaidNote: { ar: '⚠️ مش مضاف كفني مدفوع على الشغلانة دي', en: '⚠️ Not added as a paid technician on this job' },
         todayJobsTitle: { ar: 'شغل النهاردة', en: "Today's Jobs" },
         dismissBtn: { ar: 'إخفاء', en: 'Dismiss' },
         addToCalendarBtn: { ar: 'أضف للتقويم', en: 'Add to Calendar' },
@@ -2239,6 +2261,7 @@
         techPaymentAllJobsOption: { ar: 'كل الشغلانات اللي هو داخل فيها', en: 'All jobs he is in' },
         techPaymentSettleLabel: { ar: '📆 بتقفل حساب الأسبوع اللي فيه:', en: '📆 Settles the week that includes:' },
         techPaymentSettleHint: { ar: 'سيبها زي تاريخ الدفع إلا لو الدفعة دي بتقفل حساب أسبوع قديم متأخر', en: 'Leave same as the payment date unless this is a catch-up payment for an older week' },
+        techPaymentAutoSplitToast: { ar: '✅ الدفعة اتقسمت تلقائي: {cur} للفترة الحالية، {prior} للرصيد القديم (لحد {through})', en: '✅ Payment auto-split: {cur} for this period, {prior} toward the prior balance (through {through})' },
         techPaymentSettlesNote: { ar: 'بتقفل حساب أسبوع:', en: 'Settles week of:' },
         techBonusTitle: { ar: '🎁 بونس لفني', en: '🎁 Technician Bonus' },
         techBonusJobLabel: { ar: 'لشغلانة معينة؟ (اختياري)', en: 'For a specific job? (optional)' },
@@ -2394,6 +2417,7 @@
         invoiceAnalyzePhotoBtn: { ar: '📷 حلل الصور وضيف بنود (AI)', en: '📷 Analyze photos & add items (AI)' },
         invoiceAnalyzingPhoto: { ar: '⏳ بيحلل ويضيف البنود...', en: '⏳ Analyzing & adding items...' },
         alertInvoiceAnalyzeNeedsInput: { ar: 'ضيف صورة، أو اكتب توجيه للـ AI الأول.', en: 'Add a photo, or write an instruction for the AI first.' },
+        invoiceRunInstructionsBtn: { ar: '✨ نفّذ بالتعليمات بس (من غير صور)', en: '✨ Run with instructions only (no photos)' },
         quoteNoteLabel: { ar: 'ملاحظات على العرض (اختياري):', en: 'Notes on the quote (optional):' },
         quoteNotePh: { ar: 'مثال: السعر يشمل الخامات، سداد 50% مقدم...', en: 'e.g. price includes materials, 50% deposit required...' },
         quoteNoItemsYet: { ar: 'لسه مفيش تفاصيل سعر مضافة.', en: 'No price breakdown added yet.' },
@@ -7261,9 +7285,20 @@
     // Note: on the Invoice screen "amount" is the LINE'S TOTAL price (qty is shown but doesn't
     // multiply into it) — unlike the Quote screen's "amount", which is a PER-UNIT price — so the
     // AI is asked for amounts accordingly here.
-    async function analyzeInvoicePhotoAndFillItems(event) {
+    // Fired by the hidden file input (user picked one or more photos) — just unwraps the
+    // event and hands off to the shared analyzeInvoiceAI(files) below.
+    function analyzeInvoicePhotoAndFillItems(event) {
         const files = event.target.files ? Array.from(event.target.files) : [];
         event.target.value = '';
+        analyzeInvoiceAI(files);
+    }
+
+    // Fired by the "✨ Run with instructions only" button — no photo picker involved, so typed
+    // (or dictated) instructions alone actually DO something when you press a button for them;
+    // the photo button above always opens the picker first, which never fires if it's cancelled.
+    function runInvoiceAiInstructionsOnly() { analyzeInvoiceAI([]); }
+
+    async function analyzeInvoiceAI(files) {
         if (!invoiceState) return;
         const apiKey = getGeminiApiKey();
         if (!apiKey) { alert(t('aiNoKeyNote')); return; }
@@ -7275,8 +7310,11 @@
         }
 
         const btn = document.getElementById('invoiceAnalyzePhotoBtn');
+        const runBtn = document.getElementById('invoiceRunInstructionsBtn');
         const originalLabel = btn.innerHTML;
+        const originalRunLabel = runBtn ? runBtn.innerHTML : '';
         btn.disabled = true; btn.innerHTML = t('invoiceAnalyzingPhoto');
+        if (runBtn) { runBtn.disabled = true; runBtn.innerHTML = t('invoiceAnalyzingPhoto'); }
 
         try {
             const dataUrls = [];
@@ -7310,10 +7348,13 @@
             if (/401|403|UNAUTHENTICATED|PERMISSION|API key/i.test(msg)) { try { localStorage.removeItem('geminiApiKey'); } catch (e) {} }
             alert(t('alertAiFailed') + ' (' + msg + ')');
         } finally {
-            // Re-queried rather than reusing `btn`: a successful run just re-rendered the whole
-            // invoice screen (including this button), so the original node may already be detached.
+            // Re-queried rather than reusing `btn`/`runBtn`: a successful run just re-rendered
+            // the whole invoice screen (including these buttons), so the original nodes may
+            // already be detached.
             const btnEl = document.getElementById('invoiceAnalyzePhotoBtn');
             if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = originalLabel; }
+            const runBtnEl = document.getElementById('invoiceRunInstructionsBtn');
+            if (runBtnEl) { runBtnEl.disabled = false; runBtnEl.innerHTML = originalRunLabel; }
         }
     }
 
@@ -7521,6 +7562,7 @@
                     <input type="text" id="invoiceAiInstructions" dir="auto" value="${escHtml(invoiceState.aiInstructions || '')}" placeholder="${t('quoteAiInstructionsPh')}" oninput="setInvoiceField('aiInstructions', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; flex-grow:1;">
                     <button type="button" id="invoiceVoiceInstructionsBtn" onclick="startVoiceDictation('invoiceAiInstructions','invoiceVoiceInstructionsBtn', v => setInvoiceField('aiInstructions', v))" style="background:linear-gradient(135deg,#dc2626,#f97316); color:#fff; border:none; border-radius:8px; padding:9px 12px; font-size:0.9rem; font-weight:700; cursor:pointer; white-space:nowrap;">🎤</button>
                 </div>
+                <button type="button" id="invoiceRunInstructionsBtn" class="secondary" onclick="runInvoiceAiInstructionsOnly()" style="width:100%; padding:8px; font-size:0.8rem; margin-top:8px; background:#7c3aed;">${t('invoiceRunInstructionsBtn')}</button>
             </div>
 
             <h3 style="color:#38bdf8; font-size:0.95rem; margin-bottom:10px;">${t('invoiceCreditLabel')}</h3>
@@ -9583,6 +9625,11 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     // (and the Job Pay / Tech & Partner reports) count it correctly. Opened from anywhere else
     // (Technician Guide, Agenda, "This Week") it stays null — those are genuinely all-jobs payments.
     let techPaymentJobId = null;
+    // Set only when the payment prompt is opened from the Technicians Guide's own table row
+    // (where "Dues in Period" / "Prior Balance" are actually shown) — that's the one place
+    // saveTechPayment() is allowed to auto-split an over-payment between the current period and
+    // an older unpaid balance, since it's the only call site with that period context in hand.
+    let techPaymentFromGuidePeriod = false;
     // Every job this person is in, either as a technician or as an extra profit-share partner
     // (or both) — used to let a payment be tagged to one specific job instead of only ever
     // being a general payment against his combined total.
@@ -9612,9 +9659,10 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     }
 
     let editingPaymentAt = '';
-    function openTechPaymentPrompt(name, jobId) {
+    function openTechPaymentPrompt(name, jobId, fromGuidePeriod) {
         editingPaymentAt = '';
         techPaymentJobId = jobId || null;
+        techPaymentFromGuidePeriod = !!fromGuidePeriod;
         document.getElementById('techPaymentTitleEl').textContent = t('techPaymentTitle');
         techPaymentName = name;
         document.getElementById('techPaymentNameLabel').textContent = name;
@@ -9681,16 +9729,50 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             return;
         }
 
-        const entry = { name: techPaymentName, amount, date, settleDate, note, by: currentUserEmail || '?', at: new Date().toISOString() };
         const jobSelectEl = document.getElementById('techPaymentJobSelect');
         const chosenJobId = (jobSelectEl && jobSelectEl.value) || techPaymentJobId;
+
+        // Auto-split an over-payment between "this period" and an older unpaid balance — only
+        // when: opened from the Technicians Guide row that actually has a period/Prior Balance
+        // in view, a date range is set there, it's not tagged to one specific job (that's a
+        // different pot of money — see techPaymentJobId above), and the Settle Date field is
+        // still untouched (the user didn't already pick a date on purpose, which always wins).
+        const settleTouched = !!document.getElementById('techPaymentSettleDate').dataset.touched;
+        const guideDateFrom = document.getElementById('guideDateFrom') ? document.getElementById('guideDateFrom').value : '';
+        const guideDateTo = document.getElementById('guideDateTo') ? document.getElementById('guideDateTo').value : '';
+        let splitEntries = null;
+        if (techPaymentFromGuidePeriod && !chosenJobId && !settleTouched && guideDateFrom) {
+            const stats = computeTechPeriodStats(guideDateFrom, guideDateTo);
+            const dues = stats[techPaymentName] ? stats[techPaymentName].dues : 0;
+            const bonus = techBonusTotalInPeriod(techPaymentName, guideDateFrom, guideDateTo);
+            const paidSoFar = techPaymentsInPeriod(techPaymentName, guideDateFrom, guideDateTo).reduce((s, p) => s + parseVal(p.amount), 0);
+            const remainingInPeriod = Math.max(0, round2(dues + bonus - paidSoFar));
+
+            const priorDateTo = addDaysISO(guideDateFrom, -1);
+            const priorStats = computeTechPeriodStats('', priorDateTo);
+            const priorDues = priorStats[techPaymentName] ? priorStats[techPaymentName].dues : 0;
+            const priorBonus = techBonusTotalInPeriod(techPaymentName, '', priorDateTo);
+            const priorPaid = techPaymentsInPeriod(techPaymentName, '', priorDateTo).reduce((s, p) => s + parseVal(p.amount), 0);
+            const priorBalance = round2(priorDues + priorBonus - priorPaid);
+
+            if (priorBalance > 0.005 && amount > remainingInPeriod + 0.005) {
+                const currentPortion = round2(Math.min(amount, remainingInPeriod));
+                const priorPortion = round2(amount - currentPortion);
+                splitEntries = [];
+                if (currentPortion > 0.005) splitEntries.push({ name: techPaymentName, amount: currentPortion, date, settleDate, note, by: currentUserEmail || '?', at: new Date().toISOString() });
+                splitEntries.push({ name: techPaymentName, amount: priorPortion, date, settleDate: priorDateTo, note, by: currentUserEmail || '?', at: new Date().toISOString() + '-b' });
+                const toastMsg = t('techPaymentAutoSplitToast').replace('{cur}', '$' + currentPortion.toFixed(2)).replace('{prior}', '$' + priorPortion.toFixed(2)).replace('{through}', priorDateTo);
+                safeCall(() => showToast(toastMsg));
+            }
+        }
+
+        const entries = splitEntries || [{ name: techPaymentName, amount, date, settleDate, note, by: currentUserEmail || '?', at: new Date().toISOString() }];
         if (chosenJobId) {
-            entry.jobId = chosenJobId;
             const job = savedJobs.find(j => String(j.id) === String(chosenJobId));
-            if (job) entry.jobClientName = job.clientName || '';
+            entries.forEach(e => { e.jobId = chosenJobId; if (job) e.jobClientName = job.clientName || ''; });
         }
         try {
-            techPayments.unshift(entry);
+            entries.forEach(e => techPayments.unshift(e));
             await TECH_PAYMENTS_DOC.set({ entries: techPayments });
             closeTechPaymentModal();
             renderTechGuideContent();
@@ -9699,7 +9781,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             safeCall(renderTechPartnerReportContentIfOpen);
             safeCall(renderPartnerReportContentIfOpen);
         } catch (err) {
-            techPayments = techPayments.filter(x => x !== entry);   // the save failed: don't keep a payment that was never stored
+            techPayments = techPayments.filter(e => !entries.includes(e));   // the save failed: don't keep payments that were never stored
             alertSaveError(err);
         }
     }
@@ -11296,7 +11378,15 @@ ${closeBtnHtml}
     }
 
     function renderJobCard(job, entry, isOverdue) {
-        const teamNames = (entry.team && entry.team.length > 0) ? entry.team.join(', ') : t('noTechsAdded');
+        const teamList = entry.team || [];
+        const teamNames = teamList.length > 0 ? teamList.map(escHtml).join(', ') : t('noTechsAdded');
+        // A name checked on the Weekly Board's "team" for a day is just a scheduling label — it
+        // only turns into actual $ dues if that same name is ALSO added as a paid technician on
+        // the job itself (job.technicians, with a pay type/rate), which is a separate step. Flag
+        // the gap right here, since it's otherwise invisible: the day shows fine on the board, but
+        // silently contributes nothing to that person's report/payroll.
+        const paidTechNames = new Set((job.technicians || []).map(tc => tc.name));
+        const unpaidTeam = teamList.filter(n => !paidTechNames.has(n));
         const timeLabel = entry.time ? `<span style="color:#fbbf24; font-weight:700;">${entry.time}</span> — ` : '';
         return `<div class="tech-card" data-job-id="${job.id}" data-date="${entry.date}"
                 style="margin-bottom:8px; padding:10px 14px; ${isOverdue ? 'border-color:var(--danger); background:rgba(225,29,72,0.08);' : ''}">
@@ -11305,6 +11395,7 @@ ${closeBtnHtml}
                     <div><span class="drag-handle" title="${t('dragHandleHint')}" onpointerdown="startCardDrag(event, '${job.id}', '${entry.date}')">⠿</span>${timeLabel}<strong>${job.clientName || ''}</strong>${!isJobActive(job) ? ` <span class="badge completed" style="font-size:0.68rem;">${statusLabel(job.jobStatus)}</span>` : ''}${isOverdue ? ` <span style="color:#f87171; font-size:0.72rem; font-weight:700;">⚠️ ${t('overdueLabel')}</span>` : ''}</div>
                     <div style="font-size:0.78rem; color:var(--text-muted);">${job.clientAddress ? `<a href="#" onclick="event.preventDefault(); event.stopPropagation(); showMapChoice('${job.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${job.clientAddress}</a>` : ''}${showAllPendingMode ? ' — ' + (entry.date || t('noDateSet')) : ''}</div>
                     <div style="font-size:0.78rem; color:#38bdf8;">${t('weeklyTechsLabel')} ${teamNames}</div>
+                    ${unpaidTeam.length > 0 ? `<div style="font-size:0.74rem; color:#fbbf24; margin-top:2px;">${t('weeklyNotPaidTechWarning')} ${unpaidTeam.map(escHtml).join(', ')}</div>` : ''}
                     ${entry.note ? `<div style="font-size:0.76rem; color:var(--text-muted); margin-top:2px;">🔧 ${entry.note}</div>` : ''}
                     ${entry.postponedFrom ? `<span class="ag-badge">⏭ ${t('postponedFromLabel')} ${entry.postponedFrom}</span>` : ''}
                 </div>
@@ -11316,6 +11407,54 @@ ${closeBtnHtml}
                 </div>
             </div>
         </div>`;
+    }
+
+    // "📍 Where's a tech?" — a one-stop lookup across EVERY job (not just the currently
+    // displayed week), for when a technician's days feel like they're missing: pick his name and
+    // see every day he's scheduled anywhere, each flagged if he isn't actually added as a paid
+    // technician on that particular job yet (the same gap renderJobCard's own warning flags,
+    // just gathered in one place instead of having to flip through each week looking for him).
+    function openFindTechModal() {
+        const sel = document.getElementById('findTechSelect');
+        const names = ['SAMER', 'MOHAMED', ...getUniqueRegisteredTechnicians()];
+        const uniqueNames = [...new Set(names)].sort((a, b) => a.localeCompare(b));
+        sel.innerHTML = `<option value="">${t('findTechChooseOption')}</option>` + uniqueNames.map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
+        sel.value = '';
+        document.getElementById('findTechResults').innerHTML = '';
+        document.getElementById('findTechModal').style.display = 'flex';
+    }
+    function closeFindTechModal() { document.getElementById('findTechModal').style.display = 'none'; }
+
+    function findTechSchedule(name) {
+        const todayStr = isoDate(new Date());
+        const results = [];
+        savedJobs.filter(job => job.jobStatus !== 'ملغي').forEach(job => {
+            const paidTechNames = new Set((job.technicians || []).map(tc => tc.name));
+            getScheduleEntries(job).forEach(entry => {
+                if ((entry.team || []).includes(name)) {
+                    results.push({ job, entry, paid: paidTechNames.has(name), isPast: !!(entry.date && entry.date < todayStr) });
+                }
+            });
+        });
+        results.sort((a, b) => (a.entry.date || '9999').localeCompare(b.entry.date || '9999'));
+        return results;
+    }
+
+    function renderFindTechResults() {
+        const name = document.getElementById('findTechSelect').value;
+        const container = document.getElementById('findTechResults');
+        if (!name) { container.innerHTML = ''; return; }
+        const results = findTechSchedule(name);
+        if (results.length === 0) { container.innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem; padding:4px 0;">${t('findTechNoDays')}</div>`; return; }
+        container.innerHTML = results.map(r => `
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:7px 0; border-top:1px solid var(--border-color); font-size:0.85rem; ${r.isPast ? 'opacity:0.6;' : ''}">
+                <span style="color:var(--text-muted); white-space:nowrap; min-width:88px;">${escHtml(r.entry.date || t('noDateSet'))}</span>
+                <span style="flex:1 1 140px; min-width:0; overflow-wrap:anywhere;">
+                    <button type="button" onclick="closeFindTechModal(); openJobOverlay('${jsArg(r.job.id)}');" style="background:none; border:none; padding:0; margin:0; font:inherit; font-weight:700; color:#38bdf8; text-decoration:underline; cursor:pointer;">${escHtml(r.job.clientName || '')}</button>
+                    ${r.paid ? '' : `<div style="font-size:0.78rem; color:#fbbf24; margin-top:3px;">${t('findTechNotPaidNote')}</div>`}
+                </span>
+            </div>
+        `).join('');
     }
 
     function renderWeeklyBoard() {
@@ -12255,7 +12394,7 @@ ${closeBtnHtml}
                 ${priorBalanceHtml}
                 <td data-label="" class="tg-actions-cell"><div class="tg-actions">
                     <button class="secondary" onclick="showTechDetails('${jsArg(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#475569;">🔎 ${t('guideDetailsBtn')}</button>
-                    <button class="secondary" onclick="openTechPaymentPrompt('${jsArg(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#16a34a;">${t('techPayBtn')}</button>
+                    <button class="secondary" onclick="openTechPaymentPrompt('${jsArg(name)}', null, true)" style="padding:4px 8px; font-size:0.75rem; background:#16a34a;">${t('techPayBtn')}</button>
                     <button class="secondary" onclick="openTechBonusPrompt('${jsArg(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#fbbf24; color:#1a1a1a;">${t('techBonusBtn')}</button>
                     <button class="secondary" onclick="sendWhatsAppTech('${escJs(name)}', '${escJs(rawPhone)}', ${dues}, ${bonus})" style="padding:4px 8px; font-size:0.75rem; background:#059669;">${t('guideWhatsAppBtn')}</button>
                     <button class="secondary" onclick="printTechnicianReport('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#0ea5e9;">${t('printReportBtn')}</button>
