@@ -7939,15 +7939,20 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                 linkEl = Array.from(target.querySelectorAll('a[href]')).find(a => a.getAttribute('href') === companyProfile.paymentLink) || null;
             }
 
+            // JPEG at high quality instead of PNG: a full-page screenshot at scale:2 is almost all
+            // flat white/cream background and crisp text — PNG keeps that losslessly, which is
+            // what was blowing the PDF up to several MB for a one-page invoice. JPEG compresses
+            // that kind of image far better with no visible quality loss, and cuts the file to a
+            // fraction of the size — much friendlier to email attachment limits and WhatsApp.
             const canvas = await html2canvas(target, { backgroundColor: '#FDFBF6', scale: 2, useCORS: true });
-            const imgData = canvas.toDataURL('image/png');
+            const imgData = canvas.toDataURL('image/jpeg', 0.92);
 
             const { jsPDF } = window.jspdf;
             const pdfWidthMm = 210; // A4 width — the image is scaled to fit it, keeping its aspect ratio
             const scale = pdfWidthMm / targetRect.width;
             const pdfHeightMm = targetRect.height * scale;
             const doc = new jsPDF({ unit: 'mm', format: [pdfWidthMm, pdfHeightMm] });
-            doc.addImage(imgData, 'PNG', 0, 0, pdfWidthMm, pdfHeightMm);
+            doc.addImage(imgData, 'JPEG', 0, 0, pdfWidthMm, pdfHeightMm);
             if (linkEl) {
                 const linkRect = linkEl.getBoundingClientRect();
                 doc.link(
@@ -8005,10 +8010,13 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             await new Promise(r => setTimeout(r, 150));   // let any <img> (logo/watermark data URLs) finish painting
             const target = iframe.contentDocument.querySelector(pageSelector);
             if (!target) return false;
+            // JPEG instead of PNG here too — same reasoning as the PDF paths above: a flat
+            // white/cream page compresses far better as JPEG with no visible quality loss, so the
+            // shared image file is a fraction of the size.
             const canvas = await html2canvas(target, { backgroundColor: bgColor || '#FDFBF6', scale: 2, useCORS: true });
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
             if (!blob) return false;
-            const file = new File([blob], `${filenameBase || 'document'}.png`, { type: 'image/png' });
+            const file = new File([blob], `${filenameBase || 'document'}.jpg`, { type: 'image/jpeg' });
             if (!navigator.canShare({ files: [file] })) { alert(t('alertShareNotSupported')); return false; }
             await navigator.share({ files: [file], text });
             return true;
@@ -8054,15 +8062,17 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                 linkEl = Array.from(target.querySelectorAll('a[href]')).find(a => a.getAttribute('href') === companyProfile.paymentLink) || null;
             }
 
+            // JPEG instead of PNG — see the matching note in shareInvoicePdf() above: it keeps
+            // this one-page screenshot looking the same while cutting the PDF's size drastically.
             const canvas = await html2canvas(target, { backgroundColor: bgColor || '#FDFBF6', scale: 2, useCORS: true });
-            const imgData = canvas.toDataURL('image/png');
+            const imgData = canvas.toDataURL('image/jpeg', 0.92);
 
             const { jsPDF } = window.jspdf;
             const pdfWidthMm = 210;
             const scale = pdfWidthMm / targetRect.width;
             const pdfHeightMm = targetRect.height * scale;
             const doc = new jsPDF({ unit: 'mm', format: [pdfWidthMm, pdfHeightMm] });
-            doc.addImage(imgData, 'PNG', 0, 0, pdfWidthMm, pdfHeightMm);
+            doc.addImage(imgData, 'JPEG', 0, 0, pdfWidthMm, pdfHeightMm);
             if (linkEl) {
                 const linkRect = linkEl.getBoundingClientRect();
                 doc.link(
@@ -10976,15 +10986,17 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                 linkEl = Array.from(target.querySelectorAll('a[href]')).find(a => a.getAttribute('href') === companyProfile.paymentLink) || null;
             }
 
+            // JPEG instead of PNG — see the matching note in shareInvoicePdf() above: it keeps
+            // this one-page screenshot looking the same while cutting the PDF's size drastically.
             const canvas = await html2canvas(target, { backgroundColor: '#FDFBF6', scale: 2, useCORS: true });
-            const imgData = canvas.toDataURL('image/png');
+            const imgData = canvas.toDataURL('image/jpeg', 0.92);
 
             const { jsPDF } = window.jspdf;
             const pdfWidthMm = 210; // A4 width — the image is scaled to fit it, keeping its aspect ratio
             const scale = pdfWidthMm / targetRect.width;
             const pdfHeightMm = targetRect.height * scale;
             const doc = new jsPDF({ unit: 'mm', format: [pdfWidthMm, pdfHeightMm] });
-            doc.addImage(imgData, 'PNG', 0, 0, pdfWidthMm, pdfHeightMm);
+            doc.addImage(imgData, 'JPEG', 0, 0, pdfWidthMm, pdfHeightMm);
             if (linkEl) {
                 const linkRect = linkEl.getBoundingClientRect();
                 doc.link(
