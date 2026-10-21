@@ -1429,7 +1429,8 @@
 <div id="techPaymentModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center;">
     <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:85%; max-width:360px; padding:20px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
         <h3 id="techPaymentTitleEl" style="color:#38bdf8; margin:0 0 4px; font-size:1rem;" data-i18n="techPaymentTitle"></h3>
-        <div id="techPaymentNameLabel" style="font-weight:700; margin-bottom:14px;"></div>
+        <div id="techPaymentNameLabel" style="font-weight:700; margin-bottom:10px;"></div>
+        <div id="techPaymentSummary" style="display:none; background:rgba(56,189,248,0.08); border:1px solid var(--border-color); border-radius:8px; padding:10px; margin-bottom:12px; font-size:0.82rem;"></div>
         <div class="form-group" id="techPaymentJobGroup"><label data-i18n="techPaymentJobLabel"></label><select id="techPaymentJobSelect"></select></div>
         <div class="form-group"><label data-i18n="withdrawalAmountLabel"></label><input type="text" id="techPaymentAmount" placeholder="0" onfocus="this.select()"></div>
         <div class="form-group"><label data-i18n="lblReceiptDate"></label><input type="date" id="techPaymentDate" onchange="syncTechPaymentSettleDate()"></div>
@@ -2263,6 +2264,8 @@
         techPaymentAllJobsOption: { ar: 'كل الشغلانات اللي هو داخل فيها', en: 'All jobs he is in' },
         techPaymentSettleLabel: { ar: '📆 بتقفل حساب الأسبوع اللي فيه:', en: '📆 Settles the week that includes:' },
         techPaymentSettleHint: { ar: 'سيبها زي تاريخ الدفع إلا لو الدفعة دي بتقفل حساب أسبوع قديم متأخر', en: 'Leave same as the payment date unless this is a catch-up payment for an older week' },
+        techPayTotalOwed: { ar: 'إجمالي المطلوب له (بالبونص والمتأخر)', en: 'Total owed (incl. bonus & prior balance)' },
+        techPayFillTotalBtn: { ar: 'اكتب الإجمالي كله', en: 'Fill full total' },
         techPaymentAutoSplitToast: { ar: '✅ الدفعة اتقسمت تلقائي: {cur} للفترة الحالية، {prior} للرصيد القديم (لحد {through})', en: '✅ Payment auto-split: {cur} for this period, {prior} toward the prior balance (through {through})' },
         techPaymentSettlesNote: { ar: 'بتقفل حساب أسبوع:', en: 'Settles week of:' },
         techBonusTitle: { ar: '🎁 بونس لفني', en: '🎁 Technician Bonus' },
@@ -6756,50 +6759,73 @@
             }
         });
 
-        const finalY = doc.lastAutoTable.finalY + 10;
-        doc.setFont("helvetica", "normal"); doc.setFontSize(11); doc.setTextColor(0, 0, 0);
-        doc.text(`Basic Dues: $${totalDues.toFixed(2)}`, 14, finalY);
-        let lineY = finalY + 7;
-        if (totalMaterials > 0.005) { doc.text(`Materials: $${totalMaterials.toFixed(2)}`, 14, lineY); lineY += 7; }
-        if (totalBonus > 0.005) {
-            const bonusText = `Bonus: $${totalBonus.toFixed(2)}`;
-            doc.setFont("helvetica", "bold");
-            const tw = doc.getTextWidth(bonusText);
-            doc.setFillColor(255, 243, 205);
-            doc.rect(13, lineY - 4.5, tw + 4, 6, 'F');
-            doc.setTextColor(120, 90, 0);
-            doc.text(bonusText, 14, lineY);
-            doc.setTextColor(0, 0, 0);
-            doc.setFont("helvetica", "normal");
-            lineY += 7;
-        }
-        doc.text(`Total Paid: $${totalPaid.toFixed(2)}`, 14, lineY);
-        doc.setFont("helvetica", "bold");
-        doc.text(`Remaining Balance: $${(totalDues + totalMaterials + totalBonus - totalPaid).toFixed(2)}`, 14, lineY + 7);
-        lineY += 7;
-
-        // Same "Prior Balance" figure shown on the Technician Report card: what he was still
-        // owed from BEFORE this period's own start date, so it's not lost just because this
-        // printout only covers the period dates picked above.
+        // ---- Summary: laid out as a plain step-by-step table so anyone can follow it without
+        // knowing how the app works: what he earned, minus what he was paid, plus any older
+        // balance, ending in ONE clearly-colored bottom line. ----
+        const periodEarned = round2(totalDues + totalMaterials + totalBonus);
+        const periodBalance = round2(periodEarned - totalPaid);
+        let priorBalance = 0;
         if (dateFrom) {
             const priorDateTo = addDaysISO(dateFrom, -1);
             const priorStats = computeTechPeriodStats('', priorDateTo)[techName];
             const priorDues = priorStats ? priorStats.dues : 0;
             const priorBonus = techBonusTotalInPeriod(techName, '', priorDateTo);
             const priorPaid = techPaymentsInPeriod(techName, '', priorDateTo).reduce((sum, p) => sum + parseVal(p.amount), 0);
-            const priorBalance = round2(priorDues + priorBonus - priorPaid);
-            if (priorBalance > 0.005) {
-                lineY += 7;
-                const priorText = `Prior Balance (owed through ${priorDateTo}): $${priorBalance.toFixed(2)}`;
-                doc.setFont("helvetica", "bold");
-                const tw = doc.getTextWidth(priorText);
-                doc.setFillColor(254, 226, 226);
-                doc.rect(13, lineY - 4.5, tw + 4, 6, 'F');
-                doc.setTextColor(185, 28, 28);
-                doc.text(priorText, 14, lineY);
-                doc.setTextColor(0, 0, 0);
-                doc.setFont("helvetica", "normal");
+            priorBalance = round2(priorDues + priorBonus - priorPaid);
+        }
+        const hasPrior = !!dateFrom && Math.abs(priorBalance) > 0.005;
+        const netOwed = round2(periodBalance + (hasPrior ? priorBalance : 0));
+        const fmtMoney = v => (v < 0 ? '-$' + Math.abs(v).toFixed(2) : '$' + v.toFixed(2));
+        const sumRows = [];
+        sumRows.push({ label: 'Basic Dues (wages)', value: fmtMoney(totalDues), kind: 'normal' });
+        if (totalMaterials > 0.005) sumRows.push({ label: '+ Materials he bought (reimbursement)', value: fmtMoney(totalMaterials), kind: 'normal' });
+        if (totalBonus > 0.005) sumRows.push({ label: '+ Bonus', value: fmtMoney(totalBonus), kind: 'bonus' });
+        sumRows.push({ label: '= Total Earned in this period', value: fmtMoney(periodEarned), kind: 'sub' });
+        sumRows.push({ label: '- Total Paid in this period', value: fmtMoney(totalPaid), kind: 'paid' });
+        if (hasPrior) {
+            sumRows.push({ label: periodBalance < -0.005 ? '= This period: OVER-PAID (extra paid)' : '= This period: still remaining', value: fmtMoney(periodBalance), kind: 'sub' });
+            sumRows.push({ label: `+ Older balance (owed before ${dateFrom})`, value: fmtMoney(priorBalance), kind: 'prior' });
+        }
+        sumRows.push({
+            label: netOwed > 0.005 ? 'AMOUNT STILL OWED TO THE TECHNICIAN' : (netOwed < -0.005 ? 'OVER-PAID: TECHNICIAN HOLDS A CREDIT' : 'FULLY SETTLED - NOTHING OWED'),
+            value: fmtMoney(netOwed), kind: 'final'
+        });
+
+        const finalY = doc.lastAutoTable.finalY + 10;
+        doc.autoTable({
+            startY: finalY,
+            head: [['Summary', 'Amount']],
+            body: sumRows.map(r => [r.label, r.value]),
+            theme: 'grid',
+            styles: { fontSize: 10.5, cellPadding: 2.6 },
+            headStyles: { fillColor: [71, 85, 105], textColor: 255 },
+            columnStyles: { 1: { halign: 'right', fontStyle: 'bold', cellWidth: 40 } },
+            didParseCell: function(cellData) {
+                if (cellData.section !== 'body') return;
+                const kind = sumRows[cellData.row.index].kind;
+                const s = cellData.cell.styles;
+                if (kind === 'sub') { s.fillColor = [241, 245, 249]; s.fontStyle = 'bold'; }
+                else if (kind === 'bonus') { s.fillColor = [255, 243, 205]; s.textColor = [120, 90, 0]; s.fontStyle = 'bold'; }
+                else if (kind === 'paid') { s.textColor = [21, 128, 61]; }
+                else if (kind === 'prior') { s.fillColor = [254, 226, 226]; s.textColor = [185, 28, 28]; s.fontStyle = 'bold'; }
+                else if (kind === 'final') {
+                    s.fontSize = 12.5; s.fontStyle = 'bold';
+                    if (netOwed > 0.005) { s.fillColor = [254, 226, 226]; s.textColor = [185, 28, 28]; }
+                    else { s.fillColor = [220, 252, 231]; s.textColor = [21, 128, 61]; }
+                }
             }
+        });
+
+        // One plain-language sentence for the confusing case: over-paid this period while an
+        // older balance is still open — the two simply cancel each other out.
+        if (hasPrior && periodBalance < -0.005 && priorBalance > 0.005) {
+            let noteY = doc.lastAutoTable.finalY + 7;
+            if (noteY > 270) { doc.addPage(); noteY = 20; }
+            doc.setFont("helvetica", "italic"); doc.setFontSize(9.5); doc.setTextColor(60, 60, 60);
+            const note = `Note: payments in this period were $${Math.abs(periodBalance).toFixed(2)} MORE than this period's earnings. That extra amount covers the older balance of $${priorBalance.toFixed(2)}, so the final amount owed is $${Math.max(0, netOwed).toFixed(2)}.`;
+            doc.text(doc.splitTextToSize(note, 182), 14, noteY);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "normal");
         }
 
         addLogoWatermark(doc);
@@ -9763,11 +9789,62 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const todayStr = isoDate(new Date());
         document.getElementById('techPaymentDate').value = todayStr;
         const settleEl0 = document.getElementById('techPaymentSettleDate');
-        settleEl0.value = todayStr; // by default this payment settles the week it's dated in
+        settleEl0.value = clampSettleToGuidePeriod(todayStr); // by default this payment settles the week it's dated in (or the viewed period, when paying from the Guide)
         delete settleEl0.dataset.touched;
         document.getElementById('techPaymentNote').value = '';
         populateTechPaymentJobSelect(name, jobId);
+        renderTechPaymentSummary();
         document.getElementById('techPaymentModal').style.display = 'flex';
+    }
+    // When paying from the Technicians Guide, a payment dated outside the period being viewed
+    // (e.g. paying today for last week) would otherwise settle OUTSIDE that period and never
+    // reduce its "Remaining" — so the default settle date is pulled into the viewed range.
+    // An explicit manual Settle Date always wins (see the touched flag).
+    function clampSettleToGuidePeriod(dateStr) {
+        if (!techPaymentFromGuidePeriod) return dateStr;
+        const gFrom = document.getElementById('guideDateFrom') ? document.getElementById('guideDateFrom').value : '';
+        const gTo = document.getElementById('guideDateTo') ? document.getElementById('guideDateTo').value : '';
+        if (gTo && dateStr > gTo) return gTo;
+        if (gFrom && dateStr < gFrom) return gFrom;
+        return dateStr;
+    }
+    let techPaymentSuggestedTotal = 0;
+    // Shows, inside the Pay modal, everything this technician is owed: the viewed period's dues,
+    // bonus, what's already paid, what's left, the older "Prior Balance", and the grand total.
+    function renderTechPaymentSummary() {
+        const box = document.getElementById('techPaymentSummary');
+        if (!box) return;
+        if (editingPaymentAt || techPaymentJobId || !techPaymentName) { box.style.display = 'none'; return; }
+        const gFrom = techPaymentFromGuidePeriod && document.getElementById('guideDateFrom') ? document.getElementById('guideDateFrom').value : '';
+        const gTo = techPaymentFromGuidePeriod && document.getElementById('guideDateTo') ? document.getElementById('guideDateTo').value : '';
+        const stats = computeTechPeriodStats(gFrom, gTo);
+        const dues = stats[techPaymentName] ? stats[techPaymentName].dues : 0;
+        const bonus = techBonusTotalInPeriod(techPaymentName, gFrom, gTo);
+        const paid = techPaymentsInPeriod(techPaymentName, gFrom, gTo).reduce((s, p) => s + parseVal(p.amount), 0);
+        const remaining = round2(dues + bonus - paid);
+        let prior = 0;
+        if (gFrom) {
+            const priorTo = addDaysISO(gFrom, -1);
+            const pStats = computeTechPeriodStats('', priorTo);
+            const pDues = pStats[techPaymentName] ? pStats[techPaymentName].dues : 0;
+            const pBonus = techBonusTotalInPeriod(techPaymentName, '', priorTo);
+            const pPaid = techPaymentsInPeriod(techPaymentName, '', priorTo).reduce((s, p) => s + parseVal(p.amount), 0);
+            prior = Math.max(0, round2(pDues + pBonus - pPaid));
+        }
+        const total = round2(remaining + prior);
+        techPaymentSuggestedTotal = Math.max(0, total);
+        const row = (label, val, color) => `<div style="display:flex; justify-content:space-between; gap:8px; padding:2px 0;"><span style="color:var(--text-muted);">${label}</span><strong style="color:${color};">$${val.toFixed(2)}</strong></div>`;
+        box.innerHTML = row(t('guideThDuesInPeriod'), dues, '#fbbf24')
+            + row(t('guideThBonusInPeriod'), bonus, '#fbbf24')
+            + row(t('guideThPaidInPeriod'), paid, '#34d399')
+            + row(t('guideThRemainingInPeriod'), remaining, remaining > 0 ? '#f87171' : '#94a3b8')
+            + (gFrom ? row(t('guideThPriorBalance'), prior, prior > 0 ? '#f87171' : '#94a3b8') : '')
+            + `<div style="border-top:1px solid var(--border-color); margin-top:5px; padding-top:5px;">${row(t('techPayTotalOwed'), total, total > 0 ? '#f87171' : '#34d399')}</div>`
+            + (techPaymentSuggestedTotal > 0 ? `<button type="button" class="secondary" onclick="fillTechPaymentFullTotal()" style="width:100%; margin-top:6px; padding:6px; font-size:0.78rem;">${t('techPayFillTotalBtn')} ($${techPaymentSuggestedTotal.toFixed(2)})</button>` : '');
+        box.style.display = 'block';
+    }
+    function fillTechPaymentFullTotal() {
+        document.getElementById('techPaymentAmount').value = techPaymentSuggestedTotal.toFixed(2);
     }
     function openTechPaymentEdit(at) {
         const p = techPayments.find(x => x.at === at);
@@ -9784,6 +9861,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         settleEl1.dataset.touched = '1'; // existing entry: don't silently re-sync this to the payment date if it's edited
         document.getElementById('techPaymentNote').value = p.note || '';
         document.getElementById('techPaymentJobGroup').style.display = 'none'; // editing never re-tags which job it belongs to
+        renderTechPaymentSummary(); // hides the totals box while editing
         document.getElementById('techPaymentModal').style.display = 'flex';
     }
     function closeTechPaymentModal() { document.getElementById('techPaymentModal').style.display = 'none'; editingPaymentAt = ''; techPaymentJobId = null; }
@@ -9791,13 +9869,13 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     // same week they're made in) until the user types in it directly — then it's pinned.
     function syncTechPaymentSettleDate() {
         const settleEl = document.getElementById('techPaymentSettleDate');
-        if (settleEl && !settleEl.dataset.touched) settleEl.value = document.getElementById('techPaymentDate').value;
+        if (settleEl && !settleEl.dataset.touched) settleEl.value = clampSettleToGuidePeriod(document.getElementById('techPaymentDate').value);
     }
 
     async function saveTechPayment() {
         const amount = parseVal(document.getElementById('techPaymentAmount').value);
         const date = document.getElementById('techPaymentDate').value;
-        const settleDate = document.getElementById('techPaymentSettleDate').value || date;
+        let settleDate = document.getElementById('techPaymentSettleDate').value || date;
         const note = document.getElementById('techPaymentNote').value.trim();
         if (amount <= 0) { alert(t('alertWithdrawalAmountRequired')); return; }
 
@@ -9831,6 +9909,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         // different pot of money — see techPaymentJobId above), and the Settle Date field is
         // still untouched (the user didn't already pick a date on purpose, which always wins).
         const settleTouched = !!document.getElementById('techPaymentSettleDate').dataset.touched;
+        if (!settleTouched) settleDate = clampSettleToGuidePeriod(settleDate);
         const guideDateFrom = document.getElementById('guideDateFrom') ? document.getElementById('guideDateFrom').value : '';
         const guideDateTo = document.getElementById('guideDateTo') ? document.getElementById('guideDateTo').value : '';
         let splitEntries = null;
@@ -9849,8 +9928,10 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             const priorBalance = round2(priorDues + priorBonus - priorPaid);
 
             if (priorBalance > 0.005 && amount > remainingInPeriod + 0.005) {
-                const currentPortion = round2(Math.min(amount, remainingInPeriod));
-                const priorPortion = round2(amount - currentPortion);
+                // Anything beyond this period's remaining goes to the old balance — but never more
+                // than the old balance itself; a true over-payment stays on the current period.
+                const priorPortion = round2(Math.min(amount - remainingInPeriod, priorBalance));
+                const currentPortion = round2(amount - priorPortion);
                 splitEntries = [];
                 if (currentPortion > 0.005) splitEntries.push({ name: techPaymentName, amount: currentPortion, date, settleDate, note, by: currentUserEmail || '?', at: new Date().toISOString() });
                 splitEntries.push({ name: techPaymentName, amount: priorPortion, date, settleDate: priorDateTo, note, by: currentUserEmail || '?', at: new Date().toISOString() + '-b' });
