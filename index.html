@@ -2090,6 +2090,8 @@
         invoiceNoteLabel: { ar: 'ملاحظة', en: 'Note' },
         invoiceNotePlaceholder: { ar: 'اكتب هنا أي تفاصيل إضافية عن الشغل أو الفاتورة...', en: 'Explain any field conditions or additional context here...' },
         invoicePrintBtn: { ar: '🖨️ طباعة الفاتورة', en: '🖨️ Print Invoice' },
+        invoiceAttachBtn: { ar: '📎 احفظ كملف (عشان ترفقه)', en: '📎 Save file (to attach)' },
+        invoiceShareBtn: { ar: '📤 شارك / واتساب', en: '📤 Share / WhatsApp' },
         invoiceRemoveItemBtn: { ar: 'حذف', en: 'Remove' },
         lblClientEmail: { ar: 'إيميل العميل:', en: "Client's Email:" },
         lblStatus: { ar: 'حالة المشروع:', en: 'Project Status:' },
@@ -7614,7 +7616,9 @@
 
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button type="button" onclick="saveCurrentInvoice()" style="padding:10px 20px; font-size:0.9rem; background:#38bdf8; color:#0a0e17; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoiceSaveBtn')}</button>
-                <button type="button" id="invoicePrintBtn" onclick="shareInvoicePdf()" style="padding:10px 20px; font-size:0.9rem; background:#2C6B45; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoicePrintBtn')}</button>
+                <button type="button" id="invoicePrintBtn" onclick="printInvoicePdf()" style="padding:10px 20px; font-size:0.9rem; background:#2C6B45; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoicePrintBtn')}</button>
+                <button type="button" id="invoiceAttachBtn" onclick="downloadInvoicePdf()" style="padding:10px 20px; font-size:0.9rem; background:#0f766e; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoiceAttachBtn')}</button>
+                <button type="button" id="invoiceShareBtn" onclick="shareInvoicePdf()" style="padding:10px 20px; font-size:0.9rem; background:#2563eb; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoiceShareBtn')}</button>
                 <button type="button" onclick="sendInvoiceClientMessage()" style="padding:10px 20px; font-size:0.9rem; background:#7c3aed; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoiceSendMsgBtn')}</button>
             </div>
         `;
@@ -7898,24 +7902,12 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         return html;
     }
 
-    // Same real-attachment approach as the Estimate's "Send formal quote" button
-    // (shareAppointmentQuotePdf): instead of just opening a print tab, this builds an actual PDF
-    // file (via the same iframe + html2canvas screenshot as the on-screen invoice) and lays a real
-    // jsPDF link annotation over the Pay Now button's position, so it stays tappable once the PDF
-    // lands in WhatsApp/Mail/Files. The file goes out through the device's native Share sheet.
-    async function shareInvoicePdf() {
-        if (!invoiceState) return;
+    // Builds the invoice PDF (iframe screenshot + jsPDF + the clickable Pay-Now link overlay) and
+    // just returns {doc, filename} — shared by the three buttons below (print / attach / share) so
+    // all three produce the exact same file instead of three copies of this logic drifting apart.
+    async function buildInvoicePdfDoc() {
         const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
-        if (!job) return;
-        if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') { alert(t('alertShareNotSupported')); return; }
-
-        const btn = document.getElementById('invoicePrintBtn');
-        const prevLabel = btn ? btn.textContent : '';
-        if (btn) { btn.disabled = true; btn.textContent = t('quotePdfPreparing'); }
-
-        const ok = await saveCurrentInvoice();
-        if (!ok) { if (btn) { btn.disabled = false; btn.textContent = prevLabel; } return; }
-
+        if (!job) return null;
         const html = buildInvoiceHtmlDoc(false);
         const iframe = document.createElement('iframe');
         iframe.style.cssText = 'position:fixed; left:-10000px; top:0; width:900px; height:1200px; border:0; visibility:hidden;';
@@ -7966,7 +7958,44 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
 
             const nameSlug = (job.clientName || 'client').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'client';
             const filename = `${companyFileSlug()}_Invoice_${nameSlug}.pdf`;
+            return { doc, filename };
+        } finally {
+            iframe.remove();
+        }
+    }
 
+    // Disables/relabels all three invoice PDF buttons together while one of them is working, and
+    // restores each one's own original label afterward (dataset.prevLabel per button, since the
+    // three have different text).
+    function setInvoicePdfButtonsBusy(busy, labelKey) {
+        ['invoicePrintBtn', 'invoiceAttachBtn', 'invoiceShareBtn'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (busy) {
+                if (!el.dataset.prevLabel) el.dataset.prevLabel = el.textContent;
+                el.disabled = true;
+                if (labelKey) el.textContent = t(labelKey);
+            } else {
+                el.disabled = false;
+                if (el.dataset.prevLabel) { el.textContent = el.dataset.prevLabel; delete el.dataset.prevLabel; }
+            }
+        });
+    }
+
+    // Sends the invoice PDF out through the device's native Share sheet (WhatsApp/Mail/Files/etc.),
+    // same as before — this is now one of three options (print / attach / share) instead of the
+    // only one, since on some devices (Windows especially) the Share sheet isn't what people expect
+    // when they press "Print".
+    async function shareInvoicePdf() {
+        if (!invoiceState) return;
+        if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') { alert(t('alertShareNotSupported')); return; }
+        setInvoicePdfButtonsBusy(true, 'quotePdfPreparing');
+        try {
+            const ok = await saveCurrentInvoice();
+            if (!ok) return;
+            const built = await buildInvoicePdfDoc();
+            if (!built) return;
+            const { doc, filename } = built;
             if (navigator.share && navigator.canShare) {
                 const blob = doc.output('blob');
                 const file = new File([blob], filename, { type: 'application/pdf' });
@@ -7981,8 +8010,62 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         } catch (e) {
             if (e && e.name !== 'AbortError') { console.error('shareInvoicePdf error:', e); alert(t('alertShareNotSupported')); }  // AbortError = user cancelled the share sheet, not a real failure
         } finally {
-            iframe.remove();
-            if (btn) { btn.disabled = false; btn.textContent = prevLabel; }
+            setInvoicePdfButtonsBusy(false);
+        }
+    }
+
+    // Saves the PDF straight to the device's Downloads folder — no OS share sheet involved — so
+    // there's a real file sitting on disk the user can manually attach in Mail/Outlook/etc. This is
+    // the button for when the native Share sheet doesn't offer the app they need (or isn't available
+    // at all, like on some desktop browsers).
+    async function downloadInvoicePdf() {
+        if (!invoiceState) return;
+        if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') { alert(t('alertShareNotSupported')); return; }
+        setInvoicePdfButtonsBusy(true, 'quotePdfPreparing');
+        try {
+            const ok = await saveCurrentInvoice();
+            if (!ok) return;
+            const built = await buildInvoicePdfDoc();
+            if (!built) return;
+            built.doc.save(built.filename);
+        } catch (e) {
+            console.error('downloadInvoicePdf error:', e);
+            alert(t('alertShareNotSupported'));
+        } finally {
+            setInvoicePdfButtonsBusy(false);
+        }
+    }
+
+    // Opens a REAL native print dialog (printer picker, copies, etc.) instead of the Share sheet or
+    // a plain download. Uses the same "open the blank window synchronously, before the async PDF
+    // build" trick as printSelectedJobs()/printTechnicianReport(), so mobile browsers don't treat the
+    // later window.location.href swap as a popup to block.
+    async function printInvoicePdf() {
+        if (!invoiceState) return;
+        if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') { alert(t('alertShareNotSupported')); return; }
+        const pdfWindow = window.open('', '_blank');
+        setInvoicePdfButtonsBusy(true, 'quotePdfPreparing');
+        try {
+            const ok = await saveCurrentInvoice();
+            if (!ok) { if (pdfWindow && !pdfWindow.closed) pdfWindow.close(); return; }
+            const built = await buildInvoicePdfDoc();
+            if (!built) { if (pdfWindow && !pdfWindow.closed) pdfWindow.close(); return; }
+            const { doc, filename } = built;
+            doc.autoPrint();
+            const url = doc.output('bloburl');
+            if (pdfWindow && !pdfWindow.closed) {
+                pdfWindow.location.href = url;
+            } else {
+                const a = document.createElement('a');
+                a.href = url; a.download = filename;
+                document.body.appendChild(a); a.click(); a.remove();
+            }
+        } catch (e) {
+            console.error('printInvoicePdf error:', e);
+            alert(t('alertShareNotSupported'));
+            if (pdfWindow && !pdfWindow.closed) pdfWindow.close();
+        } finally {
+            setInvoicePdfButtonsBusy(false);
         }
     }
 
