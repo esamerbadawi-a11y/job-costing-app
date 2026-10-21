@@ -2266,7 +2266,8 @@
         techPaymentSettleHint: { ar: 'سيبها زي تاريخ الدفع إلا لو الدفعة دي بتقفل حساب أسبوع قديم متأخر', en: 'Leave same as the payment date unless this is a catch-up payment for an older week' },
         techPayTotalOwed: { ar: 'إجمالي المطلوب له (بالبونص والمتأخر)', en: 'Total owed (incl. bonus & prior balance)' },
         techPayFillTotalBtn: { ar: 'اكتب الإجمالي كله', en: 'Fill full total' },
-        techPaymentAutoSplitToast: { ar: '✅ الدفعة اتقسمت تلقائي: {cur} للفترة الحالية، {prior} للرصيد القديم (لحد {through})', en: '✅ Payment auto-split: {cur} for this period, {prior} toward the prior balance (through {through})' },
+        techPaymentAutoSplitToast: { ar: '✅ الدفعة اتقسمت تلقائي: {prior} قفلت الرصيد القديم (لحد {through})، والباقي {cur} للفترة الحالية', en: '✅ Payment auto-split: {prior} closed the older balance (through {through}), the remaining {cur} went to the current period' },
+        techPayOldestFirstHint: { ar: 'الدفعة بتقفل الرصيد القديم الأول، والباقي بيروح للفترة الحالية.', en: 'The payment closes the older balance first; the rest goes to the current period.' },
         techPaymentSettlesNote: { ar: 'بتقفل حساب أسبوع:', en: 'Settles week of:' },
         techBonusTitle: { ar: '🎁 بونس لفني', en: '🎁 Technician Bonus' },
         techBonusJobLabel: { ar: 'لشغلانة معينة؟ (اختياري)', en: 'For a specific job? (optional)' },
@@ -9840,6 +9841,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             + row(t('guideThRemainingInPeriod'), remaining, remaining > 0 ? '#f87171' : '#94a3b8')
             + (gFrom ? row(t('guideThPriorBalance'), prior, prior > 0 ? '#f87171' : '#94a3b8') : '')
             + `<div style="border-top:1px solid var(--border-color); margin-top:5px; padding-top:5px;">${row(t('techPayTotalOwed'), total, total > 0 ? '#f87171' : '#34d399')}</div>`
+            + (prior > 0 ? `<div style="font-size:0.72rem; color:#fbbf24; margin-top:6px;">${t('techPayOldestFirstHint')}</div>` : '')
             + (techPaymentSuggestedTotal > 0 ? `<button type="button" class="secondary" onclick="fillTechPaymentFullTotal()" style="width:100%; margin-top:6px; padding:6px; font-size:0.78rem;">${t('techPayFillTotalBtn')} ($${techPaymentSuggestedTotal.toFixed(2)})</button>` : '');
         box.style.display = 'block';
     }
@@ -9903,23 +9905,17 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const jobSelectEl = document.getElementById('techPaymentJobSelect');
         const chosenJobId = (jobSelectEl && jobSelectEl.value) || techPaymentJobId;
 
-        // Auto-split an over-payment between "this period" and an older unpaid balance — only
-        // when: opened from the Technicians Guide row that actually has a period/Prior Balance
-        // in view, a date range is set there, it's not tagged to one specific job (that's a
-        // different pot of money — see techPaymentJobId above), and the Settle Date field is
-        // still untouched (the user didn't already pick a date on purpose, which always wins).
+        // Oldest-first allocation: when opened from the Technicians Guide row with a period in
+        // view and that technician still has an OLDER unpaid balance (before the period's From
+        // date), the payment closes that old balance first, and only what's left goes to the
+        // period being viewed. Skipped when the payment is tied to one specific job (a different
+        // pot of money — see techPaymentJobId above) or when the Settle Date was picked by hand
+        // (an explicit choice always wins).
         const settleTouched = !!document.getElementById('techPaymentSettleDate').dataset.touched;
         if (!settleTouched) settleDate = clampSettleToGuidePeriod(settleDate);
         const guideDateFrom = document.getElementById('guideDateFrom') ? document.getElementById('guideDateFrom').value : '';
-        const guideDateTo = document.getElementById('guideDateTo') ? document.getElementById('guideDateTo').value : '';
         let splitEntries = null;
         if (techPaymentFromGuidePeriod && !chosenJobId && !settleTouched && guideDateFrom) {
-            const stats = computeTechPeriodStats(guideDateFrom, guideDateTo);
-            const dues = stats[techPaymentName] ? stats[techPaymentName].dues : 0;
-            const bonus = techBonusTotalInPeriod(techPaymentName, guideDateFrom, guideDateTo);
-            const paidSoFar = techPaymentsInPeriod(techPaymentName, guideDateFrom, guideDateTo).reduce((s, p) => s + parseVal(p.amount), 0);
-            const remainingInPeriod = Math.max(0, round2(dues + bonus - paidSoFar));
-
             const priorDateTo = addDaysISO(guideDateFrom, -1);
             const priorStats = computeTechPeriodStats('', priorDateTo);
             const priorDues = priorStats[techPaymentName] ? priorStats[techPaymentName].dues : 0;
@@ -9927,14 +9923,12 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             const priorPaid = techPaymentsInPeriod(techPaymentName, '', priorDateTo).reduce((s, p) => s + parseVal(p.amount), 0);
             const priorBalance = round2(priorDues + priorBonus - priorPaid);
 
-            if (priorBalance > 0.005 && amount > remainingInPeriod + 0.005) {
-                // Anything beyond this period's remaining goes to the old balance — but never more
-                // than the old balance itself; a true over-payment stays on the current period.
-                const priorPortion = round2(Math.min(amount - remainingInPeriod, priorBalance));
-                const currentPortion = round2(amount - priorPortion);
+            if (priorBalance > 0.005) {
+                const priorPortion = round2(Math.min(amount, priorBalance));
+                const currentPortion = round2(amount - priorPortion);   // what's left after the old balance is closed (may be an advance if it exceeds the period's remaining)
                 splitEntries = [];
-                if (currentPortion > 0.005) splitEntries.push({ name: techPaymentName, amount: currentPortion, date, settleDate, note, by: currentUserEmail || '?', at: new Date().toISOString() });
-                splitEntries.push({ name: techPaymentName, amount: priorPortion, date, settleDate: priorDateTo, note, by: currentUserEmail || '?', at: new Date().toISOString() + '-b' });
+                splitEntries.push({ name: techPaymentName, amount: priorPortion, date, settleDate: priorDateTo, note, by: currentUserEmail || '?', at: new Date().toISOString() });
+                if (currentPortion > 0.005) splitEntries.push({ name: techPaymentName, amount: currentPortion, date, settleDate, note, by: currentUserEmail || '?', at: new Date().toISOString() + '-b' });
                 const toastMsg = t('techPaymentAutoSplitToast').replace('{cur}', '$' + currentPortion.toFixed(2)).replace('{prior}', '$' + priorPortion.toFixed(2)).replace('{through}', priorDateTo);
                 safeCall(() => showToast(toastMsg));
             }
