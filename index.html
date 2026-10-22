@@ -1373,7 +1373,7 @@
             <div id="quoteItemsTotalDisplay" style="font-size:0.8rem; margin-top:6px; padding:6px 10px; border-radius:8px;"></div>
             <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
                 <button type="button" class="secondary" onclick="addQuoteItemRow()" data-i18n="quoteAddItemBtn" style="padding:7px 12px; font-size:0.8rem;"></button>
-                <button type="button" id="quoteAnalyzePhotoBtn" class="secondary" onclick="document.getElementById('quotePhotoInput').click()" data-i18n="quoteAnalyzePhotoBtn" style="padding:7px 12px; font-size:0.8rem; background:#7c3aed;"></button>
+                <button type="button" id="quoteAnalyzePhotoBtn" class="secondary" onclick="startQuoteAiAnalysis()" data-i18n="quoteAnalyzePhotoBtn" style="padding:7px 12px; font-size:0.8rem; background:#7c3aed;"></button>
                 <input type="file" id="quotePhotoInput" accept="image/*" multiple style="display:none;" onchange="analyzeQuotePhotoAndSplit(event)">
             </div>
             <div id="quotePhotoGallery" style="display:none; gap:8px; flex-wrap:wrap; margin-top:10px;"></div>
@@ -2428,6 +2428,7 @@
         quoteAddItemBtn: { ar: '+ ضيف بند', en: '+ Add item' },
         quoteAnalyzePhotoBtn: { ar: '📷 حلل الصور واعمل عرض سعر بالـ AI', en: '📷 Analyze photos & quote (AI)' },
         quoteAnalyzingPhoto: { ar: '⏳ بيحلل ويعمل عرض السعر...', en: '⏳ Analyzing & building the quote...' },
+        confirmQuoteUseApptScope: { ar: 'الموعد ده فيه وصف شغلانة و/أو صور متسجلة. تحب الـ AI يعمل السعر منهم دلوقتي؟\n\nOK = أيوه، استخدمهم\nCancel = هختار صور تانية من الموبايل', en: 'This appointment already has a written scope and/or photos. Build the quote from them now?\n\nOK = yes, use them\nCancel = I will pick other photos from my phone' },
         alertQuoteAnalyzeNeedsInput: { ar: 'ضيف صورة، أو حدد السعر الإجمالي، أو اكتب توجيه للـ AI الأول.', en: 'Add a photo, enter the total price, or write an instruction for the AI first.' },
         invoiceAnalyzePhotoBtn: { ar: '📷 حلل الصور وضيف بنود (AI)', en: '📷 Analyze photos & add items (AI)' },
         invoiceAnalyzingPhoto: { ar: '⏳ بيحلل ويضيف البنود...', en: '⏳ Analyzing & adding items...' },
@@ -10951,16 +10952,38 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     // total; otherwise it proposes its own quick estimate for "Total price" too (which stays
     // a normal, freely-editable field afterwards, exactly like a manually-typed one). Replaces
     // whatever breakdown rows were on screen before.
-    async function analyzeQuotePhotoAndSplit(event) {
+    // The 📷 button: if the appointment already carries a written scope and/or photos (typically
+    // from the Appointments screen's own AI photo analysis), offer to build the quote straight
+    // from those so nothing has to be re-uploaded; otherwise — or if declined — open the photo
+    // picker exactly like before.
+    async function startQuoteAiAnalysis() {
+        const appt = appointments.find(a => a.id === quoteApptId);
+        let hasApptContent = !!(appt && (appt.note || '').trim());
+        if (!hasApptContent && quoteApptId) {
+            const att = await loadApptAttachments(quoteApptId);
+            hasApptContent = !!(att.photos && att.photos.length);
+        }
+        if (hasApptContent && confirm(t('confirmQuoteUseApptScope'))) { analyzeQuoteAI([], true); return; }
+        document.getElementById('quotePhotoInput').click();
+    }
+    function analyzeQuotePhotoAndSplit(event) {
         const files = event.target.files ? Array.from(event.target.files) : [];
         event.target.value = '';
+        analyzeQuoteAI(files, false);
+    }
+    async function analyzeQuoteAI(files, useApptPhotos) {
         const apiKey = getGeminiApiKey();
         if (!apiKey) { alert(t('aiNoKeyNote')); return; }
 
         const priceInput = document.getElementById('quotePriceInput');
         const existingPrice = parseVal(priceInput.value);
         const instructions = (document.getElementById('quoteAiInstructions').value || '').trim();
-        if (files.length === 0 && !existingPrice && !instructions && quoteItemsState.length === 0) {
+        // The appointment's own written scope (+ the services ticked on it) is always passed to
+        // the AI as context, whether or not new photos are picked.
+        const apptForQuote = appointments.find(a => a.id === quoteApptId);
+        const scopeText = apptForQuote ? (apptForQuote.note || '').trim() : '';
+        const serviceNames = apptForQuote && Array.isArray(apptForQuote.services) ? apptForQuote.services.filter(Boolean) : [];
+        if (files.length === 0 && !useApptPhotos && !scopeText && !existingPrice && !instructions && quoteItemsState.length === 0) {
             alert(t('alertQuoteAnalyzeNeedsInput'));
             return;
         }
@@ -10972,20 +10995,32 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         try {
             const dataUrls = [];
             for (const file of files) { dataUrls.push(await compressImageToBase64(file)); }
-            const imageParts = dataUrls.map(dataUrl => ({ inlineData: { mimeType: 'image/jpeg', data: dataUrl.split(',')[1] } }));
+            // Photos already saved on the appointment (used when the user chose "use the appointment's
+            // scope & photos") — sent to the AI as-is, but NOT copied into this quote's own photos.
+            const apptDataUrls = [];
+            if (useApptPhotos && quoteApptId) {
+                const att = await loadApptAttachments(quoteApptId);
+                (att.photos || []).slice(0, 8).forEach(ph => { if (ph && ph.data) apptDataUrls.push(ph.data); });
+            }
+            const imageParts = dataUrls.concat(apptDataUrls).map(dataUrl => ({ inlineData: { mimeType: 'image/jpeg', data: dataUrl.split(',')[1] } }));
 
             const instructionsLine = instructions
                 ? (currentLang === 'ar' ? ` خد بالك كمان من التوجيه ده من صاحب الشغل: ${instructions}.` : ` Also follow this instruction from the business owner: ${instructions}.`)
                 : '';
-            const photosLine = dataUrls.length > 0
+            const scopeLine = scopeText
+                ? (currentLang === 'ar'
+                    ? ` ده وصف الشغلانة المكتوب للموعد ده${serviceNames.length ? ' (الخدمات: ' + serviceNames.join('، ') + ')' : ''}: "${scopeText}". اعتمد عليه في تحديد البنود والسعر.`
+                    : ` This is the written scope of work for this appointment${serviceNames.length ? ' (services: ' + serviceNames.join(', ') + ')' : ''}: "${scopeText}". Base the line items and price on it.`)
+                : '';
+            const photosLine = (dataUrls.length + apptDataUrls.length) > 0
                 ? (currentLang === 'ar' ? ` اتفرج على صور موقع شغل الصيانة/المقاولات المرفقة.` : ` Look at the attached handyman/contracting job-site photo(s).`)
                 : '';
             const priceLine = existingPrice
                 ? (currentLang === 'ar' ? ` السعر الإجمالي محدد عند $${existingPrice.toFixed(2)} بالظبط — لازم مجموع البنود يساوي الرقم ده بالظبط.` : ` The total price is fixed at exactly $${existingPrice.toFixed(2)} — the items must sum to exactly that number.`)
                 : (currentLang === 'ar' ? ` معدّش سعر إجمالي لسه، فاقترح سعر إجمالي واقعي أنت نفسك حسب اللي شايفه/قاريه.` : ` No total price has been entered yet, so propose a realistic total price yourself based on what you see/read.`);
             const promptText = (currentLang === 'ar'
-                ? `اعمل عرض سعر لشغل صيانة/مقاولات.${photosLine}${priceLine}${instructionsLine} قسّم السعر الإجمالي على بنود منطقية (تصليحات، خامات، تشطيب، إلخ) بحيث (سعر الوحدة × العدد) مجموعها يساوي الإجمالي بالظبط. كل بند له "amount" (سعر الوحدة الواحدة) و"qty" (عدد الوحدات، 1 لو بند واحد بس) — لو فيه أكتر من مكان/قطعة متطابقة (مثلاً نفس الشغلانة في 4 أماكن) اعتبرها بند واحد بـ qty=4 مش 4 بنود منفصلة. رجّعلي JSON فقط، من غير أي نص تاني ولا \`\`\`، بالشكل ده: {"totalPrice": 123.45, "items": [{"desc":"وصف البند","qty":1,"amount":67.89}, ...]}`
-                : `Build a price quote for a handyman/contracting job.${photosLine}${priceLine}${instructionsLine} Split the total price into logical line items (repairs, materials, finishing, etc.) so that (unit amount × qty) sums to exactly the total. Each item has "amount" (the PER-UNIT price) and "qty" (how many units, 1 if it's just one thing) — if the same task applies to several identical spots/pieces (e.g. the same job in 4 locations), make that ONE item with qty 4 rather than 4 separate items. Return ONLY JSON, no other text and no \`\`\`, in this shape: {"totalPrice": 123.45, "items": [{"desc":"item description","qty":1,"amount":67.89}, ...]}`);
+                ? `اعمل عرض سعر لشغل صيانة/مقاولات.${photosLine}${scopeLine}${priceLine}${instructionsLine} قسّم السعر الإجمالي على بنود منطقية (تصليحات، خامات، تشطيب، إلخ) بحيث (سعر الوحدة × العدد) مجموعها يساوي الإجمالي بالظبط. كل بند له "amount" (سعر الوحدة الواحدة) و"qty" (عدد الوحدات، 1 لو بند واحد بس) — لو فيه أكتر من مكان/قطعة متطابقة (مثلاً نفس الشغلانة في 4 أماكن) اعتبرها بند واحد بـ qty=4 مش 4 بنود منفصلة. رجّعلي JSON فقط، من غير أي نص تاني ولا \`\`\`، بالشكل ده: {"totalPrice": 123.45, "items": [{"desc":"وصف البند","qty":1,"amount":67.89}, ...]}`
+                : `Build a price quote for a handyman/contracting job.${photosLine}${scopeLine}${priceLine}${instructionsLine} Split the total price into logical line items (repairs, materials, finishing, etc.) so that (unit amount × qty) sums to exactly the total. Each item has "amount" (the PER-UNIT price) and "qty" (how many units, 1 if it's just one thing) — if the same task applies to several identical spots/pieces (e.g. the same job in 4 locations), make that ONE item with qty 4 rather than 4 separate items. Return ONLY JSON, no other text and no \`\`\`, in this shape: {"totalPrice": 123.45, "items": [{"desc":"item description","qty":1,"amount":67.89}, ...]}`);
 
             const resultText = await aiGenerate(apiKey, [...imageParts, { text: promptText }]);
             const { totalPrice, items } = parseAndNormalizeQuoteWithTotal(resultText, existingPrice);
