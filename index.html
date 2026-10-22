@@ -424,7 +424,7 @@
                     <button type="button" onclick="improveScopeWithAI('apptNote','apptAiScopeBtn','apptAiInstructionInput')" id="apptAiScopeBtn" style="background:linear-gradient(135deg,#7c3aed,#38bdf8); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">✨ <span data-i18n="aiScopeBtn"></span></button>
                     <button type="button" onclick="startVoiceScope('apptNote','apptVoiceScopeBtn','apptAiScopeBtn','apptAiInstructionInput')" id="apptVoiceScopeBtn" style="background:linear-gradient(135deg,#dc2626,#f97316); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">🎤 <span data-i18n="voiceScopeBtn"></span></button>
                     <button type="button" onclick="document.getElementById('apptPhotoInput').click()" id="apptPhotoBtn" style="background:linear-gradient(135deg,#0ea5e9,#0284c7); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">📷 <span data-i18n="photoScopeBtn"></span></button>
-                    <input type="file" id="apptPhotoInput" accept="image/*" style="display:none;" onchange="analyzePhotoForScope(event,'apptNote','apptPhotoBtn','apptPhotoGallery')">
+                    <input type="file" id="apptPhotoInput" accept="image/*" multiple style="display:none;" onchange="analyzePhotoForScope(event,'apptNote','apptPhotoBtn','apptPhotoGallery')">
                 </div>
                 <div id="apptPhotoGallery" style="display:none; gap:8px; flex-wrap:wrap; margin-bottom:10px;"></div>
                 <div style="display:flex; gap:8px;">
@@ -695,7 +695,7 @@
                         <button type="button" onclick="improveScopeWithAI()" id="aiScopeBtn" style="background:linear-gradient(135deg,#7c3aed,#38bdf8); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">✨ <span data-i18n="aiScopeBtn"></span></button>
                         <button type="button" onclick="startVoiceScope()" id="voiceScopeBtn" style="background:linear-gradient(135deg,#dc2626,#f97316); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">🎤 <span data-i18n="voiceScopeBtn"></span></button>
                         <button type="button" onclick="document.getElementById('jobPhotoInput').click()" id="jobPhotoBtn" style="background:linear-gradient(135deg,#0ea5e9,#0284c7); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">📷 <span data-i18n="photoScopeBtn"></span></button>
-                        <input type="file" id="jobPhotoInput" accept="image/*" style="display:none;" onchange="analyzePhotoForScope(event,'clientDescription','jobPhotoBtn','jobPhotoGallery')">
+                        <input type="file" id="jobPhotoInput" accept="image/*" multiple style="display:none;" onchange="analyzePhotoForScope(event,'clientDescription','jobPhotoBtn','jobPhotoGallery')">
                     </div>
                     <div id="jobPhotoGallery" style="display:none; gap:8px; flex-wrap:wrap; margin-top:6px;"></div>
                 </div>
@@ -5460,9 +5460,9 @@
     // Reads a photo, sends it to Gemini's vision-capable model, and appends what it
     // thinks the job needs into the target field — handy for a quick on-site photo.
     async function analyzePhotoForScope(event, fieldId, btnId, galleryId) {
-        const file = event.target.files && event.target.files[0];
+        const files = event.target.files ? Array.from(event.target.files).slice(0, 10) : [];   // up to 10 photos at once
         event.target.value = ''; // allow re-selecting the same file next time
-        if (!file) return;
+        if (files.length === 0) return;
         const apiKey = getGeminiApiKey();
         if (!apiKey) return;
 
@@ -5471,14 +5471,20 @@
         btn.disabled = true; btn.innerHTML = '⏳ ...';
 
         try {
-            const dataUrl = await compressImageToBase64(file);
-            const base64Data = dataUrl.split(',')[1];
+            const dataUrls = [];
+            for (const file of files) { dataUrls.push(await compressImageToBase64(file)); }
+            const imageParts = dataUrls.map(du => ({ inlineData: { mimeType: 'image/jpeg', data: du.split(',')[1] } }));
+            // Several photos are sent in ONE request so the AI describes the job as a whole (no
+            // repeated points) instead of producing a separate list per photo.
+            const several = dataUrls.length > 1;
+            const subjectAr = several ? 'الصور دي (كلها لنفس موقع شغل الصيانة/المقاولات — اعتبرها مع بعض ومتكررش نفس النقطة)' : 'الصورة دي لموقع شغل صيانة/مقاولات';
+            const subjectEn = several ? "these handyman/contracting job-site photos (all from the same job — consider them together and don't repeat a point)" : 'this handyman/contracting job-site photo';
 
             const promptText = currentLang === 'ar'
-                ? 'اتفرج على الصورة دي لموقع شغل صيانة/مقاولات، واكتب وصف نقاط مختصر وواضح لإيه المطلوب عمله (تصليحات، دهانات، إلخ) بناءً على اللي شايفه. من غير مقدمات. اكتب النتيجة كنص عادي منظم في نقاط، كل نقطة في سطر جديد وتبدأ بعلامة "-"، وممكن تحط **كلمة مهمة** لو عايز تبرزها. ممنوع تستخدم جدول Markdown (علامة |) أو أكواد HTML زي <br> أو أي تنسيق تاني.'
-                : "Look at this handyman/contracting job-site photo and write a short, clear bullet-point description of what work appears to be needed, based on what you see. No preamble. Return plain text only, organized as short bullet points each on its own new line starting with \"-\" (you may use **word** to highlight a key word). Do NOT use a Markdown table (| characters), HTML tags like <br>, or any other markup.";
+                ? `اتفرج على ${subjectAr}، واكتب وصف نقاط مختصر وواضح لإيه المطلوب عمله (تصليحات، دهانات، إلخ) بناءً على اللي شايفه. من غير مقدمات. اكتب النتيجة كنص عادي منظم في نقاط، كل نقطة في سطر جديد وتبدأ بعلامة "-"، وممكن تحط **كلمة مهمة** لو عايز تبرزها. ممنوع تستخدم جدول Markdown (علامة |) أو أكواد HTML زي <br> أو أي تنسيق تاني.`
+                : `Look at ${subjectEn} and write a short, clear bullet-point description of what work appears to be needed, based on what you see. No preamble. Return plain text only, organized as short bullet points each on its own new line starting with \"-\" (you may use **word** to highlight a key word). Do NOT use a Markdown table (| characters), HTML tags like <br>, or any other markup.`;
 
-            const resultText = sanitizeAiPlainText(await aiGenerate(apiKey, [{ inlineData: { mimeType: 'image/jpeg', data: base64Data } }, { text: promptText }]));
+            const resultText = sanitizeAiPlainText(await aiGenerate(apiKey, [...imageParts, { text: promptText }]));
 
             const field = document.getElementById(fieldId);
             field.value = (field.value.trim() ? field.value.trim() + '\n\n' : '') + resultText.trim();
@@ -5486,7 +5492,7 @@
             // Keep the photo itself attached to the record, not just its description.
             if (galleryId) {
                 const photosArr = getPhotosArrayFor(galleryId);
-                photosArr.push({ data: dataUrl, addedAt: new Date().toISOString() });
+                dataUrls.forEach(du => photosArr.push({ data: du, addedAt: new Date().toISOString() }));
                 renderPhotoGallery(photosArr, galleryId);
             }
         } catch (err) {
