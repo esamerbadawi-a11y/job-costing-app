@@ -1431,6 +1431,7 @@
         <h3 id="techPaymentTitleEl" style="color:#38bdf8; margin:0 0 4px; font-size:1rem;" data-i18n="techPaymentTitle"></h3>
         <div id="techPaymentNameLabel" style="font-weight:700; margin-bottom:10px;"></div>
         <div id="techPaymentSummary" style="display:none; background:rgba(56,189,248,0.08); border:1px solid var(--border-color); border-radius:8px; padding:10px; margin-bottom:12px; font-size:0.82rem;"></div>
+        <div class="form-group" id="techPaymentOldGroup" style="display:none;"><label data-i18n="techPayOldLabel"></label><select id="techPaymentOldSelect" onchange="onTechPaymentOldChange()"></select></div>
         <div class="form-group" id="techPaymentJobGroup"><label data-i18n="techPaymentJobLabel"></label><select id="techPaymentJobSelect"></select></div>
         <div class="form-group"><label data-i18n="withdrawalAmountLabel"></label><input type="text" id="techPaymentAmount" placeholder="0" onfocus="this.select()"></div>
         <div class="form-group"><label data-i18n="lblReceiptDate"></label><input type="date" id="techPaymentDate" onchange="syncTechPaymentSettleDate()"></div>
@@ -2267,7 +2268,10 @@
         techPayTotalOwed: { ar: 'إجمالي المطلوب له (بالبونص والمتأخر)', en: 'Total owed (incl. bonus & prior balance)' },
         techPayFillTotalBtn: { ar: 'اكتب الإجمالي كله', en: 'Fill full total' },
         techPaymentAutoSplitToast: { ar: '✅ الدفعة اتقسمت تلقائي: {prior} قفلت الرصيد القديم (لحد {through})، والباقي {cur} للفترة الحالية', en: '✅ Payment auto-split: {prior} closed the older balance (through {through}), the remaining {cur} went to the current period' },
-        techPayOldestFirstHint: { ar: 'الدفعة بتقفل الرصيد القديم الأول، والباقي بيروح للفترة الحالية.', en: 'The payment closes the older balance first; the rest goes to the current period.' },
+        techPayOldestFirstHint: { ar: 'الدفعة بتقفل الرصيد القديم الأول، والباقي بيروح للفترة الحالية. أو اختار مبلغ قديم معين من القايمة اللي تحت.', en: 'The payment closes the older balance first; the rest goes to the current period. Or pick a specific old amount from the list below.' },
+        techPayOldLabel: { ar: 'تدفع على أنهي مبلغ قديم؟', en: 'Pay toward which old balance?' },
+        techPayOldAuto: { ar: 'تلقائي (الأقدم الأول)', en: 'Automatic (oldest first)' },
+        techPayOldRemaining: { ar: 'متبقي', en: 'owed' },
         techPaymentSettlesNote: { ar: 'بتقفل حساب أسبوع:', en: 'Settles week of:' },
         techBonusTitle: { ar: '🎁 بونس لفني', en: '🎁 Technician Bonus' },
         techBonusJobLabel: { ar: 'لشغلانة معينة؟ (اختياري)', en: 'For a specific job? (optional)' },
@@ -9815,6 +9819,9 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     function renderTechPaymentSummary() {
         const box = document.getElementById('techPaymentSummary');
         if (!box) return;
+        const oldGroupEl = document.getElementById('techPaymentOldGroup');
+        techPaymentOldWeeks = [];
+        if (oldGroupEl) oldGroupEl.style.display = 'none';
         if (editingPaymentAt || techPaymentJobId || !techPaymentName) { box.style.display = 'none'; return; }
         const gFrom = techPaymentFromGuidePeriod && document.getElementById('guideDateFrom') ? document.getElementById('guideDateFrom').value : '';
         const gTo = techPaymentFromGuidePeriod && document.getElementById('guideDateTo') ? document.getElementById('guideDateTo').value : '';
@@ -9844,6 +9851,47 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             + (prior > 0 ? `<div style="font-size:0.72rem; color:#fbbf24; margin-top:6px;">${t('techPayOldestFirstHint')}</div>` : '')
             + (techPaymentSuggestedTotal > 0 ? `<button type="button" class="secondary" onclick="fillTechPaymentFullTotal()" style="width:100%; margin-top:6px; padding:6px; font-size:0.78rem;">${t('techPayFillTotalBtn')} ($${techPaymentSuggestedTotal.toFixed(2)})</button>` : '');
         box.style.display = 'block';
+
+        // Itemize the OLD unpaid balance week by week (Mon–Sun, up to 26 weeks back from the
+        // viewed period's start), so one specific old amount can be picked and closed directly.
+        if (gFrom && oldGroupEl) {
+            const priorTo = addDaysISO(gFrom, -1);
+            let wkStart = mondayOf(priorTo);
+            for (let i = 0; i < 26; i++) {
+                const wkEnd = i === 0 ? priorTo : addDaysISO(wkStart, 6);
+                const wStats = computeTechPeriodStats(wkStart, wkEnd);
+                const wDues = wStats[techPaymentName] ? wStats[techPaymentName].dues : 0;
+                const wBonus = techBonusTotalInPeriod(techPaymentName, wkStart, wkEnd);
+                const wPaid = techPaymentsInPeriod(techPaymentName, wkStart, wkEnd).reduce((sum, p) => sum + parseVal(p.amount), 0);
+                const wBal = round2(wDues + wBonus - wPaid);
+                if (wBal > 0.005) techPaymentOldWeeks.push({ start: wkStart, end: wkEnd, balance: wBal });
+                wkStart = addDaysISO(wkStart, -7);
+            }
+            techPaymentOldWeeks.reverse(); // oldest first
+            if (techPaymentOldWeeks.length > 0) {
+                const oldSel = document.getElementById('techPaymentOldSelect');
+                oldSel.innerHTML = `<option value="">${t('techPayOldAuto')}</option>` + techPaymentOldWeeks.map((w, i) => `<option value="${i}">${escHtml(w.start)} → ${escHtml(w.end)} — ${t('techPayOldRemaining')} $${w.balance.toFixed(2)}</option>`).join('');
+                oldSel.value = '';
+                oldGroupEl.style.display = '';
+            }
+        }
+    }
+    let techPaymentOldWeeks = [];
+    // Picking one old amount fills in its balance and pins the Settle Date to that week's end,
+    // so the payment lands on (and closes) exactly that old week.
+    function onTechPaymentOldChange() {
+        const sel = document.getElementById('techPaymentOldSelect');
+        const settleEl = document.getElementById('techPaymentSettleDate');
+        if (!sel.value) {   // back to automatic
+            delete settleEl.dataset.touched;
+            settleEl.value = clampSettleToGuidePeriod(document.getElementById('techPaymentDate').value);
+            return;
+        }
+        const wk = techPaymentOldWeeks[parseInt(sel.value, 10)];
+        if (!wk) return;
+        settleEl.value = wk.end;
+        settleEl.dataset.touched = '1';
+        document.getElementById('techPaymentAmount').value = wk.balance.toFixed(2);
     }
     function fillTechPaymentFullTotal() {
         document.getElementById('techPaymentAmount').value = techPaymentSuggestedTotal.toFixed(2);
@@ -9915,7 +9963,22 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         if (!settleTouched) settleDate = clampSettleToGuidePeriod(settleDate);
         const guideDateFrom = document.getElementById('guideDateFrom') ? document.getElementById('guideDateFrom').value : '';
         let splitEntries = null;
-        if (techPaymentFromGuidePeriod && !chosenJobId && !settleTouched && guideDateFrom) {
+        // A specific old week picked in the "Pay toward which old balance?" list: that week gets
+        // up to its own balance (settled on the week's last day); anything extra goes to the period
+        // in view. If the Settle Date was edited by hand afterwards, the manual date wins instead.
+        const oldGroupShown = document.getElementById('techPaymentOldGroup').style.display !== 'none';
+        const oldSelEl = document.getElementById('techPaymentOldSelect');
+        const pickedOldWk = (oldGroupShown && oldSelEl && oldSelEl.value !== '') ? techPaymentOldWeeks[parseInt(oldSelEl.value, 10)] : null;
+        if (pickedOldWk && !chosenJobId && settleDate === pickedOldWk.end && amount > pickedOldWk.balance + 0.005) {
+            const restAmount = round2(amount - pickedOldWk.balance);
+            splitEntries = [
+                { name: techPaymentName, amount: pickedOldWk.balance, date, settleDate: pickedOldWk.end, note, by: currentUserEmail || '?', at: new Date().toISOString() },
+                { name: techPaymentName, amount: restAmount, date, settleDate: clampSettleToGuidePeriod(date), note, by: currentUserEmail || '?', at: new Date().toISOString() + '-b' }
+            ];
+            const toastMsg2 = t('techPaymentAutoSplitToast').replace('{cur}', '$' + restAmount.toFixed(2)).replace('{prior}', '$' + pickedOldWk.balance.toFixed(2)).replace('{through}', pickedOldWk.end);
+            safeCall(() => showToast(toastMsg2));
+        }
+        if (!splitEntries && techPaymentFromGuidePeriod && !chosenJobId && !settleTouched && guideDateFrom) {
             const priorDateTo = addDaysISO(guideDateFrom, -1);
             const priorStats = computeTechPeriodStats('', priorDateTo);
             const priorDues = priorStats[techPaymentName] ? priorStats[techPaymentName].dues : 0;
