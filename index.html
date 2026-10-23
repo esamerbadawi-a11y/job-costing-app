@@ -2097,6 +2097,7 @@
         invoiceNoteLabel: { ar: 'ملاحظة', en: 'Note' },
         invoiceNotePlaceholder: { ar: 'اكتب هنا أي تفاصيل إضافية عن الشغل أو الفاتورة...', en: 'Explain any field conditions or additional context here...' },
         invoicePrintBtn: { ar: '🖨️ طباعة الفاتورة', en: '🖨️ Print Invoice' },
+        invoicePrintIosHint: { ar: 'على الأيفون: لما تظهر قايمة المشاركة، اختار "Print" (طباعة) منها.', en: 'On iPhone: when the share sheet appears, choose "Print".' },
         invoiceAttachBtn: { ar: '📎 احفظ كملف (عشان ترفقه)', en: '📎 Save file (to attach)' },
         invoiceShareBtn: { ar: '📤 شارك / واتساب', en: '📤 Share / WhatsApp' },
         invoiceRemoveItemBtn: { ar: 'حذف', en: 'Remove' },
@@ -8105,6 +8106,11 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     async function printInvoicePdf() {
         if (!invoiceState) return;
         if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') { alert(t('alertShareNotSupported')); return; }
+        // iPhone/iPad: a script can't open a print dialog, and a pop-up opened before the (slow)
+        // PDF build is unreliable there — the phone's own way to print is the Share sheet's
+        // "Print" action, so go through that and say so.
+        const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        if (isIOSDevice) { safeCall(() => showToast(t('invoicePrintIosHint'))); return shareInvoicePdf(); }
         const pdfWindow = window.open('', '_blank');
         setInvoicePdfButtonsBusy(true, 'quotePdfPreparing');
         try {
@@ -8124,7 +8130,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             }
         } catch (e) {
             console.error('printInvoicePdf error:', e);
-            alert(t('alertShareNotSupported'));
+            alert(t('alertShareNotSupported') + ' (' + ((e && e.message) ? e.message : String(e)) + ')');
             if (pdfWindow && !pdfWindow.closed) pdfWindow.close();
         } finally {
             setInvoicePdfButtonsBusy(false);
