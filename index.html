@@ -2610,6 +2610,10 @@
         guidePeriodNote: { ar: 'الفني اللي ليه أسابيع متسجلة على الشغلانة (📆) بيتحسب بالأرقام دي زي ما هي لكل أسبوع (الأسبوع من الإثنين للأحد). غير كده، مستحق الشغلانة بيتقسم على أيام الفني المجدولة. دوس 🔎 تفاصيل عشان تشوف كل رقم جه منين.', en: 'A technician with weeks entered on the job (📆) is counted with exactly those amounts per week (weeks run Monday to Sunday). Otherwise the job\'s dues are split by his scheduled days. Tap 🔎 Details to see where each number comes from.' },
         partnerPeriodNote: { ar: 'نفس حسبة "إرسال نصيب S و M" بالظبط، لكن محصورة في الفترة اللي اخترتها فوق — المسحوب هنا هو بس اللي اتسحب بتاريخ جوه نفس الفترة.', en: 'The exact same math as "Send S & M Share", scoped to the period picked above — withdrawals here are only the ones dated inside that same period.' },
         partnerPeriodLabel: { ar: 'الفترة المختارة', en: 'Selected period' },
+        partnerPeriodBalanceLabel: { ar: 'حساب الفترة دي لوحدها:', en: 'This period alone:' },
+        partnerPrevBalanceLabel: { ar: 'رصيد من قبل الفترة دي:', en: 'Balance before this period:' },
+        partnerNetTotalLabel: { ar: 'الصافي الحقيقي (لحد آخر الفترة):', en: 'Real net (through end of period):' },
+        partnerPeriodExplain: { ar: 'إزاي تقرا ده: "حساب الفترة دي لوحدها" ممكن يطلع بالسالب لو سحبت فلوس اتكسبت في أسابيع قبلها. سطر "الصافي الحقيقي" بيضيف الرصيد القديم، وده الرقم اللي فعلاً لسه ليك أو عليك.', en: 'How to read this: "This period alone" can be negative if you withdrew money earned in earlier weeks. The "Real net" line adds the earlier balance — that is the amount you actually still have coming or owe.' },
         partnerAllTimeLabel: { ar: 'الإجمالي الكلي (كل الوقت)', en: 'All-time total' },
         presetTodayBtn: { ar: 'اليوم', en: 'Today' },
         presetWeekBtn: { ar: 'الأسبوع ده', en: 'This Week' },
@@ -5897,6 +5901,8 @@
                 // and replacing the whole job object with it was silently dropping every invoice
                 // ever saved for that job the moment ANY job field (like the amount) was edited.
                 if (savedJobs[index].savedInvoices !== undefined) slimJob.savedInvoices = savedJobs[index].savedInvoices;
+                // Same reason: the estimate carried over from the appointment (see convertAppointmentToJob) isn't on the edit form either.
+                if (savedJobs[index].quoteSeed !== undefined) slimJob.quoteSeed = savedJobs[index].quoteSeed;
                 savedJobs[index] = slimJob;
             }
         } else {
@@ -7070,6 +7076,11 @@
         if (action) action();
     }
 
+    // The estimate carried over from the appointment — used only for a job's FIRST invoice
+    // (once any invoice is saved, new drafts start clean like before).
+    function invoiceQuoteSeed(job) {
+        return (job.quoteSeed && !(job.savedInvoices || []).length) ? job.quoteSeed : null;
+    }
     function defaultInvoiceItemsForJob(job) {
         if (job.expenseItems && job.expenseItems.length > 0) {
             return job.expenseItems.map(it => ({
@@ -7077,6 +7088,14 @@
                 qty: '1',
                 amount: parseVal(it.amount)
             }));
+        }
+        // A job that came from an appointment with an estimate starts its FIRST invoice from that
+        // estimate's breakdown — but only while the items still add up to the job's current total
+        // (if the total was edited since, the old breakdown would be wrong, so fall back to one line).
+        const seed = invoiceQuoteSeed(job);
+        if (seed && seed.items && seed.items.length > 0) {
+            const seedSum = round2(seed.items.reduce((sum, it) => sum + parseVal(it.amount), 0));
+            if (Math.abs(seedSum - parseVal(job.totalRevenue)) < 0.01) return JSON.parse(JSON.stringify(seed.items));
         }
         // Left blank on purpose: the job's "Scope of Work" field is often a long internal note,
         // not a client-ready line-item description, so it's never auto-filled here — you type a
@@ -7115,14 +7134,14 @@
             invoiceDate: isoDate(new Date()),
             items: defaultInvoiceItemsForJob(job),
             credits: [], // each: { label: string, amount: number } — named deductions, e.g. "PVC Trim Credit — Not Installed"
-            note: '',
+            note: (invoiceQuoteSeed(job) && invoiceQuoteSeed(job).note) || '',
             aiInstructions: '', // free-text note for the "Analyze photos & add items (AI)" button below — typed or dictated by voice
-            showPaymentMethod: false,
-            paymentMethodText: t('invoicePaymentMethodPlaceholder'),
-            showFollowUp: false,
-            followUpText: job.followUpDate || '',
-            showValidity: false,
-            validityText: t('invoiceValidityPlaceholder'),
+            showPaymentMethod: !!(invoiceQuoteSeed(job) && invoiceQuoteSeed(job).showPaymentMethod),
+            paymentMethodText: (invoiceQuoteSeed(job) && invoiceQuoteSeed(job).paymentMethodText) || t('invoicePaymentMethodPlaceholder'),
+            showFollowUp: !!(invoiceQuoteSeed(job) && invoiceQuoteSeed(job).showFollowUp),
+            followUpText: (invoiceQuoteSeed(job) && invoiceQuoteSeed(job).followUpText) || job.followUpDate || '',
+            showValidity: !!(invoiceQuoteSeed(job) && invoiceQuoteSeed(job).showValidity),
+            validityText: (invoiceQuoteSeed(job) && invoiceQuoteSeed(job).validityText) || t('invoiceValidityPlaceholder'),
             // Defaults to whatever the job's actual recorded payments say, but it's just a
             // starting point — you can tick/untick the "PAID IN FULL" mark yourself on the
             // invoice screen, and that choice is what actually shows and gets saved/printed.
@@ -8823,20 +8842,39 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             });
             const periodRemainingS = round2(periodEarnedS - periodWithdrawnS);
             const periodRemainingM = round2(periodEarnedM - periodWithdrawnM);
-            html += `<div class="note-box" style="margin-bottom:10px;">${t('partnerPeriodNote')}</div>
+
+            // Balance carried in from BEFORE this period (everything earned up to the day before
+            // "From", minus withdrawals dated up to that day) — so the period card can end in one
+            // honest bottom line instead of a lone, possibly-negative number.
+            let priorBalS = 0, priorBalM = 0;
+            const hasPrior = !!dateFrom;
+            if (hasPrior) {
+                const priorTo = addDaysISO(dateFrom, -1);
+                const priorShare = computeSAndMPeriodShare('', priorTo);
+                let priorWdS = 0, priorWdM = 0;
+                partnerWithdrawals.forEach(w => {
+                    if (!(w.date && w.date <= priorTo)) return;
+                    if (w.partner === 'S') priorWdS += parseVal(w.amount); else priorWdM += parseVal(w.amount);
+                });
+                priorBalS = round2(priorShare.totalShareS - priorWdS);
+                priorBalM = round2(priorShare.totalShareM - priorWdM);
+            }
+            const money = v => (v < 0 ? '-$' + Math.abs(v).toFixed(2) : '$' + v.toFixed(2));
+            const periodCard = (label, earned, withdrawn, periodBal, priorBal) => {
+                const net = round2(periodBal + (hasPrior ? priorBal : 0));
+                return `<div style="background:var(--panel-bg); border:1px solid #38bdf8; border-radius:8px; padding:14px;">
+                    <div style="color:#38bdf8; font-weight:700; margin-bottom:8px;">${label} — ${t('partnerPeriodLabel')}</div>
+                    <div class="summary-line">${t('totalEarnedLabel')} <b style="color:#34d399;">${money(earned)}</b></div>
+                    <div class="summary-line">${t('totalWithdrawnLabel')} <b style="color:#f87171;">${money(withdrawn)}</b></div>
+                    <div class="summary-line">${t('partnerPeriodBalanceLabel')} <b style="color:${periodBal < 0 ? '#f87171' : '#fbbf24'};">${money(periodBal)}</b></div>
+                    ${hasPrior ? `<div class="summary-line">${t('partnerPrevBalanceLabel')} <b style="color:${priorBal < 0 ? '#f87171' : '#fbbf24'};">${money(priorBal)}</b></div>` : ''}
+                    <div class="summary-highlight"><span>${t('partnerNetTotalLabel')}</span><b style="color:${net < 0 ? '#f87171' : '#34d399'};">${money(net)}</b></div>
+                </div>`;
+            };
+            html += `<div class="note-box" style="margin-bottom:10px;">${t('partnerPeriodNote')}<br><br>${t('partnerPeriodExplain')}</div>
             <div class="grid-2" style="margin-bottom:10px; gap:12px;">
-                <div style="background:var(--panel-bg); border:1px solid #38bdf8; border-radius:8px; padding:14px;">
-                    <div style="color:#38bdf8; font-weight:700; margin-bottom:8px;">S — ${t('partnerPeriodLabel')}</div>
-                    <div class="summary-line">${t('totalEarnedLabel')} <b style="color:#34d399;">$${periodEarnedS.toFixed(2)}</b></div>
-                    <div class="summary-line">${t('totalWithdrawnLabel')} <b style="color:#f87171;">$${periodWithdrawnS.toFixed(2)}</b></div>
-                    <div class="summary-highlight"><span>${t('remainingBalanceLabel')}</span><b style="color:${periodRemainingS < 0 ? '#f87171' : '#fbbf24'};">$${periodRemainingS.toFixed(2)}</b></div>
-                </div>
-                <div style="background:var(--panel-bg); border:1px solid #38bdf8; border-radius:8px; padding:14px;">
-                    <div style="color:#38bdf8; font-weight:700; margin-bottom:8px;">M — ${t('partnerPeriodLabel')}</div>
-                    <div class="summary-line">${t('totalEarnedLabel')} <b style="color:#34d399;">$${periodEarnedM.toFixed(2)}</b></div>
-                    <div class="summary-line">${t('totalWithdrawnLabel')} <b style="color:#f87171;">$${periodWithdrawnM.toFixed(2)}</b></div>
-                    <div class="summary-highlight"><span>${t('remainingBalanceLabel')}</span><b style="color:${periodRemainingM < 0 ? '#f87171' : '#fbbf24'};">$${periodRemainingM.toFixed(2)}</b></div>
-                </div>
+                ${periodCard('S', periodEarnedS, periodWithdrawnS, periodRemainingS, priorBalS)}
+                ${periodCard('M', periodEarnedM, periodWithdrawnM, periodRemainingM, priorBalM)}
             </div>`;
         }
 
@@ -10494,6 +10532,20 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             photos: JSON.parse(JSON.stringify(apptPhotos)),
             createdBy: currentUserEmail, lastEditedBy: currentUserEmail
         };
+
+        // Carry the estimate's breakdown over so "Generate Invoice" can start from it instead of a
+        // blank page. Stored in the INVOICE's own convention (qty is display-only, amount = the
+        // line's TOTAL), unlike a quote item where amount is per-unit. Only added when there is
+        // something to carry (Firestore rejects undefined values).
+        if ((appt.quoteItems && appt.quoteItems.length > 0) || (appt.quoteNote || '').trim()) {
+            newJob.quoteSeed = {
+                items: (appt.quoteItems || []).map(it => ({ desc: it.desc || '', qty: String(parseVal(it.qty) || 1), amount: round2(quoteItemLineTotal(it)) })),
+                note: appt.quoteNote || '',
+                showPaymentMethod: !!appt.quoteShowPaymentMethod, paymentMethodText: appt.quotePaymentMethodText || '',
+                showFollowUp: !!appt.quoteShowFollowUp, followUpText: appt.quoteFollowUpText || '',
+                showValidity: !!appt.quoteShowValidity, validityText: appt.quoteValidityText || ''
+            };
+        }
 
         // Same split as saveJob() — a photo-heavy appointment converting straight into a job
         // shouldn't be able to push the shared jobs document over the 1MB cap either.
