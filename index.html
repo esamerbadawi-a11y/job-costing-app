@@ -1911,6 +1911,7 @@
         exportCsvBtn: { ar: '📁 تصدير Excel (CSV)', en: '📁 Export Excel (CSV)' },
         exportAccountingBtn: { ar: '📊 تصدير محاسبي تفصيلي', en: '📊 Detailed Accounting Export' },
         exportPdfBtn: { ar: '📄 تصدير PDF', en: '📄 Export PDF' },
+        alertNoPendingDebtsToPrint: { ar: 'مفيش حد عليه فلوس دلوقتي في الفلتر ده.', en: 'Nobody has a pending balance in the current filter.' },
         printBtn: { ar: '🖨️ طباعة المحددة', en: '🖨️ Print Selected' },
         undoPrefix: { ar: '⮜ تراجع عن آخر مسح', en: '⮜ Undo Last Delete' },
         deleteSelectedBtn: { ar: 'مسح التقرير المحدد', en: 'Delete Selected Report' },
@@ -6634,13 +6635,26 @@
         else { btn.style.display = 'none'; }
     }
 
-    async function printSelectedJobs() {
+    // Print Selected picks the report by itself: with "Filter Pending Debts" on it prints the
+    // payment-status report (who owes what, no profit/shares); otherwise the full statement.
+    function printSelectedJobs() {
+        // Debt filter on + nothing ticked → print every job currently shown by the filter (everyone who still owes).
+        if (onlyShowDebt && selectedJobIds.size === 0) {
+            const owing = getFilteredJobs();
+            if (owing.length === 0) { alert(t('alertNoPendingDebtsToPrint')); return; }
+            return printSelectedJobsRun('owed', owing);
+        }
         if (selectedJobIds.size === 0) { alert(t('alertSelectOneToPrint')); return; }
+        // Debt filter on → the payment report (who owes what); otherwise the full statement. No question asked.
+        return printSelectedJobsRun(onlyShowDebt ? 'owed' : 'full');
+    }
+
+    async function printSelectedJobsRun(kind, jobsOverride) {
         // Opened synchronously, before the async PDF build below, so phones don't treat the
         // eventual window.open() as popup-blocker-worthy (see printInvoice for the same pattern).
         const pdfWindow = window.open('', '_blank');
-        const selectedJobs = savedJobs.filter(j => selectedJobIds.has(String(j.id)));
-        const doc = await buildJobsPdfDoc(selectedJobs);
+        const selectedJobs = jobsOverride || savedJobs.filter(j => selectedJobIds.has(String(j.id)));
+        const doc = kind === 'owed' ? await buildOwedJobsPdfDoc(selectedJobs) : await buildJobsPdfDoc(selectedJobs);
         doc.autoPrint();
         const url = doc.output('bloburl');
         if (pdfWindow && !pdfWindow.closed) {
@@ -6998,6 +7012,69 @@
         else { ctx.direction = 'ltr'; ctx.textAlign = 'left'; ctx.fillText(text || '', 10 * scale, canvas.height / 2); }
 
         return { dataUrl: canvas.toDataURL('image/png'), aspect: canvas.width / canvas.height };
+    }
+
+    // "Who owes me" report for the selected jobs: per customer — contract, paid, still owed — plus
+    // only the REAL costs on that job (materials, and technicians whose days are charged to it).
+    // No profit, S/M shares or company net. A technician whose day was charged to another job gets
+    // $0 here, so he is simply not listed.
+    async function buildOwedJobsPdfDoc(jobsList) {
+        if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch(e) {} }
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4');
+        const techStats = computeTechPeriodStats('', '');
+        const techCostOnJob = job => {
+            const out = [];
+            Object.keys(techStats).forEach(name => {
+                (techStats[name].jobs || []).forEach(e => {
+                    if (String(e.job.id) !== String(job.id)) return;
+                    const wage = round2((e.dues || 0) - (e.reimbSum || 0));
+                    if (wage > 0.005) out.push({ name, wage });
+                });
+            });
+            return out;
+        };
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
+        doc.text(`${companyDisplayName()} - Payment Status Report`, 14, 15);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+        doc.text(`Date: ${isoDate(new Date())}   |   Customers: ${jobsList.length}`, 14, 21);
+        const tot = { rev: 0, rec: 0, bal: 0, mat: 0, tech: 0 };
+        const body = jobsList.map((job, i) => {
+            const techs = techCostOnJob(job);
+            const techSum = round2(techs.reduce((a, x) => a + x.wage, 0));
+            const rev = parseVal(job.totalRevenue), rec = parseVal(job.amountReceived), bal = jobRemaining(job), mat = parseVal(job.materialCost);
+            tot.rev += rev; tot.rec += rec; tot.bal += bal; tot.mat += mat; tot.tech += techSum;
+            return ['#' + (i + 1), job.clientName || '', job.clientAddress || '', job.startDate || '',
+                '$' + rev.toFixed(2), '$' + rec.toFixed(2), '$' + bal.toFixed(2),
+                mat > 0.005 ? '$' + mat.toFixed(2) : '-',
+                techs.length ? techs.map(x => `${x.name} $${x.wage.toFixed(2)}`).join(' / ') : '-'];
+        });
+        const usd = v => '$' + round2(v).toFixed(2);
+        const ARABIC_COLS = [1, 2, 8];
+        doc.autoTable({
+            head: [['#', 'Customer', 'Address', 'Date', 'Total Price', 'Paid So Far', 'Still Owed', 'Materials Paid', 'Technicians Paid / Due on this job']],
+            body, foot: [['TOTAL', '', '', '', usd(tot.rev), usd(tot.rec), usd(tot.bal), usd(tot.mat), usd(tot.tech)]],
+            showFoot: 'lastPage', startY: 26, theme: 'grid',
+            styles: { fontSize: 8.5, cellPadding: 2, halign: 'center', valign: 'middle' },
+            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+            footStyles: { fillColor: [226, 232, 240], textColor: [20, 20, 20], fontStyle: 'bold' },
+            didParseCell: function(cd) {
+                if (cd.section === 'body' && ARABIC_COLS.includes(cd.column.index) && containsArabic(String(cd.cell.raw || ''))) cd.cell.text = [''];
+                if (cd.section === 'body' && cd.column.index === 6) cd.cell.styles.textColor = [200, 30, 30];
+            },
+            didDrawCell: function(cd) {
+                if (cd.section !== 'body' || !ARABIC_COLS.includes(cd.column.index)) return;
+                const text = String(cd.cell.raw ?? '');
+                if (!text || !containsArabic(text)) return;
+                const img = textToImage(text);
+                const pad = 1;
+                let h = cd.cell.height - pad * 2, w = h * img.aspect;
+                if (w > cd.cell.width - pad * 2) { w = cd.cell.width - pad * 2; h = w / img.aspect; }
+                doc.addImage(img.dataUrl, 'PNG', cd.cell.x + (cd.cell.width - w) / 2, cd.cell.y + (cd.cell.height - h) / 2, w, h);
+            }
+        });
+        addLogoWatermark(doc);
+        return doc;
     }
 
     const PDF_ARABIC_COLS = [2, 3, 8]; // Customer, Address, Status
