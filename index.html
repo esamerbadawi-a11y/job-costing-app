@@ -2261,6 +2261,7 @@
         mapChoiceTitle: { ar: 'افتح العنوان بـ:', en: 'Open address with:' },
         guideThName: { ar: 'اسم الفني', en: 'Name' },
         guideThPhone: { ar: 'رقم الهاتف', en: 'Phone' },
+        guidePartnerIncl: { ar: 'يشمل نصيبه كشريك', en: 'includes partner share' },
         guideThDuesInPeriod: { ar: 'المستحق في الفترة دي', en: 'Dues in Period' },
         guideThPaidInPeriod: { ar: 'المدفوع في الفترة دي', en: 'Paid in Period' },
         guideThRemainingInPeriod: { ar: 'الباقي في الفترة دي', en: 'Remaining in Period' },
@@ -3679,9 +3680,9 @@
     function weeklyDueTechnicians() {
         const w = weekOf(isoDate(new Date()));
         const stats = computeTechPeriodStats(w.start, w.end);
-        const names = new Set([...Object.keys(stats), ...techBonuses.filter(b => b.date >= w.start && b.date <= w.end).map(b => b.name)]);
+        const names = new Set([...Object.keys(stats), ...techBonuses.filter(b => b.date >= w.start && b.date <= w.end).map(b => b.name), ...getExtraPartnerNames()]);
         const rows = [...names].map(name => {
-            const basicDue = round2(stats[name] ? stats[name].dues : 0);
+            const basicDue = round2((stats[name] ? stats[name].dues : 0) + partnerShareInPeriod(name, w.start, w.end).total);
             const bonus = techBonusTotalInPeriod(name, w.start, w.end);
             const due = round2(basicDue + bonus);
             const paid = round2(techPaymentsInPeriod(name, w.start, w.end).reduce((s, p) => s + parseVal(p.amount), 0));
@@ -6712,6 +6713,12 @@
                 });
             });
         }
+        // Partner profit share (jobs where he is an extra partner) — one row per job, by job start date.
+        const partnerInfo = partnerShareInPeriod(techName, dateFrom, dateTo);
+        const totalPartner = partnerInfo.total;
+        partnerInfo.items.forEach(r => {
+            rows.push({ date: r.job.startDate || '', client: (r.job.clientName || '') + ' (partner ' + Math.round(r.percent) + '%)', type: 'Partner', dues: r.amount, materials: null, paid: null, remaining: null });
+        });
         // Bonuses (🎁) get their own rows too, clearly labeled as a bonus — kept separate from
         // "Dues" in the totals below so it reads as a reward, not pay for extra job work.
         techBonusesInPeriod(techName, dateFrom, dateTo)
@@ -6786,13 +6793,13 @@
         // ---- Summary: laid out as a plain step-by-step table so anyone can follow it without
         // knowing how the app works: what he earned, minus what he was paid, plus any older
         // balance, ending in ONE clearly-colored bottom line. ----
-        const periodEarned = round2(totalDues + totalMaterials + totalBonus);
+        const periodEarned = round2(totalDues + totalMaterials + totalBonus + totalPartner);
         const periodBalance = round2(periodEarned - totalPaid);
         let priorBalance = 0;
         if (dateFrom) {
             const priorDateTo = addDaysISO(dateFrom, -1);
             const priorStats = computeTechPeriodStats('', priorDateTo)[techName];
-            const priorDues = priorStats ? priorStats.dues : 0;
+            const priorDues = (priorStats ? priorStats.dues : 0) + partnerShareInPeriod(techName, '', priorDateTo).total;
             const priorBonus = techBonusTotalInPeriod(techName, '', priorDateTo);
             const priorPaid = techPaymentsInPeriod(techName, '', priorDateTo).reduce((sum, p) => sum + parseVal(p.amount), 0);
             priorBalance = round2(priorDues + priorBonus - priorPaid);
@@ -6803,6 +6810,7 @@
         const sumRows = [];
         sumRows.push({ label: 'Basic Dues (wages)', value: fmtMoney(totalDues), kind: 'normal' });
         if (totalMaterials > 0.005) sumRows.push({ label: '+ Materials he bought (reimbursement)', value: fmtMoney(totalMaterials), kind: 'normal' });
+        if (totalPartner > 0.005) sumRows.push({ label: '+ Partner share (profit from partner jobs)', value: fmtMoney(totalPartner), kind: 'normal' });
         if (totalBonus > 0.005) sumRows.push({ label: '+ Bonus', value: fmtMoney(totalBonus), kind: 'bonus' });
         sumRows.push({ label: '= Total Earned in this period', value: fmtMoney(periodEarned), kind: 'sub' });
         sumRows.push({ label: '- Total Paid in this period', value: fmtMoney(totalPaid), kind: 'paid' });
@@ -8944,6 +8952,18 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         return Array.from(names).sort();
     }
 
+    // Partner profit share a person earned from jobs where he is an extra partner, dated by job start date.
+    function partnerShareInPeriod(name, dateFrom, dateTo) {
+        dateFrom = dateFrom || ''; dateTo = dateTo || '';
+        const items = jobsForExtraPartner(name)
+            .filter(job => (!dateFrom || (job.startDate && job.startDate >= dateFrom)) && (!dateTo || (job.startDate && job.startDate <= dateTo)))
+            .map(job => {
+                const mine = (jobNet(job).extraShares || []).find(x => (x.name || '').trim() === name);
+                return { job, percent: mine ? mine.percent : 0, amount: mine ? round2(mine.amount) : 0 };
+            });
+        return { items, total: round2(items.reduce((sum, r) => sum + r.amount, 0)) };
+    }
+
     function jobsForExtraPartner(name) {
         return savedJobs.filter(job => (job.extraPartners || []).some(p => (p.name || '').trim() === name && parseVal(p.percent) > 0.005));
     }
@@ -9882,7 +9902,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const gFrom = techPaymentFromGuidePeriod && document.getElementById('guideDateFrom') ? document.getElementById('guideDateFrom').value : '';
         const gTo = techPaymentFromGuidePeriod && document.getElementById('guideDateTo') ? document.getElementById('guideDateTo').value : '';
         const stats = computeTechPeriodStats(gFrom, gTo);
-        const dues = stats[techPaymentName] ? stats[techPaymentName].dues : 0;
+        const dues = round2((stats[techPaymentName] ? stats[techPaymentName].dues : 0) + partnerShareInPeriod(techPaymentName, gFrom, gTo).total);
         const bonus = techBonusTotalInPeriod(techPaymentName, gFrom, gTo);
         const paid = techPaymentsInPeriod(techPaymentName, gFrom, gTo).reduce((s, p) => s + parseVal(p.amount), 0);
         const remaining = round2(dues + bonus - paid);
@@ -9890,7 +9910,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         if (gFrom) {
             const priorTo = addDaysISO(gFrom, -1);
             const pStats = computeTechPeriodStats('', priorTo);
-            const pDues = pStats[techPaymentName] ? pStats[techPaymentName].dues : 0;
+            const pDues = (pStats[techPaymentName] ? pStats[techPaymentName].dues : 0) + partnerShareInPeriod(techPaymentName, '', priorTo).total;
             const pBonus = techBonusTotalInPeriod(techPaymentName, '', priorTo);
             const pPaid = techPaymentsInPeriod(techPaymentName, '', priorTo).reduce((s, p) => s + parseVal(p.amount), 0);
             prior = Math.max(0, round2(pDues + pBonus - pPaid));
@@ -9914,7 +9934,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             for (let i = 0; i < 26; i++) {
                 const wkEnd = i === 0 ? priorTo : addDaysISO(wkStart, 6);
                 const wStats = computeTechPeriodStats(wkStart, wkEnd);
-                const wDues = wStats[techPaymentName] ? wStats[techPaymentName].dues : 0;
+                const wDues = (wStats[techPaymentName] ? wStats[techPaymentName].dues : 0) + partnerShareInPeriod(techPaymentName, wkStart, wkEnd).total;
                 const wBonus = techBonusTotalInPeriod(techPaymentName, wkStart, wkEnd);
                 const wPaid = techPaymentsInPeriod(techPaymentName, wkStart, wkEnd).reduce((sum, p) => sum + parseVal(p.amount), 0);
                 const wBal = round2(wDues + wBonus - wPaid);
@@ -10035,7 +10055,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         if (!splitEntries && techPaymentFromGuidePeriod && !chosenJobId && !settleTouched && guideDateFrom) {
             const priorDateTo = addDaysISO(guideDateFrom, -1);
             const priorStats = computeTechPeriodStats('', priorDateTo);
-            const priorDues = priorStats[techPaymentName] ? priorStats[techPaymentName].dues : 0;
+            const priorDues = (priorStats[techPaymentName] ? priorStats[techPaymentName].dues : 0) + partnerShareInPeriod(techPaymentName, '', priorDateTo).total;
             const priorBonus = techBonusTotalInPeriod(techPaymentName, '', priorDateTo);
             const priorPaid = techPaymentsInPeriod(techPaymentName, '', priorDateTo).reduce((s, p) => s + parseVal(p.amount), 0);
             const priorBalance = round2(priorDues + priorBonus - priorPaid);
@@ -12680,7 +12700,7 @@ ${closeBtnHtml}
             + `<div class="note-box" style="margin-bottom:10px;">${t('guidePaidNote')}</div>`;
 
         const stats = computeTechPeriodStats(dateFrom, dateTo);
-        const allNames = new Set([...Object.keys(stats), ...Object.keys(technicianPhones)]);
+        const allNames = new Set([...Object.keys(stats), ...Object.keys(technicianPhones), ...getExtraPartnerNames()]);
         // Technician picker next to the dates: pick one to see only him, with all his data underneath.
         const techSel = document.getElementById('guideTechFilter');
         const previouslySelected = techSel ? techSel.value : '';
@@ -12704,7 +12724,8 @@ ${closeBtnHtml}
 
         let html = periodLabel + `<table style="width:100%; border-collapse:collapse; margin-top:10px;"><thead><tr><th>${t('guideThName')}</th><th>${t('guideThPhone')}</th><th>${t('guideThDuesInPeriod')}</th><th>${t('guideThBonusInPeriod')}</th><th>${t('guideThPaidInPeriod')}</th><th>${t('guideThRemainingInPeriod')}</th>${dateFrom ? `<th>${t('guideThPriorBalance')}</th>` : ''}<th>${t('guideThActions')}</th></tr></thead><tbody>`;
         shownNames.forEach(name => {
-            const dues = stats[name] ? stats[name].dues : 0;
+            const partnerShare = partnerShareInPeriod(name, dateFrom, dateTo).total;
+            const dues = round2((stats[name] ? stats[name].dues : 0) + partnerShare);
             const bonus = techBonusTotalInPeriod(name, dateFrom, dateTo);
             const paidInPeriod = techPaymentsInPeriod(name, dateFrom, dateTo).reduce((sum, p) => sum + parseVal(p.amount), 0);
             const remainingInPeriod = round2(dues + bonus - paidInPeriod);
@@ -12713,7 +12734,7 @@ ${closeBtnHtml}
             const phoneHtml = rawPhone ? `<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${phoneDisplay}</span>` : phoneDisplay;
             let priorBalanceHtml = '';
             if (dateFrom) {
-                const priorDues = priorStats[name] ? priorStats[name].dues : 0;
+                const priorDues = (priorStats[name] ? priorStats[name].dues : 0) + partnerShareInPeriod(name, '', priorDateTo).total;
                 const priorBonus = techBonusTotalInPeriod(name, '', priorDateTo);
                 const priorPaid = techPaymentsInPeriod(name, '', priorDateTo).reduce((sum, p) => sum + parseVal(p.amount), 0);
                 const priorBalance = round2(priorDues + priorBonus - priorPaid);
@@ -12722,7 +12743,7 @@ ${closeBtnHtml}
                     : `<td data-label="${t('guideThPriorBalance')}" style="color:var(--text-muted);">—</td>`;
             }
             html += `<tr><td data-label=""><strong>${name}</strong></td><td data-label="${t('guideThPhone')}">${phoneHtml}</td>
-                <td data-label="${t('guideThDuesInPeriod')}" style="color:#fbbf24; font-weight:700;">$${dues.toFixed(2)}</td>
+                <td data-label="${t('guideThDuesInPeriod')}" style="color:#fbbf24; font-weight:700;">$${dues.toFixed(2)}${partnerShare > 0.005 ? `<div class="ag-meta" style="font-weight:400; color:#a78bfa;">🤝 ${t('guidePartnerIncl')} $${partnerShare.toFixed(2)}</div>` : ''}</td>
                 <td data-label="${t('guideThBonusInPeriod')}" style="color:${bonus > 0.005 ? '#fbbf24' : 'var(--text-muted)'}; font-weight:700;">${bonus > 0.005 ? '🎁 $' + bonus.toFixed(2) : '—'}</td>
                 <td data-label="${t('guideThPaidInPeriod')}" style="color:#34d399; font-weight:700;">$${paidInPeriod.toFixed(2)}</td>
                 <td data-label="${t('guideThRemainingInPeriod')}" style="color:${remainingInPeriod > 0 ? '#f87171' : '#94a3b8'}; font-weight:700;">$${remainingInPeriod.toFixed(2)}</td>
