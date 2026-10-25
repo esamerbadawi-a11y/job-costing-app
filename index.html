@@ -845,7 +845,10 @@
     <div class="tg-modal-box">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
             <h2 style="color:#38bdf8; margin:0; font-size:1.2rem;">📋 <span data-i18n="appointmentsTitle"></span></h2>
-            <button class="danger" onclick="closeAppointmentsListModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button id="apptReportBtn" class="secondary" onclick="shareAppointmentsReport()" style="padding:6px 12px; font-size:0.8rem; background:#0ea5e9;" data-i18n="apptReportBtn"></button>
+                <button class="danger" onclick="closeAppointmentsListModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+            </div>
         </div>
         <div id="appointmentsContent"></div>
     </div>
@@ -2003,6 +2006,7 @@
         sendMethodTitle: { ar: 'تبعتها إزاي؟', en: 'Send it how?' },
         phoneChoiceCallBtn: { ar: 'اتصال', en: 'Call' },
         phoneChoiceMsgBtn: { ar: 'رسالة', en: 'Message' },
+        apptReportBtn: { ar: '📄 تقرير مبسط', en: '📄 Simple Report' },
         appointmentsTitle: { ar: '📆 مواعيد وطلبات العملاء', en: '📆 Customer Appointments & Requests' },
         viewAppointmentsListBtn: { ar: 'عرض قائمة المواعيد', en: 'View Appointments List' },
         addAppointmentTitle: { ar: 'إضافة طلب ميعاد جديد', en: 'Add New Appointment Request' },
@@ -11543,6 +11547,72 @@ ${closeBtnHtml}
         const flaggedCount = appointments.filter(a => a.followUpNeeded).length;
         if (appointments.length === 0) { badge.textContent = ''; return; }
         badge.textContent = flaggedCount > 0 ? ` (${appointments.length} · 🔔${flaggedCount})` : ` (${appointments.length})`;
+    }
+
+    // One-page plain-language summary of everything on the Appointments screen — easy to send to
+    // someone who has never seen the app: who asked, for what, when, and where each request stands.
+    async function shareAppointmentsReport() {
+        if (!appointments.length) { showToast(t('noAppointmentsYet')); return; }
+        if (typeof window.jspdf === 'undefined') { alert(t('alertShareNotSupported')); return; }
+        const btn = document.getElementById('apptReportBtn');
+        const oldLabel = btn ? btn.innerHTML : '';
+        if (btn) { btn.disabled = true; btn.innerText = t('quotePdfPreparing'); }
+        try {
+            if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('l', 'mm', 'a4');
+            const list = [...appointments].sort((a, b) => (b.followUpNeeded ? 1 : 0) - (a.followUpNeeded ? 1 : 0));
+            const statusOf = a => {
+                if (a.followUpNeeded) return 'Needs follow-up';
+                if (parseVal(a.quotedPrice) > 0) return a.quoteSentAt ? 'Quote sent - waiting for answer' : 'Quote prepared (not sent)';
+                return 'New request - no quote yet';
+            };
+            const nFollow = list.filter(a => a.followUpNeeded).length;
+            const nQuoted = list.filter(a => !a.followUpNeeded && parseVal(a.quotedPrice) > 0).length;
+            const nNew = list.length - nFollow - nQuoted;
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
+            doc.text(`${companyDisplayName()} - Customer Requests Report`, 14, 15);
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+            doc.text(`Date: ${isoDate(new Date())}   |   Total requests: ${list.length}   |   Needs follow-up: ${nFollow}   |   Quote given: ${nQuoted}   |   New, no quote yet: ${nNew}`, 14, 21);
+            const body = list.map((a, i) => [
+                '#' + (i + 1), a.clientName || '', a.clientPhone || '', a.clientAddress || '',
+                ((a.requestedDate || 'No date') + (a.requestedTime ? ' ' + a.requestedTime : '')),
+                (a.services || []).join(', '), a.note || '',
+                parseVal(a.quotedPrice) > 0 ? '$' + parseVal(a.quotedPrice).toFixed(2) : '-', statusOf(a)
+            ]);
+            const ARABIC_COLS = [1, 3, 5, 6];
+            doc.autoTable({
+                head: [['#', 'Customer', 'Phone', 'Address', 'Requested Date', 'Work Requested', 'Notes', 'Quote', 'Status']],
+                body, startY: 26, theme: 'grid',
+                styles: { fontSize: 8, cellPadding: 2, halign: 'center', valign: 'middle' },
+                headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+                columnStyles: { 0: { cellWidth: 10 }, 7: { cellWidth: 20 }, 8: { cellWidth: 36 } },
+                didParseCell: function(cd) {
+                    if (cd.section === 'body' && ARABIC_COLS.includes(cd.column.index) && containsArabic(String(cd.cell.raw || ''))) cd.cell.text = [''];
+                },
+                didDrawCell: function(cd) {
+                    if (cd.section !== 'body' || !ARABIC_COLS.includes(cd.column.index)) return;
+                    const text = String(cd.cell.raw ?? '');
+                    if (!text || !containsArabic(text)) return;
+                    const img = textToImage(text);
+                    const pad = 1;
+                    let h = cd.cell.height - pad * 2, w = h * img.aspect;
+                    if (w > cd.cell.width - pad * 2) { w = cd.cell.width - pad * 2; h = w / img.aspect; }
+                    doc.addImage(img.dataUrl, 'PNG', cd.cell.x + (cd.cell.width - w) / 2, cd.cell.y + (cd.cell.height - h) / 2, w, h);
+                }
+            });
+            addLogoWatermark(doc);
+            const filename = `${companyFileSlug()}_Customer_Requests_${isoDate(new Date())}.pdf`;
+            if (navigator.share && navigator.canShare) {
+                const file = new File([doc.output('blob')], filename, { type: 'application/pdf' });
+                if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); }
+                else { doc.save(filename); }
+            } else { doc.save(filename); }
+        } catch (e) {
+            if (e && e.name !== 'AbortError') { console.error('shareAppointmentsReport error:', e); alert(t('alertShareNotSupported') + ' (' + (e && e.message ? e.message : '') + ')'); }
+        } finally {
+            if (btn) { btn.disabled = false; btn.innerHTML = oldLabel; }
+        }
     }
 
     function renderAppointments() {
