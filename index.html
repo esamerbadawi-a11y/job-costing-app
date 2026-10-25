@@ -7061,6 +7061,8 @@
             didParseCell: function(cd) {
                 if (cd.section === 'body' && ARABIC_COLS.includes(cd.column.index) && containsArabic(String(cd.cell.raw || ''))) cd.cell.text = [''];
                 if (cd.section === 'body' && cd.column.index === 6) cd.cell.styles.textColor = [200, 30, 30];
+                // The grand "Still Owed" total gets a bold highlight so it jumps out.
+                if (cd.section === 'foot' && cd.column.index === 6) { cd.cell.styles.fillColor = [255, 235, 59]; cd.cell.styles.textColor = [180, 0, 0]; cd.cell.styles.fontStyle = 'bold'; cd.cell.styles.fontSize = 11; }
             },
             didDrawCell: function(cd) {
                 if (cd.section !== 'body' || !ARABIC_COLS.includes(cd.column.index)) return;
