@@ -7017,10 +7017,20 @@
             ];
         });
 
+        // TOTAL row at the bottom — sums every column that is a money amount.
+        const tot = { rev: 0, rec: 0, bal: 0, mat: 0, net: 0, s: 0, m: 0, co: 0 };
+        jobsList.forEach(job => {
+            const n = jobNet(job);
+            tot.rev += parseVal(job.totalRevenue); tot.rec += parseVal(job.amountReceived); tot.bal += jobRemaining(job);
+            tot.mat += parseVal(job.materialCost); tot.net += n.net; tot.s += n.shareS; tot.m += n.shareM; tot.co += n.companyNet;
+        });
+        const usd = v => '$' + round2(v).toFixed(2);
+        const footRow = [["TOTAL (" + jobsList.length + " jobs)", "", "", "", usd(tot.rev), usd(tot.rec), usd(tot.bal), usd(tot.mat), "", "", usd(tot.net), usd(tot.s), usd(tot.m), usd(tot.co)]];
         doc.autoTable({
-            head: headers, body: data, startY: 22, theme: 'grid',
+            head: headers, body: data, foot: footRow, showFoot: 'lastPage', startY: 22, theme: 'grid',
             styles: { fontSize: 8, cellPadding: 2, halign: 'center' },
             headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+            footStyles: { fillColor: [226, 232, 240], textColor: [20, 20, 20], fontStyle: 'bold' },
             didDrawCell: function(cellData) {
                 if (cellData.section !== 'body') return;
                 if (!PDF_ARABIC_COLS.includes(cellData.column.index)) return;
