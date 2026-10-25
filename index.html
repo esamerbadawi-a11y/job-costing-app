@@ -2261,6 +2261,7 @@
         mapChoiceTitle: { ar: 'افتح العنوان بـ:', en: 'Open address with:' },
         guideThName: { ar: 'اسم الفني', en: 'Name' },
         guideThPhone: { ar: 'رقم الهاتف', en: 'Phone' },
+        techDeleteStillHasJobs: { ar: 'اتمسح من الدليل (التليفون)، بس لسه ظاهر لأن اسمه على شغلانات. امسح اسمه من الشغلانات الأول لو عايزه يختفي تماماً.', en: 'Removed from the directory (phone), but he still shows because his name is on jobs. Remove his name from those jobs first to hide him completely.' },
         guidePartnerIncl: { ar: 'يشمل نصيبه كشريك', en: 'includes partner share' },
         guideThDuesInPeriod: { ar: 'المستحق في الفترة دي', en: 'Dues in Period' },
         guideThPaidInPeriod: { ar: 'المدفوع في الفترة دي', en: 'Paid in Period' },
@@ -9681,6 +9682,9 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             renderTechGuideContent();
             updateTechDropdownFilter();
             renderTechnicians();
+            // He stays listed while jobs/partner shares still carry his name — say so instead of looking broken.
+            const stillListed = !!computeTechPeriodStats('', '')[name] || getExtraPartnerNames().includes(name);
+            if (stillListed) showToast(t('techDeleteStillHasJobs'));
         } catch (err) {
             alert(t('alertTechSaveFailed') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
         }
