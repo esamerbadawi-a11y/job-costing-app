@@ -719,6 +719,8 @@
                     <div class="ledger-add-row">
                         <div class="lg-field lg-amt"><span data-i18n="lblAmountShort"></span><input type="text" id="receiptAddAmount" inputmode="decimal" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); addReceipt();}"></div>
                         <div class="lg-field lg-date"><span data-i18n="lblReceiptDate"></span><input type="date" id="receiptAddDate"></div>
+                        <div class="lg-field lg-amt"><span data-i18n="lblPayMethod"></span><select id="receiptAddMethod" onchange="onReceiptMethodChange()"><option value="cash" data-i18n="payMethodCash"></option><option value="zelle" data-i18n="payMethodZelle"></option><option value="check" data-i18n="payMethodCheck"></option><option value="card" data-i18n="payMethodCard"></option></select></div>
+                        <div class="lg-field lg-amt" id="receiptNetField" style="display:none;"><span data-i18n="lblNetAfterFees"></span><input type="text" id="receiptAddNet" inputmode="decimal" onfocus="this.select()"></div>
                         <div class="lg-field lg-note"><span data-i18n="lblNoteShort"></span><input type="text" id="receiptAddNote" data-i18n-ph="withdrawalNotePh" onkeydown="if(event.key==='Enter'){event.preventDefault(); addReceipt();}"></div>
                         <button type="button" class="ledger-plus" onclick="addReceipt()">+</button>
                     </div>
@@ -2317,6 +2319,15 @@
         lblAmountShort: { ar: 'المبلغ ($)', en: 'Amount ($)' },
         lblReceiptDate: { ar: 'تاريخ الدفعة', en: 'Payment date' },
         lblInvoiceDate: { ar: 'تاريخ الفاتورة', en: 'Invoice date' },
+        lblPayMethod: { ar: 'طريقة الدفع', en: 'Paid by' },
+        payMethodCash: { ar: 'كاش', en: 'Cash' },
+        payMethodZelle: { ar: 'زيل', en: 'Zelle' },
+        payMethodCheck: { ar: 'شيك', en: 'Check' },
+        payMethodCard: { ar: 'كارت / Stripe', en: 'Card / Stripe' },
+        lblNetAfterFees: { ar: 'الواصل فعلاً بعد الرسوم ($)', en: 'Actually received after fees ($)' },
+        cardFeeLabel: { ar: 'رسوم', en: 'fee' },
+        alertNetAfterFeesInvalid: { ar: 'الواصل فعلاً لازم يكون أقل من المبلغ اللي العميل دفعه.', en: 'The amount actually received must be less than what the client paid.' },
+        jobPeriodCardFees: { ar: 'رسوم الكارت', en: 'Card fees' },
         lblNoteShort: { ar: 'ملاحظة', en: 'Note' },
         receiptsLedgerTitle: { ar: '🧾 دفعات العميل بتواريخها', en: '🧾 Client payments by date' },
         materialsLedgerTitle: { ar: '🧾 فواتير الخامات بتواريخها', en: '🧾 Material invoices by date' },
@@ -4506,13 +4517,15 @@
             const entry = s ? s.jobs.find(j => j.job.id === snap.id) : null;
             techDuesSum += entry ? entry.dues : 0;
         });
-        const net = round2(periodRecv - periodMat - techDuesSum);
+        const periodFees = jobCardFees(snap, dateFrom, dateTo);
+        const net = round2(periodRecv - periodMat - techDuesSum - periodFees);
         return `<div class="ledger-box" style="margin-bottom:12px;">
             <div class="ledger-title">${t('jobPeriodNetTitle')}</div>
             <div class="ag-meta" style="margin-bottom:4px;">${t('tmsPeriodNote').replace('{range}', ltrRange(dateFrom || '…', dateTo || '…'))}</div>
             <div class="tms-row"><span>${t('jobPeriodRecv')}</span><strong style="color:#34d399;">${ltrAmt(periodRecv)}</strong></div>
             <div class="tms-row"><span>${t('jobPeriodMat')}</span><strong style="color:#f87171;">${ltrAmt(periodMat)}</strong></div>
             <div class="tms-row"><span>${t('jobPeriodTechDues')}</span><strong style="color:#fbbf24;">${ltrAmt(techDuesSum)}</strong></div>
+            ${periodFees > 0.005 ? `<div class="tms-row"><span>${t('jobPeriodCardFees')}</span><strong style="color:#f87171;">${ltrAmt(periodFees)}</strong></div>` : ''}
             <div class="tms-row"><span>${t('jobPeriodNet')}</span><strong style="color:${net < 0 ? '#f87171' : '#38bdf8'};">${ltrAmt(net)}</strong></div>
         </div>`;
     }
@@ -5610,7 +5623,7 @@
                 html += `<div class="ledger-row">
                     <input type="date" value="${escHtml(e.date)}" onchange="setLedgerEntryDate('${kind}', '${e.id}', this.value)">
                     <strong style="color:${cfg.color};">$${parseVal(e.amount).toFixed(2)}</strong>
-                    <span class="ledger-note">${escHtml(e.note)}</span>
+                    <span class="ledger-note">${kind === 'receipt' && e.method && e.method !== 'cash' ? `<b>${t('payMethod' + e.method.charAt(0).toUpperCase() + e.method.slice(1))}</b>${parseVal(e.fee) > 0.005 ? ` · ${t('cardFeeLabel')} $${parseVal(e.fee).toFixed(2)}` : ''} ` : ''}${escHtml(e.note)}</span>
                     ${photoHtml}
                     <button type="button" class="ledger-del" onclick="removeLedgerEntry('${kind}', '${e.id}')">🗑</button>
                 </div>`;
@@ -5640,13 +5653,33 @@
         const amt = round2(parseVal(amtEl.value));
         if (amt <= 0) { alert(t('alertWithdrawalAmountRequired')); return; }
         if (!dateEl.value) { alert(t('alertPickDate')); return; }
-        ledgerArr(kind).push({ id: newLedgerId(), date: dateEl.value, amount: amt, note: noteEl.value.trim() });
+        const entry = { id: newLedgerId(), date: dateEl.value, amount: amt, note: noteEl.value.trim() };
+        if (kind === 'receipt') {
+            const method = document.getElementById('receiptAddMethod').value;
+            entry.method = method;
+            if (method === 'card') {
+                const netStr = document.getElementById('receiptAddNet').value;
+                if (String(netStr).trim() !== '') {
+                    const net = round2(parseVal(netStr));
+                    if (net <= 0 || net >= amt) { alert(t('alertNetAfterFeesInvalid')); return; }
+                    entry.fee = round2(amt - net);   // what Stripe/the card took off this payment
+                }
+            }
+            document.getElementById('receiptAddNet').value = '';
+            document.getElementById('receiptAddMethod').value = 'cash';
+            onReceiptMethodChange();
+        }
+        ledgerArr(kind).push(entry);
         const totalEl = document.getElementById(cfg.totalId);
         totalEl.value = round2(parseVal(totalEl.value) + amt).toFixed(2);
         amtEl.value = ''; noteEl.value = '';
         calculateRemaining(); calculate(); renderLedgers(); updateSplitRatioTotal();
     }
     function addReceipt() { addLedgerEntry('receipt'); }
+    function onReceiptMethodChange() {
+        const isCard = document.getElementById('receiptAddMethod').value === 'card';
+        document.getElementById('receiptNetField').style.display = isCard ? '' : 'none';
+    }
     function addToMaterialCost() { addLedgerEntry('material'); }
 
     // Deleting an entry also takes its amount out of the total (it was a mistaken entry).
@@ -6196,7 +6229,7 @@
     function jobNet(job) {
         let totalTechDues = 0;
         (job.technicians || []).forEach(tech => { totalTechDues += calculateJobTechDuesWithReimbursement(tech, job.amountReceived, job.materialCost); });
-        const netForSplit = parseVal(job.amountReceived) - parseVal(job.materialCost) - totalTechDues;
+        const netForSplit = parseVal(job.amountReceived) - parseVal(job.materialCost) - totalTechDues - jobCardFees(job);
         const ratio = jobSplitRatio(job);
         const shareS = netForSplit * ratio.s;
         const shareM = netForSplit * ratio.m;
@@ -12246,6 +12279,10 @@ ${closeBtnHtml}
         if (tech.type === 'نسبة (50%)') return 0.5;
         return (tech.customPercent !== undefined ? parseVal(tech.customPercent) : 50) / 100;
     }
+    // Card/Stripe fees taken off client payments (receipt.fee), all-time or only those dated in a range.
+    function jobCardFees(job, dateFrom, dateTo) {
+        return round2((job.receipts || []).filter(e => (!dateFrom || e.date >= dateFrom) && (!dateTo || e.date <= dateTo)).reduce((s, e) => s + parseVal(e.fee), 0));
+    }
     function inRangeSum(arr, dateFrom, dateTo) {
         return round2((arr || []).filter(e => (!dateFrom || e.date >= dateFrom) && (!dateTo || e.date <= dateTo)).reduce((s, e) => s + parseVal(e.amount), 0));
     }
@@ -12302,7 +12339,7 @@ ${closeBtnHtml}
             totalMaterials += periodMat;
             totalTechDues += techDues;
             const bonusForJob = jobPeriodBonus[job.id] || 0;
-            const netForSplit = round2(periodBase - techDues - bonusForJob);
+            const netForSplit = round2(periodBase - techDues - bonusForJob - (hasDateFilter ? jobCardFees(job, dateFrom, dateTo) : jobCardFees(job)));
             const ratio = jobSplitRatio(job);
             const jobShareS = round2(netForSplit * ratio.s);
             const jobShareM = round2(netForSplit * ratio.m);
