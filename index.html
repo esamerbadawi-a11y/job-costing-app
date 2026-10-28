@@ -1786,6 +1786,9 @@
         termsConditionsHint: { ar: 'بتتظهر تلقائيًا في آخر كل عرض سعر وفاتورة. مش استشارة قانونية — يفضل تراجعها محامي مرخص في فلوريدا قبل الاعتماد عليها بشكل نهائي.', en: 'Shown automatically at the bottom of every Estimate and Invoice. This is not legal advice — have a Florida-licensed attorney review it before relying on it.' },
         lblPaymentLink: { ar: 'رابط الدفع (Payment Link)', en: 'Payment Link' },
         paymentLinkHint: { ar: 'رابط دفع جاهز من Stripe أو Square أو أي خدمة تانية (مثال: buy.stripe.com/xxxx). لو حطيته، هيظهر زرار "💳 Pay Now" تلقائيًا في كل فاتورة وعرض سعر.', en: 'A ready-made payment link from Stripe, Square, or another service (e.g. buy.stripe.com/xxxx). If set, a "💳 Pay Now" button appears automatically on every Invoice and Estimate.' },
+        estimateTotalLabel: { ar: 'إجمالي العرض', en: 'Estimate Total' },
+        estimateDepositLabel: { ar: 'العربون المطلوب (50%)', en: 'Deposit Due (50%)' },
+        payDepositBtn: { ar: '💳 ادفع العربون', en: '💳 Pay Deposit' },
         payNowBtn: { ar: '💳 ادفع دلوقتي', en: '💳 Pay Now' },
         resetTermsConditionsBtn: { ar: '↺ رجّع النص المقترح', en: '↺ Reset to suggested text' },
         confirmResetTerms: { ar: 'هيتم استبدال النص الحالي بالنص المقترح (من غير حفظ لسه). متأكد؟', en: 'This will replace the current text with the suggested text (not saved yet). Continue?' },
@@ -3088,8 +3091,9 @@
     // Renders companyProfile.termsConditions (if any) as a small-print block for the bottom of
     // the Estimate and Invoice documents, one line per paragraph.
     function termsConditionsHtml() {
-        const text = (companyProfile.termsConditions || '').trim();
+        let text = (companyProfile.termsConditions || '').trim();
         if (!text) return '';
+        text = text.replace(/Affordable Handyman Approach[.,]?\s+P?LLC/gi, companyDisplayName());
         const paragraphs = text.split(/\n+/).filter(Boolean).map(p => `<div style="margin-bottom:3px;">${escHtml(p)}</div>`).join('');
         return `<div class="ui invoice-terms-block" style="margin-top:8px; padding-top:8px; border-top:1px solid #E7E1D6; font-size:8px; line-height:1.3; color:#6B6257;">
           <div style="font-weight:700; letter-spacing:0.5px; margin-bottom:3px; color:#3A332B;">${escHtml(t('lblTermsConditions')).toUpperCase()}</div>
@@ -3114,7 +3118,19 @@
     // on a report (invoices, PDFs, WhatsApp/SMS/email messages, filenames): Company Profile if it's
     // been filled in, otherwise this fallback. Change the name/logo once in Company Profile and
     // every one of those places follows automatically — nothing else should hardcode the name.
-    function companyDisplayName() { return (companyProfile.name || '').trim() || 'AHA Handyman Approach'; }
+    // Display-only cleanup (nothing saved is changed): "X. PLLC" / "X PLLC" -> "X, PLLC" so the legal name reads the same everywhere.
+    function normalizeCompanyName(n) { return String(n || '').trim().replace(/[.,]?\s+(PLLC|LLC|INC)\.?$/i, (m, suf) => ', ' + suf.toUpperCase()); }
+    function companyDisplayName() { return normalizeCompanyName(companyProfile.name) || 'AHA Handyman Approach'; }
+    // $4,040.00 style money for client-facing documents.
+    function fmtUsd(v) { const n = Number(v) || 0; return (n < 0 ? '-' : '') + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    // "2015776800" / "+1 (201) 577-6800" -> "(201) 577-6800" (US numbers only; anything else is left as typed).
+    function formatUsPhone(ph) {
+        const d = String(ph || '').replace(/\D/g, '');
+        const ten = d.length === 11 && d[0] === '1' ? d.slice(1) : d;
+        return ten.length === 10 ? `(${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}` : String(ph || '');
+    }
+    // "melissa diaz" -> "Melissa Diaz" (only lifts a lowercase first letter of each word; never touches the rest, so "McDonald" stays).
+    function titleCaseName(n) { return String(n || '').replace(/(^|[\s\-'])([a-z])/g, (m, a, b) => a + b.toUpperCase()); }
     // Short, filesystem-safe version of the same name, for downloaded file names (e.g. "AHA_Partner_Report...").
     function companyFileSlug() { return companyDisplayName().replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'Company'; }
     // Short code for invoice numbers (e.g. "AHA-2026-0001") — initials of the saved company name, or "AHA" if none is set yet.
@@ -6671,14 +6687,13 @@
     // Print Selected picks the report by itself: with "Filter Pending Debts" on it prints the
     // payment-status report (who owes what, no profit/shares); otherwise the full statement.
     function printSelectedJobs() {
-        // Debt filter on + nothing ticked → print every job currently shown by the filter (everyone who still owes).
+        // Debt filter on + nothing ticked -> print every job currently shown by the filter (everyone who still owes).
         if (onlyShowDebt && selectedJobIds.size === 0) {
             const owing = getFilteredJobs();
             if (owing.length === 0) { alert(t('alertNoPendingDebtsToPrint')); return; }
             return printSelectedJobsRun('owed', owing);
         }
         if (selectedJobIds.size === 0) { alert(t('alertSelectOneToPrint')); return; }
-        // Debt filter on → the payment report (who owes what); otherwise the full statement. No question asked.
         return printSelectedJobsRun(onlyShowDebt ? 'owed' : 'full');
     }
 
@@ -7047,7 +7062,7 @@
         return { dataUrl: canvas.toDataURL('image/png'), aspect: canvas.width / canvas.height };
     }
 
-    // "Who owes me" report for the selected jobs: per customer — contract, paid, still owed — plus
+    // "Who owes me" report for the selected jobs: per customer - contract, paid, still owed - plus
     // only the REAL costs on that job (materials, and technicians whose days are charged to it).
     // No profit, S/M shares or company net. A technician whose day was charged to another job gets
     // $0 here, so he is simply not listed.
@@ -7866,8 +7881,8 @@
         const itemsRowsHtml = invoiceState.items.map((it, i) => {
             const bg = i % 2 === 1 ? 'background:#F6F1E8;' : '';
             const cells = isAdditionalWork
-                ? `<div>${escHtml(it.desc)}</div><div style="text-align:right;">$${parseVal(it.amount).toFixed(2)}</div>`
-                : `<div>${i + 1}</div><div>${escHtml(it.desc)}</div><div style="text-align:center;">${escHtml(it.qty || '')}</div><div style="text-align:right;">$${parseVal(it.amount).toFixed(2)}</div>`;
+                ? `<div>${escHtml(it.desc)}</div><div style="text-align:right;">${fmtUsd(parseVal(it.amount))}</div>`
+                : `<div>${i + 1}</div><div>${escHtml(it.desc)}</div><div style="text-align:center;">${escHtml(it.qty || '')}</div><div style="text-align:right;">${fmtUsd(parseVal(it.amount))}</div>`;
             return `<div class="invoice-item-row" style="display:grid; grid-template-columns: ${itemsGridCols}; gap:10px; padding:10px 12px; font-size:12.5px; border-bottom:1px solid #E7E1D6; ${bg}">${cells}</div>`;
         }).join('');
         const itemsHeaderCells = isAdditionalWork
@@ -7876,7 +7891,7 @@
 
         // Each named deduction gets its own row (e.g. "PVC Trim Credit — Not Installed: -$250.00")
         // instead of the old single generic "Credit/Adjustment" amount.
-        const creditsRowsHtml = credits.map(c => `<div style="display:flex; justify-content:space-between; padding:6px 0; color:#B5432E;"><span>${escHtml(c.label || t('invoiceCreditLabel'))}</span><span>-$${parseVal(c.amount).toFixed(2)}</span></div>`).join('');
+        const creditsRowsHtml = credits.map(c => `<div style="display:flex; justify-content:space-between; padding:6px 0; color:#B5432E;"><span>${escHtml(c.label || t('invoiceCreditLabel'))}</span><span>-${fmtUsd(parseVal(c.amount))}</span></div>`).join('');
 
         const paymentMethodRow = invoiceState.showPaymentMethod ? `<div style="font-size:11.5px; color:#6B6257;"><b>${t('invoicePaymentMethodToggle')}:</b> ${escHtml(invoiceState.paymentMethodText)}</div>` : '';
         const followUpRow = invoiceState.showFollowUp ? `<div style="font-size:11.5px; color:#6B6257;"><b>${t('invoiceFollowUpToggle')}:</b> ${escHtml(invoiceState.followUpText)}</div>` : '';
@@ -7915,24 +7930,24 @@
         const infoBlockHtml = isAdditionalWork
             ? `<div class="invoice-infoblock" style="display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:24px;">
                  <div class="ui" style="font-size:13px; line-height:1.9;">
-                   <div><b>${escHtml(t('invoiceClientLabel'))}</b> ${escHtml(job.clientName)}</div>
+                   <div><b>${escHtml(t('invoiceClientLabel'))}</b> ${escHtml(titleCaseName(job.clientName))}</div>
                  </div>
                  <div class="ui" style="font-size:13px; line-height:1.9;">
                    <div><b>${escHtml(t('invoiceTypeLabel'))}:</b> ${escHtml(t('invoiceTypeAdditionalWork'))}</div>
-                   <div><b>${escHtml(t('invoiceBalanceDue'))}:</b> $${totalDue.toFixed(2)}${isPaid ? ` — <span style="color:#16a34a; font-weight:700;">✅ ${escHtml(t('invoicePaidStamp')).toUpperCase()}</span>` : ''}</div>
+                   <div><b>${escHtml(t('invoiceBalanceDue'))}:</b> ${fmtUsd(totalDue)}${isPaid ? ` — <span style="color:#16a34a; font-weight:700;">✅ ${escHtml(t('invoicePaidStamp')).toUpperCase()}</span>` : ''}</div>
                  </div>
                </div>`
             : `<div class="invoice-infoblock" style="display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:24px;">
                  <div class="ui" style="font-size:13px; line-height:1.9; min-width:0; overflow-wrap:break-word;">
-                   <div><b>${escHtml(t('invoiceBillTo'))}</b> ${escHtml(job.clientName)}</div>
+                   <div><b>${escHtml(t('invoiceBillTo'))}</b> ${escHtml(titleCaseName(job.clientName))}</div>
                    <div><b>${escHtml(t('invoiceAddressLabel'))}:</b> ${escHtml(job.clientAddress || '')}</div>
-                   <div><b>${escHtml(t('invoicePhoneLabel'))}:</b> ${escHtml(job.clientPhone || '')}</div>
+                   <div><b>${escHtml(t('invoicePhoneLabel'))}:</b> ${escHtml(formatUsPhone(job.clientPhone))}</div>
                  </div>
                  <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px; min-width:0;">
                    <div class="ui" style="font-size:12px; color:#6B6257;"><b>${escHtml(t('invoiceTypeLabel'))}:</b> ${escHtml(invoiceDocTypeDisplay(invoiceState.docType))}</div>
                    <div style="background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 18px; text-align:center; width:100%; max-width:200px; box-sizing:border-box;">
                      <div class="ui" style="font-size:11px; letter-spacing:1px; opacity:0.9;">${escHtml(t('invoiceBalanceDue')).toUpperCase()}</div>
-                     <div class="ui" style="font-size:24px; font-weight:700;">$${totalDue.toFixed(2)}</div>
+                     <div class="ui" style="font-size:24px; font-weight:700;">${fmtUsd(totalDue)}</div>
                      ${isPaid ? `<div class="ui" style="font-size:12px; font-weight:700; letter-spacing:1px; margin-top:4px;">✅ ${escHtml(t('invoicePaidStamp')).toUpperCase()}</div>` : ''}
                    </div>
                    ${paymentMethodRow}
@@ -7947,18 +7962,18 @@
         // every other type keeps its original narrow right-aligned box with the green total box.
         const totalsBlockHtml = isAdditionalWork
             ? `<div class="ui" style="width:100%; font-size:13px;">
-                 <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>${escHtml(t('invoiceSubtotalLabel'))}</span><span>$${subtotal.toFixed(2)}</span></div>
+                 <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>${escHtml(t('invoiceSubtotalLabel'))}</span><span>${fmtUsd(subtotal)}</span></div>
                  ${creditsRowsHtml}
-                 <div style="display:flex; justify-content:space-between; align-items:center; background:#EFEAE0; border-radius:4px; padding:10px 14px; margin-top:6px; font-weight:700; font-size:14px;"><span>${escHtml(t('invoiceAdditionalBalanceDue')).toUpperCase()}</span><span>$${totalDue.toFixed(2)}</span></div>
+                 <div style="display:flex; justify-content:space-between; align-items:center; background:#EFEAE0; border-radius:4px; padding:10px 14px; margin-top:6px; font-weight:700; font-size:14px;"><span>${escHtml(t('invoiceAdditionalBalanceDue')).toUpperCase()}</span><span>${fmtUsd(totalDue)}</span></div>
                </div>`
             : `<div class="ui invoice-totals" style="width:300px; font-size:13px;">
-                 <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>${escHtml(t('invoiceSubtotalLabel'))}</span><span>$${subtotal.toFixed(2)}</span></div>
+                 <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>${escHtml(t('invoiceSubtotalLabel'))}</span><span>${fmtUsd(subtotal)}</span></div>
                  ${creditsRowsHtml}
-                 <div style="display:flex; justify-content:space-between; align-items:center; background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 14px; margin-top:8px; font-weight:700; font-size:15px;"><span>${escHtml(t('invoiceTotalDueLabel')).toUpperCase()}</span><span>$${totalDue.toFixed(2)}</span></div>
+                 <div style="display:flex; justify-content:space-between; align-items:center; background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 14px; margin-top:8px; font-weight:700; font-size:15px;"><span>${escHtml(t('invoiceTotalDueLabel')).toUpperCase()}</span><span>${fmtUsd(totalDue)}</span></div>
                </div>`;
 
         const totalDueAmountLineHtml = isAdditionalWork
-            ? `<div style="text-align:right;"><span class="ui" style="font-size:15px; font-weight:700;">${escHtml(t('invoiceTotalDueAmountLine')).toUpperCase()}: $${totalDue.toFixed(2)}</span></div>`
+            ? `<div style="text-align:right;"><span class="ui" style="font-size:15px; font-weight:700;">${escHtml(t('invoiceTotalDueAmountLine')).toUpperCase()}: ${fmtUsd(totalDue)}</span></div>`
             : '';
 
         // A clickable "Pay Now" button to the company's own payment link (Stripe/Square/etc,
@@ -7991,7 +8006,7 @@
   @page { size: letter; margin: 0; }
   *{ -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
   html{ -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-  body{margin:0; font-family: Georgia, 'Times New Roman', serif; background:#FDFBF6; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; overflow-x:auto;}
+  body{margin:0; font-family: Arial, Helvetica, sans-serif; background:#FDFBF6; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; overflow-x:auto;}
   .ui{font-family: Arial, Helvetica, sans-serif;}
   @media print {
     .no-print { display:none !important; }
@@ -11559,8 +11574,8 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const itemsRowsHtml = items.map((it, i) => {
             const qty = parseVal(it.qty) || 1;
             const lineTotal = qty !== 1 ? round2(parseVal(it.amount) * qty) : parseVal(it.amount);
-            const qtyNote = qty !== 1 ? `<div style="color:#6B6257; font-size:11px; margin-top:2px;">${escHtml(String(qty))} × $${parseVal(it.amount).toFixed(2)}</div>` : '';
-            return `<div style="display:grid; grid-template-columns: 1fr 100px; gap:10px; padding:10px 12px; font-size:12.5px; border-bottom:1px solid #E7E1D6; ${i % 2 === 1 ? 'background:#F6F1E8;' : ''}"><div>${escHtml(it.desc)}${qtyNote}</div><div style="text-align:right;">$${lineTotal.toFixed(2)}</div></div>`;
+            const qtyNote = qty !== 1 ? `<div style="color:#6B6257; font-size:11px; margin-top:2px;">${escHtml(String(qty))} × ${fmtUsd(parseVal(it.amount))}</div>` : '';
+            return `<div style="display:grid; grid-template-columns: 1fr 100px; gap:10px; padding:10px 12px; font-size:12.5px; border-bottom:1px solid #E7E1D6; ${i % 2 === 1 ? 'background:#F6F1E8;' : ''}"><div>${escHtml(it.desc)}${qtyNote}</div><div style="text-align:right;">${fmtUsd(lineTotal)}</div></div>`;
         }).join('');
         // Same three optional fields as the Invoice document (Payment Method / Follow-up Date /
         // Validity Note) — see toggleQuoteOptionalField() in the quote modal.
@@ -11577,7 +11592,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escHtml(invoiceDocTypeDisplay('ESTIMATE'))} - ${escHtml(appt.clientName || '')}</title>
 <style>
-  body{margin:0; font-family: Georgia, 'Times New Roman', serif; background:#FDFBF6;}
+  body{margin:0; font-family: Arial, Helvetica, sans-serif; background:#FDFBF6;}
   .ui{font-family: Arial, Helvetica, sans-serif;}
   @media screen and (max-width: 900px) { .quote-page{ width:100% !important; } }
   @media screen and (max-width: 480px) { .quote-inner{ padding:22px 18px 20px 18px !important; } }
@@ -11603,16 +11618,17 @@ ${closeBtnHtml}
     <div style="height:2px; background:${accent};"></div>
     <div style="display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:24px;">
       <div class="ui" style="font-size:13px; line-height:1.9; min-width:0; overflow-wrap:break-word;">
-        <div><b>${escHtml(t('invoiceBillTo'))}</b> ${escHtml(appt.clientName || '')}</div>
+        <div><b>${escHtml(t('invoiceBillTo'))}</b> ${escHtml(titleCaseName(appt.clientName || ''))}</div>
         <div><b>${escHtml(t('invoiceAddressLabel'))}:</b> ${escHtml(appt.clientAddress || '')}</div>
-        <div><b>${escHtml(t('invoicePhoneLabel'))}:</b> ${escHtml(appt.clientPhone || '')}</div>
+        <div><b>${escHtml(t('invoicePhoneLabel'))}:</b> ${escHtml(formatUsPhone(appt.clientPhone))}</div>
       </div>
       <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px; min-width:0;">
         <div style="background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 18px; text-align:center; width:100%; max-width:200px; box-sizing:border-box;">
-          <div class="ui" style="font-size:11px; letter-spacing:1px; opacity:0.9;">${escHtml(t('invoiceTotalDueLabel')).toUpperCase()}</div>
-          <div class="ui" style="font-size:24px; font-weight:700;">$${price.toFixed(2)}</div>
+          <div class="ui" style="font-size:11px; letter-spacing:1px; opacity:0.9;">${escHtml(t('estimateTotalLabel')).toUpperCase()}</div>
+          <div class="ui" style="font-size:24px; font-weight:700;">${fmtUsd(price)}</div>
         </div>
-        ${companyProfile.paymentLink ? `<a href="${escHtml(companyProfile.paymentLink)}" target="_blank" class="ui" style="display:inline-block; background:${accent}; color:#FDFBF6; text-decoration:none; font-weight:700; font-size:12.5px; padding:8px 16px; border-radius:6px;">${escHtml(t('payNowBtn'))}</a>` : ''}
+        <div class="ui" style="font-size:12.5px; color:#241F1A; text-align:right;"><b>${escHtml(t('estimateDepositLabel'))}:</b> ${fmtUsd(round2(price * 0.5))}</div>
+        ${companyProfile.paymentLink ? `<a href="${escHtml(companyProfile.paymentLink)}" target="_blank" class="ui" style="display:inline-block; background:${accent}; color:#FDFBF6; text-decoration:none; font-weight:700; font-size:12.5px; padding:8px 16px; border-radius:6px;">${escHtml(t('payDepositBtn'))}</a>` : ''}
         ${paymentMethodRow}
         ${followUpRow}
       </div>
