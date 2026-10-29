@@ -228,6 +228,11 @@
         #techGuideContent table { white-space: normal; }
         #techGuideContent th, #techGuideContent td { padding: 10px 8px; font-size: 0.85rem; vertical-align: middle; }
         #techGuideContent .tg-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+        #techGuideContent details.tg-more { display: inline-block; }
+        #techGuideContent details.tg-more > summary { display: inline-block; list-style: none; cursor: pointer; padding: 4px 10px; font-size: 0.85rem; font-weight: 700; border-radius: 6px; background: #334155; color: #fff; user-select: none; }
+        #techGuideContent details.tg-more > summary::-webkit-details-marker { display: none; }
+        #techGuideContent details.tg-more[open] > summary { background: var(--accent); }
+        #techGuideContent details.tg-more[open] { display: block; flex: 1 1 100%; }
         @media(max-width: 760px) {
             .tg-modal-box { width: 98%; max-height: 92vh; padding: 14px; }
             #techGuideContent table, #techGuideContent thead, #techGuideContent tbody, #techGuideContent tr, #techGuideContent td { display: block; width: 100%; }
@@ -881,12 +886,8 @@
                 <div class="grid-2" style="margin-bottom:6px;">
                     <input type="email" id="newTechWorkerEmail" data-i18n-ph="wkEmailPh" autocomplete="off" autocapitalize="none">
                     <div style="display:flex; gap:6px;">
-                        <select id="newTechRegion" style="flex:1;">
-                            <option value="" data-i18n="wkRegionNone"></option>
-                            <option value="Florida">Florida</option>
-                            <option value="Michigan">Michigan</option>
-                            <option value="Chicago">Chicago</option>
-                        </select>
+                        <input type="text" id="newTechRegion" list="regionList" data-i18n-ph="wkRegionPh" autocomplete="off" style="flex:1; min-width:0;">
+                        <datalist id="regionList"></datalist>
                         <select id="newTechWorkerLang" style="flex:1;">
                             <option value="es">🇪🇸 Español</option>
                             <option value="en">🇺🇸 English</option>
@@ -2729,6 +2730,8 @@
         wkResendDoneConfirm: { ar: "العامل ده خلّص الشغلة دي. تبعتها تاني كشغلة جديدة؟", en: "This worker already finished this job. Send it again as a new task?" },
         wkEmailPh: { ar: "إيميل دخول العامل (اختياري)", en: "Worker login email (optional)" },
         wkEmailInvalid: { ar: "إيميل العامل مش مكتوب صح.", en: "The worker email is not valid." },
+        moreActionsTitle: { ar: 'المزيد', en: 'More' },
+        wkRegionPh: { ar: 'المنطقة (اكتب أو اختار)', en: 'Region (type or pick)' },
         wkRegionNone: { ar: "— المنطقة —", en: "— Region —" },
         wkWorkerLoginBadge: { ar: "دخول تطبيق العامل", en: "Worker app login" },
         wkStNew: { ar: "جديدة", en: "New" },
@@ -9903,6 +9906,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('newTechWorkerEmail').value = '';
         document.getElementById('newTechRegion').value = '';
         document.getElementById('newTechWorkerLang').value = 'es';
+        safeCall(fillRegionList);
         document.getElementById('addTechFormContainer').style.display = 'block';
     }
 
@@ -9918,6 +9922,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('newTechWorkerEmail').value = wkAcc ? (wkAcc.email || '') : '';
         document.getElementById('newTechRegion').value = wkAcc ? (wkAcc.region || '') : '';
         document.getElementById('newTechWorkerLang').value = (wkAcc && wkAcc.lang) ? wkAcc.lang : 'es';
+        safeCall(fillRegionList);
         document.getElementById('addTechFormContainer').style.display = 'block';
         document.getElementById('addTechFormContainer').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
@@ -9984,6 +9989,15 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     const workerTaskPhotosLoading = {};   // taskId -> true while a fetch is running
     let workerNoteTranslating = false;
 
+    // Region suggestions: the three usual ones plus any region already typed for another worker.
+    // Typing a brand-new region name is allowed - it simply becomes a suggestion next time.
+    function fillRegionList() {
+        const dl = document.getElementById('regionList');
+        if (!dl) return;
+        const names = new Set(['Florida', 'Michigan', 'Chicago']);
+        Object.values(workerAccounts).forEach(a => { if (a && a.region) names.add(a.region); });
+        dl.innerHTML = [...names].sort((x, y) => x.localeCompare(y)).map(n => `<option value="${escHtml(n)}"></option>`).join('');
+    }
     function workerAccountForTech(name) {
         return Object.values(workerAccounts).find(a => a && a.tech === name && a.active !== false) || null;
     }
@@ -10056,7 +10070,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     // Saves / updates the worker login that belongs to a technician (from the technician edit form).
     // Never deletes: removing the email just marks the old login inactive.
     async function saveWorkerAccountFromForm(name, oldName, email) {
-        const region = document.getElementById('newTechRegion').value;
+        const region = document.getElementById('newTechRegion').value.trim();
         const lang = document.getElementById('newTechWorkerLang').value || 'es';
         const existing = workerAccountForTech(oldName || name);
         if (existing && existing.email && existing.email !== email) {
@@ -13415,11 +13429,13 @@ ${closeBtnHtml}
                 <td data-label="" class="tg-actions-cell"><div class="tg-actions">
                     <button class="secondary" onclick="showTechDetails('${jsArg(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#475569;">🔎 ${t('guideDetailsBtn')}</button>
                     <button class="secondary" onclick="openTechPaymentPrompt('${jsArg(name)}', null, true)" style="padding:4px 8px; font-size:0.75rem; background:#16a34a;">${t('techPayBtn')}</button>
+                    <button class="secondary" onclick="openEditTechnicianModal('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#0284c7;">${t('editBtn')}</button>
+                    <details class="tg-more"><summary title="${t('moreActionsTitle')}">⋯</summary><div class="tg-actions" style="margin-top:6px;">
                     <button class="secondary" onclick="openTechBonusPrompt('${jsArg(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#fbbf24; color:#1a1a1a;">${t('techBonusBtn')}</button>
                     <button class="secondary" onclick="sendWhatsAppTech('${escJs(name)}', '${escJs(rawPhone)}', ${dues}, ${bonus})" style="padding:4px 8px; font-size:0.75rem; background:#059669;">${t('guideWhatsAppBtn')}</button>
                     <button class="secondary" onclick="printTechnicianReport('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#0ea5e9;">${t('printReportBtn')}</button>
-                    <button class="secondary" onclick="openEditTechnicianModal('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#0284c7;">${t('editBtn')}</button>
                     <button class="danger" onclick="deleteTechnicianFromDirectory('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem;">${t('deleteBtn')}</button>
+                    </div></details>
                 </div></td></tr>`;
         });
         html += '</tbody></table>';
