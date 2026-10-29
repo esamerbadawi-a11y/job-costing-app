@@ -38,6 +38,9 @@ html.light .t-new{background:#dbe8ff;color:#1c4fb5}html.light .t-prog{background
 .btn{min-height:74px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;gap:12px;font-size:1.35rem;font-weight:bold;color:#fff;cursor:pointer;user-select:none;text-align:center;padding:8px 12px;border:0;width:100%;font-family:inherit}
 .btn i{font-style:normal;font-size:1.8rem}.btn small{font-size:.8rem;font-weight:normal;background:rgba(0,0,0,.28);padding:2px 9px;border-radius:10px}
 .btn:active{transform:scale(.98);opacity:.9}
+.steps{display:flex;gap:8px;margin:2px 0 4px}.steps span{flex:1;text-align:center;padding:9px 4px;border-radius:12px;background:var(--card);border:1px solid var(--line);font-weight:bold;font-size:.85rem;opacity:.5}.steps span.on{opacity:1;border-color:#3b82f6;color:#3b82f6}.steps span.dn{opacity:.85}
+#sigPad{width:100%;height:210px;background:#fff;border-radius:14px;border:2px dashed #94a3b8;touch-action:none;display:block}
+.hint{font-size:.9rem;text-align:center;opacity:.75;margin:6px 0}
 .blue{background:var(--blue)}.orange{background:var(--orange)}.green{background:var(--green)}.purple{background:var(--purple)}.gray{background:var(--chip);color:var(--tx)}.red{background:var(--red)}
 .chips{display:flex;gap:8px}.chip{flex:1;text-align:center;font-size:1rem;padding:13px 8px;border-radius:14px;background:var(--chip);color:var(--tx);text-decoration:none;cursor:pointer;border:0;font-family:inherit}
 .chip.on{background:var(--blue);color:#fff;font-weight:bold}
@@ -102,21 +105,21 @@ function isoDate(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-
 
 /* ---------------- translations: English / Español / العربية ---------------- */
 const I18N = {
-    en: { signIn: 'Sign in', email: 'Email', password: 'Password', enter: 'ENTER', badLogin: 'Wrong email or password.', noAccount: 'Your account is not ready yet. Please call the office.',
+    en: { next: 'NEXT', needPhoto: '📷 Take at least 1 photo to continue', stepSign: 'SIGN', signTitle: 'Customer sign-off', signText: 'I am satisfied with the work.', signHere: '✍️ Customer signs here', signClear: 'Clear', custName: 'Customer name (optional)', needSign: 'The customer must sign, or tap “Customer not available”.', notAvail: 'Customer not available',  signIn: 'Sign in', email: 'Email', password: 'Password', enter: 'ENTER', badLogin: 'Wrong email or password.', noAccount: 'Your account is not ready yet. Please call the office.',
         today: 'Today', upcoming: 'Upcoming', noJobs: 'No jobs here', newTag: 'New', inProgress: 'In progress', late: 'Late', estimateTag: 'Estimate visit', noPrices: '🔒 No prices or payments',
         map: '🗺️ Map', callCustomer: '📞 Call customer', callOffice: '📞 Call the office', original: '🌐 Original message', translated: '🌐 Translated · see original', showTranslated: '🌐 See translated',
         arrived: 'I ARRIVED', arrivedAt: 'Arrived', before: 'BEFORE', after: 'AFTER', estimatePhotos: 'ESTIMATE PHOTOS', done: 'FINISHED', notePh: '💬 Note for the office (optional)…', saved: '✔ Saved',
         confirmDone: 'Finish this job?', yes: 'Yes, finished', no: 'Not yet', syncing: '⏳ Sending… it will finish by itself', offline: '📴 No signal — your photos will upload by themselves later',
         profile: 'Profile', myWork: 'My work', todayWord: 'Today', thisWeek: 'This week', thisMonth: 'This month', jobsDone: 'jobs finished', theme: 'Color', dark: '🌙 Dark', light: '☀️ Light',
         textSize: 'Text size', normal: 'Normal', large: 'Large', xl: 'Extra large', language: 'Language', changePhoto: '📷 Change my photo', logout: 'Log out', newJob: '🔔 New job!', photoErr: 'Could not save the photo. Try again.', sendErr: 'Could not send. Check your signal.', loading: 'Loading…', back: 'Back' },
-    es: { signIn: 'Iniciar sesión', email: 'Correo', password: 'Contraseña', enter: 'ENTRAR', badLogin: 'Correo o contraseña incorrectos.', noAccount: 'Su cuenta aún no está lista. Llame a la oficina.',
+    es: { next: 'SIGUIENTE', needPhoto: '📷 Tome al menos 1 foto para continuar', stepSign: 'FIRMA', signTitle: 'Conformidad del cliente', signText: 'Estoy satisfecho con el trabajo.', signHere: '✍️ El cliente firma aquí', signClear: 'Borrar', custName: 'Nombre del cliente (opcional)', needSign: 'El cliente debe firmar, o toque “Cliente no disponible”.', notAvail: 'Cliente no disponible',  signIn: 'Iniciar sesión', email: 'Correo', password: 'Contraseña', enter: 'ENTRAR', badLogin: 'Correo o contraseña incorrectos.', noAccount: 'Su cuenta aún no está lista. Llame a la oficina.',
         today: 'Hoy', upcoming: 'Próximos', noJobs: 'No hay trabajos aquí', newTag: 'Nuevo', inProgress: 'En progreso', late: 'Atrasado', estimateTag: 'Visita de estimado', noPrices: '🔒 Sin precios ni pagos',
         map: '🗺️ Mapa', callCustomer: '📞 Llamar al cliente', callOffice: '📞 Llamar a la oficina', original: '🌐 Mensaje original', translated: '🌐 Traducido · ver original', showTranslated: '🌐 Ver traducido',
         arrived: 'LLEGUÉ', arrivedAt: 'Llegada', before: 'ANTES', after: 'DESPUÉS', estimatePhotos: 'FOTOS DEL ESTIMADO', done: 'TERMINÉ', notePh: '💬 Nota para la oficina (opcional)…', saved: '✔ Guardado',
         confirmDone: '¿Terminó este trabajo?', yes: 'Sí, terminé', no: 'Todavía no', syncing: '⏳ Enviando… se completa solo', offline: '📴 Sin señal — las fotos se enviarán solas más tarde',
         profile: 'Perfil', myWork: 'Mi trabajo', todayWord: 'Hoy', thisWeek: 'Esta semana', thisMonth: 'Este mes', jobsDone: 'trabajos terminados', theme: 'Color', dark: '🌙 Oscuro', light: '☀️ Claro',
         textSize: 'Tamaño del texto', normal: 'Normal', large: 'Grande', xl: 'Muy grande', language: 'Idioma', changePhoto: '📷 Cambiar mi foto', logout: 'Cerrar sesión', newJob: '🔔 ¡Trabajo nuevo!', photoErr: 'No se pudo guardar la foto. Intente otra vez.', sendErr: 'No se pudo enviar. Revise la señal.', loading: 'Cargando…', back: 'Atrás' },
-    ar: { signIn: 'تسجيل الدخول', email: 'الإيميل', password: 'كلمة المرور', enter: 'دخول', badLogin: 'الإيميل أو كلمة المرور غلط.', noAccount: 'حسابك لسه مش جاهز. كلّم المكتب.',
+    ar: { next: 'التالي', needPhoto: '📷 صوّر صورة واحدة على الأقل عشان تكمّل', stepSign: 'إمضاء', signTitle: 'موافقة العميل', signText: 'أنا راضي عن الشغل.', signHere: '✍️ العميل يمضي هنا', signClear: 'امسح', custName: 'اسم العميل (اختياري)', needSign: 'لازم العميل يمضي، أو اضغط «العميل مش موجود».', notAvail: 'العميل مش موجود',  signIn: 'تسجيل الدخول', email: 'الإيميل', password: 'كلمة المرور', enter: 'دخول', badLogin: 'الإيميل أو كلمة المرور غلط.', noAccount: 'حسابك لسه مش جاهز. كلّم المكتب.',
         today: 'النهارده', upcoming: 'الجاي', noJobs: 'مفيش شغل هنا', newTag: 'جديد', inProgress: 'شغّال', late: 'متأخر', estimateTag: 'زيارة تقدير', noPrices: '🔒 بدون أسعار أو مدفوعات',
         map: '🗺️ الخريطة', callCustomer: '📞 اتصل بالعميل', callOffice: '📞 اتصل بالمكتب', original: '🌐 الرسالة الأصلية', translated: '🌐 مترجم · شوف الأصل', showTranslated: '🌐 شوف المترجم',
         arrived: 'وصلت', arrivedAt: 'وصل', before: 'قبل', after: 'بعد', estimatePhotos: 'صور التقدير', done: 'خلصت', notePh: '💬 ملاحظة للمكتب (اختياري)…', saved: '✔ اتحفظ',
@@ -192,8 +195,8 @@ function render() {
     var app = document.getElementById('app');
     if (view.name === 'login') { app.innerHTML = loginHtml(); return; }
     if (view.name === 'loading') { app.innerHTML = '<div class="login"><div class="center mut">' + tr('loading') + '</div></div>'; return; }
-    if (view.name === 'noaccount') { app.innerHTML = '<div class="login"><div class="err" style="font-size:1.1rem">' + tr('noAccount') + '</div><div class="btn gray" onclick="logout()">' + tr('logout') + '</div></div>'; return; }
-    if (view.name === 'job') { app.innerHTML = jobHtml(); return; }
+    if (view.name === 'noaccount') { app.innerHTML = '<div class="login"><div class="err" style="font-size:1.1rem">' + tr('noAccount') + '</div><div style="opacity:.6;font-size:.8rem;margin:8px 0;direction:ltr;word-break:break-all">' + esc((view.why || '') + ' ' + myEmail) + '</div><div class="btn gray" onclick="logout()">' + tr('logout') + '</div></div>'; return; }
+    if (view.name === 'job') { app.innerHTML = jobHtml(); setTimeout(initSig, 0); return; }
     if (view.name === 'profile') { app.innerHTML = profileHtml(); return; }
     app.innerHTML = listHtml();
 }
@@ -263,13 +266,34 @@ function jobHtml() {
     if (x.status === 'new') {
         h += '<div class="sp"></div><div class="btn purple" onclick="markArrived(\'' + esc(x.id) + '\')"><i>📍</i>' + tr('arrived') + '</div>';
     } else {
+        var noteHtml = '<textarea id="noteBox" placeholder="' + esc(tr('notePh')) + '" oninput="noteTyping(\'' + esc(x.id) + '\')" onblur="saveNote(\'' + esc(x.id) + '\')">' + esc(x.note || '') + '</textarea><div id="noteSaved" class="mut center" style="min-height:1.2em"></div>';
+        var xid = esc(x.id);
         if (x.kind === 'appt') {
-            h += photoBlock(x, 'estimate', tr('estimatePhotos'), 'blue');
+            h += photoBlock(x, 'estimate', tr('estimatePhotos'), 'blue') + noteHtml;
+            h += '<div class="sp"></div><div class="btn green" onclick="askDone(\'' + xid + '\')"><i>✔</i>' + tr('done') + '</div>';
         } else {
-            h += photoBlock(x, 'before', tr('before'), 'blue') + photoBlock(x, 'after', tr('after'), 'orange');
+            if (sigTask !== x.id) { sigTask = x.id; sigUrl = ''; sigName = ''; }
+            var st = stepOf(x);
+            h += '<div class="steps"><span class="' + (st === 1 ? 'on' : 'dn') + '">1 · ' + tr('before') + '</span><span class="' + (st === 2 ? 'on' : (st < 2 ? '' : 'dn')) + '">2 · ' + tr('after') + '</span><span class="' + (st === 3 ? 'on' : '') + '">3 · ' + tr('stepSign') + '</span></div>';
+            if (st === 1) {
+                var ok1 = (x.cnt_before || 0) > 0;
+                h += photoBlock(x, 'before', tr('before'), 'blue') + noteHtml;
+                h += ok1 ? '<div class="btn green" onclick="goStep(\'' + xid + '\',2)">' + tr('next') + ' ' + (lang === 'ar' ? '←' : '→') + '</div>' : '<div class="hint">' + tr('needPhoto') + '</div><div class="btn gray" style="opacity:.5" onclick="toast(tr(\'needPhoto\'))">' + tr('next') + ' ' + (lang === 'ar' ? '←' : '→') + '</div>';
+            } else if (st === 2) {
+                var ok2 = (x.cnt_after || 0) > 0;
+                h += photoBlock(x, 'after', tr('after'), 'orange') + noteHtml;
+                h += ok2 ? '<div class="btn green" onclick="goStep(\'' + xid + '\',3)">' + tr('next') + ' ' + (lang === 'ar' ? '←' : '→') + '</div>' : '<div class="hint">' + tr('needPhoto') + '</div><div class="btn gray" style="opacity:.5" onclick="toast(tr(\'needPhoto\'))">' + tr('next') + ' ' + (lang === 'ar' ? '←' : '→') + '</div>';
+                h += '<div class="btn gray" style="min-height:50px;font-size:1rem;margin-top:8px" onclick="goStep(\'' + xid + '\',1)">' + (lang === 'ar' ? '→ ' : '← ') + tr('before') + '</div>';
+            } else {
+                h += '<div class="card center"><b style="font-size:1.15rem">' + tr('signTitle') + '</b><p style="margin:8px 0">' + tr('signText') + '</p></div>';
+                h += '<div class="mut center" style="margin:4px 0">' + tr('signHere') + '</div><canvas id="sigPad"></canvas>';
+                h += '<div class="btn gray" style="min-height:46px;font-size:.95rem;margin:8px 0" onclick="sigClear()">' + tr('signClear') + '</div>';
+                h += '<input id="sigName" type="text" placeholder="' + esc(tr('custName')) + '" value="' + esc(sigName) + '" oninput="sigName=this.value" style="margin-bottom:10px">';
+                h += '<div id="finBtn" class="btn ' + (sigUrl ? 'green' : 'gray') + '" style="' + (sigUrl ? '' : 'opacity:.5') + '" onclick="finishClick(\'' + xid + '\')"><i>✔</i>' + tr('done') + '</div>';
+                h += '<div class="btn gray" style="min-height:50px;font-size:1rem;margin-top:10px" onclick="askDone(\'' + xid + '\',true)">' + tr('notAvail') + '</div>';
+                h += '<div class="btn gray" style="min-height:46px;font-size:.95rem;margin-top:8px" onclick="goStep(\'' + xid + '\',2)">' + (lang === 'ar' ? '→ ' : '← ') + tr('after') + '</div>';
+            }
         }
-        h += '<textarea id="noteBox" placeholder="' + esc(tr('notePh')) + '" oninput="noteTyping(\'' + esc(x.id) + '\')" onblur="saveNote(\'' + esc(x.id) + '\')">' + esc(x.note || '') + '</textarea><div id="noteSaved" class="mut center" style="min-height:1.2em"></div>';
-        h += '<div class="sp"></div><div class="btn green" onclick="askDone(\'' + esc(x.id) + '\')"><i>✔</i>' + tr('done') + '</div>';
     }
     h += '</div>';
     return h;
@@ -322,6 +346,7 @@ function setFs(v) { LS.set('wk_fs', v); render(); }
 function doLogin() {
     var e = (document.getElementById('lgEmail').value || '').trim(), p = document.getElementById('lgPass').value || '';
     if (!e || !p) return;
+    e = e.toLowerCase();
     LS.set('wk_email', e);
     loginError = '';
     auth.signInWithEmailAndPassword(e, p).catch(function () { loginError = tr('badLogin'); render(); });
@@ -334,7 +359,7 @@ auth.onAuthStateChanged(function (u) {
     view = { name: 'loading', tab: 'today', id: null }; render();
     try { if (unsubMe) unsubMe(); } catch (e) {}
     unsubMe = db.collection('workerAccounts').doc(myEmail).onSnapshot(function (doc) {
-        if (!doc.exists || doc.data().active === false) { me = null; view = { name: 'noaccount', tab: 'today', id: null }; render(); return; }
+        if (!doc.exists || doc.data().active === false) { me = null; view = { name: 'noaccount', tab: 'today', id: null, why: !doc.exists ? 'no account for' : 'inactive' }; render(); return; }
         var first = !me;
         me = doc.data();
         if (first) {
@@ -343,7 +368,7 @@ auth.onAuthStateChanged(function (u) {
             if (view.name === 'loading' || view.name === 'noaccount') view = { name: 'list', tab: 'today', id: null };
         }
         render();
-    }, function () { view = { name: 'noaccount', tab: 'today', id: null }; render(); });
+    }, function (err) { view = { name: 'noaccount', tab: 'today', id: null, why: (err && (err.code || err.message)) || 'error' }; render(); });
 });
 
 function startTasks() {
@@ -358,7 +383,7 @@ function startTasks() {
         if (added) { toast(tr('newJob')); try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {} }
         if (wantTask) { var w = tasks.filter(function (z) { return z.id === wantTask; })[0]; if (w) { wantTask = null; try { history.replaceState(null, '', location.pathname); } catch (e) {} view = { name: 'job', tab: 'today', id: w.id }; } }
         var ae = document.activeElement;
-        if (view.name === 'job' && ae && ae.id === 'noteBox') return; // never wipe a note while it is being typed
+        if (view.name === 'job' && ae && (ae.id === 'noteBox' || ae.id === 'sigName')) return; // never wipe a note while it is being typed
         render();
     }, function () { toast(tr('sendErr')); });
 }
@@ -369,15 +394,46 @@ function markArrived(id) {
     var x = tasks.filter(function (z) { return z.id === id; })[0]; if (!x || x.status !== 'new') return;
     taskRef(id).update({ status: 'arrived', arrivedAt: Date.now(), updatedAt: Date.now() }).catch(function () { toast(tr('sendErr')); });
 }
-function askDone(id) {
+var wkStep = {}, sigUrl = '', sigName = '', sigTask = '';
+function stepOf(x) { if (wkStep[x.id]) return wkStep[x.id]; return (x.cnt_after || 0) > 0 ? 2 : 1; }
+function goStep(id, n) { saveNote(id, true); wkStep[id] = n; render(); window.scrollTo(0, 0); }
+function finishClick(id) { if (!sigUrl) { toast(tr('needSign')); return; } askDone(id); }
+function initSig() {
+    var c = document.getElementById('sigPad'); if (!c) return;
+    var w = c.clientWidth || 300, h = c.clientHeight || 210; c.width = w; c.height = h;
+    var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, w, h);
+    g.lineWidth = 3; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#111';
+    if (sigUrl) { var im = new Image(); im.onload = function () { g.drawImage(im, 0, 0, w, h); }; im.src = sigUrl; }
+    var drawing = false, lx = 0, ly = 0;
+    function pos(e) { var r = c.getBoundingClientRect(); return [(e.clientX - r.left) * (w / r.width), (e.clientY - r.top) * (h / r.height)]; }
+    c.addEventListener('pointerdown', function (e) { e.preventDefault(); drawing = true; var p = pos(e); lx = p[0]; ly = p[1]; g.beginPath(); g.moveTo(lx, ly); g.lineTo(lx + 0.1, ly + 0.1); g.stroke(); try { c.setPointerCapture(e.pointerId); } catch (x) {} });
+    c.addEventListener('pointermove', function (e) { if (!drawing) return; e.preventDefault(); var p = pos(e); g.beginPath(); g.moveTo(lx, ly); g.lineTo(p[0], p[1]); g.stroke(); lx = p[0]; ly = p[1]; });
+    function up() { if (!drawing) return; drawing = false; sigUrl = c.toDataURL('image/jpeg', 0.7); updateFin(); }
+    c.addEventListener('pointerup', up); c.addEventListener('pointercancel', up);
+}
+function updateFin() { var b = document.getElementById('finBtn'); if (!b) return; b.className = 'btn ' + (sigUrl ? 'green' : 'gray'); b.style.opacity = sigUrl ? '' : '.5'; }
+function sigClear() { sigUrl = ''; initSig(); updateFin(); }
+function askDone(id, skip) {
     var m = document.createElement('div'); m.className = 'modal'; m.id = 'doneModal';
-    m.innerHTML = '<div class="box"><h3>' + tr('confirmDone') + '</h3><div class="btn green" onclick="doDone(\'' + esc(id) + '\')">' + tr('yes') + '</div><div class="btn gray" style="min-height:56px" onclick="document.getElementById(\'doneModal\').remove()">' + tr('no') + '</div></div>';
+    m.innerHTML = '<div class="box"><h3>' + tr('confirmDone') + '</h3><div class="btn green" onclick="doDone(\'' + esc(id) + '\',' + (skip ? 'true' : 'false') + ')">' + tr('yes') + '</div><div class="btn gray" style="min-height:56px" onclick="document.getElementById(\'doneModal\').remove()">' + tr('no') + '</div></div>';
     document.body.appendChild(m);
 }
-function doDone(id) {
+function doDone(id, skip) {
     var m = document.getElementById('doneModal'); if (m) m.remove();
     saveNote(id, true);
-    taskRef(id).update({ status: 'done', doneAt: Date.now(), updatedAt: Date.now() }).catch(function () { toast(tr('sendErr')); });
+    var x = tasks.filter(function (z) { return z.id === id; })[0] || {};
+    var upd = { status: 'done', doneAt: Date.now(), updatedAt: Date.now() };
+    var batch = db.batch();
+    if (x.kind !== 'appt') {
+        if (skip || !sigUrl) upd.signSkipped = true;
+        else {
+            upd.signed = true; upd.signName = (sigName || '').trim();
+            batch.set(db.collection('workerPhotos').doc('s' + Date.now() + Math.random().toString(36).slice(2, 6)), { taskId: id, kind: 'signature', data: sigUrl, ts: Date.now(), by: myEmail, tech: me ? me.tech : '', signName: upd.signName });
+        }
+    }
+    batch.update(taskRef(id), upd);
+    batch.commit().catch(function () { toast(tr('sendErr')); });
+    sigUrl = ''; sigName = ''; sigTask = ''; delete wkStep[id];
     view = { name: 'list', tab: view.tab || 'today', id: null };
     try { if (history.state && history.state.v) history.back(); } catch (e) {}
     render();
