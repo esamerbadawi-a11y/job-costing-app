@@ -2749,6 +2749,11 @@
         wkPhotosBefore: { ar: "قبل", en: "Before" },
         wkPhotosAfter: { ar: "بعد", en: "After" },
         wkPhotosEstimate: { ar: "صور التقدير", en: "Estimate photos" },
+        wkEstimateBtn: { ar: "📝 عرض سعر", en: "📝 Estimate" },
+        wkEstimateNew: { ar: "هنعمل موعد تقدير جديد للعميل ده ونفتح عليه عرض السعر بالصور. نكمّل؟", en: "This creates a new estimate appointment for this client and opens a quote with these photos. Continue?" },
+        wkEstimateErr: { ar: "مقدرتش أفتح عرض السعر.", en: "Could not open the quote." },
+        wkHideBtn: { ar: "شيلها من اللوحة", en: "Remove from board" },
+        wkHideConfirm: { ar: "تشيل المهمة دي من اللوحة ومن موبايل العامل؟\n(مفيش حاجة بتتمسح: الصور والملاحظة بتفضل محفوظة، وتقدر ترجّعها بإرسال الشغلة للعامل تاني.)", en: "Remove this task from the board and from the worker's phone?\n(Nothing is deleted: photos and notes stay saved, and sending the job to the worker again brings it back.)" },
         wkSignature: { ar: "إمضاء العميل", en: "Customer sign-off" },
         wkNoSignature: { ar: "العميل مش موجود / مفيش إمضاء", en: "Customer not available / no signature" },
         wkNoPhotos: { ar: "مفيش صور لسه.", en: "No photos yet." },
@@ -10057,7 +10062,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
 
     // Small status line under a job / appointment card for each worker it was sent to.
     function workerBadgesHtml(kind, refId, date) {
-        const list = workerTasks.filter(x => x.refKind === kind && String(x.refId) === String(refId) && (kind === 'appt' || (x.entryDate || '') === (date || '')));
+        const list = workerTasks.filter(x => !x.hidden && x.refKind === kind && String(x.refId) === String(refId) && (kind === 'appt' || (x.entryDate || '') === (date || '')));
         if (!list.length) return '';
         return list.map(x => {
             const st = x.status === 'done' ? '✅ ' + t('wkStDone') + (x.doneAt ? ' ' + workerStamp(x.doneAt) : '')
@@ -10065,8 +10070,16 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                 : '🕘 ' + t('wkStNew');
             const ph = (x.cnt_before || 0) + (x.cnt_after || 0) + (x.cnt_estimate || 0);
             const color = x.status === 'done' ? '#34d399' : (x.status === 'arrived' ? '#fbbf24' : '#38bdf8');
-            return `<div onclick="event.stopPropagation(); openWorkerTask('${jsArg(x.id)}')" style="cursor:pointer; margin-top:4px; font-size:0.76rem; color:${color}; border:1px solid ${color}; border-radius:8px; padding:3px 8px; display:inline-block;">👷 ${escHtml(x.tech || '')} · ${st}${ph ? ' · 📷 ' + ph : ''}${x.note ? ' · 💬' : ''}</div>`;
+            return `<span style="display:inline-flex; align-items:center; gap:4px; margin-top:4px;"><div onclick="event.stopPropagation(); openWorkerTask('${jsArg(x.id)}')" style="cursor:pointer; margin-top:0; font-size:0.76rem; color:${color}; border:1px solid ${color}; border-radius:8px; padding:3px 8px; display:inline-block;">👷 ${escHtml(x.tech || '')} · ${st}${ph ? ' · 📷 ' + ph : ''}${x.note ? ' · 💬' : ''}</div><button type="button" onclick="event.stopPropagation(); hideWorkerTask('${jsArg(x.id)}')" title="${t('wkHideBtn')}" style="background:#475569; color:#fff; border:0; border-radius:50%; width:20px; height:20px; font-size:0.7rem; line-height:20px; padding:0; cursor:pointer;">✕</button></span>`;
         }).join('<br>');
+    }
+
+    // The ✕ next to a worker status: hides it from the board AND from the worker's phone. Nothing is deleted
+    // (photos, note, times stay stored); sending the job again to the worker brings it back.
+    async function hideWorkerTask(id) {
+        if (!confirm(t('wkHideConfirm'))) return;
+        try { await WORKER_TASKS.doc(id).update({ hidden: true, updatedAt: Date.now() }); refreshWorkerViews(); }
+        catch (e) { console.error(e); showToast(t('wkSendFail') || 'Error'); }
     }
 
     // Saves / updates the worker login that belongs to a technician (from the technician edit form).
@@ -10213,6 +10226,55 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         if (!workerTaskPhotos[id]) loadWorkerTaskPhotos(id);
         safeCall(() => ensureNoteTranslation(id, false));
     }
+    function shrinkDataUrl(src, maxDim = 900, q = 0.6) {
+        return new Promise(resolve => {
+            const img = new Image();
+            img.onload = () => {
+                const sc = Math.min(1, maxDim / Math.max(img.width, img.height));
+                const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.width * sc)); c.height = Math.max(1, Math.round(img.height * sc));
+                c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                resolve(c.toDataURL('image/jpeg', q));
+            };
+            img.onerror = () => resolve(src);
+            img.src = src;
+        });
+    }
+    // Opens the quote screen for this worker task with the worker's photos already attached.
+    // An estimate-visit task uses its own appointment; a normal job gets a new estimate appointment (made once, then reused).
+    async function openEstimateFromWorkerTask(id) {
+        const x = workerTasks.find(z => z.id === id);
+        if (!x) return;
+        try {
+            if (!workerTaskPhotos[id]) await loadWorkerTaskPhotos(id);
+            const want = x.refKind === 'appt' ? 'estimate' : 'before';
+            const src = (workerTaskPhotos[id] || []).filter(p => p.kind === want).slice(0, 12);
+            let apptId = null;
+            if (x.refKind === 'appt') {
+                if (appointments.find(a => String(a.id) === String(x.refId))) apptId = String(x.refId);
+            } else {
+                const ex = appointments.find(a => a.fromWorkerTask === id);
+                if (ex) apptId = ex.id;
+                else {
+                    if (!confirm(t('wkEstimateNew'))) return;
+                    const job = savedJobs.find(j => String(j.id) === String(x.refId)) || {};
+                    apptId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+                    appointments.unshift({
+                        id: apptId, clientName: x.clientName || job.clientName || '', clientPhone: job.clientPhone || job.tenantPhone || '', clientEmail: job.clientEmail || '',
+                        clientAddress: x.address || job.clientAddress || '', requestedDate: x.date || '', requestedTime: x.time || '', services: [],
+                        note: [job.clientDescription || '', x.note || ''].filter(Boolean).join('\n'), photos: [], by: currentUserEmail || '?', fromWorkerTask: id
+                    });
+                    await saveAppointmentsData();
+                }
+            }
+            if (!apptId) { showToast(t('wkEstimateErr')); return; }
+            const shrunk = [];
+            for (const p of src) shrunk.push({ data: await shrinkDataUrl(p.data), addedAt: new Date().toISOString() });
+            closeWorkerTask();
+            openAppointmentQuoteModal(apptId);
+            currentQuotePhotos = shrunk;
+            renderPhotoGallery(currentQuotePhotos, 'quotePhotoGallery');
+        } catch (e) { console.error(e); showToast(t('wkEstimateErr')); }
+    }
     function closeWorkerTask() { workerTaskOpenId = null; document.getElementById('workerTaskModal').style.display = 'none'; }
     function resendWorkerTask() {
         const x = workerTasks.find(z => z.id === workerTaskOpenId);
@@ -10289,7 +10351,8 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         else kinds.forEach(([k, label]) => {
             const list = photos.filter(p => p.kind === k);
             if (!list.length) return;
-            html += `<div style="margin:8px 0 4px; font-weight:700; font-size:0.9rem;">${label} (${list.length})</div><div style="display:flex; flex-wrap:wrap; gap:6px;">${list.map(p => `<img src="${p.data}" alt="" onclick="openPhotoLightbox('${jsArg(p.id)}')" style="width:96px; height:96px; object-fit:cover; border-radius:8px; cursor:zoom-in; border:1px solid var(--border-color);">`).join('')}</div>`;
+            const estBtn = (k === 'estimate' || (k === 'before' && x.refKind !== 'appt')) ? ` <button class="secondary" onclick="openEstimateFromWorkerTask('${jsArg(x.id)}')" style="padding:4px 10px; font-size:0.78rem; margin-inline-start:8px; background:#7c3aed;">${t('wkEstimateBtn')}</button>` : '';
+            html += `<div style="margin:8px 0 4px; font-weight:700; font-size:0.9rem;">${label} (${list.length})${estBtn}</div><div style="display:flex; flex-wrap:wrap; gap:6px;">${list.map(p => `<img src="${p.data}" alt="" onclick="openPhotoLightbox('${jsArg(p.id)}')" style="width:96px; height:96px; object-fit:cover; border-radius:8px; cursor:zoom-in; border:1px solid var(--border-color);">`).join('')}</div>`;
         });
         const sigs = (photos || []).filter(p => p.kind === 'signature');
         if (sigs.length) html += `<div style="margin:12px 0 4px; font-weight:700; font-size:0.9rem;">✍️ ${t('wkSignature')}${sigs[sigs.length - 1].signName ? ' — ' + escHtml(sigs[sigs.length - 1].signName) : ''}</div><img src="${sigs[sigs.length - 1].data}" alt="" style="max-width:100%; height:110px; object-fit:contain; background:#fff; border-radius:8px; border:1px solid var(--border-color);">`;
