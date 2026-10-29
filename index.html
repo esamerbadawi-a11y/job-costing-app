@@ -724,7 +724,7 @@
                     <div class="ledger-add-row">
                         <div class="lg-field lg-amt"><span data-i18n="lblAmountShort"></span><input type="text" id="receiptAddAmount" inputmode="decimal" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); addReceipt();}"></div>
                         <div class="lg-field lg-date"><span data-i18n="lblReceiptDate"></span><input type="date" id="receiptAddDate"></div>
-                        <div class="lg-field lg-amt"><span data-i18n="lblPayMethod"></span><select id="receiptAddMethod" onchange="onReceiptMethodChange()"><option value="cash" data-i18n="payMethodCash"></option><option value="zelle" data-i18n="payMethodZelle"></option><option value="check" data-i18n="payMethodCheck"></option><option value="card" data-i18n="payMethodCard"></option></select></div>
+                        <div class="lg-field lg-amt"><span data-i18n="lblPayMethod"></span><select id="receiptAddMethod" onchange="onReceiptMethodChange()"><option value="cash" data-i18n="payMethodCash"></option><option value="zelle" data-i18n="payMethodZelle"></option><option value="venmo" data-i18n="payMethodVenmo"></option><option value="check" data-i18n="payMethodCheck"></option><option value="card" data-i18n="payMethodCard"></option></select></div>
                         <div class="lg-field lg-amt" id="receiptNetField" style="display:none;"><span data-i18n="lblNetAfterFees"></span><input type="text" id="receiptAddNet" inputmode="decimal" onfocus="this.select()"></div>
                         <div class="lg-field lg-note"><span data-i18n="lblNoteShort"></span><input type="text" id="receiptAddNote" data-i18n-ph="withdrawalNotePh" onkeydown="if(event.key==='Enter'){event.preventDefault(); addReceipt();}"></div>
                         <button type="button" class="ledger-plus" onclick="addReceipt()">+</button>
@@ -2127,6 +2127,18 @@
         invoiceTypeLabel: { ar: 'نوع المستند', en: 'Document Type' },
         invoiceTypeEstimate: { ar: 'عرض سعر', en: 'Estimate' },
         invoiceTypeProposal: { ar: 'مقترح', en: 'Proposal' },
+        invoiceTypeReceipt: { ar: 'إيصال استلام', en: 'Receipt' },
+        receiptNumberLbl: { ar: 'رقم الإيصال', en: 'Receipt #' },
+        receiptPaymentsTitle: { ar: 'اختار الدفعة (أو أكتر) اللي هتظهر في الإيصال', en: 'Choose the payment(s) shown on this receipt' },
+        receiptNoPayments: { ar: 'مفيش دفعات مسجلة على الشغلة دي لسه. سجّل الدفعة الأول من تعديل الشغلة.', en: 'No payments are recorded on this job yet. Record the payment in the job first.' },
+        receiptPickOne: { ar: 'اختار دفعة واحدة على الأقل.', en: 'Choose at least one payment.' },
+        receiptSelectedTotal: { ar: 'المبلغ المستلم في الإيصال ده', en: 'Amount received on this receipt' },
+        receiptAmountReceived: { ar: 'المبلغ المستلم', en: 'Amount Received' },
+        receiptAgreedTotal: { ar: 'إجمالي الشغلة', en: 'Contract Total' },
+        receiptPaidToDate: { ar: 'المدفوع حتى الآن', en: 'Paid to Date' },
+        receiptBalanceRemaining: { ar: 'المتبقي', en: 'Balance Remaining' },
+        receiptPaymentOn: { ar: 'دفعة مستلمة بتاريخ', en: 'Payment received on' },
+        receiptPaymentMethod: { ar: 'طريقة الدفع', en: 'Payment Method' },
         invoiceTypeAdditionalWork: { ar: 'أعمال إضافية', en: 'Additional Work' },
         invoiceAdditionalWorkTitle: { ar: 'فاتورة أعمال إضافية', en: 'Additional Work Invoice' },
         invoiceAdditionalWorkSubtitle: { ar: 'أعمال إضافية وتعديلات ميدانية', en: 'Additional Work & Field Modifications' },
@@ -2388,6 +2400,7 @@
         lblInvoiceDate: { ar: 'تاريخ الفاتورة', en: 'Invoice date' },
         lblPayMethod: { ar: 'طريقة الدفع', en: 'Paid by' },
         payMethodCash: { ar: 'كاش', en: 'Cash' },
+        payMethodVenmo: { ar: 'فينمو', en: 'Venmo' },
         payMethodZelle: { ar: 'زيل', en: 'Zelle' },
         payMethodCheck: { ar: 'شيك', en: 'Check' },
         payMethodCard: { ar: 'كارت / Stripe', en: 'Card / Stripe' },
@@ -5402,7 +5415,7 @@
         // client paid through the job's own payment tracking rather than a credit on this invoice.
         const rem = jobRemaining(job);
         const isPaid = rem <= 0.005;
-        aiReminderCtx = { job, rem, daysOverdue: null, apiKey: getGeminiApiKey(), run: 0, mode: 'ai', msgKind: isPaid ? 'thankyou' : 'reminder', fromInvoice: true };
+        aiReminderCtx = { job, rem, daysOverdue: null, apiKey: getGeminiApiKey(), run: 0, mode: 'ai', msgKind: (isPaid || invoiceState.docType === 'RECEIPT') ? 'thankyou' : 'reminder', fromInvoice: true };
         document.getElementById('aiReminderLang').value = currentLang === 'ar' ? 'ar' : 'en';
         document.getElementById('aiReminderJob').textContent = `${job.clientName || ''} — $${rem.toFixed(2)}`;
         document.getElementById('aiReminderText').value = '';
@@ -7434,7 +7447,9 @@
             // Defaults to whatever the job's actual recorded payments say, but it's just a
             // starting point — you can tick/untick the "PAID IN FULL" mark yourself on the
             // invoice screen, and that choice is what actually shows and gets saved/printed.
-            paidMark: jobRemaining(job) <= 0.005
+            paidMark: jobRemaining(job) <= 0.005,
+            receiptIds: [],   // RECEIPT type only: ids of the job's recorded client payments shown on the receipt
+            receiptSnap: null
         };
         invoiceStateSnapshot = JSON.stringify(invoiceState);
         renderInvoiceModalContent();
@@ -7469,6 +7484,7 @@
     // letting either side clobber the other.
     async function saveCurrentInvoice() {
         if (!invoiceState) return false;
+        if (invoiceState.docType === 'RECEIPT' && !invoiceState.receiptSnap) { alert(t('receiptPickOne')); return false; }
         const jobId = invoiceState.jobId;
         const snapshot = JSON.parse(JSON.stringify(invoiceState));
         delete snapshot.jobId; delete snapshot.savedId;
@@ -7744,6 +7760,78 @@
         updateInvoiceTotalsDisplay();
     }
 
+    // ---- RECEIPT document type: built from the job's recorded client payments (job.receipts). Read-only on them. ----
+    function receiptMethodLabel(m) {
+        const k = { cash: 'payMethodCash', zelle: 'payMethodZelle', venmo: 'payMethodVenmo', check: 'payMethodCheck', card: 'payMethodCard' }[m];
+        return k ? t(k) : '';
+    }
+    function nextReceiptNumber() {
+        const year = new Date().getFullYear();
+        const base = `${companyInvoicePrefix()}-R-${year}-`;
+        let max = 0;
+        savedJobs.forEach(j => (j.savedInvoices || []).forEach(inv => {
+            if (inv.docType === 'RECEIPT' && String(inv.invoiceNo || '').startsWith(base)) {
+                const n = parseInt(String(inv.invoiceNo).slice(base.length), 10);
+                if (!isNaN(n) && n > max) max = n;
+            }
+        }));
+        return base + String(max + 1).padStart(4, '0');
+    }
+    function recomputeReceiptSnap() {
+        if (!invoiceState) return;
+        const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
+        if (!job) { invoiceState.receiptSnap = null; return; }
+        const all = job.receipts || [];
+        const ids = invoiceState.receiptIds || [];
+        const sel = all.filter(r => ids.includes(r.id)).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+        if (!sel.length) { invoiceState.receiptSnap = null; return; }
+        const received = round2(sel.reduce((sum, r) => sum + parseVal(r.amount), 0));
+        const lastDate = sel[sel.length - 1].date || '';
+        const later = round2(all.filter(r => !ids.includes(r.id) && String(r.date || '') > String(lastDate)).reduce((sum, r) => sum + parseVal(r.amount), 0));
+        const agreed = round2(parseVal(job.totalRevenue));
+        const paidThrough = round2(parseVal(job.amountReceived) - later);
+        invoiceState.receiptSnap = {
+            lines: sel.map(r => ({ date: r.date || '', amount: round2(parseVal(r.amount)), method: ((invoiceState.receiptMethods || {})[r.id]) || r.method || '', note: r.note || '' })),
+            received, agreed, paidThrough, balance: round2(agreed - paidThrough)
+        };
+    }
+    function setInvoiceDocType(v) {
+        if (!invoiceState) return;
+        const wasReceipt = invoiceState.docType === 'RECEIPT';
+        invoiceState.docType = v;
+        if (v === 'RECEIPT' && !wasReceipt) {
+            invoiceState.prevInvoiceNo = invoiceState.invoiceNo;
+            invoiceState.invoiceNo = nextReceiptNumber();
+            invoiceState.prevNote = invoiceState.note || '';   // a receipt carries no scope/quote note unless you type one
+            invoiceState.note = '';
+            const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
+            if (!(invoiceState.receiptIds || []).length && job && (job.receipts || []).length) {
+                const latest = job.receipts.slice().sort((a, b) => String(a.date).localeCompare(String(b.date))).pop();
+                invoiceState.receiptIds = [latest.id];
+            }
+            recomputeReceiptSnap();
+        } else if (v !== 'RECEIPT' && wasReceipt && invoiceState.prevInvoiceNo) {
+            invoiceState.invoiceNo = invoiceState.prevInvoiceNo;
+            if (invoiceState.prevNote !== undefined) invoiceState.note = invoiceState.prevNote;
+        }
+        renderInvoiceModalContent();
+    }
+    // Picks which payment type is printed for one payment on this receipt only — the recorded payment itself is never changed.
+    function setReceiptMethod(id, m) {
+        if (!invoiceState) return;
+        invoiceState.receiptMethods = { ...(invoiceState.receiptMethods || {}), [id]: m };
+        recomputeReceiptSnap();
+        renderInvoiceModalContent();
+    }
+    function toggleReceiptPayment(id, checked) {
+        if (!invoiceState) return;
+        const ids = (invoiceState.receiptIds || []).filter(x => x !== id);
+        if (checked) ids.push(id);
+        invoiceState.receiptIds = ids;
+        recomputeReceiptSnap();
+        renderInvoiceModalContent();
+    }
+
     function setInvoiceField(field, value) {
         if (!invoiceState) return;
         invoiceState[field] = value;
@@ -7783,6 +7871,7 @@
         if (docType === 'ESTIMATE') return t('invoiceTypeEstimate');
         if (docType === 'PROPOSAL') return t('invoiceTypeProposal');
         if (docType === 'ADDITIONAL_WORK') return t('invoiceAdditionalWorkTitle');
+        if (docType === 'RECEIPT') return t('invoiceTypeReceipt');
         return t('invoiceTitle');
     }
 
@@ -7851,7 +7940,7 @@
             : savedInvoices.map(inv => {
                 const invSubtotal = (inv.items || []).reduce((s, it) => s + parseVal(it.amount), 0);
                 const invCredits = (inv.credits || []).reduce((s, c) => s + parseVal(c.amount), 0);
-                const invTotal = invSubtotal - invCredits;
+                const invTotal = (inv.docType === 'RECEIPT' && inv.receiptSnap) ? inv.receiptSnap.received : invSubtotal - invCredits;
                 const isOpen = invoiceState.savedId === inv.id;
                 return `
                 <div class="tech-card" style="margin-bottom:6px; ${isOpen ? `border-color:#38bdf8;` : ''}">
@@ -7869,39 +7958,8 @@
                 </div>`;
             }).join('');
 
-        container.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <h3 style="color:#38bdf8; font-size:0.95rem; margin:0;">${t('invoiceSavedInvoicesTitle')}</h3>
-                ${savedInvoices.length > 0 ? `<button type="button" class="secondary" onclick="requestStartNewInvoiceDraft()" style="padding:5px 10px; font-size:0.75rem;">${t('invoiceNewDraftBtn')}</button>` : ''}
-            </div>
-            <div style="margin-bottom:16px;">${savedListHtml}</div>
-
-            <div class="grid-3" style="margin-bottom:14px;">
-                <div>
-                    <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceTypeLabel')}</label>
-                    <select onchange="setInvoiceField('docType', this.value); renderInvoiceModalContent();" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
-                        <option value="INVOICE" ${invoiceState.docType === 'INVOICE' ? 'selected' : ''}>${t('invoiceTitle')}</option>
-                        <option value="ESTIMATE" ${invoiceState.docType === 'ESTIMATE' ? 'selected' : ''}>${t('invoiceTypeEstimate')}</option>
-                        <option value="PROPOSAL" ${invoiceState.docType === 'PROPOSAL' ? 'selected' : ''}>${t('invoiceTypeProposal')}</option>
-                        <option value="ADDITIONAL_WORK" ${invoiceState.docType === 'ADDITIONAL_WORK' ? 'selected' : ''}>${t('invoiceTypeAdditionalWork')}</option>
-                    </select>
-                </div>
-                <div>
-                    <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceNumberLbl')}</label>
-                    <input type="text" value="${escHtml(invoiceState.invoiceNo)}" oninput="setInvoiceField('invoiceNo', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
-                </div>
-                <div>
-                    <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceDateLbl')}</label>
-                    <input type="text" value="${escHtml(invoiceState.invoiceDate)}" oninput="setInvoiceField('invoiceDate', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
-                </div>
-            </div>
-
-            <div style="background:var(--panel-bg); border:1px solid var(--border-color); padding:12px 15px; border-radius:10px; margin-bottom:14px; font-size:0.85rem; line-height:1.8;">
-                <div><b>${t('invoiceBillTo')}</b> ${escHtml(job.clientName)}</div>
-                <div><b>${t('invoiceAddressLabel')}:</b> ${escHtml(job.clientAddress || '')}</div>
-                <div><b>${t('invoicePhoneLabel')}:</b> ${escHtml(job.clientPhone || '')}</div>
-            </div>
-
+        const isReceipt = invoiceState.docType === 'RECEIPT';
+        const normalMiddle = isReceipt ? '' : `
             <h3 style="color:#38bdf8; font-size:0.95rem; margin-bottom:10px;">${t('invoiceItemsTitle')}</h3>
             <div id="invoiceItemsContainer">${itemsHtml}</div>
             <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
@@ -7957,6 +8015,66 @@
                 </div>
             </div>
 
+`;
+        let receiptEditorHtml = '';
+        if (isReceipt) {
+            const rcpts = (job.receipts || []).slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+            const snap = invoiceState.receiptSnap;
+            const rowsHtml = rcpts.length === 0
+                ? `<div style="font-size:0.85rem; color:var(--text-muted); padding:8px 0;">${t('receiptNoPayments')}</div>`
+                : rcpts.map(r => `
+                    <label class="tech-card" style="display:flex; align-items:center; gap:12px; margin-bottom:8px; cursor:pointer; ${(invoiceState.receiptIds || []).includes(r.id) ? 'border-color:#22c55e;' : ''}">
+                        <input type="checkbox" style="width:22px; height:22px; flex-shrink:0;" ${(invoiceState.receiptIds || []).includes(r.id) ? 'checked' : ''} onchange="toggleReceiptPayment('${jsArg(r.id)}', this.checked)">
+                        <div style="flex:1; font-size:0.9rem;"><b>${escHtml(r.date || '')}</b>${(invoiceState.receiptIds || []).includes(r.id) ? `<select onclick="event.stopPropagation()" onchange="setReceiptMethod('${jsArg(r.id)}', this.value)" style="margin-inline-start:8px; padding:3px 6px; font-size:0.8rem; background:#11141d; color:#fff; border:1px solid var(--border-color); border-radius:6px;">${['cash','zelle','venmo','check','card'].map(m => `<option value="${m}" ${(((invoiceState.receiptMethods || {})[r.id]) || r.method || 'cash') === m ? 'selected' : ''}>${receiptMethodLabel(m)}</option>`).join('')}</select>` : (r.method ? ' · ' + escHtml(receiptMethodLabel(r.method)) : '')}${r.note ? `<div style="font-size:0.75rem; color:var(--text-muted);">${escHtml(r.note)}</div>` : ''}</div>
+                        <div style="font-weight:700;">${fmtUsd(parseVal(r.amount))}</div>
+                    </label>`).join('');
+            receiptEditorHtml = `
+            <h3 style="color:#38bdf8; font-size:0.95rem; margin-bottom:10px;">${t('receiptPaymentsTitle')}</h3>
+            <div style="margin-bottom:12px;">${rowsHtml}</div>
+            ${snap ? `<div style="background:var(--panel-bg); border:1px solid var(--border-color); padding:12px 15px; border-radius:10px; margin-bottom:16px; font-size:0.85rem; line-height:1.9;">
+                <div style="display:flex; justify-content:space-between;"><span>${t('receiptSelectedTotal')}</span><b style="color:#22c55e;">${fmtUsd(snap.received)}</b></div>
+                <div style="display:flex; justify-content:space-between;"><span>${t('receiptAgreedTotal')}</span><span>${fmtUsd(snap.agreed)}</span></div>
+                <div style="display:flex; justify-content:space-between;"><span>${t('receiptPaidToDate')}</span><span>${fmtUsd(snap.paidThrough)}</span></div>
+                <div style="display:flex; justify-content:space-between;"><span>${t('receiptBalanceRemaining')}</span><b>${fmtUsd(snap.balance)}</b></div>
+            </div>` : (rcpts.length ? `<div style="font-size:0.8rem; color:#f59e0b; margin-bottom:12px;">${t('receiptPickOne')}</div>` : '')}`;
+        }
+
+        container.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <h3 style="color:#38bdf8; font-size:0.95rem; margin:0;">${t('invoiceSavedInvoicesTitle')}</h3>
+                ${savedInvoices.length > 0 ? `<button type="button" class="secondary" onclick="requestStartNewInvoiceDraft()" style="padding:5px 10px; font-size:0.75rem;">${t('invoiceNewDraftBtn')}</button>` : ''}
+            </div>
+            <div style="margin-bottom:16px;">${savedListHtml}</div>
+
+            <div class="grid-3" style="margin-bottom:14px;">
+                <div>
+                    <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceTypeLabel')}</label>
+                    <select onchange="setInvoiceDocType(this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
+                        <option value="INVOICE" ${invoiceState.docType === 'INVOICE' ? 'selected' : ''}>${t('invoiceTitle')}</option>
+                        <option value="ESTIMATE" ${invoiceState.docType === 'ESTIMATE' ? 'selected' : ''}>${t('invoiceTypeEstimate')}</option>
+                        <option value="PROPOSAL" ${invoiceState.docType === 'PROPOSAL' ? 'selected' : ''}>${t('invoiceTypeProposal')}</option>
+                        <option value="ADDITIONAL_WORK" ${invoiceState.docType === 'ADDITIONAL_WORK' ? 'selected' : ''}>${t('invoiceTypeAdditionalWork')}</option>
+                        <option value="RECEIPT" ${invoiceState.docType === 'RECEIPT' ? 'selected' : ''}>${t('invoiceTypeReceipt')}</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${invoiceState.docType === 'RECEIPT' ? t('receiptNumberLbl') : t('invoiceNumberLbl')}</label>
+                    <input type="text" value="${escHtml(invoiceState.invoiceNo)}" oninput="setInvoiceField('invoiceNo', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
+                </div>
+                <div>
+                    <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceDateLbl')}</label>
+                    <input type="text" value="${escHtml(invoiceState.invoiceDate)}" oninput="setInvoiceField('invoiceDate', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
+                </div>
+            </div>
+
+            <div style="background:var(--panel-bg); border:1px solid var(--border-color); padding:12px 15px; border-radius:10px; margin-bottom:14px; font-size:0.85rem; line-height:1.8;">
+                <div><b>${t('invoiceBillTo')}</b> ${escHtml(job.clientName)}</div>
+                <div><b>${t('invoiceAddressLabel')}:</b> ${escHtml(job.clientAddress || '')}</div>
+                <div><b>${t('invoicePhoneLabel')}:</b> ${escHtml(job.clientPhone || '')}</div>
+            </div>
+
+            ${isReceipt ? receiptEditorHtml : normalMiddle}
+
             <div style="margin-bottom:18px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                     <label style="font-size:0.75rem; color:var(--text-muted); display:block;">${t('invoiceNoteLabel')}</label>
@@ -7994,13 +8112,16 @@
         if (!job) return null;
 
         const isAdditionalWork = invoiceState.docType === 'ADDITIONAL_WORK';
+        const isReceipt = invoiceState.docType === 'RECEIPT';
+        const rSnap = isReceipt ? invoiceState.receiptSnap : null;
+        if (isReceipt && !rSnap) { alert(t('receiptPickOne')); return null; }
         const subtotal = invoiceSubtotal();
         const credits = invoiceState.credits || [];
         const creditsTotal = invoiceCreditsTotal();
         const totalDue = subtotal - creditsTotal;
         // Mirrors whatever the "PAID IN FULL" checkbox on the invoice screen is set to — same
         // manual mark, so what you see on screen is exactly what prints.
-        const isPaid = !!invoiceState.paidMark;
+        const isPaid = isReceipt ? !!(rSnap && rSnap.balance <= 0.005) : !!invoiceState.paidMark;
         const accent = '#2C6B45';
         const companyName = companyDisplayName();
         const companyTagline = companyProfile.tagline || '';
@@ -8016,7 +8137,10 @@
         // per the agreed reference layout); every other document type keeps the original 4-column
         // table (#, Description, Qty, Amount) completely unchanged.
         const itemsGridCols = isAdditionalWork ? '1fr 100px' : '40px 1fr 70px 100px';
-        const itemsRowsHtml = invoiceState.items.map((it, i) => {
+        const docItems = isReceipt
+            ? (rSnap ? rSnap.lines.map(l => ({ desc: t('receiptPaymentOn') + ' ' + l.date + (receiptMethodLabel(l.method) ? ' — ' + receiptMethodLabel(l.method) : '') + (l.note ? ' (' + l.note + ')' : ''), qty: '1', amount: l.amount })) : [])
+            : invoiceState.items;
+        const itemsRowsHtml = docItems.map((it, i) => {
             const bg = i % 2 === 1 ? 'background:#F6F1E8;' : '';
             const cells = isAdditionalWork
                 ? `<div>${escHtml(it.desc)}</div><div style="text-align:right;">${fmtUsd(parseVal(it.amount))}</div>`
@@ -8031,8 +8155,9 @@
         // instead of the old single generic "Credit/Adjustment" amount.
         const creditsRowsHtml = credits.map(c => `<div style="display:flex; justify-content:space-between; padding:6px 0; color:#B5432E;"><span>${escHtml(c.label || t('invoiceCreditLabel'))}</span><span>-${fmtUsd(parseVal(c.amount))}</span></div>`).join('');
 
-        const paymentMethodRow = invoiceState.showPaymentMethod ? `<div style="font-size:11.5px; color:#6B6257;"><b>${t('invoicePaymentMethodToggle')}:</b> ${escHtml(invoiceState.paymentMethodText)}</div>` : '';
-        const followUpRow = invoiceState.showFollowUp ? `<div style="font-size:11.5px; color:#6B6257;"><b>${t('invoiceFollowUpToggle')}:</b> ${escHtml(invoiceState.followUpText)}</div>` : '';
+        const receiptMethods = isReceipt && rSnap ? Array.from(new Set(rSnap.lines.map(l => receiptMethodLabel(l.method)).filter(Boolean))).join(', ') : '';
+        const paymentMethodRow = isReceipt ? (receiptMethods ? `<div style="font-size:11.5px; color:#6B6257;"><b>${t('receiptPaymentMethod')}:</b> ${escHtml(receiptMethods)}</div>` : '') : invoiceState.showPaymentMethod ? `<div style="font-size:11.5px; color:#6B6257;"><b>${t('invoicePaymentMethodToggle')}:</b> ${escHtml(invoiceState.paymentMethodText)}</div>` : '';
+        const followUpRow = (!isReceipt && invoiceState.showFollowUp) ? `<div style="font-size:11.5px; color:#6B6257;"><b>${t('invoiceFollowUpToggle')}:</b> ${escHtml(invoiceState.followUpText)}</div>` : '';
         const validityRow = invoiceState.showValidity ? `<div style="display:flex; justify-content:flex-end;"><div style="font-size:11px; color:#6B6257; font-style:italic; width:300px; text-align:right;">${escHtml(invoiceState.validityText)}</div></div>` : '';
         const noteHeaderText = isAdditionalWork ? t('invoiceWorkNoteHeader') : t('invoiceNoteLabel');
         const noteBox = invoiceState.note ? `<div class="invoice-note" style="background:#F6F1E8; border:1px dashed ${accent}; border-radius:6px; padding:14px 16px;"><div style="font-weight:700; font-size:11.5px; letter-spacing:0.5px; margin-bottom:6px; color:${accent};">${escHtml(noteHeaderText).toUpperCase()}</div><div class="invoice-note-body" style="font-size:12.5px; line-height:1.7; color:#3A332B;">${escHtml(invoiceState.note).replace(/\n/g, '<br>')}</div></div>` : '';
@@ -8058,7 +8183,7 @@
                </div>`
             : `<div style="text-align:right;">
                  <div class="ui" style="font-size:30px; font-weight:700; letter-spacing:2px; color:${accent};">${escHtml(invoiceDocTypeDisplay(invoiceState.docType)).toUpperCase()}</div>
-                 <div class="ui" style="font-size:12px; color:#6B6257; margin-top:4px;">${escHtml(t('invoiceNumberLbl'))}: <span style="color:#241F1A; font-weight:600;">${escHtml(invoiceState.invoiceNo)}</span></div>
+                 <div class="ui" style="font-size:12px; color:#6B6257; margin-top:4px;">${escHtml(isReceipt ? t('receiptNumberLbl') : t('invoiceNumberLbl'))}: <span style="color:#241F1A; font-weight:600;">${escHtml(invoiceState.invoiceNo)}</span></div>
                  <div class="ui" style="font-size:12px; color:#6B6257;">${escHtml(t('invoiceDateLbl'))}: <span style="color:#241F1A; font-weight:600;">${escHtml(invoiceState.invoiceDate)}</span></div>
                </div>`;
 
@@ -8084,8 +8209,8 @@
                  <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px; min-width:0;">
                    <div class="ui" style="font-size:12px; color:#6B6257;"><b>${escHtml(t('invoiceTypeLabel'))}:</b> ${escHtml(invoiceDocTypeDisplay(invoiceState.docType))}</div>
                    <div style="background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 18px; text-align:center; width:100%; max-width:200px; box-sizing:border-box;">
-                     <div class="ui" style="font-size:11px; letter-spacing:1px; opacity:0.9;">${escHtml(t('invoiceBalanceDue')).toUpperCase()}</div>
-                     <div class="ui" style="font-size:24px; font-weight:700;">${fmtUsd(totalDue)}</div>
+                     <div class="ui" style="font-size:11px; letter-spacing:1px; opacity:0.9;">${escHtml(isReceipt ? t('receiptAmountReceived') : t('invoiceBalanceDue')).toUpperCase()}</div>
+                     <div class="ui" style="font-size:24px; font-weight:700;">${fmtUsd(isReceipt ? (rSnap ? rSnap.received : 0) : totalDue)}</div>
                      ${isPaid ? `<div class="ui" style="font-size:12px; font-weight:700; letter-spacing:1px; margin-top:4px;">✅ ${escHtml(t('invoicePaidStamp')).toUpperCase()}</div>` : ''}
                    </div>
                    ${paymentMethodRow}
@@ -8098,7 +8223,12 @@
         // Totals block: "Additional Work" shows Subtotal + each named credit + a highlighted
         // "ADDITIONAL BALANCE DUE" row, full width under the table (matching the reference);
         // every other type keeps its original narrow right-aligned box with the green total box.
-        const totalsBlockHtml = isAdditionalWork
+        const receiptTotalsHtml = `<div class="ui invoice-totals" style="width:300px; font-size:13px;">
+                 <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>${escHtml(t('receiptAgreedTotal'))}</span><span>${fmtUsd(rSnap ? rSnap.agreed : 0)}</span></div>
+                 <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>${escHtml(t('receiptPaidToDate'))}</span><span>${fmtUsd(rSnap ? rSnap.paidThrough : 0)}</span></div>
+                 <div style="display:flex; justify-content:space-between; align-items:center; background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 14px; margin-top:8px; font-weight:700; font-size:15px;"><span>${escHtml(t('receiptBalanceRemaining'))}</span><span>${fmtUsd(rSnap ? rSnap.balance : 0)}</span></div>
+               </div>`;
+        const totalsBlockHtml = isReceipt ? receiptTotalsHtml : isAdditionalWork
             ? `<div class="ui" style="width:100%; font-size:13px;">
                  <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>${escHtml(t('invoiceSubtotalLabel'))}</span><span>${fmtUsd(subtotal)}</span></div>
                  ${creditsRowsHtml}
@@ -8119,11 +8249,11 @@
         // invoice isn't already marked paid. This is just a plain link to a page the payment
         // provider hosts and runs entirely themselves — WorkTally never talks to any payment
         // API directly, so no account key of any kind is ever stored in this file.
-        const payNowBtnHtml = (companyProfile.paymentLink && !isPaid) ? `<div class="invoice-paynow-row" style="text-align:${isAdditionalWork ? 'right' : 'right'}; margin-top:8px;"><a href="${escHtml(companyProfile.paymentLink)}" target="_blank" class="ui invoice-paynow-btn" style="display:inline-block; background:${accent}; color:#FDFBF6; text-decoration:none; font-weight:700; font-size:13px; padding:9px 18px; border-radius:6px;">${escHtml(t('payNowBtn'))}</a></div>` : '';
+        const payNowBtnHtml = (companyProfile.paymentLink && !isPaid && !isReceipt) ? `<div class="invoice-paynow-row" style="text-align:${isAdditionalWork ? 'right' : 'right'}; margin-top:8px;"><a href="${escHtml(companyProfile.paymentLink)}" target="_blank" class="ui invoice-paynow-btn" style="display:inline-block; background:${accent}; color:#FDFBF6; text-decoration:none; font-weight:700; font-size:13px; padding:9px 18px; border-radius:6px;">${escHtml(t('payNowBtn'))}</a></div>` : '';
 
         // A fixed boilerplate block (not editable per-invoice) on Invoice/Estimate/Proposal only —
         // "Additional Work" keeps its own distinct layout and note section untouched.
-        const scopeClarificationsHtml = isAdditionalWork ? '' : `
+        const scopeClarificationsHtml = (isAdditionalWork || isReceipt) ? '' : `
             <div class="invoice-scope" style="margin-top:2px;">
               <div class="ui" style="font-weight:700; font-size:12px; letter-spacing:0.5px; color:${accent}; margin-bottom:6px;">${escHtml(t('invoiceScopeClarificationsTitle')).toUpperCase()}</div>
               <ul style="margin:0; padding-${currentLang === 'ar' ? 'right' : 'left'}:18px; font-size:11.5px; line-height:1.7; color:#3A332B;">
@@ -8232,13 +8362,13 @@ ${closeBtnHtml}
 
     ${paidStampBottomHtml}
 
-    ${termsConditionsHtml()}
+    ${isReceipt ? '' : termsConditionsHtml()}
 
-    <div class="invoice-sigrow" style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:8px; gap:24px;">
+    ${isReceipt ? '' : `<div class="invoice-sigrow" style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:8px; gap:24px;">
       <div style="flex-grow:1;"><div class="invoice-sigline" style="border-bottom:1px solid #241F1A; height:30px;"></div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">Customer Approval</div></div>
       <div style="width:180px;"><div class="invoice-sigline" style="border-bottom:1px solid #241F1A; height:30px; display:flex; align-items:flex-end; justify-content:center;">${companyProfile.signature ? `<img src="${companyProfile.signature}" style="max-height:28px; max-width:100%; object-fit:contain;">` : ''}</div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">${escHtml(companyName)} Representative</div></div>
       <div style="width:120px;"><div class="invoice-sigline" style="border-bottom:1px solid #241F1A; height:30px;"></div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">Date</div></div>
-    </div>
+    </div>`}
 
     <div class="invoice-footer" style="margin-top:8px; padding-top:10px; border-top:1px solid #E7E1D6; text-align:center;">
       ${footerParts ? `<div class="ui" style="font-size:11px; color:#6B6257; letter-spacing:0.3px;">${footerParts}</div>` : ''}
@@ -11477,7 +11607,16 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         quoteDraftSavedId = null;
         quoteDraftSnapshot = null;
     }
-    function onQuotePriceInput() { updateQuoteItemsTotalDisplay(); }
+    function onQuotePriceInput() {
+        // Keep only digits and one dot, so a stray letter, space or comma (e.g. "I 300", "1,300") can't make the price read as empty.
+        const el = document.getElementById('quotePriceInput');
+        if (el) {
+            let v = String(el.value || '').replace(/[^0-9.]/g, '');
+            const k = v.indexOf('.'); if (k !== -1) v = v.slice(0, k + 1) + v.slice(k + 1).replace(/\./g, '');
+            if (v !== el.value) el.value = v;
+        }
+        updateQuoteItemsTotalDisplay();
+    }
 
     // Clears the form back to a blank, unsaved quote (new suggested number, no price/items/note/
     // photos) without closing the modal — same job "+ New Invoice" does for invoices.
