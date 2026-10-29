@@ -8453,7 +8453,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             const pdfWidthMm = 210; // A4 width — the image is scaled to fit it, keeping its aspect ratio
             const scale = pdfWidthMm / targetRect.width;
             const pdfHeightMm = targetRect.height * scale;
-            const doc = new jsPDF({ unit: 'mm', format: [pdfWidthMm, pdfHeightMm] });
+            const doc = new jsPDF({ unit: 'mm', orientation: pdfWidthMm > pdfHeightMm ? 'landscape' : 'portrait', format: [pdfWidthMm, pdfHeightMm] }); // a short page (wider than tall) must be landscape, or jsPDF swaps the sides and crops the right edge
             doc.addImage(imgData, 'JPEG', 0, 0, pdfWidthMm, pdfHeightMm);
             if (linkEl) {
                 const linkRect = linkEl.getBoundingClientRect();
@@ -8669,7 +8669,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             const pdfWidthMm = 210;
             const scale = pdfWidthMm / targetRect.width;
             const pdfHeightMm = targetRect.height * scale;
-            const doc = new jsPDF({ unit: 'mm', format: [pdfWidthMm, pdfHeightMm] });
+            const doc = new jsPDF({ unit: 'mm', orientation: pdfWidthMm > pdfHeightMm ? 'landscape' : 'portrait', format: [pdfWidthMm, pdfHeightMm] }); // a short page (wider than tall) must be landscape, or jsPDF swaps the sides and crops the right edge
             doc.addImage(imgData, 'JPEG', 0, 0, pdfWidthMm, pdfHeightMm);
             if (linkEl) {
                 const linkRect = linkEl.getBoundingClientRect();
@@ -12178,7 +12178,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             const pdfWidthMm = 210; // A4 width — the image is scaled to fit it, keeping its aspect ratio
             const scale = pdfWidthMm / targetRect.width;
             const pdfHeightMm = targetRect.height * scale;
-            const doc = new jsPDF({ unit: 'mm', format: [pdfWidthMm, pdfHeightMm] });
+            const doc = new jsPDF({ unit: 'mm', orientation: pdfWidthMm > pdfHeightMm ? 'landscape' : 'portrait', format: [pdfWidthMm, pdfHeightMm] }); // a short page (wider than tall) must be landscape, or jsPDF swaps the sides and crops the right edge
             doc.addImage(imgData, 'JPEG', 0, 0, pdfWidthMm, pdfHeightMm);
             if (linkEl) {
                 const linkRect = linkEl.getBoundingClientRect();
