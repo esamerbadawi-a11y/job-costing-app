@@ -2138,6 +2138,7 @@
         receiptPaidToDate: { ar: 'المدفوع حتى الآن', en: 'Paid to Date' },
         receiptBalanceRemaining: { ar: 'المتبقي', en: 'Balance Remaining' },
         receiptPaymentOn: { ar: 'دفعة مستلمة بتاريخ', en: 'Payment received on' },
+        invoiceSmallFileLbl: { ar: 'ملف صغير (للإرسال بـ SMS)', en: 'Small file (for SMS / text message)' },
         invoicePreviewBtn: { ar: '👁️ معاينة', en: '👁️ Preview' },
         receiptReasonLbl: { ar: 'سبب الدفعة (اختياري) — هيظهر على الإيصال', en: 'Reason for payment (optional) — shown on the receipt' },
         receiptReasonPh: { ar: 'مثال: عربون / دفعة تانية / الدفعة الأخيرة', en: 'e.g. Deposit / Second payment / Final payment' },
@@ -7350,6 +7351,8 @@
 
     // ===== Branded, itemized client invoice (replaces the old plain PDF invoice) =====
     let invoiceState = null;
+    // "Small file" choice for the invoice PDF (Save file / Share / Print) — kept outside invoiceState so ticking it never counts as an unsaved change.
+    let invoiceSmallPdf = false;
     // A snapshot of invoiceState taken every time it's freshly loaded/saved — compared against
     // the live invoiceState to tell whether there are unsaved changes before letting the user
     // leave the invoice screen (close it, load a different saved invoice, or start a new draft).
@@ -8110,6 +8113,10 @@
                 <textarea rows="2" placeholder="${t('invoiceNotePlaceholder')}" oninput="setInvoiceField('note', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; resize:vertical;">${escHtml(invoiceState.note)}</textarea>
             </div>
 
+            <label style="display:flex; align-items:center; gap:10px; margin-bottom:12px; font-size:0.85rem; cursor:pointer;">
+                <input type="checkbox" style="width:20px; height:20px;" ${invoiceSmallPdf ? 'checked' : ''} onchange="invoiceSmallPdf = this.checked">
+                <span>${t('invoiceSmallFileLbl')}</span>
+            </label>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button type="button" onclick="previewInvoiceNow()" style="padding:10px 20px; font-size:0.9rem; background:#0284c7; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoicePreviewBtn')}</button>
                 <button type="button" onclick="saveCurrentInvoice()" style="padding:10px 20px; font-size:0.9rem; background:#38bdf8; color:#0a0e17; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoiceSaveBtn')}</button>
@@ -8446,8 +8453,8 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             // what was blowing the PDF up to several MB for a one-page invoice. JPEG compresses
             // that kind of image far better with no visible quality loss, and cuts the file to a
             // fraction of the size — much friendlier to email attachment limits and WhatsApp.
-            const canvas = await html2canvas(target, { backgroundColor: '#FDFBF6', scale: 2, useCORS: true });
-            const imgData = canvas.toDataURL('image/jpeg', 0.92);
+            const canvas = await html2canvas(target, { backgroundColor: '#FDFBF6', scale: invoiceSmallPdf ? 1.25 : 2, useCORS: true });
+            const imgData = canvas.toDataURL('image/jpeg', invoiceSmallPdf ? 0.6 : 0.92);
 
             const { jsPDF } = window.jspdf;
             const pdfWidthMm = 210; // A4 width — the image is scaled to fit it, keeping its aspect ratio
