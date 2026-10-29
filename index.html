@@ -2138,6 +2138,11 @@
         receiptPaidToDate: { ar: 'المدفوع حتى الآن', en: 'Paid to Date' },
         receiptBalanceRemaining: { ar: 'المتبقي', en: 'Balance Remaining' },
         receiptPaymentOn: { ar: 'دفعة مستلمة بتاريخ', en: 'Payment received on' },
+        invoicePreviewBtn: { ar: '👁️ معاينة', en: '👁️ Preview' },
+        receiptReasonLbl: { ar: 'سبب الدفعة (اختياري) — هيظهر على الإيصال', en: 'Reason for payment (optional) — shown on the receipt' },
+        receiptReasonPh: { ar: 'مثال: عربون / دفعة تانية / الدفعة الأخيرة', en: 'e.g. Deposit / Second payment / Final payment' },
+        receiptShowTotalsLbl: { ar: 'اظهر الإجمالي والمدفوع والمتبقي على الإيصال', en: 'Show contract total, paid to date and balance on the receipt' },
+        receiptReasonRow: { ar: 'سبب الدفعة', en: 'Payment for' },
         receiptPaymentMethod: { ar: 'طريقة الدفع', en: 'Payment Method' },
         invoiceTypeAdditionalWork: { ar: 'أعمال إضافية', en: 'Additional Work' },
         invoiceAdditionalWorkTitle: { ar: 'فاتورة أعمال إضافية', en: 'Additional Work Invoice' },
@@ -7449,7 +7454,9 @@
             // invoice screen, and that choice is what actually shows and gets saved/printed.
             paidMark: jobRemaining(job) <= 0.005,
             receiptIds: [],   // RECEIPT type only: ids of the job's recorded client payments shown on the receipt
-            receiptSnap: null
+            receiptSnap: null,
+            receiptReason: '',
+            receiptShowTotals: true
         };
         invoiceStateSnapshot = JSON.stringify(invoiceState);
         renderInvoiceModalContent();
@@ -7597,6 +7604,18 @@
         invoiceState = previewState;
         const html = buildInvoiceHtmlDoc(false);
         invoiceState = originalState; // restore immediately — this was only ever a peek
+        if (!html) { win.close(); return; }
+        win.document.open();
+        win.document.write(html);
+        win.document.close();
+    }
+
+    // Shows the document that is currently being edited, exactly as it will print, in a new tab (nothing is saved).
+    function previewInvoiceNow() {
+        if (!invoiceState) return;
+        const win = window.open('', '_blank');
+        if (!win) { alert(t('alertSelectOneToPrint')); return; }
+        const html = buildInvoiceHtmlDoc(false);
         if (!html) { win.close(); return; }
         win.document.open();
         win.document.write(html);
@@ -8036,7 +8055,15 @@
                 <div style="display:flex; justify-content:space-between;"><span>${t('receiptAgreedTotal')}</span><span>${fmtUsd(snap.agreed)}</span></div>
                 <div style="display:flex; justify-content:space-between;"><span>${t('receiptPaidToDate')}</span><span>${fmtUsd(snap.paidThrough)}</span></div>
                 <div style="display:flex; justify-content:space-between;"><span>${t('receiptBalanceRemaining')}</span><b>${fmtUsd(snap.balance)}</b></div>
-            </div>` : (rcpts.length ? `<div style="font-size:0.8rem; color:#f59e0b; margin-bottom:12px;">${t('receiptPickOne')}</div>` : '')}`;
+            </div>` : (rcpts.length ? `<div style="font-size:0.8rem; color:#f59e0b; margin-bottom:12px;">${t('receiptPickOne')}</div>` : '')}
+            <div style="margin-bottom:14px;">
+                <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('receiptReasonLbl')}</label>
+                <input type="text" dir="auto" value="${escHtml(invoiceState.receiptReason || '')}" placeholder="${escHtml(t('receiptReasonPh'))}" oninput="setInvoiceField('receiptReason', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
+            </div>
+            <label style="display:flex; align-items:center; gap:10px; margin-bottom:16px; font-size:0.85rem; cursor:pointer;">
+                <input type="checkbox" style="width:20px; height:20px;" ${invoiceState.receiptShowTotals !== false ? 'checked' : ''} onchange="toggleInvoiceOption('receiptShowTotals', this.checked)">
+                <span>${t('receiptShowTotalsLbl')}</span>
+            </label>`;
         }
 
         container.innerHTML = `
@@ -8084,6 +8111,7 @@
             </div>
 
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button type="button" onclick="previewInvoiceNow()" style="padding:10px 20px; font-size:0.9rem; background:#0284c7; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoicePreviewBtn')}</button>
                 <button type="button" onclick="saveCurrentInvoice()" style="padding:10px 20px; font-size:0.9rem; background:#38bdf8; color:#0a0e17; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoiceSaveBtn')}</button>
                 <button type="button" id="invoicePrintBtn" onclick="printInvoicePdf()" style="padding:10px 20px; font-size:0.9rem; background:#2C6B45; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoicePrintBtn')}</button>
                 <button type="button" id="invoiceAttachBtn" onclick="downloadInvoicePdf()" style="padding:10px 20px; font-size:0.9rem; background:#0f766e; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;">${t('invoiceAttachBtn')}</button>
@@ -8121,7 +8149,7 @@
         const totalDue = subtotal - creditsTotal;
         // Mirrors whatever the "PAID IN FULL" checkbox on the invoice screen is set to — same
         // manual mark, so what you see on screen is exactly what prints.
-        const isPaid = isReceipt ? !!(rSnap && rSnap.balance <= 0.005) : !!invoiceState.paidMark;
+        const isPaid = isReceipt ? !!(rSnap && rSnap.balance <= 0.005 && invoiceState.receiptShowTotals !== false) : !!invoiceState.paidMark;
         const accent = '#2C6B45';
         const companyName = companyDisplayName();
         const companyTagline = companyProfile.tagline || '';
@@ -8156,7 +8184,8 @@
         const creditsRowsHtml = credits.map(c => `<div style="display:flex; justify-content:space-between; padding:6px 0; color:#B5432E;"><span>${escHtml(c.label || t('invoiceCreditLabel'))}</span><span>-${fmtUsd(parseVal(c.amount))}</span></div>`).join('');
 
         const receiptMethods = isReceipt && rSnap ? Array.from(new Set(rSnap.lines.map(l => receiptMethodLabel(l.method)).filter(Boolean))).join(', ') : '';
-        const paymentMethodRow = isReceipt ? (receiptMethods ? `<div style="font-size:11.5px; color:#6B6257;"><b>${t('receiptPaymentMethod')}:</b> ${escHtml(receiptMethods)}</div>` : '') : invoiceState.showPaymentMethod ? `<div style="font-size:11.5px; color:#6B6257;"><b>${t('invoicePaymentMethodToggle')}:</b> ${escHtml(invoiceState.paymentMethodText)}</div>` : '';
+        const receiptReasonRow = (isReceipt && (invoiceState.receiptReason || '').trim()) ? `<div style="font-size:11.5px; color:#6B6257; text-align:right;"><b>${t('receiptReasonRow')}:</b> ${escHtml(invoiceState.receiptReason.trim())}</div>` : '';
+        const paymentMethodRow = isReceipt ? ((receiptMethods ? `<div style="font-size:11.5px; color:#6B6257;"><b>${t('receiptPaymentMethod')}:</b> ${escHtml(receiptMethods)}</div>` : '') + receiptReasonRow) : invoiceState.showPaymentMethod ? `<div style="font-size:11.5px; color:#6B6257;"><b>${t('invoicePaymentMethodToggle')}:</b> ${escHtml(invoiceState.paymentMethodText)}</div>` : '';
         const followUpRow = (!isReceipt && invoiceState.showFollowUp) ? `<div style="font-size:11.5px; color:#6B6257;"><b>${t('invoiceFollowUpToggle')}:</b> ${escHtml(invoiceState.followUpText)}</div>` : '';
         const validityRow = invoiceState.showValidity ? `<div style="display:flex; justify-content:flex-end;"><div style="font-size:11px; color:#6B6257; font-style:italic; width:300px; text-align:right;">${escHtml(invoiceState.validityText)}</div></div>` : '';
         const noteHeaderText = isAdditionalWork ? t('invoiceWorkNoteHeader') : t('invoiceNoteLabel');
@@ -8228,7 +8257,7 @@
                  <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>${escHtml(t('receiptPaidToDate'))}</span><span>${fmtUsd(rSnap ? rSnap.paidThrough : 0)}</span></div>
                  <div style="display:flex; justify-content:space-between; align-items:center; background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 14px; margin-top:8px; font-weight:700; font-size:15px;"><span>${escHtml(t('receiptBalanceRemaining'))}</span><span>${fmtUsd(rSnap ? rSnap.balance : 0)}</span></div>
                </div>`;
-        const totalsBlockHtml = isReceipt ? receiptTotalsHtml : isAdditionalWork
+        const totalsBlockHtml = isReceipt ? (invoiceState.receiptShowTotals === false ? '' : receiptTotalsHtml) : isAdditionalWork
             ? `<div class="ui" style="width:100%; font-size:13px;">
                  <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>${escHtml(t('invoiceSubtotalLabel'))}</span><span>${fmtUsd(subtotal)}</span></div>
                  ${creditsRowsHtml}
