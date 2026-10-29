@@ -2749,6 +2749,8 @@
         wkPhotosBefore: { ar: "قبل", en: "Before" },
         wkPhotosAfter: { ar: "بعد", en: "After" },
         wkPhotosEstimate: { ar: "صور التقدير", en: "Estimate photos" },
+        wkSignature: { ar: "إمضاء العميل", en: "Customer sign-off" },
+        wkNoSignature: { ar: "العميل مش موجود / مفيش إمضاء", en: "Customer not available / no signature" },
         wkNoPhotos: { ar: "مفيش صور لسه.", en: "No photos yet." },
         wkLoadingPhotos: { ar: "جاري تحميل الصور...", en: "Loading photos..." },
         wkResendBtn: { ar: "📲 إرسال تاني / تعديل", en: "📲 Send again / update" },
@@ -10088,7 +10090,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             const job = savedJobs.find(j => String(j.id) === String(refId));
             if (!job) return;
             const entry = getScheduleEntries(job).find(e => (e.date || '') === (date || '')) || {};
-            ctx = { kind, refId: String(job.id), entryDate: entry.date || '', date: entry.date || '', time: entry.time || '', clientName: job.clientName || '', address: job.clientAddress || '', phone: job.clientPhone || '', team: entry.team || [],
+            ctx = { kind, refId: String(job.id), entryDate: entry.date || '', date: entry.date || '', time: entry.time || '', clientName: job.clientName || '', address: job.clientAddress || '', phone: job.clientPhone || job.tenantPhone || '', team: entry.team || [],
                 instr: (entry.note && String(entry.note).trim()) ? String(entry.note).trim() : (job.clientDescription || '') };
         } else {
             const appt = appointments.find(a => String(a.id) === String(refId));
@@ -10191,12 +10193,13 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const wl = ['en', 'es', 'ar'].includes(acc.lang) ? acc.lang : 'en';
         const link = new URL('worker.html', location.href).href + '?t=' + encodeURIComponent(id);
         const when = [date, time].filter(Boolean).join(' ');
-        const head = wl === 'es' ? `👷 ${acc.tech}, tiene un trabajo nuevo:` : (wl === 'ar' ? `👷 ${acc.tech}، عندك شغلة جديدة:` : `👷 ${acc.tech}, you have a new job:`);
+        const head = wl === 'es' ? `${acc.tech}, tiene un trabajo nuevo:` : (wl === 'ar' ? `${acc.tech}، عندك شغلة جديدة:` : `${acc.tech}, you have a new job:`);
         const openLine = wl === 'es' ? 'Abra la app:' : (wl === 'ar' ? 'افتح التطبيق:' : 'Open the app:');
-        const msg = `${head}\n*${ctx.clientName}*\n${when ? '📅 ' + when + '\n' : ''}${ctx.address ? '📍 ' + ctx.address + '\n' : ''}\n${openLine} ${link}`;
+        const msg = `${head}\n*${ctx.clientName}*\n${when ? '' + when + '\n' : ''}${ctx.address ? '' + ctx.address + '\n' : ''}\n${openLine} ${link}`;
         const digits = String(technicianPhones[acc.tech] || '').replace(/\D/g, '');
         const waUrl = (digits.length > 6 ? 'https://wa.me/' + digits : 'https://wa.me/') + '?text=' + encodeURIComponent(msg);
-        if (win) { win.location.href = waUrl; }
+        if (win && /iPhone|iPad|Android/i.test(navigator.userAgent)) { try { win.close(); } catch (e) {} location.href = waUrl; }
+        else if (win) { win.location.href = waUrl; }
         else { try { navigator.clipboard.writeText(msg); } catch (e) {} showToast(t('wkPopupBlocked')); }
         closeSendWorkerModal();
         showToast(t('wkSentOk'));
@@ -10288,6 +10291,9 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             if (!list.length) return;
             html += `<div style="margin:8px 0 4px; font-weight:700; font-size:0.9rem;">${label} (${list.length})</div><div style="display:flex; flex-wrap:wrap; gap:6px;">${list.map(p => `<img src="${p.data}" alt="" onclick="openPhotoLightbox('${jsArg(p.id)}')" style="width:96px; height:96px; object-fit:cover; border-radius:8px; cursor:zoom-in; border:1px solid var(--border-color);">`).join('')}</div>`;
         });
+        const sigs = (photos || []).filter(p => p.kind === 'signature');
+        if (sigs.length) html += `<div style="margin:12px 0 4px; font-weight:700; font-size:0.9rem;">✍️ ${t('wkSignature')}${sigs[sigs.length - 1].signName ? ' — ' + escHtml(sigs[sigs.length - 1].signName) : ''}</div><img src="${sigs[sigs.length - 1].data}" alt="" style="max-width:100%; height:110px; object-fit:contain; background:#fff; border-radius:8px; border:1px solid var(--border-color);">`;
+        else if (x.signSkipped) html += `<div style="margin-top:12px; font-size:0.85rem; color:#f59e0b;">⚠️ ${t('wkNoSignature')}</div>`;
         body.innerHTML = html;
     }
 
