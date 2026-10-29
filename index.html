@@ -876,6 +876,25 @@
                     <input type="text" id="newTechPhone" data-i18n-ph="phTechPhone" style="flex:1;">
                 </div>
             </div>
+            <div style="border-top:1px dashed var(--border-color); padding-top:10px; margin-bottom:10px;">
+                <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:6px;">📲 <span data-i18n="wkWorkerLoginBadge"></span></div>
+                <div class="grid-2" style="margin-bottom:6px;">
+                    <input type="email" id="newTechWorkerEmail" data-i18n-ph="wkEmailPh" autocomplete="off" autocapitalize="none">
+                    <div style="display:flex; gap:6px;">
+                        <select id="newTechRegion" style="flex:1;">
+                            <option value="" data-i18n="wkRegionNone"></option>
+                            <option value="Florida">Florida</option>
+                            <option value="Michigan">Michigan</option>
+                            <option value="Chicago">Chicago</option>
+                        </select>
+                        <select id="newTechWorkerLang" style="flex:1;">
+                            <option value="es">🇪🇸 Español</option>
+                            <option value="en">🇺🇸 English</option>
+                            <option value="ar">🇪🇬 العربية</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
             <div style="display:flex; gap:8px;">
                 <button class="success" onclick="saveNewTechnician()" style="padding:8px 16px;" id="saveTechBtnLabel" data-i18n="saveTechBtn"></button>
                 <button class="secondary" onclick="closeAddTechnicianModal()" style="padding:8px 16px;" data-i18n="cancelBtn"></button>
@@ -1551,6 +1570,50 @@
         </div>
         <div id="findTechResults"></div>
     </div>
+</div>
+
+<div id="sendWorkerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10003; justify-content:center; align-items:flex-start;" onclick="if(event.target===this) closeSendWorkerModal();">
+    <div class="tg-modal-box" style="max-width:480px; margin-top:5vh;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.1rem;">📲 <span data-i18n="wkModalTitle"></span></h2>
+            <button class="danger" onclick="closeSendWorkerModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+        <div id="swHeadline" style="font-weight:700; margin-bottom:8px;"></div>
+        <div id="swInfo" class="note-box" style="display:none; margin-bottom:10px;"></div>
+        <div class="form-group" style="margin-bottom:10px;">
+            <label data-i18n="wkWorkerLabel"></label>
+            <select id="swWorker" onchange="updateSendWorkerInfo()"></select>
+        </div>
+        <div class="grid-2" style="margin-bottom:10px;">
+            <div class="form-group"><label data-i18n="wkDateLabel"></label><input type="date" id="swDate"></div>
+            <div class="form-group"><label data-i18n="wkTimeLabel"></label><input type="time" id="swTime"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:10px;">
+            <label data-i18n="wkInstrLabel"></label>
+            <textarea id="swInstr" rows="4" data-i18n-ph="wkInstrPh" oninput="this.dataset.touched='1'"></textarea>
+        </div>
+        <label id="swShowPhoneRow" style="display:flex; gap:8px; align-items:center; margin-bottom:12px; font-size:0.85rem;">
+            <input type="checkbox" id="swShowPhone" style="width:auto;"> <span data-i18n="wkShowPhone"></span>
+        </label>
+        <button class="success" id="swGoBtn" onclick="sendWorkerNow()" style="width:100%; padding:12px; font-size:0.95rem; background:#16a34a;" data-i18n="wkSendGo"></button>
+    </div>
+</div>
+
+<div id="workerTaskModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10003; justify-content:center; align-items:flex-start;" onclick="if(event.target===this) closeWorkerTask();">
+    <div class="tg-modal-box" style="max-width:640px; margin-top:4vh;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px; flex-wrap:wrap;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.1rem;">👷 <span id="workerTaskTitle"></span></h2>
+            <div style="display:flex; gap:6px;">
+                <button class="secondary" onclick="resendWorkerTask()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="wkResendBtn"></button>
+                <button class="danger" onclick="closeWorkerTask()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+            </div>
+        </div>
+        <div id="workerTaskBody"></div>
+    </div>
+</div>
+
+<div id="workerLightbox" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.92); z-index:10004; justify-content:center; align-items:center; cursor:zoom-out;" onclick="closePhotoLightbox()">
+    <img id="workerLightboxImg" alt="" style="max-width:96%; max-height:96%; border-radius:8px;">
 </div>
 
 <div id="whatsNewModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10002; justify-content:center; align-items:center;" onclick="if(event.target===this) closeWhatsNewModal();">
@@ -2646,6 +2709,50 @@
         printReportBtn: { ar: '🖨️ تقرير', en: '🖨️ Report' },
         guideEmpty: { ar: 'لا توجد بيانات مسجلة للفنيين حالياً.', en: 'No technician data recorded yet.' },
         techSavedOk: { ar: 'تم حفظ الفني بنجاح.', en: 'Technician saved successfully.' },
+        wkSendBtnTitle: { ar: "إرسال لعامل", en: "Send to Worker" },
+        wkModalTitle: { ar: "إرسال شغلة لعامل", en: "Send job to worker" },
+        wkWorkerLabel: { ar: "العامل:", en: "Worker:" },
+        wkDateLabel: { ar: "التاريخ:", en: "Date:" },
+        wkTimeLabel: { ar: "الوقت:", en: "Time:" },
+        wkInstrLabel: { ar: "التعليمات (اكتبها بأي لغة، والعامل هيشوفها بلغته):", en: "Instructions (write in any language - the worker sees them in his own language):" },
+        wkInstrPh: { ar: "مثال: شيل الموكيت وركّب فينيل...", en: "e.g. Remove carpet and install vinyl..." },
+        wkShowPhone: { ar: "إظهار رقم العميل للعامل", en: "Show customer phone to worker" },
+        wkSendGo: { ar: "إرسال + واتساب", en: "Send + WhatsApp" },
+        wkNoWorkers: { ar: "مفيش عمال متسجلين لسه. افتح \"دليل الفنيين\" ← تعديل الفني ← اكتب \"إيميل دخول العامل\".", en: "No workers set up yet. Open \"Technicians Guide\" -> Edit the technician -> enter the \"Worker login email\"." },
+        wkPickWorker: { ar: "اختار العامل الأول.", en: "Please pick a worker first." },
+        wkTranslating: { ar: "جاري الترجمة والإرسال...", en: "Translating and sending..." },
+        wkTranslateFail: { ar: "الترجمة مجاش (مفتاح Gemini أو النت). اتبعتت التعليمات زي ما هي من غير ترجمة.", en: "Translation failed (Gemini key or network). The instructions were sent as written, untranslated." },
+        wkSentOk: { ar: "اتبعتت للعامل ✔", en: "Sent to the worker ✔" },
+        wkSendFail: { ar: "حصل خطأ ومقدرش يبعت للعامل. جرب تاني.", en: "Something went wrong and it could not be sent to the worker. Please try again." },
+        wkPopupBlocked: { ar: "الواتساب اتمنع من المتصفح. الرسالة اتنسخت، الصقها في الواتساب.", en: "The browser blocked WhatsApp. The message was copied - paste it into WhatsApp." },
+        wkAlreadySent: { ar: "اتبعتت قبل كده للعامل ده. الإرسال تاني بيحدّث التعليمات ويحتفظ بالصور والحالة.", en: "Already sent to this worker. Sending again updates the instructions and keeps the photos and status." },
+        wkResendDoneConfirm: { ar: "العامل ده خلّص الشغلة دي. تبعتها تاني كشغلة جديدة؟", en: "This worker already finished this job. Send it again as a new task?" },
+        wkEmailPh: { ar: "إيميل دخول العامل (اختياري)", en: "Worker login email (optional)" },
+        wkEmailInvalid: { ar: "إيميل العامل مش مكتوب صح.", en: "The worker email is not valid." },
+        wkRegionNone: { ar: "— المنطقة —", en: "— Region —" },
+        wkWorkerLoginBadge: { ar: "دخول تطبيق العامل", en: "Worker app login" },
+        wkStNew: { ar: "جديدة", en: "New" },
+        wkStArrived: { ar: "وصل", en: "Arrived" },
+        wkStDone: { ar: "خلّص", en: "Finished" },
+        wkTaskTitle: { ar: "شغلة العامل", en: "Worker task" },
+        wkSentAt: { ar: "اتبعتت", en: "Sent" },
+        wkArrivedAt: { ar: "وقت الوصول", en: "Arrived at" },
+        wkDoneAt: { ar: "وقت الانتهاء", en: "Finished at" },
+        wkInstrSent: { ar: "التعليمات المبعوتة", en: "Instructions sent" },
+        wkNoteLabel: { ar: "ملاحظة العامل", en: "Worker note" },
+        wkNoteOriginal: { ar: "الأصل", en: "Original" },
+        wkNoteTranslateBtn: { ar: "🌐 ترجم الملاحظة", en: "🌐 Translate note" },
+        wkNoNote: { ar: "مفيش ملاحظة.", en: "No note." },
+        wkPhotosBefore: { ar: "قبل", en: "Before" },
+        wkPhotosAfter: { ar: "بعد", en: "After" },
+        wkPhotosEstimate: { ar: "صور التقدير", en: "Estimate photos" },
+        wkNoPhotos: { ar: "مفيش صور لسه.", en: "No photos yet." },
+        wkLoadingPhotos: { ar: "جاري تحميل الصور...", en: "Loading photos..." },
+        wkResendBtn: { ar: "📲 إرسال تاني / تعديل", en: "📲 Send again / update" },
+        wkEvArrived: { ar: "وصل", en: "arrived" },
+        wkEvDone: { ar: "خلّص", en: "finished" },
+        wkWorkerBlocked: { ar: "الحساب ده حساب عامل. استخدم تطبيق العامل (worker.html) مش البرنامج ده.", en: "This is a worker account. Please use the worker app (worker.html), not this program." },
+        wkRegionLabel: { ar: "المنطقة", en: "Region" },
         confirmDeleteTech: { ar: 'هل أنت متأكد من حذف الفني ده من الدليل؟ (شغلاناته القديمة هتفضل موجودة في السجل زي ما هي)', en: 'Delete this technician from the directory? (Their past job records will stay in the log as-is)' },
     };
     function t(key) { return (T[key] && T[key][currentLang]) || key; }
@@ -2800,6 +2907,13 @@
     const TECH_PAYMENTS_DOC = db.collection('jobCostingApp').doc('techPayments');
     const TECH_BONUSES_DOC = db.collection('jobCostingApp').doc('techBonuses');
     const COMPANY_PROFILE_DOC = db.collection('jobCostingApp').doc('companyProfile');
+    // Field-worker feature (worker.html). These live in their OWN collections, completely separate from
+    // 'jobCostingApp' above, so nothing here can ever touch or overwrite the existing job/payment data.
+    const WORKER_ACCOUNTS = db.collection('workerAccounts');   // one doc per worker login (id = lower-case email)
+    const WORKER_TASKS = db.collection('workerTasks');         // jobs sent to workers + their arrival/notes
+    const WORKER_PHOTOS = db.collection('workerPhotos');       // the actual (compressed) photos
+    let workerAccounts = {};
+    let workerTasks = [];
 
     // SAFETY NET — see the identical, much longer comment above saveAppointmentsData for why
     // this exists: a stale/incomplete local Firestore cache snapshot could otherwise get written
@@ -3028,7 +3142,20 @@
         document.getElementById('checkTodayFab').style.display = (currentUserEmail && currentScreen !== 'entry' && !jobOverlayOpen) ? 'block' : 'none';
     }
 
+    // Worker-only logins belong in worker.html, not here: if a signed-in email has a worker account,
+    // sign it straight back out before any data is shown. (The Firestore rules are the real lock; this
+    // just stops a worker from landing in the owner screens by mistake.)
     auth.onAuthStateChanged(user => {
+        if (user && !USER_DISPLAY_NAMES[user.email]) {
+            WORKER_ACCOUNTS.doc(String(user.email || '').toLowerCase()).get().then(d => {
+                if (d.exists) { auth.signOut(); alert(t('wkWorkerBlocked')); }
+                else onAuthUserReady(user);
+            }).catch(() => onAuthUserReady(user));
+            return;
+        }
+        onAuthUserReady(user);
+    });
+    function onAuthUserReady(user) {
         if (user) {
             currentUserEmail = user.email;
             document.getElementById('loginScreen').style.display = 'none';
@@ -3038,6 +3165,7 @@
             document.getElementById('menuSectionAdminLabel').style.display = (user.email === ADMIN_EMAIL) ? '' : 'none';
             safeCall(updateFabVisibility);
             setupRealtimeSync();
+            safeCall(setupWorkerSync);
             safeCall(() => checkWhatsNew(false));
             safeCall(offerJobDraftRestoreIfAny);
         } else {
@@ -3046,7 +3174,7 @@
             document.getElementById('pdfContentArea').style.display = 'none';
             safeCall(updateFabVisibility);
         }
-    });
+    }
 
     let technicians = [];
     let expenseItems = [];
@@ -9772,6 +9900,9 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('newTechName').value = '';
         populateCountryCodeSelect('newTechCountryCode', '1');
         document.getElementById('newTechPhone').value = '';
+        document.getElementById('newTechWorkerEmail').value = '';
+        document.getElementById('newTechRegion').value = '';
+        document.getElementById('newTechWorkerLang').value = 'es';
         document.getElementById('addTechFormContainer').style.display = 'block';
     }
 
@@ -9783,6 +9914,10 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const { code, local } = splitPhoneForEdit(technicianPhones[name]);
         populateCountryCodeSelect('newTechCountryCode', code);
         document.getElementById('newTechPhone').value = local;
+        const wkAcc = workerAccountForTech(name);
+        document.getElementById('newTechWorkerEmail').value = wkAcc ? (wkAcc.email || '') : '';
+        document.getElementById('newTechRegion').value = wkAcc ? (wkAcc.region || '') : '';
+        document.getElementById('newTechWorkerLang').value = (wkAcc && wkAcc.lang) ? wkAcc.lang : 'es';
         document.getElementById('addTechFormContainer').style.display = 'block';
         document.getElementById('addTechFormContainer').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
@@ -9792,6 +9927,8 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('editingTechName').value = '';
         document.getElementById('newTechName').value = '';
         document.getElementById('newTechPhone').value = '';
+        document.getElementById('newTechWorkerEmail').value = '';
+        document.getElementById('newTechRegion').value = '';
     }
 
     async function saveNewTechnician() {
@@ -9801,10 +9938,13 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const phone = buildFullPhone(code, localNumber);
         const editingName = document.getElementById('editingTechName').value;
         if (!name) { alert(t('alertTechNameRequired')); return; }
+        const wkEmail = document.getElementById('newTechWorkerEmail').value.trim().toLowerCase();
+        if (wkEmail && !/^\S+@\S+\.\S+$/.test(wkEmail)) { alert(t('wkEmailInvalid')); return; }
         try {
             if (editingName && editingName !== name) delete technicianPhones[editingName]; // renamed
             technicianPhones[name] = phone;
             await saveTechPhonesData();
+            await saveWorkerAccountFromForm(name, editingName, wkEmail);
             closeAddTechnicianModal();
             renderTechGuideContent();
             updateTechDropdownFilter();
@@ -9832,6 +9972,310 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     }
 
     function escJs(str) { return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+
+    /* ---------------- Field workers (worker.html) ---------------- */
+    // Everything for the worker app lives in three separate collections (see WORKER_* above) — none of
+    // these functions read or write any job/payment document, so no existing data can be affected.
+    let sendWorkerCtx = null;
+    let workerSyncStarted = false;
+    let workerTasksLoaded = false;
+    let workerTaskOpenId = null;
+    const workerTaskPhotos = {};          // taskId -> [{id, kind, data, ts}]
+    const workerTaskPhotosLoading = {};   // taskId -> true while a fetch is running
+    let workerNoteTranslating = false;
+
+    function workerAccountForTech(name) {
+        return Object.values(workerAccounts).find(a => a && a.tech === name && a.active !== false) || null;
+    }
+    function activeWorkerAccounts() {
+        return Object.values(workerAccounts).filter(a => a && a.active !== false && a.email).sort((a, b) => String(a.tech).localeCompare(String(b.tech)));
+    }
+    function workerLocale() { return currentLang === 'ar' ? 'ar-EG-u-nu-latn' : 'en-US'; }
+    function workerStamp(ms) {
+        if (!ms) return '';
+        try { return new Date(ms).toLocaleString(workerLocale(), { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; }
+    }
+    function workerTaskId(kind, refId, date, email) {
+        return (kind + '_' + refId + '_' + (date || 'nd') + '_' + email).replace(/[^A-Za-z0-9_.@-]/g, '_');
+    }
+
+    // Live copies of the worker data, so cards can show "arrived / finished / photos" as it happens.
+    function setupWorkerSync() {
+        if (workerSyncStarted) return;
+        workerSyncStarted = true;
+        WORKER_ACCOUNTS.onSnapshot(snap => {
+            const m = {};
+            snap.docs.forEach(d => { m[d.id] = d.data(); });
+            workerAccounts = m;
+            if (document.getElementById('techGuideModal').style.display !== 'none') safeCall(renderTechGuideContent);
+        }, err => console.error('Worker accounts sync error:', err));
+        WORKER_TASKS.onSnapshot(snap => {
+            const prev = {};
+            workerTasks.forEach(x => { prev[x.id] = x; });
+            const list = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+            if (workerTasksLoaded) {
+                list.forEach(x => {
+                    const p = prev[x.id];
+                    if (!p || p.status === x.status) return;
+                    if (x.status === 'arrived') showToast('👷 ' + (x.tech || '') + ' ' + t('wkEvArrived') + ' — ' + (x.clientName || ''));
+                    else if (x.status === 'done') showToast('✅ ' + (x.tech || '') + ' ' + t('wkEvDone') + ' — ' + (x.clientName || ''));
+                });
+            }
+            workerTasks = list;
+            workerTasksLoaded = true;
+            refreshWorkerViews();
+        }, err => console.error('Worker tasks sync error:', err));
+    }
+    function refreshWorkerViews() {
+        const wk = document.getElementById('screenWeekly'), ap = document.getElementById('screenAppointments');
+        if (wk && wk.style.display !== 'none') safeCall(renderWeeklyBoard);
+        if (ap && ap.style.display !== 'none') safeCall(renderAppointments);
+        if (workerTaskOpenId) {
+            const x = workerTasks.find(z => z.id === workerTaskOpenId);
+            const have = (workerTaskPhotos[workerTaskOpenId] || []).length;
+            const want = x ? (x.cnt_before || 0) + (x.cnt_after || 0) + (x.cnt_estimate || 0) : 0;
+            if (x && want > have && !workerTaskPhotosLoading[workerTaskOpenId]) loadWorkerTaskPhotos(workerTaskOpenId);
+            safeCall(renderWorkerTaskModal);
+        }
+    }
+
+    // Small status line under a job / appointment card for each worker it was sent to.
+    function workerBadgesHtml(kind, refId, date) {
+        const list = workerTasks.filter(x => x.refKind === kind && String(x.refId) === String(refId) && (kind === 'appt' || (x.entryDate || '') === (date || '')));
+        if (!list.length) return '';
+        return list.map(x => {
+            const st = x.status === 'done' ? '✅ ' + t('wkStDone') + (x.doneAt ? ' ' + workerStamp(x.doneAt) : '')
+                : x.status === 'arrived' ? '✔ ' + t('wkStArrived') + (x.arrivedAt ? ' ' + workerStamp(x.arrivedAt) : '')
+                : '🕘 ' + t('wkStNew');
+            const ph = (x.cnt_before || 0) + (x.cnt_after || 0) + (x.cnt_estimate || 0);
+            const color = x.status === 'done' ? '#34d399' : (x.status === 'arrived' ? '#fbbf24' : '#38bdf8');
+            return `<div onclick="event.stopPropagation(); openWorkerTask('${jsArg(x.id)}')" style="cursor:pointer; margin-top:4px; font-size:0.76rem; color:${color}; border:1px solid ${color}; border-radius:8px; padding:3px 8px; display:inline-block;">👷 ${escHtml(x.tech || '')} · ${st}${ph ? ' · 📷 ' + ph : ''}${x.note ? ' · 💬' : ''}</div>`;
+        }).join('<br>');
+    }
+
+    // Saves / updates the worker login that belongs to a technician (from the technician edit form).
+    // Never deletes: removing the email just marks the old login inactive.
+    async function saveWorkerAccountFromForm(name, oldName, email) {
+        const region = document.getElementById('newTechRegion').value;
+        const lang = document.getElementById('newTechWorkerLang').value || 'es';
+        const existing = workerAccountForTech(oldName || name);
+        if (existing && existing.email && existing.email !== email) {
+            await WORKER_ACCOUNTS.doc(existing.email).set({ active: false, updatedAt: Date.now() }, { merge: true });
+        }
+        if (!email) return;
+        const officePhone = ((companyProfile && companyProfile.phones) || [])[0] || '';
+        await WORKER_ACCOUNTS.doc(email).set({ email, tech: name, region, lang, active: true, officePhone, updatedAt: Date.now() }, { merge: true });
+    }
+
+    /* ---- Send to Worker ---- */
+    function openSendWorkerModal(kind, refId, date) {
+        let ctx = null;
+        if (kind === 'job') {
+            const job = savedJobs.find(j => String(j.id) === String(refId));
+            if (!job) return;
+            const entry = getScheduleEntries(job).find(e => (e.date || '') === (date || '')) || {};
+            ctx = { kind, refId: String(job.id), entryDate: entry.date || '', date: entry.date || '', time: entry.time || '', clientName: job.clientName || '', address: job.clientAddress || '', phone: job.clientPhone || '', team: entry.team || [],
+                instr: (entry.note && String(entry.note).trim()) ? String(entry.note).trim() : (job.clientDescription || '') };
+        } else {
+            const appt = appointments.find(a => String(a.id) === String(refId));
+            if (!appt) return;
+            ctx = { kind: 'appt', refId: String(appt.id), entryDate: appt.requestedDate || '', date: appt.requestedDate || '', time: appt.requestedTime || '', clientName: appt.clientName || '', address: appt.clientAddress || '', phone: appt.clientPhone || '', team: [],
+                instr: [(appt.services || []).join(', '), appt.note || ''].filter(Boolean).join('\n') };
+        }
+        sendWorkerCtx = ctx;
+        const accs = activeWorkerAccounts();
+        const sel = document.getElementById('swWorker');
+        sel.innerHTML = accs.map(a => `<option value="${escHtml(a.email)}">${escHtml(a.tech)}${a.region ? ' — ' + escHtml(a.region) : ''}</option>`).join('');
+        const pre = accs.find(a => ctx.team.includes(a.tech));
+        if (pre) sel.value = pre.email;
+        document.getElementById('swHeadline').textContent = (ctx.kind === 'appt' ? '🔎 ' : '🔨 ') + ctx.clientName + (ctx.address ? ' — ' + ctx.address : '');
+        document.getElementById('swDate').value = ctx.date;
+        document.getElementById('swTime').value = ctx.time;
+        document.getElementById('swInstr').value = ctx.instr;
+        document.getElementById('swInstr').dataset.touched = '';
+        const hasPhone = !!String(ctx.phone || '').trim();
+        document.getElementById('swShowPhoneRow').style.display = hasPhone ? 'flex' : 'none';
+        document.getElementById('swShowPhone').checked = false;
+        const btn = document.getElementById('swGoBtn');
+        btn.disabled = accs.length === 0;
+        btn.textContent = t('wkSendGo');
+        document.getElementById('sendWorkerModal').style.display = 'flex';
+        updateSendWorkerInfo();
+    }
+    function closeSendWorkerModal() { document.getElementById('sendWorkerModal').style.display = 'none'; sendWorkerCtx = null; }
+
+    function updateSendWorkerInfo() {
+        const box = document.getElementById('swInfo');
+        const ctx = sendWorkerCtx;
+        if (!ctx) return;
+        if (activeWorkerAccounts().length === 0) { box.style.display = 'block'; box.textContent = t('wkNoWorkers'); return; }
+        const email = document.getElementById('swWorker').value;
+        const existing = workerTasks.find(x => x.id === workerTaskId(ctx.kind, ctx.refId, ctx.entryDate, email));
+        if (existing && existing.instrOrig && !document.getElementById('swInstr').dataset.touched) {
+            // keep what was sent before, so re-sending is a small edit, not a rewrite
+            document.getElementById('swInstr').value = existing.instrOrig;
+        }
+        box.style.display = existing ? 'block' : 'none';
+        if (existing) box.textContent = t('wkAlreadySent');
+    }
+
+    // Translates the owner's instructions into English + Spanish + Arabic in one AI call, so the worker app
+    // never needs the AI key: whatever language the owner types, the worker reads it in his own.
+    async function translateTriple(text) {
+        const key = getGeminiApiKey();
+        if (!key) throw new Error('no key');
+        const prompt = 'You translate short job instructions for a handyman crew. Translate the text below into English, Spanish (plain everyday construction words, Latin American) and Arabic (simple, easy for an Egyptian reader). Keep names, numbers, addresses, measurements and brand names unchanged. Reply with ONLY a JSON object like {"en":"...","es":"...","ar":"..."} and nothing else.\n\nTEXT:\n' + text;
+        const out = await aiGenerate(key, prompt);
+        const m = out.match(/\{[\s\S]*\}/);
+        if (!m) throw new Error('bad reply');
+        const j = JSON.parse(m[0]);
+        return { en: String(j.en || text), es: String(j.es || text), ar: String(j.ar || text) };
+    }
+
+    async function sendWorkerNow() {
+        const ctx = sendWorkerCtx;
+        if (!ctx) return;
+        const email = document.getElementById('swWorker').value;
+        const acc = workerAccounts[email];
+        if (!acc) { alert(t('wkPickWorker')); return; }
+        const instr = document.getElementById('swInstr').value.trim();
+        const date = document.getElementById('swDate').value;
+        const time = document.getElementById('swTime').value;
+        const showPhone = document.getElementById('swShowPhone').checked && !!String(ctx.phone || '').trim();
+        const baseId = workerTaskId(ctx.kind, ctx.refId, ctx.entryDate, email);
+        let id = baseId;
+        const existingBase = workerTasks.find(x => x.id === baseId);
+        if (existingBase && existingBase.status === 'done') {
+            if (!confirm(t('wkResendDoneConfirm'))) return;
+            id = baseId + '_r' + Date.now().toString(36);
+        }
+        // Opened during the click itself, so phones don't block the WhatsApp window that opens a moment later.
+        const win = window.open('about:blank', '_blank');
+        const btn = document.getElementById('swGoBtn');
+        btn.disabled = true; btn.textContent = t('wkTranslating');
+        let tri = { en: instr, es: instr, ar: instr };
+        if (instr) {
+            try { tri = await translateTriple(instr); }
+            catch (e) { console.warn('Worker instruction translation failed:', e); showToast(t('wkTranslateFail')); }
+        }
+        const common = {
+            tech: acc.tech || '', region: acc.region || '', clientName: ctx.clientName, address: ctx.address, date, time,
+            instr: tri, instrOrig: instr, clientPhone: showPhone ? String(ctx.phone).trim() : '', showPhone, updatedAt: Date.now(), hidden: false
+        };
+        try {
+            const prev = workerTasks.find(x => x.id === id);
+            if (prev) await WORKER_TASKS.doc(id).update(common);
+            else await WORKER_TASKS.doc(id).set({ ...common, id, refKind: ctx.kind, refId: ctx.refId, entryDate: ctx.entryDate, workerEmail: email, status: 'new', createdAt: Date.now(), createdBy: currentUserEmail || '?', thumbs: [], cnt_before: 0, cnt_after: 0, cnt_estimate: 0 });
+        } catch (err) {
+            console.error('Send to worker failed:', err);
+            if (win) win.close();
+            btn.disabled = false; btn.textContent = t('wkSendGo');
+            alert(t('wkSendFail') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
+            return;
+        }
+        // WhatsApp message in the worker's own language, with the link that opens that exact job.
+        const wl = ['en', 'es', 'ar'].includes(acc.lang) ? acc.lang : 'en';
+        const link = new URL('worker.html', location.href).href + '?t=' + encodeURIComponent(id);
+        const when = [date, time].filter(Boolean).join(' ');
+        const head = wl === 'es' ? `👷 ${acc.tech}, tiene un trabajo nuevo:` : (wl === 'ar' ? `👷 ${acc.tech}، عندك شغلة جديدة:` : `👷 ${acc.tech}, you have a new job:`);
+        const openLine = wl === 'es' ? 'Abra la app:' : (wl === 'ar' ? 'افتح التطبيق:' : 'Open the app:');
+        const msg = `${head}\n*${ctx.clientName}*\n${when ? '📅 ' + when + '\n' : ''}${ctx.address ? '📍 ' + ctx.address + '\n' : ''}\n${openLine} ${link}`;
+        const digits = String(technicianPhones[acc.tech] || '').replace(/\D/g, '');
+        const waUrl = (digits.length > 6 ? 'https://wa.me/' + digits : 'https://wa.me/') + '?text=' + encodeURIComponent(msg);
+        if (win) { win.location.href = waUrl; }
+        else { try { navigator.clipboard.writeText(msg); } catch (e) {} showToast(t('wkPopupBlocked')); }
+        closeSendWorkerModal();
+        showToast(t('wkSentOk'));
+    }
+
+    /* ---- Worker task window (owner side): times, note, photos ---- */
+    function openWorkerTask(id) {
+        workerTaskOpenId = id;
+        document.getElementById('workerTaskModal').style.display = 'flex';
+        renderWorkerTaskModal();
+        if (!workerTaskPhotos[id]) loadWorkerTaskPhotos(id);
+        safeCall(() => ensureNoteTranslation(id, false));
+    }
+    function closeWorkerTask() { workerTaskOpenId = null; document.getElementById('workerTaskModal').style.display = 'none'; }
+    function resendWorkerTask() {
+        const x = workerTasks.find(z => z.id === workerTaskOpenId);
+        if (!x) return;
+        closeWorkerTask();
+        openSendWorkerModal(x.refKind, x.refId, x.entryDate || '');
+        const sel = document.getElementById('swWorker');
+        if (sel && x.workerEmail) { sel.value = x.workerEmail; updateSendWorkerInfo(); }
+    }
+    async function loadWorkerTaskPhotos(id) {
+        workerTaskPhotosLoading[id] = true;
+        try {
+            const snap = await WORKER_PHOTOS.where('taskId', '==', id).get();
+            workerTaskPhotos[id] = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.ts || 0) - (b.ts || 0));
+        } catch (e) { console.error('Could not load worker photos:', e); workerTaskPhotos[id] = workerTaskPhotos[id] || []; }
+        workerTaskPhotosLoading[id] = false;
+        if (workerTaskOpenId === id) safeCall(renderWorkerTaskModal);
+    }
+    function openPhotoLightbox(photoId) {
+        const list = workerTaskPhotos[workerTaskOpenId] || [];
+        const p = list.find(z => z.id === photoId);
+        if (!p) return;
+        document.getElementById('workerLightboxImg').src = p.data;
+        document.getElementById('workerLightbox').style.display = 'flex';
+    }
+    function closePhotoLightbox() { document.getElementById('workerLightbox').style.display = 'none'; document.getElementById('workerLightboxImg').src = ''; }
+
+    // The worker's note is shown in the owner's language: translated once, then stored with the task.
+    async function ensureNoteTranslation(id, manual) {
+        const x = workerTasks.find(z => z.id === id);
+        if (!x || !x.note) return;
+        const lg = currentLang === 'ar' ? 'ar' : 'en';
+        if (x.noteLang === lg || (x.noteTr && x.noteTr[lg]) || workerNoteTranslating) return;
+        let key = null;
+        try { key = localStorage.getItem('geminiApiKey'); } catch (e) {}
+        if (!key && !manual) return;          // never pop up a key prompt on its own — the 🌐 button asks instead
+        if (!key) key = getGeminiApiKey();
+        if (!key) return;
+        workerNoteTranslating = true;
+        try {
+            const out = await aiGenerate(key, 'Translate the following message from a handyman worker into ' + (lg === 'ar' ? 'Arabic (simple, easy for an Egyptian reader)' : 'English') + '. Reply with ONLY the translation.\n\n' + x.note);
+            await WORKER_TASKS.doc(id).update({ ['noteTr.' + lg]: out });
+        } catch (e) { console.warn('Worker note translation failed:', e); if (manual) showToast(t('wkTranslateFail')); }
+        workerNoteTranslating = false;
+    }
+
+    function renderWorkerTaskModal() {
+        const x = workerTasks.find(z => z.id === workerTaskOpenId);
+        const body = document.getElementById('workerTaskBody');
+        if (!x) { body.innerHTML = ''; return; }
+        document.getElementById('workerTaskTitle').textContent = t('wkTaskTitle') + ' — ' + (x.clientName || '');
+        const lg = currentLang === 'ar' ? 'ar' : 'en';
+        const row = (label, val) => val ? `<div style="font-size:0.85rem; margin:3px 0;"><span style="color:var(--text-muted);">${label}</span> ${val}</div>` : '';
+        let html = `<div style="margin-bottom:10px;"><strong style="font-size:1rem;">👷 ${escHtml(x.tech || '')}</strong>${x.region ? ` <span style="color:var(--text-muted);">📍 ${escHtml(x.region)}</span>` : ''}</div>`;
+        html += row('📅', escHtml([x.date, x.time].filter(Boolean).join(' ')));
+        html += row('📍', escHtml(x.address || ''));
+        html += row(t('wkSentAt') + ':', escHtml(workerStamp(x.createdAt)));
+        html += row('✔ ' + t('wkArrivedAt') + ':', escHtml(workerStamp(x.arrivedAt)));
+        html += row('✅ ' + t('wkDoneAt') + ':', escHtml(workerStamp(x.doneAt)));
+        if (x.instrOrig) html += `<div style="margin-top:10px; font-size:0.8rem; color:var(--text-muted);">${t('wkInstrSent')}</div><div class="note-box" style="white-space:pre-wrap;">${escHtml(x.instrOrig)}</div>`;
+        html += `<div style="margin-top:12px; font-size:0.8rem; color:var(--text-muted);">💬 ${t('wkNoteLabel')}</div>`;
+        if (!x.note) html += `<div style="font-size:0.85rem; color:var(--text-muted);">${t('wkNoNote')}</div>`;
+        else {
+            const shown = x.noteLang === lg ? x.note : ((x.noteTr && x.noteTr[lg]) || '');
+            if (shown) html += `<div class="note-box" style="white-space:pre-wrap;">${escHtml(shown)}</div>`;
+            else html += `<button class="secondary" onclick="ensureNoteTranslation('${jsArg(x.id)}', true)" style="padding:5px 10px; font-size:0.78rem;">${t('wkNoteTranslateBtn')}</button>`;
+            if (x.noteLang !== lg) html += `<div style="font-size:0.74rem; color:var(--text-muted); margin-top:4px;">${t('wkNoteOriginal')} (${escHtml(x.noteLang || '')}): ${escHtml(x.note)}</div>`;
+        }
+        const photos = workerTaskPhotos[x.id];
+        const kinds = [['before', t('wkPhotosBefore')], ['after', t('wkPhotosAfter')], ['estimate', t('wkPhotosEstimate')]];
+        html += `<div style="margin-top:14px; font-size:0.8rem; color:var(--text-muted);">📷</div>`;
+        if (!photos) html += `<div style="font-size:0.85rem; color:var(--text-muted);">${t('wkLoadingPhotos')}</div>`;
+        else if (!photos.length) html += `<div style="font-size:0.85rem; color:var(--text-muted);">${t('wkNoPhotos')}</div>`;
+        else kinds.forEach(([k, label]) => {
+            const list = photos.filter(p => p.kind === k);
+            if (!list.length) return;
+            html += `<div style="margin:8px 0 4px; font-weight:700; font-size:0.9rem;">${label} (${list.length})</div><div style="display:flex; flex-wrap:wrap; gap:6px;">${list.map(p => `<img src="${p.data}" alt="" onclick="openPhotoLightbox('${jsArg(p.id)}')" style="width:96px; height:96px; object-fit:cover; border-radius:8px; cursor:zoom-in; border:1px solid var(--border-color);">`).join('')}</div>`;
+        });
+        body.innerHTML = html;
+    }
 
     /* ---------------- Contacts ---------------- */
     function normalizePhoneDigits(p) { return (p || '').replace(/\D/g, ''); }
@@ -11784,11 +12228,13 @@ ${closeBtnHtml}
                         ${serviceTags}
                         ${appt.note ? `<div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">${appt.note}</div>` : ''}
                         ${quoteBlock}
+                        ${workerBadgesHtml('appt', appt.id, appt.requestedDate)}
                         ${followUpBlock}
                     </div>
                     <div style="display:flex; gap:6px; align-self:center; flex-wrap:wrap;">
                         ${!appt.followUpNeeded ? `<button class="secondary" onclick="openFollowUpReasonModal('${appt.id}')" style="padding:6px 10px; font-size:0.78rem; background:#d97706;">${t('followUpBtn')}</button>` : ''}
                         <button class="secondary" onclick="openAppointmentQuoteModal('${appt.id}')" style="padding:6px 10px; font-size:0.78rem; background:#0891b2;">${t('sendQuoteBtn')}</button>
+                        <button class="secondary" title="${t('wkSendBtnTitle')}" onclick="openSendWorkerModal('appt', '${jsArg(appt.id)}', '${jsArg(appt.requestedDate || '')}')" style="padding:6px 10px; font-size:0.78rem; background:#16a34a;">📲</button>
                         <button class="success" onclick="convertAppointmentToJob('${appt.id}')" style="padding:6px 12px; font-size:0.78rem;">${t('convertToJobBtn')}</button>
                         <button class="secondary" onclick="editAppointment('${appt.id}')" style="padding:6px 10px; font-size:0.78rem; background:#0284c7;">${t('editBtn')}</button>
                         <button class="danger" onclick="deleteAppointment('${appt.id}')" style="padding:6px 10px; font-size:0.78rem;">${t('deleteBtn')}</button>
@@ -11963,6 +12409,7 @@ ${closeBtnHtml}
                     <div style="font-size:0.78rem; color:var(--text-muted);">${job.clientAddress ? `<a href="#" onclick="event.preventDefault(); event.stopPropagation(); showMapChoice('${job.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${job.clientAddress}</a>` : ''}${showAllPendingMode ? ' — ' + (entry.date || t('noDateSet')) : ''}</div>
                     <div style="font-size:0.78rem; color:#38bdf8;">${t('weeklyTechsLabel')} ${teamNames}</div>
                     ${unpaidTeam.length > 0 ? `<div style="font-size:0.74rem; color:#fbbf24; margin-top:2px;">${t('weeklyNotPaidTechWarning')} ${unpaidTeam.map(escHtml).join(', ')}</div>` : ''}
+                    ${workerBadgesHtml('job', job.id, entry.date)}
                     ${entry.note ? `<div style="font-size:0.76rem; color:var(--text-muted); margin-top:2px;">🔧 ${entry.note}</div>` : ''}
                     ${entry.postponedFrom ? `<span class="ag-badge">⏭ ${t('postponedFromLabel')} ${entry.postponedFrom}</span>` : ''}
                 </div>
@@ -11971,6 +12418,7 @@ ${closeBtnHtml}
                     <button class="warning" title="${t('postponeBtn')}" onclick="event.stopPropagation(); openPostponeModal('${job.id}', '${entry.date}')" style="padding:4px 10px; font-size:0.75rem;">⏭</button>
                     <button class="secondary" title="${t('partnerGoesBtn')}" onclick="event.stopPropagation(); partnerGoes('${job.id}', '${entry.date}')" style="padding:4px 10px; font-size:0.75rem; background:#0284c7;">🤝</button>
                     <button class="secondary" onclick="event.stopPropagation(); downloadJobICS('${job.id}', '${entry.date}')" style="padding:4px 10px; font-size:0.7rem;">📆</button>
+                    <button class="secondary" title="${t('wkSendBtnTitle')}" onclick="event.stopPropagation(); openSendWorkerModal('job', '${jsArg(job.id)}', '${jsArg(entry.date || '')}')" style="padding:4px 10px; font-size:0.75rem; background:#16a34a;">📲</button>
                 </div>
             </div>
         </div>`;
@@ -12958,7 +13406,7 @@ ${closeBtnHtml}
                     ? `<td data-label="${t('guideThPriorBalance')}" style="color:#f87171; font-weight:700;">⚠️ $${priorBalance.toFixed(2)}<div class="ag-meta" style="font-weight:400;">${t('guidePriorBalanceNote')} <span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${escHtml(priorDateTo)}</span></div></td>`
                     : `<td data-label="${t('guideThPriorBalance')}" style="color:var(--text-muted);">—</td>`;
             }
-            html += `<tr><td data-label=""><strong>${name}</strong></td><td data-label="${t('guideThPhone')}">${phoneHtml}</td>
+            html += `<tr><td data-label=""><strong>${name}</strong>${workerAccountForTech(name) ? ` <span title="${t('wkWorkerLoginBadge')}" style="font-size:0.8rem;">📲</span>` : ''}</td><td data-label="${t('guideThPhone')}">${phoneHtml}</td>
                 <td data-label="${t('guideThDuesInPeriod')}" style="color:#fbbf24; font-weight:700;">$${dues.toFixed(2)}${partnerShare > 0.005 ? `<div class="ag-meta" style="font-weight:400; color:#a78bfa;">🤝 ${t('guidePartnerIncl')} $${partnerShare.toFixed(2)}</div>` : ''}</td>
                 <td data-label="${t('guideThBonusInPeriod')}" style="color:${bonus > 0.005 ? '#fbbf24' : 'var(--text-muted)'}; font-weight:700;">${bonus > 0.005 ? '🎁 $' + bonus.toFixed(2) : '—'}</td>
                 <td data-label="${t('guideThPaidInPeriod')}" style="color:#34d399; font-weight:700;">$${paidInPeriod.toFixed(2)}</td>

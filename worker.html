@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AHA Worker</title>
+<link rel="manifest" href="worker.webmanifest">
+<link rel="apple-touch-icon" href="worker-icon-192.png">
+<link rel="icon" href="worker-icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AHA Worker">
+<meta name="theme-color" content="#0b0f19">
+<style>
+:root{--bg:#0b0f19;--card:#151b2b;--line:#242c42;--tx:#eef1f8;--mut:#8b95ae;--blue:#2f6df6;--orange:#f08a1c;--green:#19a85a;--purple:#7048e8;--red:#e5484d;--chip:#1e2540;--r:18px;--g:12px}
+html.light{--bg:#f3f5fa;--card:#ffffff;--line:#d9deea;--tx:#18203a;--mut:#5d6882;--chip:#e7ecf8}
+html{font-size:16px}html.fs-large{font-size:19px}html.fs-xl{font-size:22px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:Arial,Helvetica,sans-serif;min-height:100vh;padding-bottom:env(safe-area-inset-bottom)}
+#app{max-width:520px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+.hd{display:flex;justify-content:space-between;align-items:center;padding:calc(14px + env(safe-area-inset-top)) var(--g) 6px;gap:8px}
+.who{display:flex;align-items:center;gap:10px;min-width:0;cursor:pointer}
+.who b{font-size:1.2rem;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who .loc{display:block;font-size:.8rem;color:var(--mut);font-weight:normal;margin-top:2px}
+.av{width:46px;height:46px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:1.2rem;flex:0 0 46px;overflow:hidden}
+.av img{width:100%;height:100%;object-fit:cover}
+.back{font-size:1.6rem;padding:4px 10px;cursor:pointer}
+.flags{display:flex;gap:4px;flex:0 0 auto}.flags span{font-size:1.05rem;padding:5px 8px;border-radius:10px;background:var(--card);opacity:.5;cursor:pointer;border:1px solid var(--line)}.flags .on{background:var(--blue);opacity:1;border-color:var(--blue)}
+.body{flex:1;padding:6px var(--g) 24px;display:flex;flex-direction:column;gap:var(--g)}
+.tabs{display:flex;gap:8px}.tabs span{flex:1;text-align:center;font-size:1rem;padding:12px 8px;border-radius:14px;background:var(--card);color:var(--mut);cursor:pointer;border:1px solid var(--line)}.tabs .on{background:var(--blue);color:#fff;font-weight:bold;border-color:var(--blue)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.card.tap{cursor:pointer}.card.cur{border:2px solid var(--blue)}
+.card h4{margin:0 0 6px;font-size:1.15rem}.card p{margin:3px 0;font-size:.95rem;color:var(--mut)}
+.tag{display:inline-block;font-size:.78rem;padding:3px 10px;border-radius:10px;margin:8px 6px 0 0}
+.t-new{background:#1e3a5f;color:#8dbcff}.t-prog{background:#4a3410;color:#fbbf24}.t-est{background:#3a1f5c;color:#c4a5ff}.t-late{background:#4a1519;color:#ff8d92}
+html.light .t-new{background:#dbe8ff;color:#1c4fb5}html.light .t-prog{background:#ffecc7;color:#8a5a00}html.light .t-est{background:#eadfff;color:#5a2db5}html.light .t-late{background:#ffdcde;color:#a3191f}
+.btn{min-height:74px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;gap:12px;font-size:1.35rem;font-weight:bold;color:#fff;cursor:pointer;user-select:none;text-align:center;padding:8px 12px;border:0;width:100%;font-family:inherit}
+.btn i{font-style:normal;font-size:1.8rem}.btn small{font-size:.8rem;font-weight:normal;background:rgba(0,0,0,.28);padding:2px 9px;border-radius:10px}
+.btn:active{transform:scale(.98);opacity:.9}
+.blue{background:var(--blue)}.orange{background:var(--orange)}.green{background:var(--green)}.purple{background:var(--purple)}.gray{background:var(--chip);color:var(--tx)}.red{background:var(--red)}
+.chips{display:flex;gap:8px}.chip{flex:1;text-align:center;font-size:1rem;padding:13px 8px;border-radius:14px;background:var(--chip);color:var(--tx);text-decoration:none;cursor:pointer;border:0;font-family:inherit}
+.chip.on{background:var(--blue);color:#fff;font-weight:bold}
+.txt{font-size:1.02rem;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}.txt small{display:block;color:#8dbcff;font-size:.8rem;margin-top:8px;cursor:pointer;white-space:normal}
+html.light .txt small{color:#1c4fb5}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap}.thumbs div{width:58px;height:58px;border-radius:12px;border:1px solid var(--line);position:relative;background:var(--chip)}
+.thumbs img{width:100%;height:100%;object-fit:cover;border-radius:12px;display:block}
+.thumbs div:after{content:"✔";position:absolute;right:-5px;top:-7px;background:var(--green);color:#fff;border-radius:50%;width:19px;height:19px;font-size:.7rem;display:flex;align-items:center;justify-content:center}
+.thumbs div.wait:after{content:"⏳";background:var(--orange)}
+textarea,input{font-family:inherit;font-size:1rem;color:var(--tx);background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;width:100%}
+textarea{resize:none;min-height:86px}
+.mut{color:var(--mut);font-size:.85rem}.center{text-align:center}
+.sp{flex:1}
+.foot{text-align:center;color:var(--mut);font-size:.8rem;padding:6px}
+.bar{padding:8px var(--g);text-align:center;font-size:.85rem;background:#4a3410;color:#fbbf24}
+html.light .bar{background:#ffecc7;color:#8a5a00}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom));background:#111827;color:#fff;padding:12px 18px;border-radius:14px;font-size:.95rem;z-index:50;max-width:90%;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal .box{background:var(--card);border-radius:20px;padding:20px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:12px}
+.modal h3{margin:0;font-size:1.25rem;text-align:center}
+.login{padding:30px 20px;display:flex;flex-direction:column;gap:14px;flex:1;justify-content:center}
+.login h1{margin:0 0 4px;text-align:center;font-size:1.6rem}
+.err{color:#ff8d92;font-size:.95rem;text-align:center}
+.stat{display:flex;gap:8px}.stat div{flex:1;text-align:center;background:var(--chip);border-radius:14px;padding:12px 4px}.stat b{display:block;font-size:1.6rem}.stat span{font-size:.8rem;color:var(--mut)}
+.sec{font-size:.85rem;color:var(--mut);margin:6px 4px 0}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<input type="file" id="fileCam" accept="image/*" capture="environment" class="hide">
+<input type="file" id="fileSelfie" accept="image/*" capture="user" class="hide">
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script>
+/* ---------------- Firebase (same project as the main app) ---------------- */
+const firebaseConfig = {
+    apiKey: "AIzaSyBeo-87oqjP22Z1Ls_z2O3LF2xfXZssxQ4",
+    authDomain: "cost-jobs.firebaseapp.com",
+    projectId: "cost-jobs",
+    storageBucket: "cost-jobs.firebasestorage.app",
+    messagingSenderId: "386321995597",
+    appId: "1:386321995597:web:48b86cb4ccda0258104904"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+// Keeps a copy on the phone so photos / buttons still work with a weak signal and upload by themselves later.
+try { db.enablePersistence({ synchronizeTabs: true }).catch(function () {}); } catch (e) {}
+const auth = firebase.auth();
+const FV = firebase.firestore.FieldValue;
+
+/* ---------------- tiny helpers ---------------- */
+const LS = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+};
+function esc(s) { return String(s === undefined || s === null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+function isoDate(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+
+/* ---------------- translations: English / Español / العربية ---------------- */
+const I18N = {
+    en: { signIn: 'Sign in', email: 'Email', password: 'Password', enter: 'ENTER', badLogin: 'Wrong email or password.', noAccount: 'Your account is not ready yet. Please call the office.',
+        today: 'Today', upcoming: 'Upcoming', noJobs: 'No jobs here', newTag: 'New', inProgress: 'In progress', late: 'Late', estimateTag: 'Estimate visit', noPrices: '🔒 No prices or payments',
+        map: '🗺️ Map', callCustomer: '📞 Call customer', callOffice: '📞 Call the office', original: '🌐 Original message', translated: '🌐 Translated · see original', showTranslated: '🌐 See translated',
+        arrived: 'I ARRIVED', arrivedAt: 'Arrived', before: 'BEFORE', after: 'AFTER', estimatePhotos: 'ESTIMATE PHOTOS', done: 'FINISHED', notePh: '💬 Note for the office (optional)…', saved: '✔ Saved',
+        confirmDone: 'Finish this job?', yes: 'Yes, finished', no: 'Not yet', syncing: '⏳ Sending… it will finish by itself', offline: '📴 No signal — your photos will upload by themselves later',
+        profile: 'Profile', myWork: 'My work', todayWord: 'Today', thisWeek: 'This week', thisMonth: 'This month', jobsDone: 'jobs finished', theme: 'Color', dark: '🌙 Dark', light: '☀️ Light',
+        textSize: 'Text size', normal: 'Normal', large: 'Large', xl: 'Extra large', language: 'Language', changePhoto: '📷 Change my photo', logout: 'Log out', newJob: '🔔 New job!', photoErr: 'Could not save the photo. Try again.', sendErr: 'Could not send. Check your signal.', loading: 'Loading…', back: 'Back' },
+    es: { signIn: 'Iniciar sesión', email: 'Correo', password: 'Contraseña', enter: 'ENTRAR', badLogin: 'Correo o contraseña incorrectos.', noAccount: 'Su cuenta aún no está lista. Llame a la oficina.',
+        today: 'Hoy', upcoming: 'Próximos', noJobs: 'No hay trabajos aquí', newTag: 'Nuevo', inProgress: 'En progreso', late: 'Atrasado', estimateTag: 'Visita de estimado', noPrices: '🔒 Sin precios ni pagos',
+        map: '🗺️ Mapa', callCustomer: '📞 Llamar al cliente', callOffice: '📞 Llamar a la oficina', original: '🌐 Mensaje original', translated: '🌐 Traducido · ver original', showTranslated: '🌐 Ver traducido',
+        arrived: 'LLEGUÉ', arrivedAt: 'Llegada', before: 'ANTES', after: 'DESPUÉS', estimatePhotos: 'FOTOS DEL ESTIMADO', done: 'TERMINÉ', notePh: '💬 Nota para la oficina (opcional)…', saved: '✔ Guardado',
+        confirmDone: '¿Terminó este trabajo?', yes: 'Sí, terminé', no: 'Todavía no', syncing: '⏳ Enviando… se completa solo', offline: '📴 Sin señal — las fotos se enviarán solas más tarde',
+        profile: 'Perfil', myWork: 'Mi trabajo', todayWord: 'Hoy', thisWeek: 'Esta semana', thisMonth: 'Este mes', jobsDone: 'trabajos terminados', theme: 'Color', dark: '🌙 Oscuro', light: '☀️ Claro',
+        textSize: 'Tamaño del texto', normal: 'Normal', large: 'Grande', xl: 'Muy grande', language: 'Idioma', changePhoto: '📷 Cambiar mi foto', logout: 'Cerrar sesión', newJob: '🔔 ¡Trabajo nuevo!', photoErr: 'No se pudo guardar la foto. Intente otra vez.', sendErr: 'No se pudo enviar. Revise la señal.', loading: 'Cargando…', back: 'Atrás' },
+    ar: { signIn: 'تسجيل الدخول', email: 'الإيميل', password: 'كلمة المرور', enter: 'دخول', badLogin: 'الإيميل أو كلمة المرور غلط.', noAccount: 'حسابك لسه مش جاهز. كلّم المكتب.',
+        today: 'النهارده', upcoming: 'الجاي', noJobs: 'مفيش شغل هنا', newTag: 'جديد', inProgress: 'شغّال', late: 'متأخر', estimateTag: 'زيارة تقدير', noPrices: '🔒 بدون أسعار أو مدفوعات',
+        map: '🗺️ الخريطة', callCustomer: '📞 اتصل بالعميل', callOffice: '📞 اتصل بالمكتب', original: '🌐 الرسالة الأصلية', translated: '🌐 مترجم · شوف الأصل', showTranslated: '🌐 شوف المترجم',
+        arrived: 'وصلت', arrivedAt: 'وصل', before: 'قبل', after: 'بعد', estimatePhotos: 'صور التقدير', done: 'خلصت', notePh: '💬 ملاحظة للمكتب (اختياري)…', saved: '✔ اتحفظ',
+        confirmDone: 'خلصت الشغلة دي؟', yes: 'أيوه، خلصت', no: 'لسه', syncing: '⏳ بيتبعت… هيكمل لوحده', offline: '📴 مفيش إشارة — الصور هتترفع لوحدها بعدين',
+        profile: 'البروفايل', myWork: 'شغلي', todayWord: 'النهارده', thisWeek: 'الأسبوع ده', thisMonth: 'الشهر ده', jobsDone: 'شغلة خلّصتها', theme: 'اللون', dark: '🌙 غامق', light: '☀️ فاتح',
+        textSize: 'حجم الخط', normal: 'عادي', large: 'كبير', xl: 'كبير جداً', language: 'اللغة', changePhoto: '📷 غيّر صورتي', logout: 'تسجيل خروج', newJob: '🔔 شغلة جديدة!', photoErr: 'مقدرتش أحفظ الصورة. جرّب تاني.', sendErr: 'مقدرتش أبعت. شوف الإشارة.', loading: 'جاري التحميل…', back: 'رجوع' }
+};
+const LOCALE = { en: 'en-US', es: 'es-US', ar: 'ar-EG-u-nu-latn' };
+const FLAG = { ar: '🇪🇬', en: '🇺🇸', es: '🇪🇸' };
+function tr(k) { return (I18N[lang] && I18N[lang][k]) || I18N.en[k] || k; }
+
+/* ---------------- state ---------------- */
+let lang = LS.get('wk_lang') || ((navigator.language || '').toLowerCase().indexOf('es') === 0 ? 'es' : ((navigator.language || '').toLowerCase().indexOf('ar') === 0 ? 'ar' : 'en'));
+let me = null;            // the worker's own account document
+let myEmail = '';
+let tasks = [];
+let view = { name: 'loading', tab: 'today', id: null };
+let showOrig = {};        // taskId -> true when the original text is being shown
+let pendingSync = false;
+let unsubTasks = null, unsubMe = null;
+let firstTasksLoad = true;
+let noteTimer = null;
+let wantTask = (function () { try { return new URLSearchParams(location.search).get('t'); } catch (e) { return null; } })();
+let loginError = '';
+let toastTimer = null;
+
+function applyLook() {
+    document.documentElement.className = (LS.get('wk_theme') === 'light' ? 'light ' : '') + (LS.get('wk_fs') === 'large' ? 'fs-large' : (LS.get('wk_fs') === 'xl' ? 'fs-xl' : ''));
+    document.documentElement.lang = lang;
+    document.documentElement.dir = (lang === 'ar') ? 'rtl' : 'ltr';
+    var m = document.querySelector('meta[name=theme-color]'); if (m) m.content = LS.get('wk_theme') === 'light' ? '#f3f5fa' : '#0b0f19';
+}
+function toast(msg) {
+    var old = document.getElementById('toastEl'); if (old) old.remove();
+    var el = document.createElement('div'); el.className = 'toast'; el.id = 'toastEl'; el.textContent = msg; document.body.appendChild(el);
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { el.remove(); }, 3200);
+}
+function fmtTime(s) {
+    if (!s) return '';
+    var m = /^(\d{1,2}):(\d{2})/.exec(s); if (!m) return s;
+    var h = parseInt(m[1], 10), mm = m[2], ap = h >= 12 ? 'PM' : 'AM';
+    if (lang === 'ar') ap = h >= 12 ? 'م' : 'ص';
+    h = h % 12; if (h === 0) h = 12;
+    return h + ':' + mm + ' ' + ap;
+}
+function fmtDate(ds) {
+    if (!ds) return '';
+    var d = new Date(ds + 'T00:00:00'); if (isNaN(d.getTime())) return ds;
+    try { return d.toLocaleDateString(LOCALE[lang] || 'en-US', { weekday: 'short', month: 'short', day: 'numeric' }); } catch (e) { return ds; }
+}
+function fmtClock(ms) {
+    try { return new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; }
+}
+function setLang(l) { lang = l; LS.set('wk_lang', l); applyLook(); render(); }
+function langBar() {
+    return '<div class="flags">' + ['ar', 'en', 'es'].map(function (l) { return '<span class="' + (l === lang ? 'on' : '') + '" onclick="setLang(\'' + l + '\')">' + FLAG[l] + '</span>'; }).join('') + '</div>';
+}
+function avatarHtml() {
+    if (me && me.photo) return '<div class="av"><img src="' + esc(me.photo) + '" alt=""></div>';
+    var n = (me && me.tech) ? me.tech : (myEmail || '?');
+    return '<div class="av">' + esc(n.charAt(0).toUpperCase()) + '</div>';
+}
+function bannerHtml() {
+    var h = '';
+    if (!navigator.onLine) h += '<div class="bar">' + tr('offline') + '</div>';
+    else if (pendingSync) h += '<div class="bar">' + tr('syncing') + '</div>';
+    return h;
+}
+
+/* ---------------- screens ---------------- */
+function render() {
+    applyLook();
+    var app = document.getElementById('app');
+    if (view.name === 'login') { app.innerHTML = loginHtml(); return; }
+    if (view.name === 'loading') { app.innerHTML = '<div class="login"><div class="center mut">' + tr('loading') + '</div></div>'; return; }
+    if (view.name === 'noaccount') { app.innerHTML = '<div class="login"><div class="err" style="font-size:1.1rem">' + tr('noAccount') + '</div><div class="btn gray" onclick="logout()">' + tr('logout') + '</div></div>'; return; }
+    if (view.name === 'job') { app.innerHTML = jobHtml(); return; }
+    if (view.name === 'profile') { app.innerHTML = profileHtml(); return; }
+    app.innerHTML = listHtml();
+}
+function loginHtml() {
+    return '<div class="hd"><b style="font-size:1.1rem">👷 AHA</b>' + langBar() + '</div>' +
+        '<div class="login"><h1>' + tr('signIn') + '</h1>' +
+        '<input id="lgEmail" type="email" autocomplete="username" inputmode="email" placeholder="' + tr('email') + '" autocapitalize="none" value="' + esc(LS.get('wk_email') || '') + '">' +
+        '<input id="lgPass" type="password" autocomplete="current-password" placeholder="' + tr('password') + '">' +
+        (loginError ? '<div class="err">' + esc(loginError) + '</div>' : '') +
+        '<div class="btn blue" onclick="doLogin()">' + tr('enter') + '</div></div>';
+}
+function whoHeader(rightHtml) {
+    return '<div class="hd"><div class="who" onclick="goProfile()">' + avatarHtml() + '<b>' + esc(me ? me.tech : '') + '<span class="loc">📍 ' + esc(me && me.region ? me.region : '') + '</span></b></div>' + (rightHtml || langBar()) + '</div>';
+}
+function taskSort(a, b) { return ((a.date || '0000') + (a.time || '')).localeCompare((b.date || '0000') + (b.time || '')); }
+function openTasks() { return tasks.filter(function (x) { return x.status !== 'done' && !x.hidden; }); }
+function listHtml() {
+    var today = isoDate(new Date());
+    var all = openTasks();
+    var todayList = all.filter(function (x) { return !x.date || x.date <= today; }).sort(taskSort);
+    var nextList = all.filter(function (x) { return x.date && x.date > today; }).sort(taskSort);
+    var list = view.tab === 'next' ? nextList : todayList;
+    var h = bannerHtml() + whoHeader() + '<div class="body"><div class="tabs"><span class="' + (view.tab === 'today' ? 'on' : '') + '" onclick="setTab(\'today\')">' + tr('today') + (todayList.length ? ' (' + todayList.length + ')' : '') + '</span><span class="' + (view.tab === 'next' ? 'on' : '') + '" onclick="setTab(\'next\')">' + tr('upcoming') + (nextList.length ? ' (' + nextList.length + ')' : '') + '</span></div>';
+    if (!list.length) h += '<div class="card center mut" style="padding:30px 14px">' + tr('noJobs') + '</div>';
+    list.forEach(function (x) { h += cardHtml(x, today); });
+    h += '<div class="sp"></div><div class="foot">' + tr('noPrices') + '</div></div>';
+    return h;
+}
+function cardHtml(x, today) {
+    var late = x.date && x.date < today;
+    var when = (x.date && x.date !== today ? fmtDate(x.date) + ' · ' : '') + fmtTime(x.time);
+    var snippet = instrText(x); if (snippet.length > 110) snippet = snippet.slice(0, 107) + '…';
+    var tags = '';
+    if (x.kind === 'appt') tags += '<span class="tag t-est">🔎 ' + tr('estimateTag') + '</span>';
+    if (x.status === 'arrived') tags += '<span class="tag t-prog">' + tr('inProgress') + '</span>'; else tags += '<span class="tag t-new">' + tr('newTag') + '</span>';
+    if (late) tags += '<span class="tag t-late">⚠️ ' + tr('late') + '</span>';
+    return '<div class="card tap" data-id="' + esc(x.id) + '" onclick="openTask(this.dataset.id)"><h4>' + esc(x.clientName || '—') + '</h4>' +
+        (when ? '<p>🕘 ' + esc(when) + '</p>' : '') + (x.address ? '<p>📍 ' + esc(x.address) + '</p>' : '') +
+        (snippet ? '<p>🔧 ' + esc(snippet) + '</p>' : '') + tags + '</div>';
+}
+function instrText(x) {
+    var i = x.instr || {};
+    return (i[lang] || i.en || x.instrOrig || '');
+}
+function mapUrl(addr) {
+    var q = encodeURIComponent(addr);
+    var ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    return ios ? 'https://maps.apple.com/?q=' + q : 'https://www.google.com/maps/search/?api=1&query=' + q;
+}
+function telHref(p) { return 'tel:' + String(p || '').replace(/[^+\d]/g, ''); }
+function jobHtml() {
+    var x = tasks.filter(function (z) { return z.id === view.id; })[0];
+    if (!x) { view = { name: 'list', tab: view.tab || 'today', id: null }; return listHtml(); }
+    var instrTr = instrText(x), orig = x.instrOrig || '';
+    var hasBoth = orig && instrTr && orig.trim() !== instrTr.trim();
+    var showO = !!showOrig[x.id];
+    var textShown = (showO && orig) ? orig : (instrTr || orig);
+    var h = bannerHtml() + '<div class="hd"><div class="who" onclick="goBack()"><span class="back">' + (lang === 'ar' ? '→' : '←') + '</span><b>' + esc(x.clientName || '') + '<span class="loc">📍 ' + esc(me ? me.region : '') + (x.arrivedAt ? ' · ✔ ' + tr('arrivedAt') + ' ' + esc(fmtClock(x.arrivedAt)) : '') + '</span></b></div>' + langBar() + '</div><div class="body">';
+    var when = (x.date ? fmtDate(x.date) + ' · ' : '') + fmtTime(x.time);
+    h += '<div class="card">' + (when ? '<p>🕘 ' + esc(when) + '</p>' : '') + (x.address ? '<p>📍 ' + esc(x.address) + '</p>' : '');
+    var chips = '';
+    if (x.address) chips += '<a class="chip" href="' + esc(mapUrl(x.address)) + '" target="_blank" rel="noopener">' + tr('map') + '</a>';
+    if (x.clientPhone) chips += '<a class="chip" href="' + esc(telHref(x.clientPhone)) + '">' + tr('callCustomer') + '</a>';
+    if (chips) h += '<div class="chips" style="margin-top:10px">' + chips + '</div>';
+    h += '</div>';
+    if (textShown) h += '<div class="card txt">' + esc(textShown) + (hasBoth ? '<small onclick="toggleOrig(\'' + esc(x.id) + '\')">' + (showO ? tr('showTranslated') : tr('translated')) + '</small>' : '') + '</div>';
+    if (x.status === 'new') {
+        h += '<div class="sp"></div><div class="btn purple" onclick="markArrived(\'' + esc(x.id) + '\')"><i>📍</i>' + tr('arrived') + '</div>';
+    } else {
+        if (x.kind === 'appt') {
+            h += photoBlock(x, 'estimate', tr('estimatePhotos'), 'blue');
+        } else {
+            h += photoBlock(x, 'before', tr('before'), 'blue') + photoBlock(x, 'after', tr('after'), 'orange');
+        }
+        h += '<textarea id="noteBox" placeholder="' + esc(tr('notePh')) + '" oninput="noteTyping(\'' + esc(x.id) + '\')" onblur="saveNote(\'' + esc(x.id) + '\')">' + esc(x.note || '') + '</textarea><div id="noteSaved" class="mut center" style="min-height:1.2em"></div>';
+        h += '<div class="sp"></div><div class="btn green" onclick="askDone(\'' + esc(x.id) + '\')"><i>✔</i>' + tr('done') + '</div>';
+    }
+    h += '</div>';
+    return h;
+}
+function photoBlock(x, kind, label, color) {
+    var n = x['cnt_' + kind] || 0;
+    var th = (x.thumbs || []).filter(function (p) { return p.k === kind; });
+    var pend = !!x._pending;
+    var h = '<div class="btn ' + color + '" onclick="pickPhoto(\'' + esc(x.id) + '\',\'' + kind + '\')"><i>📷</i>' + label + (n ? '<small>' + n + ' ' + (pend ? '⏳' : '✔') + '</small>' : '') + '</div>';
+    if (th.length) h += '<div class="thumbs">' + th.map(function (p) { return '<div class="' + (pend ? 'wait' : '') + '"><img src="' + esc(p.t) + '" alt=""></div>'; }).join('') + '</div>';
+    return h;
+}
+function profileHtml() {
+    var now = new Date(), today = isoDate(now);
+    var mon = new Date(now); mon.setHours(0, 0, 0, 0); mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
+    var som = new Date(now.getFullYear(), now.getMonth(), 1);
+    var dn = tasks.filter(function (x) { return x.status === 'done' && x.doneAt; });
+    var cDay = dn.filter(function (x) { return isoDate(new Date(x.doneAt)) === today; }).length;
+    var cWeek = dn.filter(function (x) { return x.doneAt >= mon.getTime(); }).length;
+    var cMonth = dn.filter(function (x) { return x.doneAt >= som.getTime(); }).length;
+    var theme = LS.get('wk_theme') === 'light' ? 'light' : 'dark', fs = LS.get('wk_fs') || 'normal';
+    var office = (me && me.officePhone) ? me.officePhone : '';
+    var h = bannerHtml() + '<div class="hd"><div class="who" onclick="goBack()"><span class="back">' + (lang === 'ar' ? '→' : '←') + '</span><b>' + tr('profile') + '</b></div>' + langBar() + '</div><div class="body">';
+    h += '<div class="card center" style="display:flex;flex-direction:column;align-items:center;gap:6px"><div style="transform:scale(1.7);margin:14px 0 8px">' + avatarHtml() + '</div><b style="font-size:1.3rem">' + esc(me ? me.tech : '') + '</b><span class="mut">📍 ' + esc(me && me.region ? me.region : '') + '</span></div>';
+    h += '<div class="btn gray" style="min-height:56px;font-size:1.05rem" onclick="pickSelfie()">' + tr('changePhoto') + '</div>';
+    h += '<div class="sec">' + tr('myWork') + '</div><div class="stat"><div><b>' + cDay + '</b><span>' + tr('todayWord') + '</span></div><div><b>' + cWeek + '</b><span>' + tr('thisWeek') + '</span></div><div><b>' + cMonth + '</b><span>' + tr('thisMonth') + '</span></div></div><div class="mut center">' + tr('jobsDone') + '</div>';
+    h += '<div class="sec">' + tr('theme') + '</div><div class="chips"><span class="chip ' + (theme === 'dark' ? 'on' : '') + '" onclick="setTheme(\'dark\')">' + tr('dark') + '</span><span class="chip ' + (theme === 'light' ? 'on' : '') + '" onclick="setTheme(\'light\')">' + tr('light') + '</span></div>';
+    h += '<div class="sec">' + tr('textSize') + '</div><div class="chips"><span class="chip ' + (fs === 'normal' ? 'on' : '') + '" onclick="setFs(\'normal\')">' + tr('normal') + '</span><span class="chip ' + (fs === 'large' ? 'on' : '') + '" onclick="setFs(\'large\')">' + tr('large') + '</span><span class="chip ' + (fs === 'xl' ? 'on' : '') + '" onclick="setFs(\'xl\')">' + tr('xl') + '</span></div>';
+    if (office) h += '<a class="btn blue" style="text-decoration:none;min-height:64px;font-size:1.15rem;margin-top:6px" href="' + esc(telHref(office)) + '">' + tr('callOffice') + '</a>';
+    h += '<div class="btn gray" style="min-height:56px;font-size:1.05rem" onclick="logout()">' + tr('logout') + '</div></div>';
+    return h;
+}
+
+/* ---------------- navigation ---------------- */
+function go(name, id) {
+    view = { name: name, tab: view.tab || 'today', id: id || null };
+    try { history.pushState({ v: name }, ''); } catch (e) {}
+    render(); window.scrollTo(0, 0);
+}
+function goBack() { try { if (history.state && history.state.v) { history.back(); return; } } catch (e) {} view = { name: 'list', tab: view.tab || 'today', id: null }; render(); }
+window.addEventListener('popstate', function () { if (view.name === 'job' || view.name === 'profile') { view = { name: 'list', tab: view.tab || 'today', id: null }; render(); } });
+function setTab(t) { view.tab = t; render(); }
+function openTask(id) { go('job', id); }
+function goProfile() { go('profile'); }
+function toggleOrig(id) { showOrig[id] = !showOrig[id]; render(); }
+function setTheme(v) { LS.set('wk_theme', v); render(); }
+function setFs(v) { LS.set('wk_fs', v); render(); }
+
+/* ---------------- login / account ---------------- */
+function doLogin() {
+    var e = (document.getElementById('lgEmail').value || '').trim(), p = document.getElementById('lgPass').value || '';
+    if (!e || !p) return;
+    LS.set('wk_email', e);
+    loginError = '';
+    auth.signInWithEmailAndPassword(e, p).catch(function () { loginError = tr('badLogin'); render(); });
+}
+function logout() { try { if (unsubTasks) unsubTasks(); if (unsubMe) unsubMe(); } catch (e) {} unsubTasks = null; unsubMe = null; me = null; tasks = []; auth.signOut(); }
+
+auth.onAuthStateChanged(function (u) {
+    if (!u) { view = { name: 'login', tab: 'today', id: null }; render(); return; }
+    myEmail = (u.email || '').toLowerCase();
+    view = { name: 'loading', tab: 'today', id: null }; render();
+    try { if (unsubMe) unsubMe(); } catch (e) {}
+    unsubMe = db.collection('workerAccounts').doc(myEmail).onSnapshot(function (doc) {
+        if (!doc.exists || doc.data().active === false) { me = null; view = { name: 'noaccount', tab: 'today', id: null }; render(); return; }
+        var first = !me;
+        me = doc.data();
+        if (first) {
+            if (!LS.get('wk_lang') && me.lang && I18N[me.lang]) lang = me.lang;
+            startTasks();
+            if (view.name === 'loading' || view.name === 'noaccount') view = { name: 'list', tab: 'today', id: null };
+        }
+        render();
+    }, function () { view = { name: 'noaccount', tab: 'today', id: null }; render(); });
+});
+
+function startTasks() {
+    try { if (unsubTasks) unsubTasks(); } catch (e) {}
+    firstTasksLoad = true;
+    unsubTasks = db.collection('workerTasks').where('workerEmail', '==', myEmail).onSnapshot({ includeMetadataChanges: true }, function (snap) {
+        var anyPending = false, added = false;
+        tasks = snap.docs.map(function (d) { var o = d.data(); o.id = d.id; o._pending = d.metadata.hasPendingWrites; if (o._pending) anyPending = true; return o; });
+        if (!firstTasksLoad) snap.docChanges().forEach(function (c) { if (c.type === 'added' && !c.doc.metadata.hasPendingWrites && !c.doc.metadata.fromCache) added = true; });
+        pendingSync = anyPending;
+        firstTasksLoad = false;
+        if (added) { toast(tr('newJob')); try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {} }
+        if (wantTask) { var w = tasks.filter(function (z) { return z.id === wantTask; })[0]; if (w) { wantTask = null; try { history.replaceState(null, '', location.pathname); } catch (e) {} view = { name: 'job', tab: 'today', id: w.id }; } }
+        var ae = document.activeElement;
+        if (view.name === 'job' && ae && ae.id === 'noteBox') return; // never wipe a note while it is being typed
+        render();
+    }, function () { toast(tr('sendErr')); });
+}
+
+/* ---------------- actions ---------------- */
+function taskRef(id) { return db.collection('workerTasks').doc(id); }
+function markArrived(id) {
+    var x = tasks.filter(function (z) { return z.id === id; })[0]; if (!x || x.status !== 'new') return;
+    taskRef(id).update({ status: 'arrived', arrivedAt: Date.now(), updatedAt: Date.now() }).catch(function () { toast(tr('sendErr')); });
+}
+function askDone(id) {
+    var m = document.createElement('div'); m.className = 'modal'; m.id = 'doneModal';
+    m.innerHTML = '<div class="box"><h3>' + tr('confirmDone') + '</h3><div class="btn green" onclick="doDone(\'' + esc(id) + '\')">' + tr('yes') + '</div><div class="btn gray" style="min-height:56px" onclick="document.getElementById(\'doneModal\').remove()">' + tr('no') + '</div></div>';
+    document.body.appendChild(m);
+}
+function doDone(id) {
+    var m = document.getElementById('doneModal'); if (m) m.remove();
+    saveNote(id, true);
+    taskRef(id).update({ status: 'done', doneAt: Date.now(), updatedAt: Date.now() }).catch(function () { toast(tr('sendErr')); });
+    view = { name: 'list', tab: view.tab || 'today', id: null };
+    try { if (history.state && history.state.v) history.back(); } catch (e) {}
+    render();
+}
+function noteTyping(id) { clearTimeout(noteTimer); noteTimer = setTimeout(function () { saveNote(id); }, 1200); }
+function saveNote(id, silent) {
+    clearTimeout(noteTimer);
+    var box = document.getElementById('noteBox'); if (!box) return;
+    var x = tasks.filter(function (z) { return z.id === id; })[0]; if (!x) return;
+    var v = box.value.trim();
+    if (v === (x.note || '').trim()) return;
+    taskRef(id).update({ note: v, noteLang: lang, noteAt: Date.now(), noteTr: FV.delete(), updatedAt: Date.now() }).then(function () {
+        var s = document.getElementById('noteSaved'); if (s && !silent) s.textContent = tr('saved');
+    }).catch(function () { toast(tr('sendErr')); });
+}
+
+/* ---------------- photos ---------------- */
+let photoCtx = null;
+function pickPhoto(id, kind) { photoCtx = { id: id, kind: kind }; var f = document.getElementById('fileCam'); f.value = ''; f.click(); }
+function pickSelfie() { var f = document.getElementById('fileSelfie'); f.value = ''; f.click(); }
+function compress(file, maxDim, q) {
+    return new Promise(function (resolve, reject) {
+        var fr = new FileReader();
+        fr.onload = function () {
+            var img = new Image();
+            img.onload = function () {
+                var w = img.width, h = img.height, s = Math.min(1, maxDim / Math.max(w, h));
+                w = Math.max(1, Math.round(w * s)); h = Math.max(1, Math.round(h * s));
+                var c = document.createElement('canvas'); c.width = w; c.height = h;
+                c.getContext('2d').drawImage(img, 0, 0, w, h);
+                resolve(c.toDataURL('image/jpeg', q));
+            };
+            img.onerror = reject; img.src = fr.result;
+        };
+        fr.onerror = reject; fr.readAsDataURL(file);
+    });
+}
+document.getElementById('fileCam').addEventListener('change', async function (ev) {
+    var files = Array.prototype.slice.call(ev.target.files || []); if (!files.length || !photoCtx) return;
+    var ctx = photoCtx;
+    for (var i = 0; i < files.length; i++) {
+        try {
+            var data = await compress(files[i], 1280, 0.7);
+            if (data.length > 700000) data = await compress(files[i], 1024, 0.55);
+            var thumb = await compress(files[i], 96, 0.6);
+            var pid = 'p' + Date.now() + Math.random().toString(36).slice(2, 6);
+            var b = db.batch();
+            b.set(db.collection('workerPhotos').doc(pid), { taskId: ctx.id, kind: ctx.kind, data: data, ts: Date.now(), by: myEmail, tech: me ? me.tech : '' });
+            var upd = { updatedAt: Date.now(), thumbs: FV.arrayUnion({ id: pid, k: ctx.kind, t: thumb }) };
+            upd['cnt_' + ctx.kind] = FV.increment(1);
+            b.update(taskRef(ctx.id), upd);
+            b.commit().catch(function () { toast(tr('photoErr')); });
+        } catch (e) { toast(tr('photoErr')); }
+    }
+});
+document.getElementById('fileSelfie').addEventListener('change', async function (ev) {
+    var f = (ev.target.files || [])[0]; if (!f) return;
+    try {
+        var p = await compress(f, 160, 0.7);
+        db.collection('workerAccounts').doc(myEmail).update({ photo: p }).catch(function () { toast(tr('photoErr')); });
+    } catch (e) { toast(tr('photoErr')); }
+});
+
+document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target && (e.target.id === 'lgPass' || e.target.id === 'lgEmail')) doLogin(); });
+window.addEventListener('online', render);
+window.addEventListener('offline', render);
+if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('worker-sw.js').catch(function () {}); }); }
+applyLook();
+render();
+</script>
+</body>
+</html>
