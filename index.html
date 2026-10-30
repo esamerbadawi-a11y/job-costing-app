@@ -10244,8 +10244,17 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     // (photos, note, times stay stored); sending the job again to the worker brings it back.
     async function hideWorkerTask(id) {
         if (!confirm(t('wkHideConfirm'))) return;
-        try { await WORKER_TASKS.doc(id).update({ hidden: true, updatedAt: Date.now() }); refreshWorkerViews(); }
-        catch (e) { console.error(e); showToast(t('wkSendFail') || 'Error'); }
+        const local = workerTasks.find(z => z.id === id);
+        try {
+            // merge-set (not update) so it works even if the local copy of the task is missing; only the "hidden" flag changes.
+            await WORKER_TASKS.doc(id).set({ hidden: true, updatedAt: Date.now() }, { merge: true });
+        } catch (e) {
+            console.error('hideWorkerTask failed:', e);
+            showToast(t('wkSendFail') + ' (' + ((e && (e.code || e.message)) || '?') + ')');
+            return;
+        }
+        if (local) local.hidden = true;
+        safeCall(refreshWorkerViews);
     }
 
     // Saves / updates the worker login that belongs to a technician (from the technician edit form).
