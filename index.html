@@ -1330,7 +1330,10 @@
             </label>
         </div>
         <div class="form-group"><label data-i18n="aiCustomInstructionsLabel"></label>
-            <input type="text" id="aiCustomInstructions" dir="auto" data-i18n-ph="aiCustomInstructionsPh"></div>
+            <div style="display:flex; gap:8px; align-items:stretch;">
+                <input type="text" id="aiCustomInstructions" dir="auto" data-i18n-ph="aiCustomInstructionsPh" onkeydown="if(event.key==='Enter'){event.preventDefault(); regenerateAiReminder();}" style="flex:1; min-width:0;">
+                <button id="aiRetryBtn" class="secondary" onclick="regenerateAiReminder()" data-i18n="aiRetryBtn" style="flex:none; white-space:nowrap; padding:8px 12px; font-size:0.85rem;"></button>
+            </div></div>
         <div id="aiReminderStatus" class="note-box" style="margin-bottom:10px;"></div>
         <textarea id="aiReminderText" dir="auto" rows="7" oninput="refreshAiReminderButtons(false)" style="margin-bottom:10px;"></textarea>
         <div class="ag-actions">
@@ -1341,7 +1344,6 @@
             <button id="aiCopyBtn" class="secondary" onclick="copyAiReminder()" data-i18n="aiCopyBtn"></button>
             <button id="aiShareBtn" class="success" style="display:none;" onclick="shareAiReminderWithInvoice()" data-i18n="aiShareBtn"></button>
             <button id="aiTemplateBtn" class="warning" onclick="useTemplateReminder('aiTemplateNote')" data-i18n="aiUseTemplateBtn"></button>
-            <button id="aiRetryBtn" class="secondary" onclick="regenerateAiReminder()" data-i18n="aiRetryBtn"></button>
         </div>
     </div>
 </div>
