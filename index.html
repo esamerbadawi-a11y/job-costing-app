@@ -7403,6 +7403,13 @@
         return (job.quoteSeed && !(job.savedInvoices || []).length) ? job.quoteSeed : null;
     }
     function defaultInvoiceItemsForJob(job) {
+        const res = defaultInvoiceItemsForJobRaw(job);
+        // Never start an invoice at $0 when the job itself has a contract total: fall back to one line with that total.
+        if (round2(res.reduce((sum, it) => sum + parseVal(it.amount), 0)) <= 0.005 && parseVal(job.totalRevenue) > 0)
+            return [{ desc: '', qty: '1', amount: parseVal(job.totalRevenue) }];
+        return res;
+    }
+    function defaultInvoiceItemsForJobRaw(job) {
         if (job.expenseItems && job.expenseItems.length > 0) {
             return job.expenseItems.map(it => ({
                 desc: expenseCatLabel(it.category) + (it.note ? ' (' + it.note + ')' : ''),
@@ -8246,7 +8253,7 @@
         const dueAmount = paidOn ? round2(totalDue - invoiceState.paidSnap.total) : totalDue;
         // Mirrors whatever the "PAID IN FULL" checkbox on the invoice screen is set to — same
         // manual mark, so what you see on screen is exactly what prints.
-        const isPaid = isReceipt ? !!(rSnap && rSnap.balance <= 0.005 && invoiceState.receiptShowTotals !== false) : (!!invoiceState.paidMark || (!!invoiceState.showPaid && !!invoiceState.paidSnap && (invoiceState.docType === 'INVOICE' || invoiceState.docType === 'ADDITIONAL_WORK') && round2(subtotal - creditsTotal - invoiceState.paidSnap.total) <= 0.005));
+        const isPaid = isReceipt ? !!(rSnap && rSnap.balance <= 0.005 && invoiceState.receiptShowTotals !== false) : !!invoiceState.paidMark;
         const accent = '#2C6B45';
         const companyName = companyDisplayName();
         const companyTagline = companyProfile.tagline || '';
