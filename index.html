@@ -2141,6 +2141,11 @@
         receiptBalanceRemaining: { ar: 'المتبقي', en: 'Balance Remaining' },
         receiptPaymentOn: { ar: 'دفعة مستلمة بتاريخ', en: 'Payment received on' },
         invoiceSmallFileLbl: { ar: 'ملف صغير (للإرسال بـ SMS)', en: 'Small file (for SMS / text message)' },
+        invoiceBreakTitle: { ar: 'تقسيم المتبقي (اختياري - للعرض بس):', en: 'Break down the remaining balance (optional, display only):' },
+        invoiceBreakAddBtn: { ar: '+ سطر', en: '+ Line' },
+        invoiceBreakLabelPh: { ar: 'مثال: تركيب ألواح', en: 'e.g. Board installation' },
+        invoiceBreakSumOk: { ar: 'مجموع السطور:', en: 'Lines total:' },
+        invoiceBreakDiff: { ar: 'الفرق عن المتبقي:', en: 'Difference from outstanding:' },
         invoiceShowPaidLbl: { ar: 'اظهر المدفوع والمتبقي على الفاتورة', en: 'Show payments received and balance on the invoice' },
         invoicePaidPickTitle: { ar: 'الدفعات اللي تتخصم:', en: 'Payments to deduct:' },
         invoicePaidDetailsBtn: { ar: '▾ تفاصيل الدفعات في الفاتورة', en: '▾ Show payment details on the invoice' },
@@ -7480,6 +7485,7 @@
             receiptShowTotals: true,
             showPaid: false,   // INVOICE / ADDITIONAL_WORK only: show "Less: Payments Received" and the outstanding balance
             paidIds: null,     // null = every recorded payment; otherwise the ids of the payments to deduct
+            paidBreak: [],     // optional display-only lines splitting the outstanding balance: {label, amount}
             paidDetail: false, // false = one line with the total; true = one line per payment
             paidSnap: null
         };
@@ -7897,6 +7903,29 @@
         recomputePaidSnap();
         renderInvoiceModalContent();
     }
+    function addPaidBreakLine() {
+        if (!invoiceState) return;
+        (invoiceState.paidBreak = invoiceState.paidBreak || []).push({ label: '', amount: '' });
+        renderInvoiceModalContent();
+    }
+    function removePaidBreakLine(i) {
+        if (!invoiceState || !invoiceState.paidBreak) return;
+        invoiceState.paidBreak.splice(i, 1);
+        renderInvoiceModalContent();
+    }
+    function setPaidBreakLine(i, field, val) {
+        if (!invoiceState || !invoiceState.paidBreak || !invoiceState.paidBreak[i]) return;
+        invoiceState.paidBreak[i][field] = val;
+        const el = document.getElementById('invPaidBreakSum');
+        if (el) el.innerHTML = invoiceBreakSumHtml();
+    }
+    function invoiceBreakSumHtml() {
+        if (!invoiceState || !invoiceState.paidSnap) return '';
+        const sum = round2((invoiceState.paidBreak || []).reduce((a, b) => a + parseVal(b.amount), 0));
+        const out = round2(invoiceSubtotal() - invoiceCreditsTotal() - invoiceState.paidSnap.total);
+        const diff = round2(out - sum);
+        return `${t('invoiceBreakSumOk')} <b>${fmtUsd(sum)}</b>` + (Math.abs(diff) > 0.005 ? ` · <span style="color:#f59e0b;">${t('invoiceBreakDiff')} <b>${fmtUsd(diff)}</b></span>` : ' ✅');
+    }
     function toggleInvoicePaidDetail() {
         if (!invoiceState) return;
         invoiceState.paidDetail = !invoiceState.paidDetail;
@@ -8072,7 +8101,16 @@
                     </label>`).join('') : `<div style="color:var(--text-muted);">${t('invoiceNoPaymentsYet')}</div>`}
                 ${sn && sn.other > 0.005 ? `<div style="display:flex; justify-content:space-between; padding:4px 0; color:var(--text-muted);"><span>${t('invoiceOtherPaymentsRow')}</span><b>${fmtUsd(sn.other)}</b></div>` : ''}
                 <div id="invPaidInfo" style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border-color);">${invoicePaidInfoHtml()}</div>
-                <button type="button" class="secondary" onclick="toggleInvoicePaidDetail()" style="padding:4px 10px; font-size:0.75rem; margin-top:8px;">${invoiceState.paidDetail ? t('invoicePaidDetailsOnBtn') : t('invoicePaidDetailsBtn')}</button>
+                <div style="margin-top:10px; font-size:0.75rem; color:var(--text-muted);">${t('invoiceBreakTitle')}</div>
+                ${(invoiceState.paidBreak || []).map((b, i) => `
+                    <div style="display:flex; gap:6px; margin-top:6px; align-items:center;">
+                        <input type="text" value="${escHtml(b.label || '')}" placeholder="${t('invoiceBreakLabelPh')}" oninput="setPaidBreakLine(${i}, 'label', this.value)" style="flex:1; min-width:0; padding:8px;">
+                        <input type="text" inputmode="decimal" value="${escHtml(String(b.amount === undefined ? '' : b.amount))}" placeholder="$" oninput="setPaidBreakLine(${i}, 'amount', this.value.replace(/[^0-9.]/g, ''))" style="width:90px; padding:8px; text-align:center;">
+                        <button type="button" onclick="removePaidBreakLine(${i})" style="background:rgba(225,29,72,0.15); color:#e11d48; border:none; border-radius:8px; padding:8px 10px;">✕</button>
+                    </div>`).join('')}
+                <button type="button" class="secondary" onclick="addPaidBreakLine()" style="padding:4px 10px; font-size:0.75rem; margin-top:8px;">${t('invoiceBreakAddBtn')}</button>
+                ${(invoiceState.paidBreak || []).length ? `<div id="invPaidBreakSum" style="font-size:0.78rem; margin-top:6px;">${invoiceBreakSumHtml()}</div>` : ''}
+                <br><button type="button" class="secondary" onclick="toggleInvoicePaidDetail()" style="padding:4px 10px; font-size:0.75rem; margin-top:8px;">${invoiceState.paidDetail ? t('invoicePaidDetailsOnBtn') : t('invoicePaidDetailsBtn')}</button>
             </div>` : ''}`;
         }
         const normalMiddle = isReceipt ? '' : `
@@ -8371,18 +8409,22 @@
             } else r += row(escHtml(t('invoiceLessPaymentsRow')), sn.total);
             return r;
         })();
+        const breakLines = paidOn ? (invoiceState.paidBreak || []).filter(b => (b.label || '').trim() || parseVal(b.amount) > 0) : [];
+        const breakHtml = breakLines.length ? `<div class="ui" style="font-size:12px; color:#6B6257; margin-top:8px; padding:0 4px;">${breakLines.map(b => `<div style="display:flex; justify-content:space-between; padding:2px 0;"><span>${escHtml(b.label || '')}</span><span>${fmtUsd(parseVal(b.amount))}</span></div>`).join('')}</div>` : '';
         const totalsBlockHtml = isReceipt ? (invoiceState.receiptShowTotals === false ? '' : receiptTotalsHtml) : isAdditionalWork
             ? `<div class="ui" style="width:100%; font-size:13px;">
                  <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>${escHtml(t('invoiceSubtotalLabel'))}</span><span>${fmtUsd(subtotal)}</span></div>
                  ${creditsRowsHtml}
                  ${paidRowsHtml}
                  <div style="display:flex; justify-content:space-between; align-items:center; background:#EFEAE0; border-radius:4px; padding:10px 14px; margin-top:6px; font-weight:700; font-size:14px;"><span>${escHtml(paidOn ? t('invoiceOutstandingRow') : t('invoiceAdditionalBalanceDue')).toUpperCase()}</span><span>${fmtUsd(dueAmount)}</span></div>
+                 ${breakHtml}
                </div>`
             : `<div class="ui invoice-totals" style="width:${paidOn && invoiceState.paidDetail ? 400 : 300}px; font-size:13px;">
                  <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>${escHtml(t('invoiceSubtotalLabel'))}</span><span>${fmtUsd(subtotal)}</span></div>
                  ${creditsRowsHtml}
                  ${paidRowsHtml}
                  <div style="display:flex; justify-content:space-between; align-items:center; background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 14px; margin-top:8px; font-weight:700; font-size:15px;"><span>${escHtml(paidOn ? t('invoiceOutstandingRow') : t('invoiceTotalDueLabel')).toUpperCase()}</span><span>${fmtUsd(dueAmount)}</span></div>
+                 ${breakHtml}
                </div>`;
 
         const totalDueAmountLineHtml = isAdditionalWork
