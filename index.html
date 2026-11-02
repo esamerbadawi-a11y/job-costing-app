@@ -1258,7 +1258,14 @@
         </div>
 
         <div class="form-group">
-            <label data-i18n="lblTermsConditions"></label>
+            <label data-i18n="lblTermsEstimate"></label>
+            <textarea id="companyProfileTermsEst" rows="7" style="font-family:inherit; font-size:0.82rem;"></textarea>
+            <div class="ag-meta" style="margin-top:4px;" data-i18n="termsEstimateHint"></div>
+            <button type="button" class="secondary" onclick="resetEstimateTermsToDefault()" style="margin-top:6px; padding:6px 12px; font-size:0.78rem;" data-i18n="resetTermsConditionsBtn"></button>
+        </div>
+
+        <div class="form-group">
+            <label data-i18n="lblTermsProposalField"></label>
             <textarea id="companyProfileTerms" rows="9" style="font-family:inherit; font-size:0.82rem;"></textarea>
             <div class="ag-meta" style="margin-top:4px;" data-i18n="termsConditionsHint"></div>
             <button type="button" class="secondary" onclick="resetTermsConditionsToDefault()" style="margin-top:6px; padding:6px 12px; font-size:0.78rem;" data-i18n="resetTermsConditionsBtn"></button>
@@ -1849,9 +1856,15 @@
         lblCompanyTaxId: { ar: 'رقم ضريبي/ترخيص (اختياري)', en: 'Tax ID / License # (optional)' },
         lblCompanyWebsite: { ar: 'الموقع الإلكتروني (اختياري)', en: 'Website (optional)' },
         lblTermsConditions: { ar: 'الشروط والأحكام (Terms & Conditions)', en: 'Terms & Conditions' },
-        termsConditionsHint: { ar: 'بتتظهر تلقائيًا في آخر كل عرض سعر وفاتورة. مش استشارة قانونية — يفضل تراجعها محامي مرخص في فلوريدا قبل الاعتماد عليها بشكل نهائي.', en: 'Shown automatically at the bottom of every Estimate and Invoice. This is not legal advice — have a Florida-licensed attorney review it before relying on it.' },
+        lblTermsEstimate: { ar: 'شروط عرض السعر (Estimate)', en: 'Terms for Estimates' },
+        lblTermsProposalField: { ar: 'شروط المقترح (Proposal) — الشروط الكاملة', en: 'Terms for Proposals (full terms)' },
+        termsEstimateHint: { ar: 'بتظهر في آخر عرض السعر (Estimate) بس. مش استشارة قانونية — يفضل تراجعها محامي مرخص في فلوريدا.', en: 'Shown at the bottom of Estimates only. Not legal advice — have a Florida-licensed attorney review it.' },
+        termsConditionsHint: { ar: 'بتظهر في آخر المقترح (Proposal) وفي عرض السعر اللي بيتعمل من المواعيد. مش استشارة قانونية — يفضل تراجعها محامي مرخص في فلوريدا قبل الاعتماد عليها بشكل نهائي.', en: 'Shown at the bottom of Proposals. Not legal advice — have a Florida-licensed attorney review it before relying on it.' },
+        termsConditionsHintOld: { ar: 'بتتظهر تلقائيًا في آخر كل عرض سعر وفاتورة. مش استشارة قانونية — يفضل تراجعها محامي مرخص في فلوريدا قبل الاعتماد عليها بشكل نهائي.', en: 'Shown automatically at the bottom of every Estimate and Invoice. This is not legal advice — have a Florida-licensed attorney review it before relying on it.' },
         lblPaymentLink: { ar: 'رابط الدفع (Payment Link)', en: 'Payment Link' },
         paymentLinkHint: { ar: 'رابط دفع جاهز من Stripe أو Square أو أي خدمة تانية (مثال: buy.stripe.com/xxxx). لو حطيته، هيظهر زرار "💳 Pay Now" تلقائيًا في كل فاتورة وعرض سعر.', en: 'A ready-made payment link from Stripe, Square, or another service (e.g. buy.stripe.com/xxxx). If set, a "💳 Pay Now" button appears automatically on every Invoice and Estimate.' },
+        proposalTotalLabel: { ar: 'السعر المقترح', en: 'Proposed Price' },
+        estimateValidUntil: { ar: 'ساري لحد', en: 'Valid until' },
         estimateTotalLabel: { ar: 'إجمالي العرض', en: 'Estimate Total' },
         estimateDepositLabel: { ar: 'العربون المطلوب (50%)', en: 'Deposit Due (50%)' },
         payDepositBtn: { ar: '💳 ادفع العربون', en: '💳 Pay Deposit' },
@@ -3261,10 +3274,21 @@
         ];
         return lines.join('\n');
     }
+    function defaultEstimateTermsText(companyNameForText) {
+        return [
+            '1. Validity: This estimate is valid for 30 calendar days from the date issued above. After that, pricing and scheduling are subject to reconfirmation.',
+            '2. Deposit: A deposit of fifty percent (50%) of the total price is due before work is scheduled or materials are ordered.',
+            '3. Scope: The price covers only the work and materials listed in this estimate. Anything else is excluded.',
+            '4. Hidden Conditions: Any pre-existing or concealed issue found once work begins will be documented and priced separately, and requires your written approval before proceeding.',
+            '5. Acceptance: Signing below confirms you approve this estimate and the terms above.'
+        ].join('\n');
+    }
     // Renders companyProfile.termsConditions (if any) as a small-print block for the bottom of
     // the Estimate and Invoice documents, one line per paragraph.
-    function termsConditionsHtml() {
-        let text = (companyProfile.termsConditions || '').trim();
+    function termsConditionsHtml(kind) {
+        let text = (kind === 'ESTIMATE'
+            ? (companyProfile.termsEstimate !== undefined ? companyProfile.termsEstimate : defaultEstimateTermsText())
+            : (companyProfile.termsConditions || '')).trim();
         if (!text) return '';
         text = text.replace(/Affordable Handyman Approach[.,]?\s+P?LLC/gi, companyDisplayName());
         const paragraphs = text.split(/\n+/).filter(Boolean).map(p => `<div style="margin-bottom:3px;">${escHtml(p)}</div>`).join('');
@@ -8288,6 +8312,8 @@
         const creditsTotal = invoiceCreditsTotal();
         const totalDue = subtotal - creditsTotal;
         const paidOn = !isReceipt && !!invoiceState.showPaid && !!invoiceState.paidSnap && (invoiceState.docType === 'INVOICE' || invoiceState.docType === 'ADDITIONAL_WORK');
+        const isEstLike = invoiceState.docType === 'ESTIMATE' || invoiceState.docType === 'PROPOSAL';
+        const estLabel = invoiceState.docType === 'PROPOSAL' ? t('proposalTotalLabel') : t('estimateTotalLabel');
         const dueAmount = paidOn ? round2(totalDue - invoiceState.paidSnap.total) : totalDue;
         // Mirrors whatever the "PAID IN FULL" checkbox on the invoice screen is set to — same
         // manual mark, so what you see on screen is exactly what prints.
@@ -8380,10 +8406,11 @@
                  <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px; min-width:0;">
                    <div class="ui" style="font-size:12px; color:#6B6257;"><b>${escHtml(t('invoiceTypeLabel'))}:</b> ${escHtml(invoiceDocTypeDisplay(invoiceState.docType))}</div>
                    <div style="background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 18px; text-align:center; width:100%; max-width:200px; box-sizing:border-box;">
-                     <div class="ui" style="font-size:11px; letter-spacing:1px; opacity:0.9;">${escHtml(isReceipt ? t('receiptAmountReceived') : t('invoiceBalanceDue')).toUpperCase()}</div>
+                     <div class="ui" style="font-size:11px; letter-spacing:1px; opacity:0.9;">${escHtml(isReceipt ? t('receiptAmountReceived') : isEstLike ? estLabel : t('invoiceBalanceDue')).toUpperCase()}</div>
                      <div class="ui" style="font-size:24px; font-weight:700;">${fmtUsd(isReceipt ? (rSnap ? rSnap.received : 0) : dueAmount)}</div>
                      ${isPaid ? `<div class="ui" style="font-size:12px; font-weight:700; letter-spacing:1px; margin-top:4px;">✅ ${escHtml(t('invoicePaidStamp')).toUpperCase()}</div>` : ''}
                    </div>
+                   ${isEstLike ? `<div class="ui" style="font-size:12.5px; color:#241F1A; text-align:right;"><b>${escHtml(t('estimateDepositLabel'))}:</b> ${fmtUsd(round2(dueAmount * 0.5))}</div><div class="ui" style="font-size:12px; color:#6B6257; text-align:right;"><b>${escHtml(t('estimateValidUntil'))}:</b> ${escHtml(addDaysISO(invoiceState.invoiceDate || isoDate(new Date()), 30))}</div>` : ''}
                    ${paymentMethodRow}
                    ${followUpRow}
                  </div>
@@ -8423,7 +8450,7 @@
                  <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>${escHtml(t('invoiceSubtotalLabel'))}</span><span>${fmtUsd(subtotal)}</span></div>
                  ${creditsRowsHtml}
                  ${paidRowsHtml}
-                 <div style="display:flex; justify-content:space-between; align-items:center; background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 14px; margin-top:8px; font-weight:700; font-size:15px;"><span>${escHtml(paidOn ? t('invoiceOutstandingRow') : t('invoiceTotalDueLabel')).toUpperCase()}</span><span>${fmtUsd(dueAmount)}</span></div>
+                 <div style="display:flex; justify-content:space-between; align-items:center; background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 14px; margin-top:8px; font-weight:700; font-size:15px;"><span>${escHtml(paidOn ? t('invoiceOutstandingRow') : isEstLike ? estLabel : t('invoiceTotalDueLabel')).toUpperCase()}</span><span>${fmtUsd(dueAmount)}</span></div>
                  ${breakHtml}
                </div>`;
 
@@ -8436,7 +8463,7 @@
         // invoice isn't already marked paid. This is just a plain link to a page the payment
         // provider hosts and runs entirely themselves — WorkTally never talks to any payment
         // API directly, so no account key of any kind is ever stored in this file.
-        const payNowBtnHtml = (companyProfile.paymentLink && !isPaid && !isReceipt) ? `<div class="invoice-paynow-row" style="text-align:${isAdditionalWork ? 'right' : 'right'}; margin-top:8px;"><a href="${escHtml(companyProfile.paymentLink)}" target="_blank" class="ui invoice-paynow-btn" style="display:inline-block; background:${accent}; color:#FDFBF6; text-decoration:none; font-weight:700; font-size:13px; padding:9px 18px; border-radius:6px;">${escHtml(t('payNowBtn'))}</a></div>` : '';
+        const payNowBtnHtml = (companyProfile.paymentLink && !isPaid && !isReceipt) ? `<div class="invoice-paynow-row" style="text-align:${isAdditionalWork ? 'right' : 'right'}; margin-top:8px;"><a href="${escHtml(companyProfile.paymentLink)}" target="_blank" class="ui invoice-paynow-btn" style="display:inline-block; background:${accent}; color:#FDFBF6; text-decoration:none; font-weight:700; font-size:13px; padding:9px 18px; border-radius:6px;">${escHtml(isEstLike ? t('payDepositBtn') : t('payNowBtn'))}</a></div>` : '';
 
         // A fixed boilerplate block (not editable per-invoice) on Invoice/Estimate/Proposal only —
         // "Additional Work" keeps its own distinct layout and note section untouched.
@@ -8549,7 +8576,7 @@ ${closeBtnHtml}
 
     ${paidStampBottomHtml}
 
-    ${isReceipt ? '' : termsConditionsHtml()}
+    ${isEstLike ? termsConditionsHtml(invoiceState.docType === 'ESTIMATE' ? 'ESTIMATE' : 'PROPOSAL') : ''}
 
     ${isReceipt ? '' : `<div class="invoice-sigrow" style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:8px; gap:24px;">
       <div style="flex-grow:1;"><div class="invoice-sigline" style="border-bottom:1px solid #241F1A; height:30px;"></div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">Customer Approval</div></div>
@@ -8964,6 +8991,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         // standard terms so the client-facing documents aren't blank by default — the user can
         // edit or clear it freely before saving. Once something has been saved, that saved text
         // (even if empty) is shown as-is and never silently replaced.
+        document.getElementById('companyProfileTermsEst').value = (companyProfile.termsEstimate !== undefined) ? companyProfile.termsEstimate : defaultEstimateTermsText();
         document.getElementById('companyProfileTerms').value = (companyProfile.termsConditions !== undefined && companyProfile.termsConditions !== '')
             ? companyProfile.termsConditions
             : defaultTermsConditionsText(companyProfile.name || 'the Company');
@@ -9054,6 +9082,10 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     // Refills the Terms & Conditions textarea with the suggested standard text (using the
     // CURRENT name typed in the Company Name field above, even if not saved yet) — does not
     // save by itself; the user still has to press Save Profile to make it permanent.
+    function resetEstimateTermsToDefault() {
+        if (!confirm(t('confirmResetTerms'))) return;
+        document.getElementById('companyProfileTermsEst').value = defaultEstimateTermsText();
+    }
     function resetTermsConditionsToDefault() {
         if (!confirm(t('confirmResetTerms'))) return;
         const nameNow = document.getElementById('companyProfileName').value.trim() || 'the Company';
@@ -9075,6 +9107,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         companyProfile.taxId = document.getElementById('companyProfileTaxId').value.trim();
         companyProfile.website = document.getElementById('companyProfileWebsite').value.trim();
         companyProfile.termsConditions = document.getElementById('companyProfileTerms').value;
+        companyProfile.termsEstimate = document.getElementById('companyProfileTermsEst').value;
         companyProfile.paymentLink = document.getElementById('companyProfilePaymentLink').value.trim();
         const marginThresholdRaw = document.getElementById('companyProfileMarginThreshold').value.trim();
         companyProfile.marginAlertThreshold = marginThresholdRaw === '' ? null : parseVal(marginThresholdRaw);
@@ -12503,7 +12536,7 @@ ${closeBtnHtml}
     </div>` : ''}
     ${validityRow}
     ${noteBox}
-    ${termsConditionsHtml()}
+    ${termsConditionsHtml('ESTIMATE')}
     <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:8px; gap:24px;">
       <div style="flex-grow:1;"><div style="border-bottom:1px solid #241F1A; height:30px;"></div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">Customer Approval</div></div>
       <div style="width:180px;"><div style="border-bottom:1px solid #241F1A; height:30px; display:flex; align-items:flex-end; justify-content:center;">${companyProfile.signature ? `<img src="${companyProfile.signature}" style="max-height:28px; max-width:100%; object-fit:contain;">` : ''}</div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">${escHtml(companyName)} Representative</div></div>
