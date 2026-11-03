@@ -343,6 +343,7 @@
         <button id="tabContactsBtn" onclick="switchScreen('contacts')" class="secondary" data-i18n="tabContactsLabel" style="flex:1; padding:12px; min-width:120px;"></button>
         <button id="tabLogBtn" onclick="switchScreen('log')" class="secondary" data-i18n="tabLogLabel" style="flex:1; padding:12px; min-width:120px;"></button>
     </div>
+    <div id="stateFilterBar" class="no-print" style="display:none; gap:6px; flex-wrap:wrap; align-items:center; margin:8px 0;"></div>
 
     <div id="screenWeekly" class="no-print" style="display:none;">
         <div class="card">
@@ -578,6 +579,7 @@
                         <span data-i18n="deleteSelectedBtn"></span>
                     </button>
                 </div>
+                <div id="stateSummaryBox" class="no-print"></div>
                 <div class="table-responsive">
                     <table>
                         <thead>
@@ -1256,6 +1258,15 @@
                 <label data-i18n="lblCompanyWebsite"></label>
                 <input type="text" id="companyProfileWebsite">
             </div>
+        </div>
+
+        <div class="form-group">
+            <label data-i18n="lblStateSettings"></label>
+            <select id="stateSetSel" onchange="stateSetLoad()"></select>
+            <input type="text" id="stateSetLicense" data-i18n-ph="phStateLicense" oninput="stateSetEdit()" style="margin-top:6px;">
+            <textarea id="stateSetTermsEst" rows="4" data-i18n-ph="phStateTermsEst" oninput="stateSetEdit()" style="font-family:inherit; font-size:0.82rem; margin-top:6px;"></textarea>
+            <textarea id="stateSetTermsProp" rows="4" data-i18n-ph="phStateTermsProp" oninput="stateSetEdit()" style="font-family:inherit; font-size:0.82rem; margin-top:6px;"></textarea>
+            <div class="ag-meta" style="margin-top:4px;" data-i18n="stateSetHint"></div>
         </div>
 
         <div class="form-group">
@@ -2772,6 +2783,18 @@
         techSavedOk: { ar: 'تم حفظ الفني بنجاح.', en: 'Technician saved successfully.' },
         wkSendBtnTitle: { ar: "إرسال لعامل", en: "Send to Worker" },
         wkModalTitle: { ar: "إرسال شغلة لعامل", en: "Send job to worker" },
+        stateAll: { ar: 'كل الولايات', en: 'All states' },
+        stateUnknown: { ar: 'ولاية غير معروفة', en: 'Unknown state' },
+        lblStateSettings: { ar: 'إعدادات كل ولاية (رخصة وشروط):', en: 'Per-state settings (license and terms):' },
+        phStateLicense: { ar: 'رقم رخصتك في الولاية دي (بيظهر في آخر المستند)', en: 'Your license # in this state (printed at the bottom of documents)' },
+        phStateTermsEst: { ar: 'شروط عرض السعر للولاية دي (فاضية = الشروط العامة)', en: 'Estimate terms for this state (empty = general terms)' },
+        phStateTermsProp: { ar: 'شروط المقترح للولاية دي (فاضية = الشروط العامة)', en: 'Proposal terms for this state (empty = general terms)' },
+        stateSetHint: { ar: 'الولاية بتتعرف من عنوان الشغلة. لو سيبتها فاضية بيتستخدم النص العام، ومن غير بند الـ Lien بتاع فلوريدا لو الشغلة مش في فلوريدا. مش استشارة قانونية — راجعها محامي في كل ولاية.', en: 'The state is read from the job address. Empty = the general text is used, without the Florida lien clause when the job is not in Florida. Not legal advice — have a lawyer in each state review it.' },
+        stSumTitle: { ar: '📍 ملخص الولايات (كل الشغلانات)', en: '📍 State summary (all jobs)' },
+        stSumJobs: { ar: 'شغلانات', en: 'Jobs' },
+        stSumRev: { ar: 'الإيراد', en: 'Revenue' },
+        stSumRec: { ar: 'المستلم', en: 'Received' },
+        stSumNet: { ar: 'صافي الربح', en: 'Net profit' },
         wkWorkersLabel: { ar: 'الفنيين (علّم على أكتر من واحد لو هيشتغلوا مع بعض):', en: 'Workers (tick more than one if they work together):' },
         wkLeadLbl: { ar: 'مسؤول', en: 'Lead' },
         wkHelperLbl: { ar: 'مساعد', en: 'Helper' },
@@ -3337,6 +3360,113 @@
         ];
         return lines.join('\n');
     }
+    /* ---------------- US states: detect from address, filter, per-state settings ---------------- */
+    const US_STATES = { AL:'Alabama', AK:'Alaska', AZ:'Arizona', AR:'Arkansas', CA:'California', CO:'Colorado', CT:'Connecticut', DE:'Delaware', DC:'District of Columbia', FL:'Florida', GA:'Georgia', HI:'Hawaii', ID:'Idaho', IL:'Illinois', IN:'Indiana', IA:'Iowa', KS:'Kansas', KY:'Kentucky', LA:'Louisiana', ME:'Maine', MD:'Maryland', MA:'Massachusetts', MI:'Michigan', MN:'Minnesota', MS:'Mississippi', MO:'Missouri', MT:'Montana', NE:'Nebraska', NV:'Nevada', NH:'New Hampshire', NJ:'New Jersey', NM:'New Mexico', NY:'New York', NC:'North Carolina', ND:'North Dakota', OH:'Ohio', OK:'Oklahoma', OR:'Oregon', PA:'Pennsylvania', RI:'Rhode Island', SC:'South Carolina', SD:'South Dakota', TN:'Tennessee', TX:'Texas', UT:'Utah', VT:'Vermont', VA:'Virginia', WA:'Washington', WV:'West Virginia', WI:'Wisconsin', WY:'Wyoming' };
+    const STATE_TZ_OVERRIDE = { AL:'America/Chicago', AR:'America/Chicago', IL:'America/Chicago', IA:'America/Chicago', KS:'America/Chicago', LA:'America/Chicago', MN:'America/Chicago', MS:'America/Chicago', MO:'America/Chicago', NE:'America/Chicago', ND:'America/Chicago', OK:'America/Chicago', SD:'America/Chicago', TN:'America/Chicago', TX:'America/Chicago', WI:'America/Chicago', CO:'America/Denver', MT:'America/Denver', NM:'America/Denver', UT:'America/Denver', WY:'America/Denver', ID:'America/Denver', AZ:'America/Phoenix', CA:'America/Los_Angeles', NV:'America/Los_Angeles', OR:'America/Los_Angeles', WA:'America/Los_Angeles', AK:'America/Anchorage', HI:'Pacific/Honolulu' };
+    const US_STATE_NAME_LIST = Object.keys(US_STATES).map(c => [c, US_STATES[c]]).sort((a, b) => b[1].length - a[1].length);
+    function stateOfText(txt) {
+        const t0 = String(txt || '');
+        if (!t0.trim()) return '';
+        let m = t0.match(/\b([A-Za-z]{2})\b[ ,]*\d{5}(?:-\d{4})?\b/);
+        if (m && US_STATES[m[1].toUpperCase()]) return m[1].toUpperCase();
+        m = t0.match(/,\s*([A-Z]{2})\s*(?:,|$)/);
+        if (m && US_STATES[m[1]]) return m[1];
+        const low = t0.toLowerCase();
+        // a state name can also be a street name ("Washington St"), so the match nearest the END of the address wins
+        let best = '', bestAt = -1;
+        for (const [code, name] of US_STATE_NAME_LIST) {
+            const re = new RegExp('(^|[^a-z])' + name.toLowerCase().replace(/ /g, '\\s+') + '(?=[^a-z]|$)', 'g');
+            let mm;
+            while ((mm = re.exec(low)) !== null) { if (mm.index > bestAt) { bestAt = mm.index; best = code; } if (mm.index === re.lastIndex) re.lastIndex++; }
+        }
+        if (best) return best;
+        if (/chicago/.test(low)) return 'IL';
+        if (/detroit|lansing|grand rapids/.test(low)) return 'MI';
+        return '';
+    }
+    function jobState(job) { return stateOfText(job && job.clientAddress); }
+    function stateTz(code) { return STATE_TZ_OVERRIDE[code] || 'America/New_York'; }
+    let stateFilter = 'ALL';
+    try { stateFilter = localStorage.getItem('aha_state_filter') || 'ALL'; } catch (e) {}
+    function passesStateFilter(code) { return stateFilter === 'ALL' || (stateFilter === '?' ? !code : code === stateFilter); }
+    function knownStates() {
+        const set = new Set();
+        let unknown = false;
+        const add = a => { const c = stateOfText(a); if (c) set.add(c); else if (String(a || '').trim()) unknown = true; };
+        (savedJobs || []).forEach(j => add(j.clientAddress));
+        (appointments || []).forEach(a => add(a.clientAddress));
+        (workerTasks || []).forEach(x => add(x.address));
+        return { list: [...set].sort(), unknown };
+    }
+    function renderStateBar() {
+        const bar = document.getElementById('stateFilterBar');
+        if (!bar) return;
+        const ks = knownStates();
+        if (ks.list.length + (ks.unknown ? 1 : 0) < 2 && stateFilter === 'ALL') { bar.style.display = 'none'; return; }
+        bar.style.display = 'flex';
+        const chip = (val, label) => `<button class="secondary" onclick="setStateFilter('${val}')" style="padding:6px 12px; font-size:0.8rem; ${stateFilter === val ? 'background:var(--primary); color:#fff;' : ''}">${label}</button>`;
+        bar.innerHTML = '<span style="font-size:0.85rem;">📍</span>' + chip('ALL', t('stateAll')) + ks.list.map(c => chip(c, c)).join('') + (ks.unknown ? chip('?', '❔') : '');
+    }
+    function setStateFilter(v) {
+        stateFilter = v;
+        try { localStorage.setItem('aha_state_filter', v); } catch (e) {}
+        renderStateBar();
+        safeCall(renderJobsTable); safeCall(renderWeeklyBoard); safeCall(renderAppointments);
+        const wam = document.getElementById('workerActivityModal');
+        if (wam && wam.style.display === 'flex') safeCall(renderWorkerActivity);
+    }
+    function renderStateSummary() {
+        const box = document.getElementById('stateSummaryBox');
+        if (!box) return;
+        const agg = {};
+        (savedJobs || []).filter(j => j.jobStatus !== 'ملغي').forEach(j => {
+            const c = jobState(j) || '?';
+            const a = agg[c] = agg[c] || { n: 0, rev: 0, rec: 0, net: 0 };
+            a.n++; a.rev += parseVal(j.totalRevenue); a.rec += parseVal(j.amountReceived);
+            try { a.net += jobNet(j).net; } catch (e) {}
+        });
+        const keys = Object.keys(agg).sort();
+        if (keys.length < 2) { box.innerHTML = ''; return; }
+        box.innerHTML = `<details style="margin-bottom:10px;"><summary style="cursor:pointer; font-weight:700; font-size:0.9rem;">${t('stSumTitle')}</summary>
+            <table style="width:100%; border-collapse:collapse; margin-top:8px; font-size:0.85rem;"><thead><tr><th style="text-align:start;">📍</th><th>${t('stSumJobs')}</th><th>${t('stSumRev')}</th><th>${t('stSumRec')}</th><th>${t('stSumNet')}</th></tr></thead><tbody>
+            ${keys.map(k => { const a = agg[k]; return `<tr><td><b>${k === '?' ? '❔' : k}</b></td><td style="text-align:center;">${a.n}</td><td style="text-align:center;">${fmtUsd(a.rev)}</td><td style="text-align:center;">${fmtUsd(a.rec)}</td><td style="text-align:center;">${fmtUsd(a.net)}</td></tr>`; }).join('')}
+            </tbody></table></details>`;
+    }
+    let stateSettingsWorking = {};
+    function stateSetOptionsHtml() {
+        const ks = knownStates().list;
+        const codes = [...new Set(['FL', 'MI', 'IL', ...ks, ...Object.keys(stateSettingsWorking)])].sort();
+        const cur = (document.getElementById('stateSetSel') || {}).value || codes[0];
+        return codes.map(c => `<option value="${c}" ${c === cur ? 'selected' : ''}>${c} — ${US_STATES[c] || ''}${(stateSettingsWorking[c] && (stateSettingsWorking[c].license || stateSettingsWorking[c].termsEstimate || stateSettingsWorking[c].termsProposal)) ? ' ✔' : ''}</option>`).join('');
+    }
+    function stateSetRender() {
+        const sel = document.getElementById('stateSetSel');
+        if (!sel) return;
+        sel.innerHTML = stateSetOptionsHtml();
+        stateSetLoad();
+    }
+    function stateSetLoad() {
+        const c = document.getElementById('stateSetSel').value, o = stateSettingsWorking[c] || {};
+        document.getElementById('stateSetLicense').value = o.license || '';
+        document.getElementById('stateSetTermsEst').value = o.termsEstimate || '';
+        document.getElementById('stateSetTermsProp').value = o.termsProposal || '';
+    }
+    function stateSetEdit() {
+        const c = document.getElementById('stateSetSel').value;
+        stateSettingsWorking[c] = { license: document.getElementById('stateSetLicense').value.trim(), termsEstimate: document.getElementById('stateSetTermsEst').value, termsProposal: document.getElementById('stateSetTermsProp').value };
+    }
+    function cleanStateSettings(o) {
+        const out = {};
+        Object.keys(o || {}).forEach(c => { const v = o[c] || {}; if ((v.license || '').trim() || (v.termsEstimate || '').trim() || (v.termsProposal || '').trim()) out[c] = { license: (v.license || '').trim(), termsEstimate: v.termsEstimate || '', termsProposal: v.termsProposal || '' }; });
+        return out;
+    }
+    // Florida-only wording is dropped for a job in another state (unless that state has its own text).
+    function stripFloridaTerms(text, code) {
+        if (!code || code === 'FL') return text;
+        const lines = text.split(/\n+/).filter(l => !/Florida Construction Lien|Chapter 713/i.test(l));
+        let n = 0;
+        return lines.map(l => /^\d+\.\s/.test(l) ? (++n) + '. ' + l.replace(/^\d+\.\s/, '').replace(/State of Florida/g, 'State of ' + (US_STATES[code] || '')) : l).join('\n');
+    }
     function defaultEstimateTermsText(companyNameForText) {
         return [
             '1. Validity: This estimate is valid for 30 calendar days from the date issued above. After that, pricing and scheduling are subject to reconfirmation.',
@@ -3348,10 +3478,12 @@
     }
     // Renders companyProfile.termsConditions (if any) as a small-print block for the bottom of
     // the Estimate and Invoice documents, one line per paragraph.
-    function termsConditionsHtml(kind) {
-        let text = (kind === 'ESTIMATE'
+    function termsConditionsHtml(kind, stateCode) {
+        const ss = ((companyProfile.stateSettings || {})[stateCode]) || {};
+        const own = (kind === 'ESTIMATE' ? ss.termsEstimate : ss.termsProposal) || '';
+        let text = (own.trim() ? own : stripFloridaTerms((kind === 'ESTIMATE'
             ? (companyProfile.termsEstimate !== undefined ? companyProfile.termsEstimate : defaultEstimateTermsText())
-            : (companyProfile.termsConditions || '')).trim();
+            : (companyProfile.termsConditions || '')), stateCode)).trim();
         if (!text) return '';
         text = text.replace(/Affordable Handyman Approach[.,]?\s+P?LLC/gi, companyDisplayName());
         const paragraphs = text.split(/\n+/).filter(Boolean).map(p => `<div style="margin-bottom:3px;">${escHtml(p)}</div>`).join('');
@@ -6549,6 +6681,7 @@
     }
 
     function renderJobsTable() {
+        safeCall(renderStateBar); safeCall(renderStateSummary);
         const tbody = document.getElementById('jobsTableBody');
         tbody.innerHTML = '';
         if (savedJobs.length === 0) {
@@ -6567,6 +6700,7 @@
         // A cancelled job keeps all its data in the log, but always sinks to the bottom of the
         // list — under any sort column — so it never gets in the way of the active/done jobs.
         jobsToRender = [...jobsToRender].sort((a, b) => (a.jobStatus === 'ملغي' ? 1 : 0) - (b.jobStatus === 'ملغي' ? 1 : 0));
+        jobsToRender = jobsToRender.filter(j => passesStateFilter(jobState(j)));
 
         jobsToRender.forEach(job => {
             let techDetailsText = '';
@@ -8390,7 +8524,8 @@
         // hyphenated domain (e.g. affordable-handyman-approach.com) was splitting mid-word
         // across two lines. Keeping it in one nowrap span lets it wrap as a whole unit instead.
         const websitePart = companyProfile.website ? `<span style="white-space:nowrap;">${escHtml(companyProfile.website)}</span>` : '';
-        const footerParts = [footerLine, websitePart].filter(Boolean).join('   &bull;   ');
+        const licPart = (((companyProfile.stateSettings || {})[jobState(job)] || {}).license || '').trim();
+        const footerParts = [footerLine, websitePart, licPart ? 'License # ' + escHtml(licPart) : ''].filter(Boolean).join('   &bull;   ');
 
         // "Additional Work" lists discrete tasks (Description + Amount only, no # or Qty columns,
         // per the agreed reference layout); every other document type keeps the original 4-column
@@ -8639,7 +8774,7 @@ ${closeBtnHtml}
 
     ${paidStampBottomHtml}
 
-    ${isEstLike ? termsConditionsHtml(invoiceState.docType === 'ESTIMATE' ? 'ESTIMATE' : 'PROPOSAL') : ''}
+    ${isEstLike ? termsConditionsHtml(invoiceState.docType === 'ESTIMATE' ? 'ESTIMATE' : 'PROPOSAL', jobState(job)) : ''}
 
     ${isReceipt ? '' : `<div class="invoice-sigrow" style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:8px; gap:24px;">
       <div style="flex-grow:1;"><div class="invoice-sigline" style="border-bottom:1px solid #241F1A; height:30px;"></div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">Customer Approval</div></div>
@@ -9054,6 +9189,8 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         // standard terms so the client-facing documents aren't blank by default — the user can
         // edit or clear it freely before saving. Once something has been saved, that saved text
         // (even if empty) is shown as-is and never silently replaced.
+        stateSettingsWorking = JSON.parse(JSON.stringify(companyProfile.stateSettings || {}));
+        stateSetRender();
         document.getElementById('companyProfileTermsEst').value = (companyProfile.termsEstimate !== undefined) ? companyProfile.termsEstimate : defaultEstimateTermsText();
         document.getElementById('companyProfileTerms').value = (companyProfile.termsConditions !== undefined && companyProfile.termsConditions !== '')
             ? companyProfile.termsConditions
@@ -9171,6 +9308,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         companyProfile.website = document.getElementById('companyProfileWebsite').value.trim();
         companyProfile.termsConditions = document.getElementById('companyProfileTerms').value;
         companyProfile.termsEstimate = document.getElementById('companyProfileTermsEst').value;
+        companyProfile.stateSettings = cleanStateSettings(stateSettingsWorking);
         companyProfile.paymentLink = document.getElementById('companyProfilePaymentLink').value.trim();
         const marginThresholdRaw = document.getElementById('companyProfileMarginThreshold').value.trim();
         companyProfile.marginAlertThreshold = marginThresholdRaw === '' ? null : parseVal(marginThresholdRaw);
@@ -10425,9 +10563,26 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         return Object.values(workerAccounts).filter(a => a && a.active !== false && a.email).sort((a, b) => String(a.tech).localeCompare(String(b.tech)));
     }
     function workerLocale() { return currentLang === 'ar' ? 'ar-EG-u-nu-latn' : 'en-US'; }
-    function workerStamp(ms) {
+    function tzAbbr(addr) {
+        try {
+            const st = stateOfText(addr); if (!st) return '';
+            const tz = stateTz(st);
+            if (tz === Intl.DateTimeFormat().resolvedOptions().timeZone) return '';
+            return ' ' + new Date().toLocaleTimeString('en-US', { timeZone: tz, timeZoneName: 'short' }).split(' ').pop();
+        } catch (e) { return ''; }
+    }
+    // Shown in the job's own time zone when that differs from this device's (e.g. an Illinois job viewed from Florida).
+    function workerStamp(ms, addr) {
         if (!ms) return '';
-        try { return new Date(ms).toLocaleString(workerLocale(), { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; }
+        try {
+            const opts = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
+            const st = addr ? stateOfText(addr) : '';
+            if (st) {
+                const tz = stateTz(st);
+                if (tz !== Intl.DateTimeFormat().resolvedOptions().timeZone) { opts.timeZone = tz; opts.timeZoneName = 'short'; }
+            }
+            return new Date(ms).toLocaleString(workerLocale(), opts);
+        } catch (e) { return ''; }
     }
     function workerTaskId(kind, refId, date, email) {
         return (kind + '_' + refId + '_' + (date || 'nd') + '_' + email).replace(/[^A-Za-z0-9_.@-]/g, '_');
@@ -10563,14 +10718,15 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     function renderSwWorkers() {
         const box = document.getElementById('swWorkers');
         if (!box) return;
-        const accs = activeWorkerAccounts();
+        const jobSt = sendWorkerCtx ? stateOfText(sendWorkerCtx.address) : '';
+        const accs = activeWorkerAccounts().slice().sort((a, b) => (jobSt && stateOfText(b.region) === jobSt ? 1 : 0) - (jobSt && stateOfText(a.region) === jobSt ? 1 : 0));
         if (!swSel.includes(swLead)) swLead = swSel[0] || '';
         box.innerHTML = accs.map(a => {
             const on = swSel.includes(a.email);
             return `<div style="display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid var(--border-color);">
                 <label style="display:flex; align-items:center; gap:10px; flex:1; margin:0; cursor:pointer;">
                     <input type="checkbox" style="width:20px; height:20px;" ${on ? 'checked' : ''} onchange="swToggleWorker('${jsArg(a.email)}', this.checked)">
-                    <span>${escHtml(a.tech)}${a.region ? ' — ' + escHtml(a.region) : ''}</span>
+                    <span>${jobSt && stateOfText(a.region) === jobSt ? '⭐ ' : ''}${escHtml(a.tech)}${a.region ? ' — ' + escHtml(a.region) : ''}</span>
                 </label>
                 ${on && swSel.length > 1 ? `<label style="display:flex; align-items:center; gap:6px; margin:0; font-size:0.8rem; cursor:pointer;"><input type="radio" name="swLeadRadio" ${swLead === a.email ? 'checked' : ''} onchange="swSetLead('${jsArg(a.email)}')"> ${t('wkLeadLbl')}</label>` : ''}
             </div>`;
@@ -10814,7 +10970,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         if (!body || !bar) return;
         bar.innerHTML = [['today', 'wkActToday'], ['week', 'wkActWeek'], ['month', 'wkActMonth']].map(([k, key]) =>
             `<button class="secondary" onclick="setWorkerActPeriod('${k}')" style="flex:1; padding:7px; font-size:0.82rem; ${workerActPeriod === k ? 'background:#0d9488; color:#fff;' : ''}">${t(key)}</button>`).join('');
-        const all = (workerTasks || []).filter(x => !x.hidden);
+        const all = (workerTasks || []).filter(x => !x.hidden && passesStateFilter(stateOfText(x.address)));
         if (!all.length) { body.innerHTML = `<div style="color:var(--text-muted); font-size:0.9rem;">${t('wkActNoWorkers')}</div>`; return; }
         const start = workerActStart(workerActPeriod);
         const todayStart = workerActStart('today');
@@ -10850,7 +11006,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                     const miss = workerTaskMissing(x);
                     const late = workerTaskLateHours(x);
                     return `<div onclick="openWorkerTask('${jsArg(x.id)}')" style="border-top:1px solid var(--border-color); padding:8px 2px; cursor:pointer; font-size:0.85rem;">
-                        <div><b>${icon} ${escHtml(x.clientName || '')}</b> <span style="color:var(--text-muted);">${escHtml(workerStamp(workerTaskTs(x)))}</span></div>
+                        <div><b>${icon} ${escHtml(x.clientName || '')}</b> <span style="color:var(--text-muted);">${escHtml(workerStamp(workerTaskTs(x), x.address))}</span></div>
                         ${x.address ? `<div style="color:var(--text-muted); font-size:0.78rem;">${escHtml(x.address)}</div>` : ''}
                         <div style="font-size:0.78rem; margin-top:2px;">${t('wkActPhotos')} ${x.cnt_before || 0}/${x.cnt_after || 0}${x.signed ? ' · ' + t('wkActSigned') : ''}</div>
                         ${miss.length ? `<div style="color:#f59e0b; font-size:0.78rem;">${t('wkActMissing')} ${miss.join('، ')}</div>` : ''}
@@ -10973,7 +11129,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             if (!has('sent') && z.createdAt) evs.push({ t: z.createdAt, k: 'sent' });
             if (!has('arrived') && z.arrivedAt) evs.push({ t: z.arrivedAt, k: 'arrived' });
             if (!has('done') && z.doneAt) evs.push({ t: z.doneAt, k: 'done', x: z.signed ? 'signed' : (z.signSkipped ? 'nosign' : '') });
-            evs.forEach(e => rows.push({ t: e.t || 0, k: e.k, n: z.tech || e.n || '', x: e.x || '', role: z.role }));
+            evs.forEach(e => rows.push({ t: e.t || 0, k: e.k, n: z.tech || e.n || '', x: e.x || '', role: z.role, addr: z.address }));
         });
         if (!rows.length) return '';
         rows.sort((a, b) => a.t - b.t);
@@ -10994,7 +11150,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             }
         };
         let h = `<div style="margin-top:16px; font-weight:700; font-size:0.9rem;">${t('wkTimelineTitle')}</div><div style="border-inline-start:2px solid var(--border-color); padding-inline-start:10px; margin-top:6px;">`;
-        rows.forEach(r => { h += `<div style="font-size:0.82rem; margin:5px 0;">${line(r)} <span style="color:var(--text-muted); font-size:0.74rem;">${escHtml(workerStamp(r.t))}</span></div>`; });
+        rows.forEach(r => { h += `<div style="font-size:0.82rem; margin:5px 0;">${line(r)} <span style="color:var(--text-muted); font-size:0.74rem;">${escHtml(workerStamp(r.t, r.addr))}</span></div>`; });
         h += '</div>';
         const durs = tasks.filter(z => z.arrivedAt && z.doneAt && z.doneAt > z.arrivedAt).map(z => {
             const m = Math.round((z.doneAt - z.arrivedAt) / 60000);
@@ -11011,11 +11167,11 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const lg = currentLang === 'ar' ? 'ar' : 'en';
         const row = (label, val) => val ? `<div style="font-size:0.85rem; margin:3px 0;"><span style="color:var(--text-muted);">${label}</span> ${val}</div>` : '';
         let html = `<div style="margin-bottom:10px;"><strong style="font-size:1rem;">👷 ${escHtml(x.tech || '')}</strong>${x.region ? ` <span style="color:var(--text-muted);">📍 ${escHtml(x.region)}</span>` : ''}</div>`;
-        html += row('📅', escHtml([x.date, x.time].filter(Boolean).join(' ')));
+        html += row('📅', escHtml([x.date, x.time].filter(Boolean).join(' ') + (x.time ? tzAbbr(x.address) : '')));
         html += row('📍', escHtml(x.address || ''));
-        html += row(t('wkSentAt') + ':', escHtml(workerStamp(x.createdAt)));
-        html += row('✔ ' + t('wkArrivedAt') + ':', escHtml(workerStamp(x.arrivedAt)));
-        html += row('✅ ' + t('wkDoneAt') + ':', escHtml(workerStamp(x.doneAt)));
+        html += row(t('wkSentAt') + ':', escHtml(workerStamp(x.createdAt, x.address)));
+        html += row('✔ ' + t('wkArrivedAt') + ':', escHtml(workerStamp(x.arrivedAt, x.address)));
+        html += row('✅ ' + t('wkDoneAt') + ':', escHtml(workerStamp(x.doneAt, x.address)));
         html += workerTeamHtml(x);
         if (x.instrOrig) html += `<div style="margin-top:10px; font-size:0.8rem; color:var(--text-muted);">${t('wkInstrSent')}</div><div class="note-box" style="white-space:pre-wrap;">${escHtml(x.instrOrig)}</div>`;
         html += `<div style="margin-top:12px; font-size:0.8rem; color:var(--text-muted);">💬 ${t('wkNoteLabel')}</div>`;
@@ -12796,7 +12952,8 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const companyLogo = companyProfile.logo || '';
         const footerLine = [...(companyProfile.phones || []), companyProfile.email].filter(Boolean).join('  |  ');
         const websitePart = companyProfile.website ? `<span style="white-space:nowrap;">${escHtml(companyProfile.website)}</span>` : '';
-        const footerParts = [footerLine, websitePart].filter(Boolean).join('   &bull;   ');
+        const licPart = (((companyProfile.stateSettings || {})[stateOfText(appt.clientAddress)] || {}).license || '').trim();
+        const footerParts = [footerLine, websitePart, licPart ? 'License # ' + escHtml(licPart) : ''].filter(Boolean).join('   &bull;   ');
         // Qty only ever shows up here when it's not 1 (every item saved before this feature, or
         // saved since without touching Qty, has none — so this prints exactly as it always did
         // for anyone who doesn't use the field).
@@ -12870,7 +13027,7 @@ ${closeBtnHtml}
     </div>` : ''}
     ${validityRow}
     ${noteBox}
-    ${termsConditionsHtml('ESTIMATE')}
+    ${termsConditionsHtml('ESTIMATE', stateOfText(appt.clientAddress))}
     <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:8px; gap:24px;">
       <div style="flex-grow:1;"><div style="border-bottom:1px solid #241F1A; height:30px;"></div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">Customer Approval</div></div>
       <div style="width:180px;"><div style="border-bottom:1px solid #241F1A; height:30px; display:flex; align-items:flex-end; justify-content:center;">${companyProfile.signature ? `<img src="${companyProfile.signature}" style="max-height:28px; max-width:100%; object-fit:contain;">` : ''}</div><div class="ui" style="font-size:11px; color:#6B6257; margin-top:4px;">${escHtml(companyName)} Representative</div></div>
@@ -12981,7 +13138,8 @@ ${closeBtnHtml}
         // the original array order is kept as-is (sort is stable) — and since a brand-new
         // appointment is unshift()'d to the front of the array when saved, that means every
         // newly registered customer lands right under the flagged ones, newest first.
-        const sorted = [...appointments].sort((a, b) => (b.followUpNeeded ? 1 : 0) - (a.followUpNeeded ? 1 : 0));
+        safeCall(renderStateBar);
+        const sorted = [...appointments].filter(a => passesStateFilter(stateOfText(a.clientAddress))).sort((a, b) => (b.followUpNeeded ? 1 : 0) - (a.followUpNeeded ? 1 : 0));
         let html = '';
         sorted.forEach(appt => {
             const serviceTags = (appt.services && appt.services.length > 0)
@@ -13261,7 +13419,8 @@ ${closeBtnHtml}
         const dayNamesAr = ['الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'];
         const dayNamesEn = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
         const dayNames = currentLang === 'ar' ? dayNamesAr : dayNamesEn;
-        const activeJobs = savedJobs.filter(isJobActive);
+        safeCall(renderStateBar);
+        const activeJobs = savedJobs.filter(isJobActive).filter(j => passesStateFilter(jobState(j)));
         const todayStr = isoDate(new Date());
 
         if (showAllPendingMode) {
@@ -13294,7 +13453,7 @@ ${closeBtnHtml}
         // worked on it. Only a cancelled job ("ملغي") — work that never really happened — is
         // left out here. "Show all pending" above stays active-jobs-only on purpose: that view
         // is specifically about outstanding work still to schedule.
-        const boardJobs = savedJobs.filter(job => job.jobStatus !== 'ملغي');
+        const boardJobs = savedJobs.filter(job => job.jobStatus !== 'ملغي').filter(j => passesStateFilter(jobState(j)));
 
         let html = '';
         days.forEach(d => {
