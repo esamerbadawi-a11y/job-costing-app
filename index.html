@@ -1592,8 +1592,8 @@
         <div id="swHeadline" style="font-weight:700; margin-bottom:8px;"></div>
         <div id="swInfo" class="note-box" style="display:none; margin-bottom:10px;"></div>
         <div class="form-group" style="margin-bottom:10px;">
-            <label data-i18n="wkWorkerLabel"></label>
-            <select id="swWorker" onchange="updateSendWorkerInfo()"></select>
+            <label data-i18n="wkWorkersLabel"></label>
+            <div id="swWorkers"></div>
         </div>
         <div class="grid-2" style="margin-bottom:10px;">
             <div class="form-group"><label data-i18n="wkDateLabel"></label><input type="date" id="swDate"></div>
@@ -2772,6 +2772,34 @@
         techSavedOk: { ar: 'تم حفظ الفني بنجاح.', en: 'Technician saved successfully.' },
         wkSendBtnTitle: { ar: "إرسال لعامل", en: "Send to Worker" },
         wkModalTitle: { ar: "إرسال شغلة لعامل", en: "Send job to worker" },
+        wkWorkersLabel: { ar: 'الفنيين (علّم على أكتر من واحد لو هيشتغلوا مع بعض):', en: 'Workers (tick more than one if they work together):' },
+        wkLeadLbl: { ar: 'مسؤول', en: 'Lead' },
+        wkHelperLbl: { ar: 'مساعد', en: 'Helper' },
+        wkSentMulti: { ar: 'اتبعتت للفنيين. دوس على كل واحد لإرسال واتساب:', en: 'Sent to the workers. Tap each one to send the WhatsApp message:' },
+        wkEvSent: { ar: 'اتبعتت', en: 'Sent' },
+        wkEvEdited: { ar: 'اتحدّثت التعليمات', en: 'Instructions updated' },
+        wkEvBefore: { ar: 'صوّر "قبل"', en: 'took BEFORE photos' },
+        wkEvAfter: { ar: 'صوّر "بعد"', en: 'took AFTER photos' },
+        wkEvPaused: { ar: 'أجّل الشغلة لحد', en: 'postponed until' },
+        wkEvResumed: { ar: 'رجع يكمّل', en: 'resumed' },
+        wkEvHandoverReq: { ar: 'طلب يمشي', en: 'asked to leave' },
+        wkEvHandover: { ar: 'اتحوّلت المسؤولية إلى', en: 'lead handed over to' },
+        wkEvDoneSigned: { ar: 'خلّص (العميل وقّع)', en: 'finished (customer signed)' },
+        wkEvDoneNoSign: { ar: 'خلّص (من غير توقيع)', en: 'finished (no signature)' },
+        wkTimelineTitle: { ar: '👷 سجل الفنيين', en: '👷 Worker log' },
+        wkRoleLead: { ar: 'مسؤول', en: 'Lead' },
+        wkRoleHelper: { ar: 'مساعد', en: 'Helper' },
+        wkRoleHanded: { ar: 'اتسلّمت لزميله', en: 'handed over' },
+        wkHandoverReqBanner: { ar: '🔄 طلب تسليم', en: '🔄 Handover requested' },
+        wkHandoverBtn: { ar: 'حوّل المسؤولية لـ', en: 'Hand the lead over to' },
+        wkHandoverConfirm: { ar: 'تحوّل المسؤولية؟ المسؤول القديم مهمته هتتقفل، والجديد يكمّل الشغل بصور "بعد" والتوقيع.', en: 'Hand over the lead? The old lead\'s task will be closed and the new lead finishes with the AFTER photos and the signature.' },
+        wkPausedChip: { ar: '⏸ هيكمل', en: '⏸ resumes' },
+        wkOverdueResume: { ar: '🔔 كان المفروض يكمل', en: '🔔 should have resumed' },
+        wkStuckChip: { ar: '🔔 معلّقة من أمس من غير تاريخ رجوع', en: '🔔 open since an earlier day, no return date' },
+        wkLeadNotYet: { ar: '🕒 المساعد وصل والمسؤول لسه', en: '🕒 helper is there, lead not yet' },
+        wkHelperNotDone: { ar: 'المساعد لسه ما خلّصش', en: 'helper has not finished' },
+        wkHandoverToast: { ar: 'طلب يمشي', en: 'asks to leave' },
+        wkWorkedFor: { ar: 'مدة الشغل:', en: 'Time on site:' },
         wkWorkerLabel: { ar: "العامل:", en: "Worker:" },
         wkDateLabel: { ar: "التاريخ:", en: "Date:" },
         wkTimeLabel: { ar: "الوقت:", en: "Time:" },
@@ -2828,6 +2856,9 @@
         wkNoNote: { ar: "مفيش ملاحظة.", en: "No note." },
         wkPhotosBefore: { ar: "قبل", en: "Before" },
         wkPhotosAfter: { ar: "بعد", en: "After" },
+        wkPhotosProgress: { ar: 'تقدّم الشغل (يوم بيوم)', en: 'Work progress (day by day)' },
+        wkEvProgress: { ar: 'صوّر تقدّم الشغل', en: 'took progress photos' },
+        wkPausedNoPhoto: { ar: '⚠️ اتأجلت من غير صور', en: '⚠️ postponed without photos' },
         wkPhotosEstimate: { ar: "صور التقدير", en: "Estimate photos" },
         wkEstimateBtn: { ar: "📝 عرض سعر", en: "📝 Estimate" },
         wkEstimateNew: { ar: "هنعمل موعد تقدير جديد للعميل ده ونفتح عليه عرض السعر بالصور. نكمّل؟", en: "This creates a new estimate appointment for this client and opens a quote with these photos. Continue?" },
@@ -10419,6 +10450,8 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             if (workerTasksLoaded) {
                 list.forEach(x => {
                     const p = prev[x.id];
+                    if (p && x.handoverReq && !p.handoverReq) showToast('🚪 ' + (x.tech || '') + ' ' + t('wkHandoverToast') + ' — ' + (x.clientName || '') + (x.handoverNote ? ': ' + x.handoverNote : ''));
+                    if (p && x.pausedUntil && x.pausedUntil !== p.pausedUntil) showToast('⏸ ' + (x.tech || '') + ' ' + t('wkEvPaused') + ' ' + x.pausedUntil + ' — ' + (x.clientName || ''));
                     if (!p || p.status === x.status) return;
                     if (x.status === 'arrived') showToast('👷 ' + (x.tech || '') + ' ' + t('wkEvArrived') + ' — ' + (x.clientName || ''));
                     else if (x.status === 'done') showToast('✅ ' + (x.tech || '') + ' ' + t('wkEvDone') + ' — ' + (x.clientName || ''));
@@ -10438,7 +10471,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         if (workerTaskOpenId) {
             const x = workerTasks.find(z => z.id === workerTaskOpenId);
             const have = (workerTaskPhotos[workerTaskOpenId] || []).length;
-            const want = x ? (x.cnt_before || 0) + (x.cnt_after || 0) + (x.cnt_estimate || 0) : 0;
+            const want = x ? (x.cnt_before || 0) + (x.cnt_after || 0) + (x.cnt_estimate || 0) + (x.cnt_progress || 0) : 0;
             if (x && want > have && !workerTaskPhotosLoading[workerTaskOpenId]) loadWorkerTaskPhotos(workerTaskOpenId);
             safeCall(renderWorkerTaskModal);
         }
@@ -10452,9 +10485,10 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             const st = x.status === 'done' ? '✅ ' + t('wkStDone') + (x.doneAt ? ' ' + workerStamp(x.doneAt) : '')
                 : x.status === 'arrived' ? '✔ ' + t('wkStArrived') + (x.arrivedAt ? ' ' + workerStamp(x.arrivedAt) : '')
                 : '🕘 ' + t('wkStNew');
+            const stX = st + (x.role === 'helper' ? ' 🤝' : '') + (x.role === 'handedOver' ? ' 🔄' : '') + (x.pausedUntil && x.status !== 'done' ? ' ⏸ ' + x.pausedUntil : '') + (x.handoverReq && x.role === 'lead' && x.status !== 'done' ? ' 🚪' : '');
             const ph = (x.cnt_before || 0) + (x.cnt_after || 0) + (x.cnt_estimate || 0);
             const color = x.status === 'done' ? '#34d399' : (x.status === 'arrived' ? '#fbbf24' : '#38bdf8');
-            return `<span style="display:inline-flex; align-items:center; gap:4px; margin-top:4px;"><div onclick="event.stopPropagation(); openWorkerTask('${jsArg(x.id)}')" style="cursor:pointer; margin-top:0; font-size:0.76rem; color:${color}; border:1px solid ${color}; border-radius:8px; padding:3px 8px; display:inline-block;">👷 ${escHtml(x.tech || '')} · ${st}${ph ? ' · 📷 ' + ph : ''}${x.note ? ' · 💬' : ''}</div><button type="button" onclick="event.stopPropagation(); hideWorkerTask('${jsArg(x.id)}')" title="${t('wkHideBtn')}" style="background:#475569; color:#fff; border:0; border-radius:50%; width:20px; height:20px; font-size:0.7rem; line-height:20px; padding:0; cursor:pointer;">✕</button></span>`;
+            return `<span style="display:inline-flex; align-items:center; gap:4px; margin-top:4px;"><div onclick="event.stopPropagation(); openWorkerTask('${jsArg(x.id)}')" style="cursor:pointer; margin-top:0; font-size:0.76rem; color:${color}; border:1px solid ${color}; border-radius:8px; padding:3px 8px; display:inline-block;">👷 ${escHtml(x.tech || '')} · ${stX}${ph ? ' · 📷 ' + ph : ''}${x.note ? ' · 💬' : ''}</div><button type="button" onclick="event.stopPropagation(); hideWorkerTask('${jsArg(x.id)}')" title="${t('wkHideBtn')}" style="background:#475569; color:#fff; border:0; border-radius:50%; width:20px; height:20px; font-size:0.7rem; line-height:20px; padding:0; cursor:pointer;">✕</button></span>`;
         }).join('<br>');
     }
 
@@ -10506,10 +10540,10 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         }
         sendWorkerCtx = ctx;
         const accs = activeWorkerAccounts();
-        const sel = document.getElementById('swWorker');
-        sel.innerHTML = accs.map(a => `<option value="${escHtml(a.email)}">${escHtml(a.tech)}${a.region ? ' — ' + escHtml(a.region) : ''}</option>`).join('');
         const pre = accs.find(a => ctx.team.includes(a.tech));
-        if (pre) sel.value = pre.email;
+        swSel = pre ? [pre.email] : (accs[0] ? [accs[0].email] : []);
+        swLead = swSel[0] || '';
+        renderSwWorkers();
         document.getElementById('swHeadline').textContent = (ctx.kind === 'appt' ? '🔎 ' : '🔨 ') + ctx.clientName + (ctx.address ? ' — ' + ctx.address : '');
         document.getElementById('swDate').value = ctx.date;
         document.getElementById('swTime').value = ctx.time;
@@ -10521,9 +10555,34 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const btn = document.getElementById('swGoBtn');
         btn.disabled = accs.length === 0;
         btn.textContent = t('wkSendGo');
+        btn.onclick = sendWorkerNow;
         document.getElementById('sendWorkerModal').style.display = 'flex';
         updateSendWorkerInfo();
     }
+    let swSel = [], swLead = '';
+    function renderSwWorkers() {
+        const box = document.getElementById('swWorkers');
+        if (!box) return;
+        const accs = activeWorkerAccounts();
+        if (!swSel.includes(swLead)) swLead = swSel[0] || '';
+        box.innerHTML = accs.map(a => {
+            const on = swSel.includes(a.email);
+            return `<div style="display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid var(--border-color);">
+                <label style="display:flex; align-items:center; gap:10px; flex:1; margin:0; cursor:pointer;">
+                    <input type="checkbox" style="width:20px; height:20px;" ${on ? 'checked' : ''} onchange="swToggleWorker('${jsArg(a.email)}', this.checked)">
+                    <span>${escHtml(a.tech)}${a.region ? ' — ' + escHtml(a.region) : ''}</span>
+                </label>
+                ${on && swSel.length > 1 ? `<label style="display:flex; align-items:center; gap:6px; margin:0; font-size:0.8rem; cursor:pointer;"><input type="radio" name="swLeadRadio" ${swLead === a.email ? 'checked' : ''} onchange="swSetLead('${jsArg(a.email)}')"> ${t('wkLeadLbl')}</label>` : ''}
+            </div>`;
+        }).join('');
+    }
+    function swToggleWorker(email, on) {
+        swSel = swSel.filter(e => e !== email);
+        if (on) swSel.push(email);
+        renderSwWorkers();
+        updateSendWorkerInfo();
+    }
+    function swSetLead(email) { swLead = email; renderSwWorkers(); }
     function closeSendWorkerModal() { document.getElementById('sendWorkerModal').style.display = 'none'; sendWorkerCtx = null; }
 
     function updateSendWorkerInfo() {
@@ -10531,7 +10590,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const ctx = sendWorkerCtx;
         if (!ctx) return;
         if (activeWorkerAccounts().length === 0) { box.style.display = 'block'; box.textContent = t('wkNoWorkers'); return; }
-        const email = document.getElementById('swWorker').value;
+        const email = swSel[0] || '';
         const existing = workerTasks.find(x => x.id === workerTaskId(ctx.kind, ctx.refId, ctx.entryDate, email));
         if (existing && existing.instrOrig && !document.getElementById('swInstr').dataset.touched) {
             // keep what was sent before, so re-sending is a small edit, not a rewrite
@@ -10557,22 +10616,26 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     async function sendWorkerNow() {
         const ctx = sendWorkerCtx;
         if (!ctx) return;
-        const email = document.getElementById('swWorker').value;
-        const acc = workerAccounts[email];
-        if (!acc) { alert(t('wkPickWorker')); return; }
+        const emails = swSel.slice();
+        const accsSel = emails.map(e => workerAccounts[e]).filter(Boolean);
+        if (!accsSel.length) { alert(t('wkPickWorker')); return; }
+        const leadEmail = emails.includes(swLead) ? swLead : emails[0];
+        const multi = emails.length > 1;
         const instr = document.getElementById('swInstr').value.trim();
         const date = document.getElementById('swDate').value;
         const time = document.getElementById('swTime').value;
         const showPhone = document.getElementById('swShowPhone').checked && !!String(ctx.phone || '').trim();
-        const baseId = workerTaskId(ctx.kind, ctx.refId, ctx.entryDate, email);
-        let id = baseId;
-        const existingBase = workerTasks.find(x => x.id === baseId);
-        if (existingBase && existingBase.status === 'done') {
-            if (!confirm(t('wkResendDoneConfirm'))) return;
-            id = baseId + '_r' + Date.now().toString(36);
-        }
+        // One id per worker; a worker whose earlier task is already finished gets a fresh one.
+        const plan = emails.map(email => {
+            const baseId = workerTaskId(ctx.kind, ctx.refId, ctx.entryDate, email);
+            const existingBase = workerTasks.find(x => x.id === baseId);
+            return { email, acc: workerAccounts[email], baseId, done: !!(existingBase && existingBase.status === 'done') };
+        });
+        if (plan.some(p => p.done) && !confirm(t('wkResendDoneConfirm'))) return;
+        plan.forEach(p => { p.id = p.done ? p.baseId + '_r' + Date.now().toString(36) : p.baseId; p.role = (!multi || p.email === leadEmail) ? 'lead' : 'helper'; });
+        const groupId = multi ? 'g' + Date.now().toString(36) : '';
         // Opened during the click itself, so phones don't block the WhatsApp window that opens a moment later.
-        const win = window.open('about:blank', '_blank');
+        const win = multi ? null : window.open('about:blank', '_blank');
         const btn = document.getElementById('swGoBtn');
         btn.disabled = true; btn.textContent = t('wkTranslating');
         let tri = { en: instr, es: instr, ar: instr };
@@ -10580,14 +10643,20 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             try { tri = await translateTriple(instr); }
             catch (e) { console.warn('Worker instruction translation failed:', e); showToast(t('wkTranslateFail')); }
         }
-        const common = {
-            tech: acc.tech || '', region: acc.region || '', clientName: ctx.clientName, address: ctx.address, date, time,
-            instr: tri, instrOrig: instr, clientPhone: showPhone ? String(ctx.phone).trim() : '', showPhone, updatedAt: Date.now(), hidden: false
-        };
+        const FVd = firebase.firestore.FieldValue;
         try {
-            const prev = workerTasks.find(x => x.id === id);
-            if (prev) await WORKER_TASKS.doc(id).update(common);
-            else await WORKER_TASKS.doc(id).set({ ...common, id, refKind: ctx.kind, refId: ctx.refId, entryDate: ctx.entryDate, workerEmail: email, status: 'new', createdAt: Date.now(), createdBy: currentUserEmail || '?', thumbs: [], cnt_before: 0, cnt_after: 0, cnt_estimate: 0 });
+            for (const p of plan) {
+                const partners = multi ? plan.filter(q => q.email !== p.email).map(q => ({ name: q.acc.tech || '', role: q.role, phone: String(technicianPhones[q.acc.tech] || '') })) : [];
+                const common = {
+                    tech: p.acc.tech || '', region: p.acc.region || '', clientName: ctx.clientName, address: ctx.address, date, time,
+                    instr: tri, instrOrig: instr, clientPhone: showPhone ? String(ctx.phone).trim() : '', showPhone, updatedAt: Date.now(), hidden: false,
+                    role: p.role, groupId, partners
+                };
+                const prev = workerTasks.find(x => x.id === p.id);
+                const ev = { t: Date.now(), k: prev ? 'edited' : 'sent', n: currentUserEmail || '' };
+                if (prev) await WORKER_TASKS.doc(p.id).update({ ...common, events: FVd.arrayUnion(ev) });
+                else await WORKER_TASKS.doc(p.id).set({ ...common, id: p.id, refKind: ctx.kind, refId: ctx.refId, entryDate: ctx.entryDate, workerEmail: p.email, status: 'new', createdAt: Date.now(), createdBy: currentUserEmail || '?', thumbs: [], cnt_before: 0, cnt_after: 0, cnt_estimate: 0, events: [ev] });
+            }
         } catch (err) {
             console.error('Send to worker failed:', err);
             if (win) win.close();
@@ -10595,19 +10664,37 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             alert(t('wkSendFail') + ' (' + (err && err.message ? err.message : 'unknown error') + ')');
             return;
         }
-        // WhatsApp message in the worker's own language, with the link that opens that exact job.
-        const wl = ['en', 'es', 'ar'].includes(acc.lang) ? acc.lang : 'en';
-        const link = new URL('worker.html', location.href).href + '?t=' + encodeURIComponent(id);
+        // WhatsApp message in each worker's own language, with the link that opens that exact job.
         const when = [date, time].filter(Boolean).join(' ');
-        const head = wl === 'es' ? `${acc.tech}, tiene un trabajo nuevo:` : (wl === 'ar' ? `${acc.tech}، عندك شغلة جديدة:` : `${acc.tech}, you have a new job:`);
-        const openLine = wl === 'es' ? 'Abra la app:' : (wl === 'ar' ? 'افتح التطبيق:' : 'Open the app:');
-        const msg = `${head}\n*${ctx.clientName}*\n${when ? '' + when + '\n' : ''}${ctx.address ? '' + ctx.address + '\n' : ''}\n${openLine} ${link}`;
-        const digits = String(technicianPhones[acc.tech] || '').replace(/\D/g, '');
-        const waUrl = (digits.length > 6 ? 'https://wa.me/' + digits : 'https://wa.me/') + '?text=' + encodeURIComponent(msg);
-        if (win && /iPhone|iPad|Android/i.test(navigator.userAgent)) { try { win.close(); } catch (e) {} location.href = waUrl; }
-        else if (win) { win.location.href = waUrl; }
-        else { try { navigator.clipboard.writeText(msg); } catch (e) {} showToast(t('wkPopupBlocked')); }
-        closeSendWorkerModal();
+        const leadAcc = workerAccounts[leadEmail] || accsSel[0];
+        const buildWa = (p) => {
+            const acc = p.acc;
+            const wl = ['en', 'es', 'ar'].includes(acc.lang) ? acc.lang : 'en';
+            const link = new URL('worker.html', location.href).href + '?t=' + encodeURIComponent(p.id);
+            const head = wl === 'es' ? `${acc.tech}, tiene un trabajo nuevo:` : (wl === 'ar' ? `${acc.tech}، عندك شغلة جديدة:` : `${acc.tech}, you have a new job:`);
+            const openLine = wl === 'es' ? 'Abra la app:' : (wl === 'ar' ? 'افتح التطبيق:' : 'Open the app:');
+            const roleLine = !multi ? '' : (p.role === 'helper'
+                ? (wl === 'es' ? `Usted es el ayudante. Responsable: ${leadAcc.tech}.\n` : (wl === 'ar' ? `انت المساعد. المسؤول: ${leadAcc.tech}.\n` : `You are the helper. Lead: ${leadAcc.tech}.\n`))
+                : (wl === 'es' ? 'Usted es el responsable.\n' : (wl === 'ar' ? 'انت المسؤول عن الشغلة.\n' : 'You are the lead.\n')));
+            const msg = `${head}\n*${ctx.clientName}*\n${when ? '' + when + '\n' : ''}${ctx.address ? '' + ctx.address + '\n' : ''}${roleLine}\n${openLine} ${link}`;
+            const digits = String(technicianPhones[acc.tech] || '').replace(/\D/g, '');
+            return { msg, url: (digits.length > 6 ? 'https://wa.me/' + digits : 'https://wa.me/') + '?text=' + encodeURIComponent(msg) };
+        };
+        if (!multi) {
+            const wa = buildWa(plan[0]);
+            if (win && /iPhone|iPad|Android/i.test(navigator.userAgent)) { try { win.close(); } catch (e) {} location.href = wa.url; }
+            else if (win) { win.location.href = wa.url; }
+            else { try { navigator.clipboard.writeText(wa.msg); } catch (e) {} showToast(t('wkPopupBlocked')); }
+            closeSendWorkerModal();
+            showToast(t('wkSentOk'));
+            return;
+        }
+        // Several workers: keep the window open with one tappable WhatsApp link per worker.
+        const info = document.getElementById('swInfo');
+        info.style.display = 'block';
+        info.innerHTML = `<div style="margin-bottom:6px;">${t('wkSentMulti')}</div>` + plan.map(p => `<div style="margin:6px 0;"><a href="${escHtml(buildWa(p).url)}" target="_blank" rel="noopener" style="display:inline-block; background:#059669; color:#fff; padding:8px 14px; border-radius:8px; text-decoration:none;">📲 ${escHtml(p.acc.tech)} (${p.role === 'lead' ? t('wkLeadLbl') : t('wkHelperLbl')})</a></div>`).join('');
+        btn.disabled = false; btn.textContent = t('guideCloseBtn');
+        btn.onclick = () => { closeSendWorkerModal(); btn.onclick = sendWorkerNow; };
         showToast(t('wkSentOk'));
     }
 
@@ -10688,16 +10775,38 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     function workerTaskTs(x) { return x.doneAt || x.arrivedAt || x.createdAt || 0; }
     // What is wrong with a finished task (empty list = nothing to flag).
     function workerTaskMissing(x) {
-        if (x.status !== 'done') return [];
+        if (x.status !== 'done' || x.role === 'helper' || x.role === 'handedOver') return [];
         const m = [];
         if (x.refKind !== 'appt' && !((x.cnt_after || 0) > 0)) m.push(t('wkActNoAfter'));
         if (x.refKind !== 'appt' && !x.signed) m.push(t('wkActNoSign'));
         return m;
     }
     function workerTaskLateHours(x) {
-        if (x.status !== 'arrived' || !x.arrivedAt) return 0;
+        if (x.status !== 'arrived' || !x.arrivedAt || x.pausedUntil || x.role === 'handedOver') return 0;
         const h = (Date.now() - x.arrivedAt) / 3600000;
         return h >= WORKER_LATE_HOURS ? Math.floor(h) : 0;
+    }
+    const wkToday = () => isoDate(new Date());
+    function workerTaskFlags(x) {
+        const f = [];
+        if (x.role === 'handedOver') return f;
+        const td = wkToday();
+        if (x.status !== 'done' && x.handoverReq && x.role === 'lead') f.push({ k: 'handover', txt: t('wkHandoverReqBanner'), col: '#a855f7' });
+        if (x.status !== 'done' && x.pausedUntil && x.pauseNoPhoto) f.push({ k: 'nophoto', txt: t('wkPausedNoPhoto'), col: '#f59e0b' });
+        if (x.status !== 'done' && x.pausedUntil) {
+            if (x.pausedUntil > td) f.push({ k: 'paused', txt: t('wkPausedChip') + ' ' + x.pausedUntil, col: '#38bdf8' });
+            else f.push({ k: 'overdue', txt: t('wkOverdueResume'), col: '#ef4444' });
+        } else if (x.status === 'arrived' && x.arrivedAt && x.arrivedAt < workerActStart('today')) {
+            f.push({ k: 'stuck', txt: t('wkStuckChip'), col: '#ef4444' });
+        }
+        if (x.role === 'lead' && x.groupId && x.status === 'new') {
+            const hp = workerTasks.find(z => z.groupId === x.groupId && z.role === 'helper' && z.arrivedAt && (Date.now() - z.arrivedAt) > 3600000);
+            if (hp) f.push({ k: 'leadNotYet', txt: t('wkLeadNotYet'), col: '#f59e0b' });
+        }
+        if (x.role === 'lead' && x.groupId && x.status === 'done') {
+            if (workerTasks.some(z => z.groupId === x.groupId && z.role === 'helper' && z.status !== 'done' && !z.hidden)) f.push({ k: 'helperNotDone', txt: '⚠️ ' + t('wkHelperNotDone'), col: '#f59e0b' });
+        }
+        return f;
     }
     function renderWorkerActivity() {
         const body = document.getElementById('workerActivityBody');
@@ -10718,9 +10827,10 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             if (workerTaskTs(x) >= start || x.status !== 'done') groups[key].tasks.push(x);
         });
         const cards = Object.values(groups).sort((a, b) => a.name.localeCompare(b.name)).map(g => {
-            const done = g.tasks.filter(x => x.status === 'done' && workerTaskTs(x) >= start).length;
-            const prog = g.tasks.filter(x => x.status === 'arrived').length;
-            const fresh = g.tasks.filter(x => x.status === 'new').length;
+            const live = g.tasks.filter(x => x.role !== 'handedOver');
+            const done = live.filter(x => x.status === 'done' && workerTaskTs(x) >= start).length;
+            const prog = live.filter(x => x.status === 'arrived' && !(x.pausedUntil && x.pausedUntil > wkToday())).length;
+            const fresh = live.filter(x => x.status === 'new').length;
             const last = Math.max(0, ...g.all.map(x => Math.max(x.updatedAt || 0, x.doneAt || 0, x.arrivedAt || 0)));
             const idle = g.all.some(x => x.status === 'new' && (x.createdAt || 0) >= todayStart) && !g.all.some(x => (x.arrivedAt || 0) >= todayStart || (x.doneAt || 0) >= todayStart);
             const missingTasks = g.tasks.filter(x => workerTaskMissing(x).length && workerTaskTs(x) >= start);
@@ -10729,6 +10839,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             let chips = '';
             if (missingTasks.length) chips += chip('⚠️ ' + missingTasks.length, '#f59e0b');
             if (lateTasks.length) chips += chip(t('wkActLate') + ' ' + lateTasks.length, '#ef4444');
+            g.tasks.forEach(x => workerTaskFlags(x).forEach(fl => { chips += chip(fl.txt + ' · ' + escHtml(x.clientName || ''), fl.col); }));
             if (idle) chips += chip(t('wkActIdle'), '#94a3b8');
             const isOpen = !!workerActOpen[g.email];
             let list = '';
@@ -10744,6 +10855,8 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                         <div style="font-size:0.78rem; margin-top:2px;">${t('wkActPhotos')} ${x.cnt_before || 0}/${x.cnt_after || 0}${x.signed ? ' · ' + t('wkActSigned') : ''}</div>
                         ${miss.length ? `<div style="color:#f59e0b; font-size:0.78rem;">${t('wkActMissing')} ${miss.join('، ')}</div>` : ''}
                         ${late ? `<div style="color:#ef4444; font-size:0.78rem;">${t('wkActLate')} — ${t('wkActLateFor')} ${late} ${t('wkActHoursAgo')}</div>` : ''}
+                        ${x.role && x.role !== 'lead' ? `<div style="font-size:0.75rem; color:var(--text-muted);">${x.role === 'helper' ? '🤝 ' + t('wkRoleHelper') : '🔄 ' + t('wkRoleHanded')}</div>` : ''}
+                        ${x.pausedUntil && x.status !== 'done' ? `<div style="font-size:0.78rem; color:#38bdf8;">⏸ ${escHtml(x.pausedUntil)}${x.pauseNote ? ' — ' + escHtml(x.pauseNote) : ''}</div>` : ''}
                         ${x.note ? `<div style="font-size:0.78rem; color:var(--text-muted);">💬 ${escHtml(String(x.note).slice(0, 120))}</div>` : ''}
                     </div>`;
                 }).join('') : `<div style="color:var(--text-muted); font-size:0.82rem; padding-top:8px;">${t('wkActNone')}</div>`;
@@ -10768,8 +10881,13 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         if (!x) return;
         closeWorkerTask();
         openSendWorkerModal(x.refKind, x.refId, x.entryDate || '');
-        const sel = document.getElementById('swWorker');
-        if (sel && x.workerEmail) { sel.value = x.workerEmail; updateSendWorkerInfo(); }
+        if (x.workerEmail) {
+            const grp = x.groupId ? workerTasks.filter(z => z.groupId === x.groupId && !z.hidden) : [x];
+            swSel = grp.map(z => z.workerEmail);
+            const ld = grp.find(z => z.role === 'lead');
+            swLead = ld ? ld.workerEmail : swSel[0];
+            renderSwWorkers(); updateSendWorkerInfo();
+        }
     }
     async function loadWorkerTaskPhotos(id) {
         workerTaskPhotosLoading[id] = true;
@@ -10808,6 +10926,83 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         workerNoteTranslating = false;
     }
 
+    // Lead / helper line, pause info, handover request and the hand-over buttons for one task.
+    function workerTeamHtml(x) {
+        let h = '';
+        const roleTxt = x.role === 'helper' ? '🤝 ' + t('wkRoleHelper') : x.role === 'handedOver' ? '🔄 ' + t('wkRoleHanded') + (x.handedTo ? ' → ' + escHtml(x.handedTo) : '') : ((x.partners || []).length ? '👷 ' + t('wkRoleLead') : '');
+        if (roleTxt) h += `<div style="font-size:0.85rem; margin:3px 0;">${roleTxt}</div>`;
+        (x.partners || []).forEach(q => { h += `<div style="font-size:0.82rem; color:var(--text-muted); margin:2px 0;">${q.role === 'helper' ? '🤝' : '👷'} ${escHtml(q.name)}</div>`; });
+        if (x.pausedUntil && x.status !== 'done') h += `<div style="font-size:0.85rem; margin:3px 0; color:#38bdf8;">⏸ ${t('wkPausedChip')} ${escHtml(x.pausedUntil)}${x.pauseNote ? ' — ' + escHtml(x.pauseNote) : ''}${x.pauseNoPhoto ? ' · ' + t('wkPausedNoPhoto') : ''}</div>`;
+        if (x.handoverReq && x.role === 'lead' && x.status !== 'done') h += `<div class="note-box" style="margin:8px 0; border-color:#a855f7;">${t('wkHandoverReqBanner')}${x.handoverNote ? ': ' + escHtml(x.handoverNote) : ''}</div>`;
+        if (x.role === 'lead' && x.groupId && x.status !== 'done') {
+            workerTasks.filter(z => z.groupId === x.groupId && z.role === 'helper' && z.status !== 'done' && !z.hidden).forEach(hp => {
+                h += `<button class="secondary" onclick="doHandover('${jsArg(x.id)}','${jsArg(hp.id)}')" style="margin:4px 6px 4px 0; padding:6px 12px; font-size:0.8rem; background:#7c3aed; color:#fff;">🔄 ${t('wkHandoverBtn')} ${escHtml(hp.tech || '')}</button>`;
+            });
+        }
+        return h;
+    }
+    async function doHandover(leadId, helperId) {
+        const lead = workerTasks.find(z => z.id === leadId), hp = workerTasks.find(z => z.id === helperId);
+        if (!lead || !hp) return;
+        if (!confirm(t('wkHandoverConfirm'))) return;
+        const FVd = firebase.firestore.FieldValue;
+        const ev = { t: Date.now(), k: 'handover', n: currentUserEmail || '', x: hp.tech || '' };
+        try {
+            const batch = db.batch();
+            batch.update(WORKER_TASKS.doc(leadId), { role: 'handedOver', handedTo: hp.tech || '', updatedAt: Date.now(), events: FVd.arrayUnion(ev) });
+            batch.update(WORKER_TASKS.doc(helperId), { role: 'lead', skipBefore: true, updatedAt: Date.now() });
+            // everyone else in the group: partners list = the current lead + the other helpers (never the one who left)
+            const grp = workerTasks.filter(z => z.groupId === lead.groupId && !z.hidden && z.id !== leadId);
+            grp.forEach(z => {
+                const newRole = z.id === helperId ? 'lead' : (z.role || 'helper');
+                const partners = grp.filter(q => q.id !== z.id).map(q => ({ name: q.tech || '', role: q.id === helperId ? 'lead' : (q.role || 'helper'), phone: String(technicianPhones[q.tech] || '') }));
+                batch.update(WORKER_TASKS.doc(z.id), { partners, role: newRole });
+            });
+            await batch.commit();
+            safeCall(() => logActivity('edit', lead.clientName, '🔄 ' + t('wkEvHandover') + ' ' + (hp.tech || '')));
+            showToast('🔄 ' + (hp.tech || ''));
+        } catch (e) { alert(t('wkSendFail') + ' (' + (e && e.message ? e.message : 'error') + ')'); }
+    }
+    // One timeline for the whole job: every worker task that belongs to the same job / appointment.
+    function workerTimelineHtml(x) {
+        const tasks = workerTasks.filter(z => z.refKind === x.refKind && String(z.refId) === String(x.refId) && !z.hidden);
+        const rows = [];
+        tasks.forEach(z => {
+            const evs = Array.isArray(z.events) ? z.events.slice() : [];
+            const has = k => evs.some(e => e.k === k);
+            if (!has('sent') && z.createdAt) evs.push({ t: z.createdAt, k: 'sent' });
+            if (!has('arrived') && z.arrivedAt) evs.push({ t: z.arrivedAt, k: 'arrived' });
+            if (!has('done') && z.doneAt) evs.push({ t: z.doneAt, k: 'done', x: z.signed ? 'signed' : (z.signSkipped ? 'nosign' : '') });
+            evs.forEach(e => rows.push({ t: e.t || 0, k: e.k, n: z.tech || e.n || '', x: e.x || '', role: z.role }));
+        });
+        if (!rows.length) return '';
+        rows.sort((a, b) => a.t - b.t);
+        const line = r => {
+            switch (r.k) {
+                case 'sent': return '📤 ' + t('wkEvSent') + ' → ' + escHtml(r.n) + (r.role === 'helper' ? ' (' + t('wkRoleHelper') + ')' : '');
+                case 'edited': return '✏️ ' + t('wkEvEdited') + ' — ' + escHtml(r.n);
+                case 'arrived': return '📍 ' + escHtml(r.n) + ' ' + t('wkEvArrived');
+                case 'before': return '📷 ' + escHtml(r.n) + ' ' + t('wkEvBefore') + (r.x ? ' (' + escHtml(r.x) + ')' : '');
+                case 'after': return '📷 ' + escHtml(r.n) + ' ' + t('wkEvAfter') + (r.x ? ' (' + escHtml(r.x) + ')' : '');
+                case 'paused': return '⏸ ' + escHtml(r.n) + ' ' + t('wkEvPaused') + ' ' + escHtml(r.x);
+                case 'progress': { const pr = String(r.x || '').split('|'); return '📆 ' + escHtml(r.n) + ' ' + t('wkEvProgress') + (pr[0] ? ' (' + escHtml(pr[0]) + ')' : '') + (pr[1] ? ': ' + escHtml(pr.slice(1).join('|')) : ''); }
+                case 'resumed': return '▶ ' + escHtml(r.n) + ' ' + t('wkEvResumed');
+                case 'handoverReq': return '🚪 ' + escHtml(r.n) + ' ' + t('wkEvHandoverReq') + (r.x ? ' — ' + escHtml(r.x) : '');
+                case 'handover': return '🔄 ' + t('wkEvHandover') + ' ' + escHtml(r.x);
+                case 'done': return '✅ ' + escHtml(r.n) + ' ' + (r.x === 'signed' ? t('wkEvDoneSigned') : (r.x === 'nosign' ? t('wkEvDoneNoSign') : t('wkEvDone')));
+                default: return escHtml(r.k);
+            }
+        };
+        let h = `<div style="margin-top:16px; font-weight:700; font-size:0.9rem;">${t('wkTimelineTitle')}</div><div style="border-inline-start:2px solid var(--border-color); padding-inline-start:10px; margin-top:6px;">`;
+        rows.forEach(r => { h += `<div style="font-size:0.82rem; margin:5px 0;">${line(r)} <span style="color:var(--text-muted); font-size:0.74rem;">${escHtml(workerStamp(r.t))}</span></div>`; });
+        h += '</div>';
+        const durs = tasks.filter(z => z.arrivedAt && z.doneAt && z.doneAt > z.arrivedAt).map(z => {
+            const m = Math.round((z.doneAt - z.arrivedAt) / 60000);
+            return `${escHtml(z.tech || '')}: ${Math.floor(m / 60)}h ${m % 60}m`;
+        });
+        if (durs.length) h += `<div style="font-size:0.78rem; color:var(--text-muted); margin-top:6px;">⏱ ${t('wkWorkedFor')} ${durs.join(' · ')}</div>`;
+        return h;
+    }
     function renderWorkerTaskModal() {
         const x = workerTasks.find(z => z.id === workerTaskOpenId);
         const body = document.getElementById('workerTaskBody');
@@ -10821,6 +11016,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         html += row(t('wkSentAt') + ':', escHtml(workerStamp(x.createdAt)));
         html += row('✔ ' + t('wkArrivedAt') + ':', escHtml(workerStamp(x.arrivedAt)));
         html += row('✅ ' + t('wkDoneAt') + ':', escHtml(workerStamp(x.doneAt)));
+        html += workerTeamHtml(x);
         if (x.instrOrig) html += `<div style="margin-top:10px; font-size:0.8rem; color:var(--text-muted);">${t('wkInstrSent')}</div><div class="note-box" style="white-space:pre-wrap;">${escHtml(x.instrOrig)}</div>`;
         html += `<div style="margin-top:12px; font-size:0.8rem; color:var(--text-muted);">💬 ${t('wkNoteLabel')}</div>`;
         if (!x.note) html += `<div style="font-size:0.85rem; color:var(--text-muted);">${t('wkNoNote')}</div>`;
@@ -10841,9 +11037,19 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             const estBtn = (k === 'estimate' || (k === 'before' && x.refKind !== 'appt')) ? ` <button class="secondary" onclick="openEstimateFromWorkerTask('${jsArg(x.id)}')" style="padding:4px 10px; font-size:0.78rem; margin-inline-start:8px; background:#7c3aed;">${t('wkEstimateBtn')}</button>` : '';
             html += `<div style="margin:8px 0 4px; font-weight:700; font-size:0.9rem;">${label} (${list.length})${estBtn}</div><div style="display:flex; flex-wrap:wrap; gap:6px;">${list.map(p => `<img src="${p.data}" alt="" onclick="openPhotoLightbox('${jsArg(p.id)}')" style="width:96px; height:96px; object-fit:cover; border-radius:8px; cursor:zoom-in; border:1px solid var(--border-color);">`).join('')}</div>`;
         });
+        const prog = (photos || []).filter(p => p.kind === 'progress');
+        if (prog.length) {
+            const byDay = {};
+            prog.forEach(p => { const d = new Date(p.ts || 0).toLocaleDateString(workerLocale(), { weekday: 'short', month: 'short', day: 'numeric' }); (byDay[d] = byDay[d] || []).push(p); });
+            html += `<div style="margin:12px 0 4px; font-weight:700; font-size:0.9rem;">📆 ${t('wkPhotosProgress')} (${prog.length})</div>`;
+            Object.keys(byDay).forEach(d => {
+                html += `<div style="margin:6px 0 3px; font-size:0.8rem; color:var(--text-muted);">${escHtml(d)}</div><div style="display:flex; flex-wrap:wrap; gap:6px;">${byDay[d].map(p => `<img src="${p.data}" alt="" onclick="openPhotoLightbox('${jsArg(p.id)}')" style="width:96px; height:96px; object-fit:cover; border-radius:8px; cursor:zoom-in; border:1px solid var(--border-color);">`).join('')}</div>`;
+            });
+        }
         const sigs = (photos || []).filter(p => p.kind === 'signature');
         if (sigs.length) html += `<div style="margin:12px 0 4px; font-weight:700; font-size:0.9rem;">✍️ ${t('wkSignature')}${sigs[sigs.length - 1].signName ? ' — ' + escHtml(sigs[sigs.length - 1].signName) : ''}</div><img src="${sigs[sigs.length - 1].data}" alt="" style="max-width:100%; height:110px; object-fit:contain; background:#fff; border-radius:8px; border:1px solid var(--border-color);">`;
         else if (x.signSkipped) html += `<div style="margin-top:12px; font-size:0.85rem; color:#f59e0b;">⚠️ ${t('wkNoSignature')}</div>`;
+        html += workerTimelineHtml(x);
         body.innerHTML = html;
     }
 
