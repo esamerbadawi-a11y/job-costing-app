@@ -17,9 +17,10 @@
 html.light{--bg:#f3f5fa;--card:#ffffff;--line:#d9deea;--tx:#18203a;--mut:#5d6882;--chip:#e7ecf8}
 html{font-size:16px}html.fs-large{font-size:19px}html.fs-xl{font-size:22px}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:var(--bg);color:var(--tx);font-family:Arial,Helvetica,sans-serif;min-height:100vh;padding-bottom:env(safe-area-inset-bottom)}
-#app{max-width:520px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
-.hd{display:flex;justify-content:space-between;align-items:center;padding:calc(14px + env(safe-area-inset-top)) var(--g) 6px;gap:8px}
+html{overscroll-behavior-y:none}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:Arial,Helvetica,sans-serif;min-height:100vh;min-height:100dvh}
+#app{max-width:520px;margin:0 auto;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+.hd{display:flex;justify-content:space-between;align-items:center;padding:calc(14px + env(safe-area-inset-top)) var(--g) 8px;gap:8px;position:sticky;top:0;z-index:20;background:var(--bg)}
 .who{display:flex;align-items:center;gap:10px;min-width:0;cursor:pointer}
 .who b{font-size:1.2rem;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .who .loc{display:block;font-size:.8rem;color:var(--mut);font-weight:normal;margin-top:2px}
@@ -27,7 +28,7 @@ body{margin:0;background:var(--bg);color:var(--tx);font-family:Arial,Helvetica,s
 .av img{width:100%;height:100%;object-fit:cover}
 .back{font-size:1.6rem;padding:4px 10px;cursor:pointer}
 .flags{display:flex;gap:4px;flex:0 0 auto}.flags span{font-size:1.05rem;padding:5px 8px;border-radius:10px;background:var(--card);opacity:.5;cursor:pointer;border:1px solid var(--line)}.flags .on{background:var(--blue);opacity:1;border-color:var(--blue)}
-.body{flex:1;padding:6px var(--g) 24px;display:flex;flex-direction:column;gap:var(--g)}
+.body{flex:1;padding:6px var(--g) calc(24px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:var(--g)}
 .tabs{display:flex;gap:8px}.tabs span{flex:1;text-align:center;font-size:1rem;padding:12px 8px;border-radius:14px;background:var(--card);color:var(--mut);cursor:pointer;border:1px solid var(--line)}.tabs .on{background:var(--blue);color:#fff;font-weight:bold;border-color:var(--blue)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px}
 .card.tap{cursor:pointer}.card.cur{border:2px solid var(--blue)}
@@ -127,6 +128,12 @@ const I18N = {
         profile: 'البروفايل', myWork: 'شغلي', todayWord: 'النهارده', thisWeek: 'الأسبوع ده', thisMonth: 'الشهر ده', jobsDone: 'شغلة خلّصتها', theme: 'اللون', dark: '🌙 غامق', light: '☀️ فاتح',
         textSize: 'حجم الخط', normal: 'عادي', large: 'كبير', xl: 'كبير جداً', language: 'اللغة', changePhoto: '📷 غيّر صورتي', logout: 'تسجيل خروج', newJob: '🔔 شغلة جديدة!', photoErr: 'مقدرتش أحفظ الصورة. جرّب تاني.', sendErr: 'مقدرتش أبعت. شوف الإشارة.', loading: 'جاري التحميل…', back: 'رجوع' }
 };
+Object.assign(I18N.en, { helperTag: '🤝 Helper', partnerLead: 'Lead', partnerHelper: 'Helper', laterBtn: '⏸ Continue later', leaveBtn: '🚪 I have to leave', laterTitle: 'When will you continue?', tomorrow: 'Tomorrow', in2days: 'In 2 days', pickDate: 'Pick a date', reasonPh: 'Reason (optional)…', saveLater: 'Save', cancel: 'Cancel', pausedSec: '⏸ Continue later', pausedUntilLbl: 'Back on', resumeNow: '▶ Continue the work now', resumeToday: '🔔 Continue today', leaveTitle: 'Tell the office why you have to leave', leaveSend: 'Send to the office', leaveSent: '🚪 Request sent — the office will hand the job over', helperNote: 'You are the helper. The lead takes the photos and the customer signature.', leadNote: 'You are the lead on this job.', laterSaved: '⏸ Saved', handoverNowLead: '🔄 The office made you the lead of this job' });
+Object.assign(I18N.es, { helperTag: '🤝 Ayudante', partnerLead: 'Responsable', partnerHelper: 'Ayudante', laterBtn: '⏸ Continuar después', leaveBtn: '🚪 Tengo que irme', laterTitle: '¿Cuándo continuará?', tomorrow: 'Mañana', in2days: 'En 2 días', pickDate: 'Elegir fecha', reasonPh: 'Motivo (opcional)…', saveLater: 'Guardar', cancel: 'Cancelar', pausedSec: '⏸ Continuar después', pausedUntilLbl: 'Vuelve el', resumeNow: '▶ Continuar el trabajo ahora', resumeToday: '🔔 Continuar hoy', leaveTitle: 'Dígale a la oficina por qué se tiene que ir', leaveSend: 'Enviar a la oficina', leaveSent: '🚪 Solicitud enviada — la oficina traspasará el trabajo', helperNote: 'Usted es el ayudante. El responsable toma las fotos y la firma del cliente.', leadNote: 'Usted es el responsable de este trabajo.', laterSaved: '⏸ Guardado', handoverNowLead: '🔄 La oficina lo hizo responsable de este trabajo' });
+Object.assign(I18N.ar, { helperTag: '🤝 مساعد', partnerLead: 'المسؤول', partnerHelper: 'المساعد', laterBtn: '⏸ هكمّل بعدين', leaveBtn: '🚪 لازم أمشي', laterTitle: 'هتكمّل امتى؟', tomorrow: 'بكرة', in2days: 'بعد يومين', pickDate: 'اختار تاريخ', reasonPh: 'السبب (اختياري)…', saveLater: 'حفظ', cancel: 'إلغاء', pausedSec: '⏸ مكمّل بعدين', pausedUntilLbl: 'يرجع في', resumeNow: '▶ كمّل الشغل دلوقتي', resumeToday: '🔔 كمّل النهاردة', leaveTitle: 'قول للمكتب ليه لازم تمشي', leaveSend: 'ابعت للمكتب', leaveSent: '🚪 الطلب اتبعت — المكتب هيحوّل الشغلة', helperNote: 'انت المساعد. المسؤول هو اللي بيصوّر ويخلّي العميل يوقّع.', leadNote: 'انت المسؤول عن الشغلة دي.', laterSaved: '⏸ اتحفظ', handoverNowLead: '🔄 المكتب خلّاك المسؤول عن الشغلة دي' });
+Object.assign(I18N.en, { progBtn: '📷 Photos of the work now', progTitle: 'Take photos of the work as it is now', progNotePh: 'Where did you get to? (e.g. boards done, painting left)', progNeed: '📷 Take at least 1 photo first', progToday: 'photos today', emergBtn: '⚠️ Emergency — no photos', emergNeedWhy: 'Write the reason first' });
+Object.assign(I18N.es, { progBtn: '📷 Fotos del trabajo ahora', progTitle: 'Tome fotos del trabajo como está ahora', progNotePh: '¿Hasta dónde llegó? (ej. paneles listos, falta pintar)', progNeed: '📷 Tome al menos 1 foto primero', progToday: 'fotos hoy', emergBtn: '⚠️ Emergencia — sin fotos', emergNeedWhy: 'Escriba el motivo primero' });
+Object.assign(I18N.ar, { progBtn: '📷 صور الشغل دلوقتي', progTitle: 'صوّر الشغل زي ما هو دلوقتي', progNotePh: 'وصلتوا لفين؟ (مثلًا: خلّصنا الألواح وفاضل الدهان)', progNeed: '📷 صوّر صورة واحدة على الأقل الأول', progToday: 'صور النهاردة', emergBtn: '⚠️ ظرف طارئ — من غير صور', emergNeedWhy: 'اكتب السبب الأول' });
 const LOCALE = { en: 'en-US', es: 'es-US', ar: 'ar-EG-u-nu-latn' };
 const FLAG = { ar: '🇪🇬', en: '🇺🇸', es: '🇪🇸' };
 function tr(k) { return (I18N[lang] && I18N[lang][k]) || I18N.en[k] || k; }
@@ -212,7 +219,10 @@ function whoHeader(rightHtml) {
     return '<div class="hd"><div class="who" onclick="goProfile()">' + avatarHtml() + '<b>' + esc(me ? me.tech : '') + '<span class="loc">📍 ' + esc(me && me.region ? me.region : '') + '</span></b></div>' + (rightHtml || langBar()) + '</div>';
 }
 function taskSort(a, b) { return ((a.date || '0000') + (a.time || '')).localeCompare((b.date || '0000') + (b.time || '')); }
-function openTasks() { return tasks.filter(function (x) { return x.status !== 'done' && !x.hidden; }); }
+function isPausedNow(x) { return x.status !== 'done' && x.pausedUntil && x.pausedUntil > isoDate(new Date()); }
+function openTasks() { return tasks.filter(function (x) { return x.status !== 'done' && !x.hidden && x.role !== 'handedOver' && !isPausedNow(x); }); }
+function pausedTasks() { return tasks.filter(function (x) { return !x.hidden && x.role !== 'handedOver' && isPausedNow(x); }).sort(function (a, b) { return String(a.pausedUntil).localeCompare(String(b.pausedUntil)); }); }
+function evt(k, txt) { var o = { t: Date.now(), k: k, n: me ? me.tech : '' }; if (txt) o.x = String(txt).slice(0, 200); return FV.arrayUnion(o); }
 function listHtml() {
     var today = isoDate(new Date());
     var all = openTasks();
@@ -222,6 +232,11 @@ function listHtml() {
     var h = bannerHtml() + whoHeader() + '<div class="body"><div class="tabs"><span class="' + (view.tab === 'today' ? 'on' : '') + '" onclick="setTab(\'today\')">' + tr('today') + (todayList.length ? ' (' + todayList.length + ')' : '') + '</span><span class="' + (view.tab === 'next' ? 'on' : '') + '" onclick="setTab(\'next\')">' + tr('upcoming') + (nextList.length ? ' (' + nextList.length + ')' : '') + '</span></div>';
     if (!list.length) h += '<div class="card center mut" style="padding:30px 14px">' + tr('noJobs') + '</div>';
     list.forEach(function (x) { h += cardHtml(x, today); });
+    var pz = pausedTasks();
+    if (pz.length) {
+        h += '<div class="sec">' + tr('pausedSec') + ' (' + pz.length + ')</div>';
+        pz.forEach(function (x) { h += '<div class="card tap" data-id="' + esc(x.id) + '" onclick="openTask(this.dataset.id)" style="opacity:.85"><h4>' + esc(x.clientName || '—') + '</h4><p>⏸ ' + tr('pausedUntilLbl') + ' ' + esc(fmtDate(x.pausedUntil)) + '</p>' + (x.pauseNote ? '<p>💬 ' + esc(x.pauseNote) + '</p>' : '') + '</div>'; });
+    }
     h += '<div class="sp"></div><div class="foot">' + tr('noPrices') + '</div></div>';
     return h;
 }
@@ -233,6 +248,8 @@ function cardHtml(x, today) {
     if (x.kind === 'appt') tags += '<span class="tag t-est">🔎 ' + tr('estimateTag') + '</span>';
     if (x.status === 'arrived') tags += '<span class="tag t-prog">' + tr('inProgress') + '</span>'; else tags += '<span class="tag t-new">' + tr('newTag') + '</span>';
     if (late) tags += '<span class="tag t-late">⚠️ ' + tr('late') + '</span>';
+    if (x.role === 'helper') tags += '<span class="tag t-est">' + tr('helperTag') + '</span>';
+    if (x.pausedUntil && x.pausedUntil <= today) tags += '<span class="tag t-late">' + tr('resumeToday') + '</span>';
     return '<div class="card tap" data-id="' + esc(x.id) + '" onclick="openTask(this.dataset.id)"><h4>' + esc(x.clientName || '—') + '</h4>' +
         (when ? '<p>🕘 ' + esc(when) + '</p>' : '') + (x.address ? '<p>📍 ' + esc(x.address) + '</p>' : '') +
         (snippet ? '<p>🔧 ' + esc(snippet) + '</p>' : '') + tags + '</div>';
@@ -262,15 +279,33 @@ function jobHtml() {
     if (x.clientPhone) chips += '<a class="chip" href="' + esc(telHref(x.clientPhone)) + '">' + tr('callCustomer') + '</a>';
     if (chips) h += '<div class="chips" style="margin-top:10px">' + chips + '</div>';
     h += '</div>';
+    var pts = x.partners || [];
+    if (pts.length || x.role === 'helper') {
+        h += '<div class="card"><p>' + (x.role === 'helper' ? tr('helperNote') : (pts.length ? tr('leadNote') : '')) + '</p>';
+        pts.forEach(function (q) { h += '<p>' + (q.role === 'helper' ? '🤝 ' + tr('partnerHelper') : '👷 ' + tr('partnerLead')) + ': <b>' + esc(q.name) + '</b>' + (q.phone ? ' · <a href="' + esc(telHref(q.phone)) + '" style="color:inherit">📞</a>' : '') + '</p>'; });
+        h += '</div>';
+    }
+    if (x.pausedUntil && x.status !== 'done') {
+        h += '<div class="card"><p>⏸ ' + tr('pausedUntilLbl') + ' ' + esc(fmtDate(x.pausedUntil)) + (x.pauseNote ? ' — ' + esc(x.pauseNote) : '') + '</p><div class="btn green" onclick="resumeTask(\'' + esc(x.id) + '\')">' + tr('resumeNow') + '</div></div>';
+    }
+    if (x.handoverReq && x.role === 'lead') h += '<div class="card"><p>' + tr('leaveSent') + '</p></div>';
     if (textShown) h += '<div class="card txt">' + esc(textShown) + (hasBoth ? '<small onclick="toggleOrig(\'' + esc(x.id) + '\')">' + (showO ? tr('showTranslated') : tr('translated')) + '</small>' : '') + '</div>';
     if (x.status === 'new') {
         h += '<div class="sp"></div><div class="btn purple" onclick="markArrived(\'' + esc(x.id) + '\')"><i>📍</i>' + tr('arrived') + '</div>';
     } else {
         var noteHtml = '<textarea id="noteBox" placeholder="' + esc(tr('notePh')) + '" oninput="noteTyping(\'' + esc(x.id) + '\')" onblur="saveNote(\'' + esc(x.id) + '\')">' + esc(x.note || '') + '</textarea><div id="noteSaved" class="mut center" style="min-height:1.2em"></div>';
         var xid = esc(x.id);
-        if (x.kind === 'appt') {
+        var extra = '';
+        if (x.status !== 'done') {
+            extra += '<div class="btn gray" style="min-height:50px;font-size:1rem;margin-top:10px" onclick="askLater(\'' + xid + '\')">' + tr('laterBtn') + '</div>';
+            if (x.role === 'lead' && (x.partners || []).some(function (q) { return q.role === 'helper'; }) && !x.handoverReq)
+                extra += '<div class="btn gray" style="min-height:50px;font-size:1rem;margin-top:8px" onclick="askLeave(\'' + xid + '\')">' + tr('leaveBtn') + '</div>';
+        }
+        if (x.role === 'helper') {
+            h += noteHtml + '<div class="sp"></div><div class="btn green" onclick="askDone(\'' + xid + '\')"><i>✔</i>' + tr('done') + '</div>' + extra;
+        } else if (x.kind === 'appt') {
             h += photoBlock(x, 'estimate', tr('estimatePhotos'), 'blue') + noteHtml;
-            h += '<div class="sp"></div><div class="btn green" onclick="askDone(\'' + xid + '\')"><i>✔</i>' + tr('done') + '</div>';
+            h += '<div class="sp"></div><div class="btn green" onclick="askDone(\'' + xid + '\')"><i>✔</i>' + tr('done') + '</div>' + extra;
         } else {
             if (sigTask !== x.id) { sigTask = x.id; sigUrl = ''; sigName = ''; }
             var st = stepOf(x);
@@ -293,6 +328,7 @@ function jobHtml() {
                 h += '<div class="btn gray" style="min-height:50px;font-size:1rem;margin-top:10px" onclick="askDone(\'' + xid + '\',true)">' + tr('notAvail') + '</div>';
                 h += '<div class="btn gray" style="min-height:46px;font-size:.95rem;margin-top:8px" onclick="goStep(\'' + xid + '\',2)">' + (lang === 'ar' ? '→ ' : '← ') + tr('after') + '</div>';
             }
+            h += extra;
         }
     }
     h += '</div>';
@@ -336,7 +372,11 @@ function go(name, id) {
 function goBack() { try { if (history.state && history.state.v) { history.back(); return; } } catch (e) {} view = { name: 'list', tab: view.tab || 'today', id: null }; render(); }
 window.addEventListener('popstate', function () { if (view.name === 'job' || view.name === 'profile') { view = { name: 'list', tab: view.tab || 'today', id: null }; render(); } });
 function setTab(t) { view.tab = t; render(); }
-function openTask(id) { go('job', id); }
+function openTask(id) {
+    var x = tasks.filter(function (z) { return z.id === id; })[0];
+    if (x && x.pausedUntil && x.status !== 'done' && x.pausedUntil <= isoDate(new Date())) resumeTask(id);
+    go('job', id);
+}
 function goProfile() { go('profile'); }
 function toggleOrig(id) { showOrig[id] = !showOrig[id]; render(); }
 function setTheme(v) { LS.set('wk_theme', v); render(); }
@@ -385,6 +425,7 @@ function startTasks() {
         var ae = document.activeElement;
         if (view.name === 'job' && ae && (ae.id === 'noteBox' || ae.id === 'sigName')) return; // never wipe a note while it is being typed
         render();
+        refreshLater();
     }, function () { toast(tr('sendErr')); });
 }
 
@@ -392,11 +433,18 @@ function startTasks() {
 function taskRef(id) { return db.collection('workerTasks').doc(id); }
 function markArrived(id) {
     var x = tasks.filter(function (z) { return z.id === id; })[0]; if (!x || x.status !== 'new') return;
-    taskRef(id).update({ status: 'arrived', arrivedAt: Date.now(), updatedAt: Date.now() }).catch(function () { toast(tr('sendErr')); });
+    taskRef(id).update({ status: 'arrived', arrivedAt: Date.now(), updatedAt: Date.now(), events: evt('arrived') }).catch(function () { toast(tr('sendErr')); });
 }
 var wkStep = {}, sigUrl = '', sigName = '', sigTask = '';
-function stepOf(x) { if (wkStep[x.id]) return wkStep[x.id]; return (x.cnt_after || 0) > 0 ? 2 : 1; }
-function goStep(id, n) { saveNote(id, true); wkStep[id] = n; render(); window.scrollTo(0, 0); }
+function stepOf(x) { if (wkStep[x.id]) return wkStep[x.id]; return ((x.cnt_after || 0) > 0 || x.skipBefore) ? 2 : 1; }
+function goStep(id, n) {
+    saveNote(id, true);
+    var x = tasks.filter(function (z) { return z.id === id; })[0];
+    var cur = stepOf(x || {});
+    if (x && n === 2 && cur === 1) taskRef(id).update({ events: evt('before', (x.cnt_before || 0) + ''), updatedAt: Date.now() }).catch(function () {});
+    if (x && n === 3 && cur === 2) taskRef(id).update({ events: evt('after', (x.cnt_after || 0) + ''), updatedAt: Date.now() }).catch(function () {});
+    wkStep[id] = n; render(); window.scrollTo(0, 0);
+}
 function finishClick(id) { if (!sigUrl) { toast(tr('needSign')); return; } askDone(id); }
 function initSig() {
     var c = document.getElementById('sigPad'); if (!c) return;
@@ -424,19 +472,95 @@ function doDone(id, skip) {
     var x = tasks.filter(function (z) { return z.id === id; })[0] || {};
     var upd = { status: 'done', doneAt: Date.now(), updatedAt: Date.now() };
     var batch = db.batch();
-    if (x.kind !== 'appt') {
+    if (x.kind !== 'appt' && x.role !== 'helper') {
         if (skip || !sigUrl) upd.signSkipped = true;
         else {
             upd.signed = true; upd.signName = (sigName || '').trim();
             batch.set(db.collection('workerPhotos').doc('s' + Date.now() + Math.random().toString(36).slice(2, 6)), { taskId: id, kind: 'signature', data: sigUrl, ts: Date.now(), by: myEmail, tech: me ? me.tech : '', signName: upd.signName });
         }
     }
+    upd.events = evt('done', upd.signed ? 'signed' : (upd.signSkipped ? 'nosign' : ''));
+    if (x.pausedUntil) upd.pausedUntil = FV.delete();
     batch.update(taskRef(id), upd);
     batch.commit().catch(function () { toast(tr('sendErr')); });
     sigUrl = ''; sigName = ''; sigTask = ''; delete wkStep[id];
     view = { name: 'list', tab: view.tab || 'today', id: null };
     try { if (history.state && history.state.v) history.back(); } catch (e) {}
     render();
+}
+function laterModal(html) { var m = document.createElement('div'); m.className = 'modal'; m.id = 'laterModal'; m.innerHTML = '<div class="box">' + html + '</div>'; document.body.appendChild(m); }
+function closeLater() { var m = document.getElementById('laterModal'); if (m) m.remove(); }
+var laterCtx = null, laterVals = { why: '', prog: '', date: '' };
+function progTodayCount(x) {
+    var sod = new Date(); sod.setHours(0, 0, 0, 0); sod = sod.getTime();
+    return (x.thumbs || []).filter(function (p) { return p.k === 'progress' && Number(String(p.id || '').slice(1, 14)) >= sod; }).length;
+}
+function askLater(id) { laterCtx = id; laterVals = { why: '', prog: '', date: '' }; closeLater(); laterModal(laterInner()); }
+function laterInner() {
+    var id = laterCtx, x = tasks.filter(function (z) { return z.id === id; })[0] || {};
+    var n = progTodayCount(x), ok = n > 0;
+    var d1 = new Date(); d1.setDate(d1.getDate() + 1); var d2 = new Date(); d2.setDate(d2.getDate() + 2);
+    var dis = ok ? '' : ';opacity:.45';
+    var h = '<h3>' + tr('progTitle') + '</h3>';
+    h += '<div class="btn orange" onclick="pickPhoto(\'' + esc(id) + '\',\'progress\')"><i>📷</i>' + tr('progBtn') + (n ? '<small>' + n + ' ' + tr('progToday') + ' ✔</small>' : '') + '</div>';
+    var th = (x.thumbs || []).filter(function (p) { return p.k === 'progress'; }).slice(-6);
+    if (th.length) h += '<div class="thumbs">' + th.map(function (p) { return '<div><img src="' + esc(p.t) + '" alt=""></div>'; }).join('') + '</div>';
+    h += '<input id="laterProg" type="text" placeholder="' + esc(tr('progNotePh')) + '" value="' + esc(laterVals.prog) + '" oninput="laterVals.prog=this.value" style="min-height:52px;font-size:1rem">';
+    h += '<h3 style="font-size:1.05rem">' + tr('laterTitle') + '</h3>';
+    h += '<div class="btn blue" style="min-height:56px' + dis + '" onclick="doLater(\'' + esc(id) + '\',\'' + isoDate(d1) + '\')">' + tr('tomorrow') + '</div>';
+    h += '<div class="btn blue" style="min-height:56px' + dis + '" onclick="doLater(\'' + esc(id) + '\',\'' + isoDate(d2) + '\')">' + tr('in2days') + '</div>';
+    h += '<input id="laterDate" type="date" min="' + isoDate(d1) + '" value="' + esc(laterVals.date) + '" oninput="laterVals.date=this.value" style="min-height:52px;font-size:1.05rem"><div class="btn blue" style="min-height:56px' + dis + '" onclick="doLater(\'' + esc(id) + '\',document.getElementById(\'laterDate\').value)">' + tr('pickDate') + '</div>';
+    h += '<input id="laterWhy" type="text" placeholder="' + esc(tr('reasonPh')) + '" value="' + esc(laterVals.why) + '" oninput="laterVals.why=this.value" style="min-height:52px;font-size:1rem">';
+    if (!ok) h += '<div class="hint">' + tr('progNeed') + '</div><div class="btn gray" style="min-height:50px;font-size:.95rem" onclick="doLaterEmergency(\'' + esc(id) + '\')">' + tr('emergBtn') + '</div>';
+    h += '<div class="btn gray" style="min-height:52px" onclick="closeLater()">' + tr('cancel') + '</div>';
+    return h;
+}
+function refreshLater() {
+    var m = document.getElementById('laterModal'); if (!m || !laterCtx) return;
+    var ae = document.activeElement; if (ae && (ae.id === 'laterProg' || ae.id === 'laterWhy' || ae.id === 'laterDate')) return;
+    var box = m.querySelector('.box'); if (box && box.querySelector('#laterProg')) box.innerHTML = laterInner();
+}
+function doLaterEmergency(id) {
+    if (!laterVals.why.trim()) { toast(tr('emergNeedWhy')); return; }
+    doLater(id, laterDate1(), true);
+}
+function laterDate1() { var d = new Date(); d.setDate(d.getDate() + 1); return isoDate(d); }
+function doLater(id, date, emergency) {
+    var x = tasks.filter(function (z) { return z.id === id; })[0] || {};
+    if (!emergency && progTodayCount(x) < 1) { toast(tr('progNeed')); return; }
+    if (!date) return;
+    var why = (laterVals.why || '').trim(), prog = (laterVals.prog || '').trim();
+    saveNote(id, true);
+    var upd = { pausedUntil: date, pauseNote: why, updatedAt: Date.now(), events: evt('paused', date + (why ? ' — ' + why : '')) };
+    if (emergency) upd.pauseNoPhoto = Date.now(); else upd.pauseNoPhoto = FV.delete();
+    closeLater(); laterCtx = null;
+    var b = db.batch();
+    b.update(taskRef(id), upd);
+    batchAfterLater(b, id, x, prog);
+    b.commit().then(function () { toast(tr('laterSaved')); }).catch(function () { toast(tr('sendErr')); });
+    delete wkStep[id];
+    view = { name: 'list', tab: view.tab || 'today', id: null };
+    try { if (history.state && history.state.v) history.back(); } catch (e) {}
+    render();
+}
+// second events update (a Firestore update can carry only one arrayUnion per field), written in the same batch
+function batchAfterLater(b, id, x, prog) {
+    if (!prog) return;
+    // events field already used by the pause update above, so the progress note rides on its own field-free update via a second batch
+    db.collection('workerTasks').doc(id).update({ events: evt('progress', progTodayCount(x) + '|' + prog) }).catch(function () {});
+}
+function resumeTask(id) {
+    taskRef(id).update({ pausedUntil: FV.delete(), pauseNote: FV.delete(), pauseNoPhoto: FV.delete(), updatedAt: Date.now(), events: evt('resumed') }).catch(function () { toast(tr('sendErr')); });
+}
+function askLeave(id) {
+    laterModal('<h3>' + tr('leaveTitle') + '</h3><input id="leaveWhy" type="text" placeholder="' + esc(tr('reasonPh')) + '" style="min-height:52px;font-size:1rem">' +
+        '<div class="btn green" style="min-height:56px" onclick="doLeave(\'' + esc(id) + '\')">' + tr('leaveSend') + '</div><div class="btn gray" style="min-height:52px" onclick="closeLater()">' + tr('cancel') + '</div>');
+}
+function doLeave(id) {
+    var why = ((document.getElementById('leaveWhy') || {}).value || '').trim();
+    saveNote(id, true);
+    closeLater();
+    taskRef(id).update({ handoverReq: Date.now(), handoverNote: why, updatedAt: Date.now(), events: evt('handoverReq', why) }).then(function () { toast(tr('leaveSent')); }).catch(function () { toast(tr('sendErr')); });
 }
 function noteTyping(id) { clearTimeout(noteTimer); noteTimer = setTimeout(function () { saveNote(id); }, 1200); }
 function saveNote(id, silent) {
