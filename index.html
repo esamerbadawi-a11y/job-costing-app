@@ -359,6 +359,7 @@
                     <button class="success" onclick="openNewScheduleModal()" data-i18n="newScheduleBtn"></button>
                     <button class="secondary" style="background:#059669;" onclick="openSendScheduleModal()" data-i18n="sendScheduleBtn"></button>
                     <button class="secondary" style="background:#7c3aed;" onclick="openFindTechModal()">📍 <span data-i18n="findTechBtn"></span></button>
+                    <button class="secondary" style="background:#0d9488;" onclick="openWorkerActivity()">📊 <span data-i18n="wkActBtn"></span></button>
                 </div>
             </div>
             <div id="weeklyRangeLabel" style="color:var(--text-muted); font-size:0.85rem; margin-bottom:15px;"></div>
@@ -1609,6 +1610,17 @@
     </div>
 </div>
 
+<div id="workerActivityModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10002; justify-content:center; align-items:flex-start;" onclick="if(event.target===this)closeWorkerActivity()">
+    <div class="tg-modal-box" style="max-width:640px; margin-top:4vh;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.1rem;">📊 <span data-i18n="wkActTitle"></span></h2>
+            <button class="danger" onclick="closeWorkerActivity()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+        <div id="workerActivityPeriods" style="display:flex; gap:6px; margin-bottom:12px;"></div>
+        <div id="workerActivityBody"></div>
+    </div>
+</div>
+
 <div id="workerTaskModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10003; justify-content:center; align-items:flex-start;" onclick="if(event.target===this) closeWorkerTask();">
     <div class="tg-modal-box" style="max-width:640px; margin-top:4vh;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px; flex-wrap:wrap;">
@@ -2785,6 +2797,26 @@
         wkStNew: { ar: "جديدة", en: "New" },
         wkStArrived: { ar: "وصل", en: "Arrived" },
         wkStDone: { ar: "خلّص", en: "Finished" },
+        wkActBtn: { ar: 'نشاط الفنيين', en: 'Worker Activity' },
+        wkActTitle: { ar: 'نشاط الفنيين', en: 'Worker Activity' },
+        wkActToday: { ar: 'النهاردة', en: 'Today' },
+        wkActWeek: { ar: 'الأسبوع', en: 'This week' },
+        wkActMonth: { ar: 'الشهر', en: 'This month' },
+        wkActDone: { ar: 'خلّص', en: 'Done' },
+        wkActInProg: { ar: 'وصل ولسه', en: 'In progress' },
+        wkActNew: { ar: 'لسه ما بدأش', en: 'Not started' },
+        wkActLast: { ar: 'آخر نشاط:', en: 'Last activity:' },
+        wkActNone: { ar: 'مفيش نشاط في الفترة دي.', en: 'No activity in this period.' },
+        wkActNoWorkers: { ar: 'مفيش شغلانات اتبعتت للفنيين لسه.', en: 'No jobs have been sent to workers yet.' },
+        wkActMissing: { ar: '⚠️ اتقفلت ناقصة:', en: '⚠️ Closed with missing items:' },
+        wkActNoAfter: { ar: 'من غير صور بعد', en: 'no after photos' },
+        wkActNoSign: { ar: 'من غير توقيع العميل', en: 'no customer signature' },
+        wkActLate: { ar: '⏳ متأخرة', en: '⏳ Running long' },
+        wkActLateFor: { ar: 'وصل من', en: 'arrived' },
+        wkActHoursAgo: { ar: 'ساعة', en: 'h ago' },
+        wkActIdle: { ar: '💤 ساكت النهاردة', en: '💤 No activity today' },
+        wkActPhotos: { ar: '📷 قبل/بعد:', en: '📷 before/after:' },
+        wkActSigned: { ar: '✍️ وقّع', en: '✍️ signed' },
         wkTaskTitle: { ar: "شغلة العامل", en: "Worker task" },
         wkSentAt: { ar: "اتبعتت", en: "Sent" },
         wkArrivedAt: { ar: "وقت الوصول", en: "Arrived at" },
@@ -10401,6 +10433,8 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const wk = document.getElementById('screenWeekly'), ap = document.getElementById('screenAppointments');
         if (wk && wk.style.display !== 'none') safeCall(renderWeeklyBoard);
         if (ap && ap.style.display !== 'none') safeCall(renderAppointments);
+        const wam = document.getElementById('workerActivityModal');
+        if (wam && wam.style.display === 'flex') safeCall(renderWorkerActivity);
         if (workerTaskOpenId) {
             const x = workerTasks.find(z => z.id === workerTaskOpenId);
             const have = (workerTaskPhotos[workerTaskOpenId] || []).length;
@@ -10633,6 +10667,100 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             currentQuotePhotos = shrunk;
             renderPhotoGallery(currentQuotePhotos, 'quotePhotoGallery');
         } catch (e) { console.error(e); showToast(t('wkEstimateErr')); }
+    }
+    /* ---------------- Worker activity overview (read-only) ---------------- */
+    const WORKER_LATE_HOURS = 6;
+    let workerActPeriod = 'today';
+    const workerActOpen = {};   // workerEmail -> expanded
+    function openWorkerActivity() {
+        document.getElementById('workerActivityModal').style.display = 'flex';
+        renderWorkerActivity();
+    }
+    function closeWorkerActivity() { document.getElementById('workerActivityModal').style.display = 'none'; }
+    function setWorkerActPeriod(p) { workerActPeriod = p; renderWorkerActivity(); }
+    function toggleWorkerActOpen(email) { workerActOpen[email] = !workerActOpen[email]; renderWorkerActivity(); }
+    function workerActStart(p) {
+        const d = new Date(); d.setHours(0, 0, 0, 0);
+        if (p === 'week') { const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow); }
+        else if (p === 'month') d.setDate(1);
+        return d.getTime();
+    }
+    function workerTaskTs(x) { return x.doneAt || x.arrivedAt || x.createdAt || 0; }
+    // What is wrong with a finished task (empty list = nothing to flag).
+    function workerTaskMissing(x) {
+        if (x.status !== 'done') return [];
+        const m = [];
+        if (x.refKind !== 'appt' && !((x.cnt_after || 0) > 0)) m.push(t('wkActNoAfter'));
+        if (x.refKind !== 'appt' && !x.signed) m.push(t('wkActNoSign'));
+        return m;
+    }
+    function workerTaskLateHours(x) {
+        if (x.status !== 'arrived' || !x.arrivedAt) return 0;
+        const h = (Date.now() - x.arrivedAt) / 3600000;
+        return h >= WORKER_LATE_HOURS ? Math.floor(h) : 0;
+    }
+    function renderWorkerActivity() {
+        const body = document.getElementById('workerActivityBody');
+        const bar = document.getElementById('workerActivityPeriods');
+        if (!body || !bar) return;
+        bar.innerHTML = [['today', 'wkActToday'], ['week', 'wkActWeek'], ['month', 'wkActMonth']].map(([k, key]) =>
+            `<button class="secondary" onclick="setWorkerActPeriod('${k}')" style="flex:1; padding:7px; font-size:0.82rem; ${workerActPeriod === k ? 'background:#0d9488; color:#fff;' : ''}">${t(key)}</button>`).join('');
+        const all = (workerTasks || []).filter(x => !x.hidden);
+        if (!all.length) { body.innerHTML = `<div style="color:var(--text-muted); font-size:0.9rem;">${t('wkActNoWorkers')}</div>`; return; }
+        const start = workerActStart(workerActPeriod);
+        const todayStart = workerActStart('today');
+        const groups = {};
+        all.forEach(x => {
+            const key = x.workerEmail || x.tech || '?';
+            (groups[key] = groups[key] || { email: key, name: x.tech || key, tasks: [], all: [] }).all.push(x);
+            if (x.tech) groups[key].name = x.tech;
+            // in the period, or still open (an unfinished task always matters)
+            if (workerTaskTs(x) >= start || x.status !== 'done') groups[key].tasks.push(x);
+        });
+        const cards = Object.values(groups).sort((a, b) => a.name.localeCompare(b.name)).map(g => {
+            const done = g.tasks.filter(x => x.status === 'done' && workerTaskTs(x) >= start).length;
+            const prog = g.tasks.filter(x => x.status === 'arrived').length;
+            const fresh = g.tasks.filter(x => x.status === 'new').length;
+            const last = Math.max(0, ...g.all.map(x => Math.max(x.updatedAt || 0, x.doneAt || 0, x.arrivedAt || 0)));
+            const idle = g.all.some(x => x.status === 'new' && (x.createdAt || 0) >= todayStart) && !g.all.some(x => (x.arrivedAt || 0) >= todayStart || (x.doneAt || 0) >= todayStart);
+            const missingTasks = g.tasks.filter(x => workerTaskMissing(x).length && workerTaskTs(x) >= start);
+            const lateTasks = g.tasks.filter(x => workerTaskLateHours(x));
+            const chip = (txt, col) => `<span style="display:inline-block; background:${col}22; color:${col}; border-radius:10px; padding:2px 8px; font-size:0.74rem; margin:2px 4px 2px 0;">${txt}</span>`;
+            let chips = '';
+            if (missingTasks.length) chips += chip('⚠️ ' + missingTasks.length, '#f59e0b');
+            if (lateTasks.length) chips += chip(t('wkActLate') + ' ' + lateTasks.length, '#ef4444');
+            if (idle) chips += chip(t('wkActIdle'), '#94a3b8');
+            const isOpen = !!workerActOpen[g.email];
+            let list = '';
+            if (isOpen) {
+                const rows = g.tasks.slice().sort((a, b) => workerTaskTs(b) - workerTaskTs(a));
+                list = rows.length ? rows.map(x => {
+                    const icon = x.status === 'done' ? '✅' : x.status === 'arrived' ? '✔' : '🕒';
+                    const miss = workerTaskMissing(x);
+                    const late = workerTaskLateHours(x);
+                    return `<div onclick="openWorkerTask('${jsArg(x.id)}')" style="border-top:1px solid var(--border-color); padding:8px 2px; cursor:pointer; font-size:0.85rem;">
+                        <div><b>${icon} ${escHtml(x.clientName || '')}</b> <span style="color:var(--text-muted);">${escHtml(workerStamp(workerTaskTs(x)))}</span></div>
+                        ${x.address ? `<div style="color:var(--text-muted); font-size:0.78rem;">${escHtml(x.address)}</div>` : ''}
+                        <div style="font-size:0.78rem; margin-top:2px;">${t('wkActPhotos')} ${x.cnt_before || 0}/${x.cnt_after || 0}${x.signed ? ' · ' + t('wkActSigned') : ''}</div>
+                        ${miss.length ? `<div style="color:#f59e0b; font-size:0.78rem;">${t('wkActMissing')} ${miss.join('، ')}</div>` : ''}
+                        ${late ? `<div style="color:#ef4444; font-size:0.78rem;">${t('wkActLate')} — ${t('wkActLateFor')} ${late} ${t('wkActHoursAgo')}</div>` : ''}
+                        ${x.note ? `<div style="font-size:0.78rem; color:var(--text-muted);">💬 ${escHtml(String(x.note).slice(0, 120))}</div>` : ''}
+                    </div>`;
+                }).join('') : `<div style="color:var(--text-muted); font-size:0.82rem; padding-top:8px;">${t('wkActNone')}</div>`;
+            }
+            return `<div class="tech-card" style="margin-bottom:10px;">
+                <div onclick="toggleWorkerActOpen('${jsArg(g.email)}')" style="cursor:pointer;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;"><strong>👷 ${escHtml(g.name)}</strong><span style="color:var(--text-muted);">${isOpen ? '▴' : '▾'}</span></div>
+                    <div style="display:flex; gap:14px; margin-top:6px; font-size:0.85rem; flex-wrap:wrap;">
+                        <span>✅ <b>${done}</b> ${t('wkActDone')}</span><span>✔ <b>${prog}</b> ${t('wkActInProg')}</span><span>🕒 <b>${fresh}</b> ${t('wkActNew')}</span>
+                    </div>
+                    ${last ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">${t('wkActLast')} ${escHtml(workerStamp(last))}</div>` : ''}
+                    ${chips ? `<div style="margin-top:4px;">${chips}</div>` : ''}
+                </div>
+                ${list}
+            </div>`;
+        }).join('');
+        body.innerHTML = cards;
     }
     function closeWorkerTask() { workerTaskOpenId = null; document.getElementById('workerTaskModal').style.display = 'none'; }
     function resendWorkerTask() {
