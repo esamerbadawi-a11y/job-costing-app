@@ -116,7 +116,7 @@ const I18N = {
     es: { next: 'SIGUIENTE', needPhoto: '📷 Tome al menos 1 foto para continuar', stepSign: 'FIRMA', signTitle: 'Conformidad del cliente', signText: 'Estoy satisfecho con el trabajo.', signHere: '✍️ El cliente firma aquí', signClear: 'Borrar', custName: 'Nombre del cliente (opcional)', needSign: 'El cliente debe firmar, o toque “Cliente no disponible”.', notAvail: 'Cliente no disponible',  signIn: 'Iniciar sesión', email: 'Correo', password: 'Contraseña', enter: 'ENTRAR', badLogin: 'Correo o contraseña incorrectos.', noAccount: 'Su cuenta aún no está lista. Llame a la oficina.',
         today: 'Hoy', upcoming: 'Próximos', noJobs: 'No hay trabajos aquí', newTag: 'Nuevo', inProgress: 'En progreso', late: 'Atrasado', estimateTag: 'Visita de estimado', noPrices: '🔒 Sin precios ni pagos',
         map: '🗺️ Mapa', callCustomer: '📞 Llamar al cliente', callOffice: '📞 Llamar a la oficina', original: '🌐 Mensaje original', translated: '🌐 Traducido · ver original', showTranslated: '🌐 Ver traducido',
-        arrived: 'LLEGUÉ', arrivedAt: 'Llegada', before: 'ANTES', after: 'DESPUÉS', estimatePhotos: 'FOTOS DEL ESTIMADO', done: 'TERMINÉ', notePh: '💬 Nota para la oficina (opcional)…', saved: '✔ Guardado',
+        arrived: 'LLEGUÉ', arrivedAt: 'Llegada', before: 'ANTES', after: 'DESPUÉS', estimatePhotos: 'FOTOS DEL ESTIMADO', done: 'TERMINADO', notePh: '💬 Nota para la oficina (opcional)…', saved: '✔ Guardado',
         confirmDone: '¿Terminó este trabajo?', yes: 'Sí, terminé', no: 'Todavía no', syncing: '⏳ Enviando… se completa solo', offline: '📴 Sin señal — las fotos se enviarán solas más tarde',
         profile: 'Perfil', myWork: 'Mi trabajo', todayWord: 'Hoy', thisWeek: 'Esta semana', thisMonth: 'Este mes', jobsDone: 'trabajos terminados', theme: 'Color', dark: '🌙 Oscuro', light: '☀️ Claro',
         textSize: 'Tamaño del texto', normal: 'Normal', large: 'Grande', xl: 'Muy grande', language: 'Idioma', changePhoto: '📷 Cambiar mi foto', logout: 'Cerrar sesión', newJob: '🔔 ¡Trabajo nuevo!', photoErr: 'No se pudo guardar la foto. Intente otra vez.', sendErr: 'No se pudo enviar. Revise la señal.', loading: 'Cargando…', back: 'Atrás' },
@@ -134,6 +134,64 @@ Object.assign(I18N.ar, { helperTag: '🤝 مساعد', partnerLead: 'المسؤ�
 Object.assign(I18N.en, { progBtn: '📷 Photos of the work now', progTitle: 'Take photos of the work as it is now', progNotePh: 'Where did you get to? (e.g. boards done, painting left)', progNeed: '📷 Take at least 1 photo first', progToday: 'photos today', emergBtn: '⚠️ Emergency — no photos', emergNeedWhy: 'Write the reason first' });
 Object.assign(I18N.es, { progBtn: '📷 Fotos del trabajo ahora', progTitle: 'Tome fotos del trabajo como está ahora', progNotePh: '¿Hasta dónde llegó? (ej. paneles listos, falta pintar)', progNeed: '📷 Tome al menos 1 foto primero', progToday: 'fotos hoy', emergBtn: '⚠️ Emergencia — sin fotos', emergNeedWhy: 'Escriba el motivo primero' });
 Object.assign(I18N.ar, { progBtn: '📷 صور الشغل دلوقتي', progTitle: 'صوّر الشغل زي ما هو دلوقتي', progNotePh: 'وصلتوا لفين؟ (مثلًا: خلّصنا الألواح وفاضل الدهان)', progNeed: '📷 صوّر صورة واحدة على الأقل الأول', progToday: 'صور النهاردة', emergBtn: '⚠️ ظرف طارئ — من غير صور', emergNeedWhy: 'اكتب السبب الأول' });
+/* ---------------- first-run guide ---------------- */
+Object.assign(I18N.en, { guideHelp: '❓ How to use this app', gNext: 'Next', gBack: 'Back', gSkip: 'Skip', gDone: '✔ Got it', gOf: 'of' });
+Object.assign(I18N.es, { guideHelp: '❓ Cómo usar esta app', gNext: 'Siguiente', gBack: 'Atrás', gSkip: 'Omitir', gDone: '✔ Entendido', gOf: 'de' });
+Object.assign(I18N.ar, { guideHelp: '❓ إزاي تستخدم البرنامج', gNext: 'التالي', gBack: 'رجوع', gSkip: 'تخطّي', gDone: '✔ فهمت', gOf: 'من' });
+var GUIDE = {
+    en: [
+        ['👋', 'Welcome!', 'This app shows your jobs. <b>Today</b> = jobs for today. <b>Upcoming</b> = later days. Tap a job to open it.'],
+        ['📍', 'When you arrive', 'Tap the big <b>I ARRIVED</b> button when you get to the customer. The office sees it right away.'],
+        ['📷', 'Step 1 · BEFORE photos', 'Before you touch anything, take photos of the work area. You can add a short note. Then tap <b>NEXT</b>.'],
+        ['✅', 'Step 2 · AFTER photos', 'When the work is finished, take photos of the finished work. Then tap <b>NEXT</b>.'],
+        ['✍️', 'Step 3 · Customer signature', 'Give the phone to the customer to sign with a finger. If the customer is not there, tap <b>Customer not available</b>. Then tap <b>FINISHED</b>.'],
+        ['⏸', 'Job not finished today?', 'Tap <b>Continue later</b>, pick the day you will come back, and take photos of the work as it is now (required). The job goes to the paused list and comes back by itself.'],
+        ['🤝', 'Working with a helper', 'If two people work on one job, one is the <b>Lead</b> and one the <b>Helper</b>. If the Lead must leave, tap <b>I have to leave</b> and the Helper finishes the job.'],
+        ['📲', 'Tip for iPhone', 'Open this page in Safari → tap Share → <b>Add to Home Screen</b>. Then open it like a normal app.']
+    ],
+    es: [
+        ['👋', '¡Bienvenido!', 'Esta app muestra sus trabajos. <b>Hoy</b> = trabajos de hoy. <b>Próximos</b> = días siguientes. Toque un trabajo para abrirlo.'],
+        ['📍', 'Cuando llegue', 'Toque el botón grande <b>LLEGUÉ</b> al llegar con el cliente. La oficina lo ve de inmediato.'],
+        ['📷', 'Paso 1 · Fotos de ANTES', 'Antes de tocar nada, tome fotos del área de trabajo. Puede agregar una nota corta. Luego toque <b>SIGUIENTE</b>.'],
+        ['✅', 'Paso 2 · Fotos de DESPUÉS', 'Al terminar el trabajo, tome fotos del trabajo terminado. Luego toque <b>SIGUIENTE</b>.'],
+        ['✍️', 'Paso 3 · Firma del cliente', 'Dele el teléfono al cliente para que firme con el dedo. Si el cliente no está, toque <b>Cliente no disponible</b>. Luego toque <b>TERMINADO</b>.'],
+        ['⏸', '¿No terminó hoy?', 'Toque <b>Continuar después</b>, elija el día que volverá y tome fotos del trabajo como está (obligatorio). El trabajo pasa a la lista de pausados y vuelve solo.'],
+        ['🤝', 'Trabajo con ayudante', 'Si dos personas trabajan en un trabajo, una es el <b>Responsable</b> y otra el <b>Ayudante</b>. Si el Responsable debe irse, toca <b>Tengo que irme</b> y el Ayudante termina el trabajo.'],
+        ['📲', 'Consejo para iPhone', 'Abra esta página en Safari → toque Compartir → <b>Agregar a pantalla de inicio</b>. Luego ábrala como una app normal.']
+    ],
+    ar: [
+        ['👋', 'أهلاً بيك!', 'البرنامج ده بيعرض شغلك. <b>النهاردة</b> = شغل النهاردة. <b>القادم</b> = الأيام الجاية. اضغط على أي شغلانة تفتحها.'],
+        ['📍', 'لما توصل', 'اضغط الزرار الكبير <b>وصلت</b> أول ما توصل عند العميل. المكتب بيشوف ده فورًا.'],
+        ['📷', 'خطوة ١ · صور قبل', 'قبل ما تلمس أي حاجة، صوّر مكان الشغل. تقدر تكتب ملاحظة صغيرة. بعدين اضغط <b>التالي</b>.'],
+        ['✅', 'خطوة ٢ · صور بعد', 'لما تخلّص الشغل، صوّر الشغل بعد ما خلص. بعدين اضغط <b>التالي</b>.'],
+        ['✍️', 'خطوة ٣ · توقيع العميل', 'ادّي الموبايل للعميل يمضي بصباعه. لو العميل مش موجود اضغط <b>العميل مش موجود</b>. بعدين اضغط <b>خلصت</b>.'],
+        ['⏸', 'الشغلانة ما خلصتش النهاردة؟', 'اضغط <b>هكمّل بعدين</b>، اختار اليوم اللي هترجع فيه، وصوّر الشغل زي ما هو دلوقتي (إجباري). الشغلانة بتروح قايمة المؤجّل وبترجع لوحدها.'],
+        ['🤝', 'لو معاك مساعد', 'لو اتنين على شغلانة واحدة، واحد <b>المسؤول</b> والتاني <b>المساعد</b>. لو المسؤول اضطر يمشي يضغط <b>لازم أمشي</b> والمساعد هو اللي يقفل الشغلانة.'],
+        ['📲', 'نصيحة للأيفون', 'افتح الصفحة في Safari ← اضغط مشاركة ← <b>إضافة إلى الشاشة الرئيسية</b>. بعدها افتحه زي أي تطبيق.']
+    ]
+};
+var guideIdx = 0;
+function guideKey() { return 'wk_guide_v1_' + (myEmail || ''); }
+function maybeGuide() {
+    try { if (LS.get(guideKey())) return; } catch (e) {}
+    if (view.name !== 'list') return;
+    openGuide();
+}
+function openGuide() { guideIdx = 0; closeGuide(); var m = document.createElement('div'); m.className = 'modal'; m.id = 'guideModal'; document.body.appendChild(m); drawGuide(); }
+function closeGuide() { var m = document.getElementById('guideModal'); if (m) m.remove(); }
+function endGuide() { try { LS.set(guideKey(), '1'); } catch (e) {} closeGuide(); }
+function guideStep(d) { var n = (GUIDE[lang] || GUIDE.en).length; guideIdx = Math.max(0, Math.min(n - 1, guideIdx + d)); drawGuide(); }
+function drawGuide() {
+    var m = document.getElementById('guideModal'); if (!m) return;
+    var g = GUIDE[lang] || GUIDE.en, n = g.length, sl = g[guideIdx], last = guideIdx === n - 1, dots = '';
+    for (var i = 0; i < n; i++) dots += '<span style="width:8px;height:8px;border-radius:50%;display:inline-block;margin:0 3px;background:' + (i === guideIdx ? '#3b82f6' : 'rgba(255,255,255,.25)') + '"></span>';
+    m.innerHTML = '<div class="box" style="gap:14px;text-align:center">' +
+        '<div style="font-size:3.4rem;line-height:1">' + sl[0] + '</div><h3>' + sl[1] + '</h3>' +
+        '<div style="font-size:1.05rem;line-height:1.55">' + sl[2] + '</div>' +
+        '<div>' + dots + '</div><div class="mut" style="font-size:.8rem">' + (guideIdx + 1) + ' ' + tr('gOf') + ' ' + n + '</div>' +
+        '<div class="btn blue" onclick="' + (last ? 'endGuide()' : 'guideStep(1)') + '">' + (last ? tr('gDone') : tr('gNext')) + '</div>' +
+        '<div style="display:flex;gap:10px">' + (guideIdx > 0 ? '<div class="btn gray" style="flex:1" onclick="guideStep(-1)">' + tr('gBack') + '</div>' : '') + (last ? '' : '<div class="btn gray" style="flex:1" onclick="endGuide()">' + tr('gSkip') + '</div>') + '</div></div>';
+}
 const LOCALE = { en: 'en-US', es: 'es-US', ar: 'ar-EG-u-nu-latn' };
 const FLAG = { ar: '🇪🇬', en: '🇺🇸', es: '🇪🇸' };
 function tr(k) { return (I18N[lang] && I18N[lang][k]) || I18N.en[k] || k; }
@@ -237,7 +295,7 @@ function listHtml() {
         h += '<div class="sec">' + tr('pausedSec') + ' (' + pz.length + ')</div>';
         pz.forEach(function (x) { h += '<div class="card tap" data-id="' + esc(x.id) + '" onclick="openTask(this.dataset.id)" style="opacity:.85"><h4>' + esc(x.clientName || '—') + '</h4><p>⏸ ' + tr('pausedUntilLbl') + ' ' + esc(fmtDate(x.pausedUntil)) + '</p>' + (x.pauseNote ? '<p>💬 ' + esc(x.pauseNote) + '</p>' : '') + '</div>'; });
     }
-    h += '<div class="sp"></div><div class="foot">' + tr('noPrices') + '</div></div>';
+    h += '<div class="sp"></div><div class="center" style="padding:6px"><span class="mut" style="text-decoration:underline;font-size:.95rem" onclick="openGuide()">' + tr('guideHelp') + '</span></div><div class="foot">' + tr('noPrices') + '</div></div>';
     return h;
 }
 function cardHtml(x, today) {
@@ -408,6 +466,7 @@ auth.onAuthStateChanged(function (u) {
             if (view.name === 'loading' || view.name === 'noaccount') view = { name: 'list', tab: 'today', id: null };
         }
         render();
+        if (first) setTimeout(maybeGuide, 500);
     }, function (err) { view = { name: 'noaccount', tab: 'today', id: null, why: (err && (err.code || err.message)) || 'error' }; render(); });
 });
 
