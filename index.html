@@ -2831,6 +2831,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         saveFollowUpReasonBtn: { ar: '💾 حفظ', en: '💾 Save' },
         invoiceSendMsgBtn: { ar: '✉️ ابعت رسالة للعميل', en: '✉️ Send Client Message' },
         invoicePaidBadge: { ar: '✅ مدفوعة بالكامل', en: '✅ PAID IN FULL' },
+        receiptPaidMarkLbl: { ar: 'حط علامة "مدفوع" على الإيصال', en: 'Mark this receipt as PAID' },
+        receiptPaidStamp: { ar: 'تم استلام الدفعة', en: 'PAYMENT RECEIVED' },
         invoicePaidStamp: { ar: 'مدفوعة بالكامل', en: 'PAID IN FULL' },
         invoicePaidMarkToggle: { ar: 'حط علامة "مدفوعة بالكامل" على الفاتورة دي', en: 'Mark this invoice as PAID IN FULL' },
         invoiceLoadingNote: { ar: 'بيتأكد من آخر نسخة محفوظة على السيرفر...', en: 'Checking the latest saved version on the server...' },
@@ -5765,6 +5767,67 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         if (lang === 'ar') return `أهلاً، معاك ${companyDisplayName()}. تذكير ودّي بالمبلغ المتبقي ${amount}${what ? ' عن ' + what : ''}${daysOverdue ? `، وعدّى ${daysOverdue} يوم على موعد المتابعة` : ''}. ${long ? 'ياريت نرتب السداد في أقرب وقت.' : 'ياريت تبلغنا إمتى نقدر نستلمه.'} شكرًا لتعاونك.` + paymentLinkMessageLine(lang, includeLink);
         return `Hello, this is ${companyDisplayName()}. A friendly reminder about the remaining balance of ${amount}${what ? ' for ' + what : ''}${daysOverdue ? `, now ${daysOverdue} days past the follow-up date` : ''}. ${long ? 'Please arrange payment as soon as you can.' : 'Please let us know when we can expect it.'} Thank you!` + paymentLinkMessageLine(lang, includeLink);
     }
+    // Message that matches the document type chosen on the Generate Invoice screen
+    // (invoice / estimate / proposal / additional work / receipt) and the real figures on it.
+    function docMsgFacts(job) {
+        const st = invoiceState, type = st.docType, usd = n => '$' + round2(n).toFixed(2);
+        const f = { type, no: st.invoiceNo || '', what: (job.clientDescription || '').split('\n')[0].slice(0, 80).trim(), payable: false };
+        if (type === 'RECEIPT') {
+            const r = st.receiptSnap || { received: 0, agreed: 0, balance: 0 };
+            f.received = usd(r.received); f.agreed = usd(r.agreed); f.balance = r.balance; f.balanceTxt = usd(r.balance); f.paidFull = r.balance <= 0.005;
+        } else {
+            const total = invoiceSubtotal() - invoiceCreditsTotal();
+            f.total = usd(total);
+            if (type === 'INVOICE' || type === 'ADDITIONAL_WORK') {
+                const sn = st.showPaid ? st.paidSnap : null;
+                const paid = sn ? sn.total : 0, due = round2(total - paid);
+                f.paid = paid > 0.005 ? usd(paid) : ''; f.due = usd(due); f.dueNum = due; f.payable = due > 0.005; f.paidFull = due <= 0.005;
+            }
+        }
+        return f;
+    }
+    function buildDocMsgPrompt(job, f, lang, customInstructions, includeLink) {
+        const extra = (customInstructions || '').trim();
+        const ar = lang === 'ar';
+        const link = (includeLink !== false && f.payable && companyProfile.paymentLink)
+            ? (ar ? ` ولازم تخلّص الرسالة بالسطر ده بالظبط من غير أي تغيير فيه: "تقدر تدفع أونلاين من هنا: ${companyProfile.paymentLink}".` : ` End the message with this exact line, unchanged: "You can pay online here: ${companyProfile.paymentLink}".`) : '';
+        const tail = ar ? ` اكتب الرسالة بالعربي، من غير مقدمة أو عناوين، الرسالة نفسها بس.${extra ? ' تعليمات إضافية من صاحب الشغل: ' + extra + '.' : ''}${link}`
+                        : ` No preamble or headers, just the message itself.${extra ? ' Extra instructions from the business owner to follow: ' + extra + '.' : ''}${link}`;
+        const who = job.clientName || '', job_ = f.what ? (ar ? ` عن "${f.what}"` : ` for "${f.what}"`) : '';
+        let body;
+        if (f.type === 'ESTIMATE' || f.type === 'PROPOSAL') {
+            const kind = f.type === 'PROPOSAL' ? (ar ? 'عرض مقترح (Proposal)' : 'proposal') : (ar ? 'تقدير تكلفة (Estimate)' : 'estimate');
+            body = ar ? `اكتب رسالة ودّية ومختصرة (3-4 جمل) للعميل ${who} بتبعتله ${kind}${job_} رقم ${f.no} بإجمالي ${f.total}. اطلب منه يراجعه ويرد بالموافقة أو أي أسئلة. ده مش فاتورة ومفيش طلب دفع ولا تذكر أي مبالغ مدفوعة.`
+                      : `Write a friendly, concise (3-4 sentence) message to client ${who} sending the ${kind}${job_} no. ${f.no}, total ${f.total}. Ask them to review it and reply with approval or any questions. This is NOT an invoice: do not ask for payment and do not mention any amounts paid.`;
+        } else if (f.type === 'ADDITIONAL_WORK') {
+            body = ar ? `اكتب رسالة مهذبة ومختصرة (3-4 جمل) للعميل ${who} بتبعتله فاتورة أعمال إضافية${job_} رقم ${f.no} عن شغل زيادة عن الاتفاق الأصلي، بإجمالي ${f.total}${f.paid ? `، المدفوع ${f.paid}` : ''}${f.payable ? `، والمتبقي ${f.due}. اطلب السداد بأدب.` : '. اشكره على السداد.'}`
+                      : `Write a polite, concise (3-4 sentence) message to client ${who} sending an additional-work invoice${job_} no. ${f.no} for work beyond the original agreement, total ${f.total}${f.paid ? `, paid so far ${f.paid}` : ''}${f.payable ? `, remaining ${f.due}. Politely ask for payment.` : '. Thank them for paying.'}`;
+        } else if (f.type === 'RECEIPT') {
+            body = ar ? `اكتب رسالة شكر مهذبة ومختصرة (2-4 جمل) للعميل ${who} بتبعتله إيصال استلام رقم ${f.no}${job_} بتأكد استلام ${f.received} من إجمالي متفق عليه ${f.agreed}${f.paidFull ? '، وبكده اتسدد المبلغ بالكامل' : `، والمتبقي ${f.balanceTxt}`}. ${f.paidFull ? 'اشكره على ثقته.' : 'اذكر المتبقي بلطف من غير ضغط.'}`
+                      : `Write a polite, concise (2-4 sentence) message to client ${who} sending receipt no. ${f.no}${job_} confirming we received ${f.received} out of the agreed total ${f.agreed}${f.paidFull ? ', so it is now paid in full' : `, with ${f.balanceTxt} remaining`}. ${f.paidFull ? 'Thank them for their trust.' : 'Mention the remaining balance gently, without pressure.'}`;
+        } else {
+            body = ar ? `اكتب رسالة مهذبة ومختصرة (3-4 جمل) للعميل ${who} بتبعتله فاتورة رقم ${f.no}${job_} بإجمالي ${f.total}${f.paid ? `، المبلغ المستلم ${f.paid}` : ''}${f.payable ? `، والمتبقي ${f.due}. اطلب السداد بأدب.` : '، وبكده الفاتورة مسددة بالكامل. اشكره.'}`
+                      : `Write a polite, concise (3-4 sentence) message to client ${who} sending invoice no. ${f.no}${job_}, total ${f.total}${f.paid ? `, amount received ${f.paid}` : ''}${f.payable ? `, remaining ${f.due}. Politely ask for payment.` : ', so the invoice is paid in full. Thank them.'}`;
+        }
+        return body + tail;
+    }
+    function buildFallbackDocMsg(job, f, lang, includeLink) {
+        const ar = lang === 'ar', who = job.clientName || '', co = companyDisplayName(), w = f.what ? (ar ? ' عن ' + f.what : ' for ' + f.what) : '';
+        let m;
+        if (f.type === 'ESTIMATE' || f.type === 'PROPOSAL') {
+            const k = f.type === 'PROPOSAL' ? (ar ? 'العرض المقترح' : 'proposal') : (ar ? 'تقدير التكلفة' : 'estimate');
+            m = ar ? `أهلاً ${who}، معاك ${co}. مرفق ${k}${w} رقم ${f.no} بإجمالي ${f.total}. لو موافق قولنا، أو لو عندك أي سؤال إحنا موجودين. شكرًا ليك!`
+                   : `Hello ${who}, this is ${co}. Attached is the ${k}${w} no. ${f.no}, total ${f.total}. Let us know if you approve, or if you have any questions. Thank you!`;
+        } else if (f.type === 'RECEIPT') {
+            m = ar ? `أهلاً ${who}، معاك ${co}. مرفق إيصال استلام رقم ${f.no}: استلمنا ${f.received} من إجمالي ${f.agreed}${f.paidFull ? '، وبكده اتسدد المبلغ بالكامل. شكرًا على ثقتك!' : `، والمتبقي ${f.balanceTxt}. شكرًا ليك!`}`
+                   : `Hello ${who}, this is ${co}. Attached is receipt no. ${f.no}: we received ${f.received} of the ${f.agreed} total${f.paidFull ? ', so it is now paid in full. Thank you for your trust!' : `, with ${f.balanceTxt} remaining. Thank you!`}`;
+        } else {
+            const kind = f.type === 'ADDITIONAL_WORK' ? (ar ? 'فاتورة الأعمال الإضافية' : 'additional-work invoice') : (ar ? 'الفاتورة' : 'invoice');
+            m = ar ? `أهلاً ${who}، معاك ${co}. مرفق ${kind}${w} رقم ${f.no} بإجمالي ${f.total}${f.paid ? `، المستلم ${f.paid}` : ''}${f.payable ? `، والمتبقي ${f.due}. ياريت نرتب السداد في أقرب وقت. شكرًا ليك!` : '، وهي مسددة بالكامل. شكرًا ليك!'}`
+                   : `Hello ${who}, this is ${co}. Attached is the ${kind}${w} no. ${f.no}, total ${f.total}${f.paid ? `, received ${f.paid}` : ''}${f.payable ? `, remaining ${f.due}. Please arrange payment as soon as you can. Thank you!` : ', paid in full. Thank you!'}`;
+        }
+        return m + (f.payable ? paymentLinkMessageLine(lang, includeLink) : '');
+    }
     function buildThankYouPrompt(job, lang, customInstructions) {
         const extra = (customInstructions || '').trim();
         if (lang === 'ar') return `اكتب رسالة شكر مهذبة ومختصرة (2-3 جمل) للعميل ${job.clientName}، بعد ما خلّص سداد فاتورة شغلانة "${job.clientDescription || 'الصيانة'}" بالكامل. اشكره على التعامل وثقته في ${companyDisplayName()}.${extra ? ` تعليمات إضافية من صاحب الشغل لازم تاخد بالك منها: ${extra}.` : ''} من غير مقدمات زي "تفضل" أو عناوين، الرسالة بس.`;
@@ -5845,7 +5908,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     // checkbox only shows for those two, and always resets to checked on a fresh open.
     function setAiPaymentLinkToggleVisibility(msgKind) {
         document.getElementById('aiIncludePaymentLink').checked = true;
-        document.getElementById('aiPaymentLinkToggleGroup').style.display = (companyProfile.paymentLink && (msgKind === 'reminder' || msgKind === 'quote')) ? '' : 'none';
+        document.getElementById('aiPaymentLinkToggleGroup').style.display = (companyProfile.paymentLink && (msgKind === 'reminder' || msgKind === 'quote' || (msgKind === 'doc' && aiReminderCtx && aiReminderCtx.doc && aiReminderCtx.doc.payable))) ? '' : 'none';
     }
     function setAiReminderStatus(kind, text) {
         const el = document.getElementById('aiReminderStatus');
@@ -5893,9 +5956,11 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         // client paid through the job's own payment tracking rather than a credit on this invoice.
         const rem = jobRemaining(job);
         const isPaid = rem <= 0.005;
-        aiReminderCtx = { job, rem, daysOverdue: null, apiKey: getGeminiApiKey(), run: 0, mode: 'ai', msgKind: (isPaid || invoiceState.docType === 'RECEIPT') ? 'thankyou' : 'reminder', fromInvoice: true };
+        const docFacts = docMsgFacts(job);
+        // The message follows the Document Type picked on this screen, using the figures on that document.
+        aiReminderCtx = { job, rem, daysOverdue: null, apiKey: getGeminiApiKey(), run: 0, mode: 'ai', msgKind: 'doc', doc: docFacts, fromInvoice: true };
         document.getElementById('aiReminderLang').value = currentLang === 'ar' ? 'ar' : 'en';
-        document.getElementById('aiReminderJob').textContent = `${job.clientName || ''} — $${rem.toFixed(2)}`;
+        document.getElementById('aiReminderJob').textContent = `${job.clientName || ''} — ${invoiceDocTypeDisplay(invoiceState.docType)} ${docFacts.total || docFacts.received || ''}`;
         document.getElementById('aiReminderText').value = '';
         document.getElementById('aiCustomInstructions').value = '';
         // Sharing an image only makes sense when there's an invoice open to render, and only on
@@ -5939,7 +6004,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             const lang = document.getElementById('aiReminderLang').value;
             const customInstructions = document.getElementById('aiCustomInstructions').value;
             const includeLink = document.getElementById('aiIncludePaymentLink').checked;
-            const prompt = c.msgKind === 'thankyou' ? buildThankYouPrompt(c.job, lang, customInstructions)
+            const prompt = c.msgKind === 'doc' ? buildDocMsgPrompt(c.job, c.doc, lang, customInstructions, includeLink)
+                : c.msgKind === 'thankyou' ? buildThankYouPrompt(c.job, lang, customInstructions)
                 : c.msgKind === 'followup' ? buildFollowUpPrompt(c.job, lang, customInstructions)
                 : c.msgKind === 'quote' ? buildQuotePrompt(c.job, lang, customInstructions, includeLink)
                 : buildReminderPrompt(c.job, c.rem, c.daysOverdue, lang, customInstructions, includeLink);
@@ -5962,7 +6028,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         c.run++; c.mode = 'template';   // cancels any AI request still running
         const lang = document.getElementById('aiReminderLang').value;
         const includeLink = document.getElementById('aiIncludePaymentLink').checked;
-        document.getElementById('aiReminderText').value = c.msgKind === 'thankyou' ? buildFallbackThankYou(c.job, lang)
+        document.getElementById('aiReminderText').value = c.msgKind === 'doc' ? buildFallbackDocMsg(c.job, c.doc, lang, includeLink)
+            : c.msgKind === 'thankyou' ? buildFallbackThankYou(c.job, lang)
             : c.msgKind === 'followup' ? buildFallbackFollowUp(c.job, lang)
             : c.msgKind === 'quote' ? buildFallbackQuote(c.job, lang, includeLink)
             : buildFallbackReminder(c.job, c.rem, c.daysOverdue, lang, includeLink);
@@ -5997,7 +6064,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         if (!c || !text) return;
         if (kind === 'email') {
             if (!c.job.clientEmail) { alert(t('alertJobHasNoEmail')); return; }
-            const subject = encodeURIComponent(`${t(emailSubjectKeyFor(c.msgKind))} ${companyDisplayName()}`);
+            const subject = encodeURIComponent(c.msgKind === 'doc' && c.doc ? `${invoiceDocTypeDisplay(c.doc.type)} ${c.doc.no} - ${companyDisplayName()}` : `${t(emailSubjectKeyFor(c.msgKind))} ${companyDisplayName()}`);
             const cc = c.job.ccContactEmail ? `&cc=${encodeURIComponent(c.job.ccContactEmail)}` : '';
             openExternal(`mailto:${c.job.clientEmail}?subject=${subject}${cc}&body=${encodeURIComponent(text)}`, false);
             markFollowUpSent(c);
@@ -8727,6 +8794,10 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             <label style="display:flex; align-items:center; gap:10px; margin-bottom:16px; font-size:0.85rem; cursor:pointer;">
                 <input type="checkbox" style="width:20px; height:20px;" ${invoiceState.receiptShowTotals !== false ? 'checked' : ''} onchange="toggleInvoiceOption('receiptShowTotals', this.checked)">
                 <span>${t('receiptShowTotalsLbl')}</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:10px; margin-bottom:16px; font-size:0.85rem; cursor:pointer;">
+                <input type="checkbox" id="invReceiptPaidToggle" style="width:20px; height:20px;" ${(invoiceState.receiptPaidMark === undefined ? (snap && snap.balance <= 0.005) : invoiceState.receiptPaidMark) ? 'checked' : ''} onchange="toggleInvoiceOption('receiptPaidMark', this.checked)">
+                <span>${t('receiptPaidMarkLbl')}</span>
             </label>`;
         }
 
@@ -8821,7 +8892,9 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         const dueAmount = paidOn ? round2(totalDue - invoiceState.paidSnap.total) : totalDue;
         // Mirrors whatever the "PAID IN FULL" checkbox on the invoice screen is set to — same
         // manual mark, so what you see on screen is exactly what prints.
-        const isPaid = isReceipt ? !!(rSnap && rSnap.balance <= 0.005 && invoiceState.receiptShowTotals !== false) : !!invoiceState.paidMark;
+        const isPaid = isReceipt ? !!(rSnap && (invoiceState.receiptPaidMark === undefined ? (rSnap.balance <= 0.005 && invoiceState.receiptShowTotals !== false) : invoiceState.receiptPaidMark)) : !!invoiceState.paidMark;
+        // a receipt for part of the money says "payment received"; "paid in full" only when nothing is left
+        const stampTxt = (isReceipt && rSnap && rSnap.balance > 0.005) ? t('receiptPaidStamp') : t('invoicePaidStamp');
         const accent = '#2C6B45';
         const companyName = companyDisplayName();
         const companyTagline = companyProfile.tagline || '';
@@ -8872,7 +8945,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         // page top), so it lands in the lower portion of the actual content whether the invoice
         // is short or fills the whole page, instead of being clipped off by the page's
         // overflow:hidden when a short invoice doesn't reach a hardcoded offset.
-        const paidStampMark = (top) => `<div style="position:absolute; top:${top}; left:0; width:100%; text-align:center; z-index:5; transform:rotate(-18deg); color:rgba(220,38,38,0.32); font-family: Arial, Helvetica, sans-serif; font-weight:800; font-size:54px; letter-spacing:4px; white-space:nowrap; pointer-events:none;">${escHtml(t('invoicePaidStamp')).toUpperCase()}</div>`;
+        const paidStampMark = (top) => `<div style="position:absolute; top:${top}; left:0; width:100%; text-align:center; z-index:5; transform:rotate(-18deg); color:rgba(220,38,38,0.32); font-family: Arial, Helvetica, sans-serif; font-weight:800; font-size:54px; letter-spacing:4px; white-space:nowrap; pointer-events:none;">${escHtml(stampTxt).toUpperCase()}</div>`;
         const paidStampHtml = isPaid ? paidStampMark('260px') : '';
         const paidStampBottomHtml = isPaid ? `<div style="position:relative; height:0; overflow:visible;">${paidStampMark('-30px')}</div>` : '';
 
@@ -8899,7 +8972,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                  </div>
                  <div class="ui" style="font-size:13px; line-height:1.9;">
                    <div><b>${escHtml(t('invoiceTypeLabel'))}:</b> ${escHtml(t('invoiceTypeAdditionalWork'))}</div>
-                   <div><b>${escHtml(t('invoiceBalanceDue'))}:</b> ${fmtUsd(dueAmount)}${isPaid ? ` — <span style="color:#16a34a; font-weight:700;">✅ ${escHtml(t('invoicePaidStamp')).toUpperCase()}</span>` : ''}</div>
+                   <div><b>${escHtml(t('invoiceBalanceDue'))}:</b> ${fmtUsd(dueAmount)}${isPaid ? ` — <span style="color:#16a34a; font-weight:700;">✅ ${escHtml(stampTxt).toUpperCase()}</span>` : ''}</div>
                  </div>
                </div>`
             : `<div class="invoice-infoblock" style="display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:24px;">
@@ -8913,7 +8986,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                    <div style="background:${accent}; color:#FDFBF6; border-radius:6px; padding:10px 18px; text-align:center; width:100%; max-width:200px; box-sizing:border-box;">
                      <div class="ui" style="font-size:11px; letter-spacing:1px; opacity:0.9;">${escHtml(isReceipt ? t('receiptAmountReceived') : isEstLike ? estLabel : t('invoiceBalanceDue')).toUpperCase()}</div>
                      <div class="ui" style="font-size:24px; font-weight:700;">${fmtUsd(isReceipt ? (rSnap ? rSnap.received : 0) : dueAmount)}</div>
-                     ${isPaid ? `<div class="ui" style="font-size:12px; font-weight:700; letter-spacing:1px; margin-top:4px;">✅ ${escHtml(t('invoicePaidStamp')).toUpperCase()}</div>` : ''}
+                     ${isPaid ? `<div class="ui" style="font-size:12px; font-weight:700; letter-spacing:1px; margin-top:4px;">✅ ${escHtml(stampTxt).toUpperCase()}</div>` : ''}
                    </div>
                    ${isEstLike ? `<div class="ui" style="font-size:12.5px; color:#241F1A; text-align:right;"><b>${escHtml(t('estimateDepositLabel'))}:</b> ${fmtUsd(round2(dueAmount * 0.5))}</div><div class="ui" style="font-size:12px; color:#6B6257; text-align:right;"><b>${escHtml(t('estimateValidUntil'))}:</b> ${escHtml(addDaysISO(invoiceState.invoiceDate || isoDate(new Date()), 30))}</div>` : ''}
                    ${paymentMethodRow}
