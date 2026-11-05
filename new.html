@@ -302,6 +302,7 @@ select.tw-sel{height:42px;padding:0 10px;border-radius:12px;background:var(--car
 .tw-sbtn{padding:8px 13px;border-radius:10px;font-size:.82rem;border:1px solid var(--border-color);background:var(--secondary-bg);color:var(--text-main);cursor:pointer;white-space:nowrap}
 .tw-sbtn.p{background:var(--primary);color:#fff;border-color:var(--primary)}
 .tw-sbtn.g{background:#16a34a;color:#fff;border-color:#16a34a}
+.tw-sbtn.d{background:rgba(225,29,72,.14);color:#e11d48;border-color:rgba(225,29,72,.4)}
 .tw-money{font-weight:800;white-space:nowrap}
 .tw-money.red{color:#f87171}.tw-money.grn{color:#34d399}
 #twFab{position:fixed;bottom:86px;inset-inline-start:16px;width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;display:none;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(79,70,229,.45);z-index:890;cursor:pointer;border:none;padding:0}
@@ -14801,14 +14802,15 @@ ${closeBtnHtml}
         mSettings: { ar: 'الإعدادات', en: 'Settings' }, mAdmin: { ar: 'الأدمن', en: 'Admin' },
         lang: { ar: 'English', en: 'عربي' }, themeL: { ar: 'الوضع الفاتح / الغامق', en: 'Light / Dark mode' }, offline: { ar: 'مفيش إنترنت – التغييرات هتتحفظ لما يرجع', en: 'Offline – changes will sync when back online' },
         wdAdd: { ar: '＋ إضافة فني جديد', en: '+ Add worker' }, wdEmpty: { ar: 'مفيش فنيين لسه. اضغط "إضافة فني جديد".', en: 'No workers yet. Tap "Add worker".' },
-        edit: { ar: 'تعديل', en: 'Edit' }, details: { ar: 'تفاصيل', en: 'Details' }, pay: { ar: 'دفع', en: 'Pay' },
+        edit: { ar: 'تعديل', en: 'Edit' }, del: { ar: 'حذف', en: 'Delete' }, details: { ar: 'تفاصيل', en: 'Details' }, pay: { ar: 'دفع', en: 'Pay' },
         hasLogin: { ar: 'عنده حساب دخول', en: 'Has app login' }, noPhone: { ar: 'مفيش رقم', en: 'No phone' },
         wpDue: { ar: 'المستحق', en: 'Due' }, wpPaid: { ar: 'المدفوع', en: 'Paid' }, wpLeft: { ar: 'المتبقي', en: 'Left' },
         wpNone: { ar: 'مفيش مستحقات للفنيين في الأسبوع ده', en: 'No worker dues in this week' },
         wpTotal: { ar: 'إجمالي المتبقي الأسبوع ده', en: 'Total left this week' },
         wpThis: { ar: 'الأسبوع ده', en: 'This week' }, wpPrev: { ar: '◀ أسبوع قبل', en: '◀ Previous week' }, wpNext: { ar: 'أسبوع بعد ▶', en: 'Next week ▶' },
         moreDet: { ar: 'تفاصيل أكتر', en: 'More details' }, lessDet: { ar: 'تفاصيل أقل', en: 'Fewer details' },
-        gsAppts: { ar: 'مواعيد', en: 'Appointments' }
+        gsAppts: { ar: 'مواعيد', en: 'Appointments' },
+        apFilt1: { ar: 'ظاهر', en: 'Showing' }, apFilt2: { ar: 'من', en: 'of' }, apFilt3: { ar: 'بسبب فلتر الولاية', en: 'because of the state filter' }, apShowAll: { ar: 'اعرض كل الولايات', en: 'Show all states' }
     };
     function tw(k) { var o = TW[k]; return o ? (o[currentLang] || o.en) : k; }
     function tt(key, fb) { try { var v = t(key); if (v && v !== key) return String(v).replace(/^[^\p{L}\p{N}]+/u, ''); } catch (e) {} return fb || key; }
@@ -14996,7 +14998,7 @@ ${closeBtnHtml}
     function activeJobs() { return (savedJobs || []).filter(function (j) { return j.jobStatus !== 'ملغي' && passesStateFilter(jobState(j)); }); }
     function workerFlagCounts() {
         var c = { handover: 0, nophoto: 0, overdue: 0, stuck: 0 };
-        try { (workerTasks || []).forEach(function (x) { workerTaskFlags(x).forEach(function (f) { if (c[f.k] !== undefined) c[f.k]++; }); }); } catch (e) {}
+        try { (workerTasks || []).filter(function (x) { return !x.hidden && passesStateFilter(stateOfText(x.address)); }).forEach(function (x) { workerTaskFlags(x).forEach(function (f) { if (c[f.k] !== undefined) c[f.k]++; }); }); } catch (e) {}
         return c;
     }
     function kpi(icon, label, val, color, bg, onclick) {
@@ -15064,7 +15066,7 @@ ${closeBtnHtml}
             if (raw) { try { var sp = splitPhoneForEdit(raw); ph = sp.code === 'other' ? raw : '+' + sp.code + ' ' + sp.local; } catch (e) { ph = raw; } }
             var login = false; try { login = !!workerAccountForTech(n); } catch (e) {}
             h += '<div class="tw-card nc"><div class="tw-av">' + escHtml(n.charAt(0).toUpperCase()) + '</div><div class="tx"><h4>' + escHtml(n) + (login ? ' <span title="' + escHtml(tw('hasLogin')) + '">📲</span>' : '') + '</h4><p dir="ltr" style="text-align:start;unicode-bidi:isolate">' + (ph ? escHtml(ph) : escHtml(tw('noPhone'))) + '</p></div>' +
-                '<div class="tw-btns"><button class="tw-sbtn" onclick="openEditTechnicianModal(\'' + jsArg(n) + '\')">' + escHtml(tw('edit')) + '</button><button class="tw-sbtn" onclick="twDetails(\'' + jsArg(n) + '\')">' + escHtml(tw('details')) + '</button></div></div>';
+                '<div class="tw-btns"><button class="tw-sbtn" onclick="openEditTechnicianModal(\'' + jsArg(n) + '\')">' + escHtml(tw('edit')) + '</button><button class="tw-sbtn" onclick="twDetails(\'' + jsArg(n) + '\')">' + escHtml(tw('details')) + '</button><button class="tw-sbtn d" onclick="deleteTechnicianFromDirectory(\'' + jsArg(n) + '\')">' + escHtml(tw('del')) + '</button></div></div>';
         });
         setHtml('screenWData', h + '</div>');
     };
@@ -15185,6 +15187,25 @@ ${closeBtnHtml}
     // saving a worker is async: re-check the pop-up and refresh the data screen once it is done
     var _snt = saveNewTechnician;
     saveNewTechnician = async function () { var r = await _snt.apply(this, arguments); try { formModalSync(); if (currentScreen === 'wdata') renderWData(); } catch (e) {} return r; };
+
+    var _dtd = deleteTechnicianFromDirectory;
+    deleteTechnicianFromDirectory = async function () { var r = await _dtd.apply(this, arguments); try { if (currentScreen === 'wdata') renderWData(); } catch (e) {} return r; };
+
+    // the appointments list is filtered by the state picker: say so instead of silently showing "3 of 12"
+    var _rap = renderAppointments;
+    renderAppointments = function () {
+        var r = _rap.apply(this, arguments);
+        try {
+            var box = $('appointmentsContent'); if (!box) return r;
+            var shown = appointments.filter(function (a) { return passesStateFilter(stateOfText(a.clientAddress)); }).length, total = appointments.length;
+            if (total > shown) {
+                var lbl = stateFilter === '?' ? '❔' : stateFilter;
+                box.insertAdjacentHTML('afterbegin', '<div style="background:rgba(217,119,6,.14);border:1px solid var(--warning);border-radius:10px;padding:10px 12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:.85rem">' +
+                    escHtml(tw('apFilt1')) + ' <b>' + shown + '</b> ' + escHtml(tw('apFilt2')) + ' <b>' + total + '</b> — ' + escHtml(tw('apFilt3')) + ' (' + escHtml(lbl) + ')</span><button class="tw-sbtn p" onclick="setStateFilter(\'ALL\')">' + escHtml(tw('apShowAll')) + '</button></div>');
+            }
+        } catch (e) { console.error('apf', e); }
+        return r;
+    };
 
     // search also finds appointments
     var _rgs = renderGlobalSearch;
