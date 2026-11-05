@@ -1758,6 +1758,15 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     </div>
 </div>
 
+<div id="workerMaterialsModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10002; justify-content:center; align-items:flex-start;" onclick="if(event.target===this)closeWorkerMaterials()">
+    <div class="tg-modal-box" style="max-width:640px; margin-top:4vh;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px;">
+            <h2 style="color:#38bdf8; margin:0; font-size:1.1rem;">🧾 <span id="wmTitle"></span></h2>
+            <button class="danger" onclick="closeWorkerMaterials()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
+        </div>
+        <div id="workerMaterialsBody"></div>
+    </div>
+</div>
 <div id="workerActivityModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10002; justify-content:center; align-items:flex-start;" onclick="if(event.target===this)closeWorkerActivity()">
     <div class="tg-modal-box" style="max-width:640px; margin-top:4vh;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px;">
@@ -3195,6 +3204,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     // 'jobCostingApp' above, so nothing here can ever touch or overwrite the existing job/payment data.
     const WORKER_ACCOUNTS = db.collection('workerAccounts');   // one doc per worker login (id = lower-case email)
     const WORKER_TASKS = db.collection('workerTasks');         // jobs sent to workers + their arrival/notes
+    const WORKER_MATS = db.collection('workerMaterials');      // purchases a worker logged (waiting for approval)
     const WORKER_PHOTOS = db.collection('workerPhotos');       // the actual (compressed) photos
     let workerAccounts = {};
     let workerTasks = [];
@@ -4269,7 +4279,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     // (e.g. one opened without the other being closed first), the later one in the page would sit on
     // top and silently swallow every tap meant for the one underneath — including a job's name link.
     // Every one of them closes all the others first, so that can never happen.
-    const TOP_LEVEL_MODAL_IDS = ['techGuideModal', 'expenseReportModal', 'activityLogModal', 'partnerAccountModal', 'partnerReportModal', 'techPartnerReportModal', 'companyAccountModal', 'companyProfileModal', 'agendaModal', 'globalSearchModal', 'invoiceModal', 'jobPayModal', 'periodLockModal', 'bankReconModal', 'appointmentsListModal', 'contactsListModal'];
+    const TOP_LEVEL_MODAL_IDS = ['workerMaterialsModal', 'techGuideModal', 'expenseReportModal', 'activityLogModal', 'partnerAccountModal', 'partnerReportModal', 'techPartnerReportModal', 'companyAccountModal', 'companyProfileModal', 'agendaModal', 'globalSearchModal', 'invoiceModal', 'jobPayModal', 'periodLockModal', 'bankReconModal', 'appointmentsListModal', 'contactsListModal'];
     function closeOtherTopModals(exceptId) {
         TOP_LEVEL_MODAL_IDS.forEach(id => { if (id !== exceptId) { const el = document.getElementById(id); if (el) el.style.display = 'none'; } });
     }
@@ -10787,6 +10797,12 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             workerTasksLoaded = true;
             refreshWorkerViews();
         }, err => console.error('Worker tasks sync error:', err));
+        WORKER_MATS.onSnapshot(snap => {
+            workerMats = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+            const wm = document.getElementById('workerMaterialsModal');
+            if (wm && wm.style.display === 'flex') safeCall(renderWorkerMaterials);
+            try { if (window.twSyncNav) window.twSyncNav(); } catch (e) {}
+        }, err => console.error('Worker materials sync error:', err));
     }
     function refreshWorkerViews() {
         const wk = document.getElementById('screenWeekly'), ap = document.getElementById('screenAppointments');
@@ -11086,6 +11102,105 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     const WORKER_LATE_HOURS = 6;
     let workerActPeriod = 'today';
     const workerActOpen = {};   // workerEmail -> expanded
+    // ---------- Worker materials: a worker logs something he bought; the office reviews it here ----------
+    // Approving puts the amount where it belongs, using the app's OWN existing structures:
+    //  - paid by the COMPANY  -> a dated entry in that job's Material invoices (+ its Material Cost total)
+    //  - paid by the WORKER   -> a dated reimbursement on that worker inside the job (paid back on top of his wage)
+    // Nothing is ever deleted here. The write happens inside one transaction on the jobs document and uses
+    // a fixed entry id (wm + request id), so pressing Approve twice can never add the amount twice.
+    let workerMats = [];
+    function wmT(ar, en) { return currentLang === 'ar' ? ar : en; }
+    function wmPending() { return workerMats.filter(m => (m.status || 'pending') === 'pending'); }
+    function wmJobIdFor(m) {
+        if (m.refKind === 'job' && m.refId) return String(m.refId);
+        const tk = workerTasks.find(x => x.id === m.taskId);
+        return (tk && tk.refKind === 'job' && tk.refId) ? String(tk.refId) : '';
+    }
+    function openWorkerMaterials() { closeOtherTopModals('workerMaterialsModal'); document.getElementById('workerMaterialsModal').style.display = 'flex'; renderWorkerMaterials(); }
+    function closeWorkerMaterials() { document.getElementById('workerMaterialsModal').style.display = 'none'; }
+    function renderWorkerMaterials() {
+        const body = document.getElementById('workerMaterialsBody'); if (!body) return;
+        document.getElementById('wmTitle').textContent = wmT('خامات الفنيين', 'Worker materials');
+        const keepAmt = {}, keepJob = {};
+        workerMats.forEach(m => { const a = document.getElementById('wm-amt-' + m.id), j = document.getElementById('wm-job-' + m.id); if (a) keepAmt[m.id] = a.value; if (j) keepJob[m.id] = j.value; });
+        const jobsOpt = (savedJobs || []).filter(j => j.jobStatus !== 'ملغي').slice().sort((a, b) => String(b.startDate || '').localeCompare(String(a.startDate || ''))).slice(0, 80);
+        const pend = wmPending().slice().sort((a, b) => (a.ts || 0) - (b.ts || 0));
+        let h = '';
+        if (!pend.length) h += `<div style="text-align:center; color:var(--text-muted); padding:22px;">${wmT('مفيش خامات مستنية موافقة', 'Nothing is waiting for approval')}</div>`;
+        pend.forEach(m => {
+            const sel = keepJob[m.id] !== undefined ? keepJob[m.id] : wmJobIdFor(m);
+            const amt = keepAmt[m.id] !== undefined ? keepAmt[m.id] : Number(m.amount || 0).toFixed(2);
+            h += `<div style="border:1px solid var(--border-color); border-radius:14px; padding:12px; margin-bottom:10px; display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;"><b>${escHtml(m.tech || '')}</b><span style="color:var(--text-muted); font-size:0.8rem;">${escHtml(m.date || '')}</span></div>
+                <div style="font-size:0.85rem;">${m.paidBy === 'company' ? wmT('🏢 دفعتها الشركة', '🏢 Paid by the company') : wmT('👷 دفعها الفني من جيبه (يتعوّض)', '👷 Paid by the worker (to be refunded)')}${m.note ? ' · ' + escHtml(m.note) : ''}</div>
+                ${m.photo ? `<img src="${m.photo}" onclick="wmShowPhoto('${jsArg(m.id)}')" style="max-height:120px; max-width:100%; align-self:flex-start; border-radius:10px; cursor:pointer; border:1px solid var(--border-color);">` : `<div style="color:var(--text-muted); font-size:0.78rem;">${wmT('من غير صورة', 'No receipt photo')}</div>`}
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <input id="wm-amt-${escHtml(m.id)}" type="text" inputmode="decimal" value="${escHtml(amt)}" style="flex:0 0 110px; width:110px;" onfocus="this.select()">
+                    <select id="wm-job-${escHtml(m.id)}" style="flex:1; min-width:150px;"><option value="">${wmT('— اختار الشغلانة —', '— Pick the job —')}</option>${jobsOpt.map(j => `<option value="${escHtml(String(j.id))}"${String(j.id) === String(sel) ? ' selected' : ''}>${escHtml((j.clientName || '—') + (j.startDate ? ' · ' + j.startDate : ''))}</option>`).join('')}</select>
+                </div>
+                <div style="display:flex; gap:8px;"><button class="success" style="flex:1;" onclick="wmApprove('${jsArg(m.id)}')">${wmT('✅ قبول', '✅ Approve')}</button><button class="danger" style="flex:1;" onclick="wmReject('${jsArg(m.id)}')">${wmT('❌ رفض', '❌ Reject')}</button></div>
+            </div>`;
+        });
+        const done = workerMats.filter(m => (m.status || 'pending') !== 'pending').sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 15);
+        if (done.length) h += `<details style="margin-top:6px;"><summary style="cursor:pointer; font-size:0.85rem; color:var(--text-muted);">${wmT('اللي اتراجع قبل كده', 'Already reviewed')} (${done.length})</summary>${done.map(m => `<div style="display:flex; justify-content:space-between; gap:8px; padding:7px 2px; border-bottom:1px solid var(--border-color); font-size:0.82rem;"><span>${m.status === 'approved' ? '✅' : '❌'} ${escHtml(m.tech || '')} · ${escHtml(m.clientName || '')}</span><b dir="ltr">$${Number(m.approvedAmount != null ? m.approvedAmount : (m.amount || 0)).toFixed(2)}</b></div>`).join('')}</details>`;
+        body.innerHTML = h;
+    }
+    function wmShowPhoto(id) {
+        const m = workerMats.find(x => x.id === id); if (!m || !m.photo) return;
+        const o = document.createElement('div');
+        o.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:10010; display:flex; align-items:center; justify-content:center; padding:10px;';
+        o.onclick = () => o.remove();
+        o.innerHTML = `<img src="${m.photo}" style="max-width:100%; max-height:100%; border-radius:8px;">`;
+        document.body.appendChild(o);
+    }
+    async function wmReject(id) {
+        const m = workerMats.find(x => x.id === id); if (!m || (m.status || 'pending') !== 'pending') return;
+        if (!confirm(wmT('ترفض الطلب ده؟ مش هيتحط في أي حسابات.', 'Reject this request? It will not be added to any accounts.'))) return;
+        try { await WORKER_MATS.doc(id).update({ status: 'rejected', rejectedAt: Date.now(), reviewedBy: currentUserEmail }); }
+        catch (e) { alert(wmT('ما اتحفظش. جرب تاني.', 'Could not save. Try again.') + ' (' + ((e && (e.code || e.message)) || '') + ')'); }
+    }
+    async function wmApprove(id) {
+        const m = workerMats.find(x => x.id === id); if (!m || (m.status || 'pending') !== 'pending') return;
+        const amt = round2(parseVal(document.getElementById('wm-amt-' + id).value));
+        const jobId = document.getElementById('wm-job-' + id).value;
+        if (amt <= 0) { alert(wmT('اكتب مبلغ صحيح', 'Enter a valid amount')); return; }
+        if (!jobId) { alert(wmT('اختار الشغلانة الأول', 'Pick the job first')); return; }
+        const entryId = 'wm' + id;
+        const note = ('🧾 ' + (m.tech || '') + (m.note ? ': ' + m.note : '')).slice(0, 120);
+        try {
+            await db.runTransaction(async (tx) => {
+                const snap = await tx.get(JOBS_DOC);
+                const jobs = (snap.exists && snap.data().jobs) ? snap.data().jobs : [];
+                const job = jobs.find(j => String(j.id) === String(jobId));
+                if (!job) throw new Error('job-not-found');
+                if (m.paidBy === 'company') {
+                    job.materialEntries = job.materialEntries || [];
+                    if (!job.materialEntries.some(e => e.id === entryId)) {
+                        job.materialEntries.push({ id: entryId, date: m.date || isoDate(new Date()), amount: amt, note });
+                        job.materialCost = String(round2(parseVal(job.materialCost) + amt));
+                    }
+                } else {
+                    const tech = (job.technicians || []).find(t2 => (t2.name || '').trim() === (m.tech || '').trim());
+                    if (!tech) throw new Error('tech-not-found');
+                    tech.materialReimbursements = tech.materialReimbursements || [];
+                    if (!tech.materialReimbursements.some(e => e.id === entryId)) tech.materialReimbursements.push({ id: entryId, date: m.date || isoDate(new Date()), amount: amt, note });
+                }
+                job.lastEditedBy = currentUserEmail;
+                tx.set(JOBS_DOC, { jobs });
+            });
+            if (m.paidBy === 'company' && m.photo) {
+                try { await jobAttachmentsDocRef(jobId).set({ materialPhotos: { [entryId]: { photo: m.photo, photoIsPdf: false } } }, { merge: true }); } catch (e) { console.error('receipt photo not attached:', e); }
+            }
+            await WORKER_MATS.doc(id).update({ status: 'approved', approvedAt: Date.now(), approvedAmount: amt, jobId: String(jobId), reviewedBy: currentUserEmail });
+            showToast(wmT('✅ اتسجلت في الشغلانة', '✅ Added to the job'));
+        } catch (e) {
+            const code = e && e.message;
+            if (code === 'tech-not-found') alert(wmT('الفني ده مش في قايمة فنيين الشغلانة دي. ضيفه فيها الأول وبعدين وافق.', 'This worker is not in that job\'s technician list. Add him to the job first, then approve.'));
+            else if (code === 'job-not-found') alert(wmT('الشغلانة دي مش لاقيها.', 'That job was not found.'));
+            else alert(wmT('ما اتسجلش. جرب تاني.', 'Could not save. Try again.') + ' (' + ((e && (e.code || e.message)) || '') + ')');
+        }
+    }
+
     function openWorkerActivity() {
         document.getElementById('workerActivityModal').style.display = 'flex';
         renderWorkerActivity();
@@ -14854,7 +14969,7 @@ ${closeBtnHtml}
         sLog: { ar: 'السجل والتقارير', en: 'Log & Reports' }, sWeekly: { ar: 'شغل الأسبوع', en: 'Weekly Board' }, sEntry: { ar: 'شغلانة جديدة', en: 'New Job' },
         sApptNew: { ar: 'طلب ميعاد جديد', en: 'New appointment' }, sApptList: { ar: 'قائمة المواعيد', en: 'Appointments list' },
         wData: { ar: 'بيانات الفنيين', en: 'Worker data' }, wAct: { ar: 'نشاط الفنيين', en: 'Worker activity' }, wGuide: { ar: 'دليل الحسابات الشامل', en: 'Full accounts guide' },
-        wPay: { ar: 'دفعات الأسبوع ده', en: "This week's payments" }, wRep: { ar: 'تقرير الفني والشريك', en: 'Worker & partner report' }, wFind: { ar: 'فين الفني؟', en: 'Where is the worker?' },
+        wPay: { ar: 'دفعات الأسبوع ده', en: "This week's payments" }, wMat: { ar: 'خامات الفنيين', en: 'Worker materials' }, wRep: { ar: 'تقرير الفني والشريك', en: 'Worker & partner report' }, wFind: { ar: 'فين الفني؟', en: 'Where is the worker?' },
         hello: { ar: 'أهلاً', en: 'Hello' }, gM: { ar: 'صباح الخير', en: 'Good morning' }, gA: { ar: 'مساء الخير', en: 'Good afternoon' }, gE: { ar: 'مساء الخير', en: 'Good evening' },
         kToday: { ar: 'شغل النهاردة', en: 'Jobs today' }, kRemain: { ar: 'متبقي تحصيله', en: 'Left to collect' },
         kOpen: { ar: 'شغلانات شغالة', en: 'Active jobs' }, kAppts: { ar: 'مواعيد النهاردة', en: 'Appointments today' },
@@ -14917,6 +15032,7 @@ ${closeBtnHtml}
         { k: 'workers', ic: 'hat', badge: true, subs: [
             { k: 'wData', ic: 'user', go: go('wdata'), scr: 'wdata' },
             { k: 'wAct', ic: 'pulse', go: function () { openWorkerActivity(); } },
+            { k: 'wMat', ic: 'receipt', go: function () { openWorkerMaterials(); }, cntFn: function () { var n = wmPending().length; return n ? String(n) : ''; } },
             { k: 'wGuide', ic: 'book', go: go('wguide'), scr: 'wguide' },
             { k: 'wPay', ic: 'wallet', go: go('wpay'), scr: 'wpay' },
             { k: 'wRep', ic: 'pie', go: function () { openTechPartnerReportModal(); }, scr: 'wrep' },
@@ -14960,7 +15076,7 @@ ${closeBtnHtml}
         var g = NAV[sheetGrp]; if (!g) return;
         var cur = (typeof currentScreen === 'string') ? currentScreen : 'home';
         $('twSheet').innerHTML = '<div class="sh-t">' + escHtml(tw(g.k)) + '</div>' + g.subs.map(function (s, j) {
-            return '<button class="' + (s.scr === cur ? 'on' : '') + '" onclick="twSub(' + sheetGrp + ',' + j + ')">' + ic(s.ic) + '<span>' + escHtml(tw(s.k)) + '</span>' + (s.cnt ? '<span class="cnt" dir="ltr">' + escHtml(apptCnt()) + '</span>' : '') + '</button>';
+            return '<button class="' + (s.scr === cur ? 'on' : '') + '" onclick="twSub(' + sheetGrp + ',' + j + ')">' + ic(s.ic) + '<span>' + escHtml(tw(s.k)) + '</span>' + (s.cnt ? '<span class="cnt" dir="ltr">' + escHtml(apptCnt()) + '</span>' : '') + (s.cntFn && s.cntFn() ? '<span class="cnt" dir="ltr">' + escHtml(s.cntFn()) + '</span>' : '') + '</button>';
         }).join('');
     }
 
@@ -15043,7 +15159,7 @@ ${closeBtnHtml}
         var gi = groupIndexOf(cur);
         if (openGrp === null && NAV[gi].subs && isDesk()) openGrp = gi;
         var c = workerFlagCounts(), n = c.handover + c.nophoto + c.overdue + c.stuck;
-        var sig = [cur, openGrp, currentLang, n, apptCnt(), isDesk() ? 'd' : 'm', brandKey()].join('|');
+        var sig = [cur, openGrp, currentLang, n, apptCnt(), wmPending().length, isDesk() ? 'd' : 'm', brandKey()].join('|');
         if (!force && sig === lastSig) return; lastSig = sig;
         var nb = '', sb = '<div class="tw-brand" onclick="openCompanyProfileModal()"></div><button class="tw-newjob" onclick="switchScreen(\'entry\')">' + ic('plus') + escHtml(tw('newJob')) + '</button>';
         NAV.forEach(function (g, i) {
@@ -15051,7 +15167,7 @@ ${closeBtnHtml}
             nb += '<button class="' + (on ? 'on' : '') + '" onclick="twGrp(' + i + ')">' + ic(g.ic) + '<span>' + escHtml(tw(g.k)) + '</span>' + badge + '</button>';
             if (!g.subs) { sb += '<button class="gb ' + (on ? 'on' : '') + '" onclick="twGrp(' + i + ')">' + ic(g.ic) + '<span>' + escHtml(tw(g.k)) + '</span></button>'; return; }
             sb += '<div class="grp' + (openGrp === i ? ' open' : '') + '"><button class="gb ' + (on ? 'on' : '') + '" onclick="twGrp(' + i + ')">' + ic(g.ic) + '<span>' + escHtml(tw(g.k)) + '</span>' + badge + ic('chev').replace('tw-ic', 'tw-ic chev') + '</button><div class="subs">' +
-                g.subs.map(function (s, j) { return '<button class="sb ' + (s.scr === cur ? 'on' : '') + '" onclick="twSub(' + i + ',' + j + ')">' + ic(s.ic) + '<span>' + escHtml(tw(s.k)) + (s.cnt && apptCnt() ? '<small class="cnt2" dir="ltr">' + escHtml(apptCnt()) + '</small>' : '') + '</span></button>'; }).join('') + '</div></div>';
+                g.subs.map(function (s, j) { return '<button class="sb ' + (s.scr === cur ? 'on' : '') + '" onclick="twSub(' + i + ',' + j + ')">' + ic(s.ic) + '<span>' + escHtml(tw(s.k)) + (s.cnt && apptCnt() ? '<small class="cnt2" dir="ltr">' + escHtml(apptCnt()) + '</small>' : '') + (s.cntFn && s.cntFn() ? '<small class="cnt2" dir="ltr">' + escHtml(s.cntFn()) + '</small>' : '') + '</span></button>'; }).join('') + '</div></div>';
         });
         $('twNav').innerHTML = nb; $('twSide').innerHTML = sb;
         document.querySelectorAll('.tw-brand').forEach(function (el) { el.__h = null; });
