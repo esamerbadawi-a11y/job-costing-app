@@ -362,6 +362,24 @@ body.tw-on #screenAppointments .card>div:first-child button[onclick^="openAppoin
   #twHomeCols{display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start}
   .tw-wgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 }
+.tw-pg{position:static !important;background:none !important;width:auto !important;height:auto !important;z-index:auto !important;align-items:stretch !important;justify-content:flex-start !important}
+.tw-pg>div{width:100% !important;max-width:none !important;max-height:none !important;overflow:visible !important;box-shadow:none !important;border:none !important;background:none !important;padding:0 !important;border-radius:0 !important}
+.tw-pg button.danger[onclick^="closeTechGuideModal"],.tw-pg button.danger[onclick^="closeTechPartnerReportModal"]{display:none}
+#techGuideModal button[onclick^="openAddTechnicianModal"]{display:none}
+.tw-pg h2{font-size:1.2rem}
+.tw-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tw-chips button{flex:1;min-width:90px}
+details.tw-cd{margin-bottom:14px}
+details.tw-cd>summary{cursor:pointer;color:var(--text-muted);font-size:.82rem;margin-bottom:8px}
+#screenWeekly button[onclick^="openFindTechModal"],#screenWeekly button[onclick^="openWorkerActivity"]{display:none}
+.tw-acc{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.tw-acc .tag{font-size:.72rem;padding:2px 9px;border-radius:9px}
+.tw-acc .tag.on{background:rgba(16,185,129,.16);color:#10b981}.tw-acc .tag.off{background:rgba(148,163,184,.2);color:#94a3b8}
+.tw-sbtn.sm{padding:4px 10px;font-size:.74rem}
+.tw-i{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px;flex:none}
+@media(max-width:700px){.tw-card.nc{flex-wrap:wrap}.tw-card.nc .tw-btns{width:100%;justify-content:flex-end}}
+body.tw-on .card{border-radius:18px}
+body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),body.tw-on #screenEntry select,body.tw-on #screenEntry textarea,body.tw-on #jobOverlay input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),body.tw-on #jobOverlay select,body.tw-on #jobOverlay textarea{border-radius:12px}
 @media(max-width:420px){.tw-lang span{display:none}select.tw-sel{max-width:96px}}
 
     </style>
@@ -14772,8 +14790,18 @@ ${closeBtnHtml}
         shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4',
         bell: 'M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9 M13.7 21a2 2 0 0 1-3.4 0',
         check: 'M20 6L9 17l-5-5',
-        chev: 'M6 9l6 6 6-6'
+        chev: 'M6 9l6 6 6-6',
+        print: 'M6 9V2h12v7 M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2 M6 14h12v8H6z',
+        trash: 'M3 6h18 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6 M10 11v6 M14 11v6',
+        copy: 'M9 9h11a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1',
+        undo: 'M3 7v6h6 M3 13a9 9 0 1 0 3-7.7L3 8',
+        info: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20 M12 16v-4 M12 8h.01',
+        filter: 'M22 3H2l8 9.5V19l4 2v-8.5z',
+        mic: 'M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z M19 10v2a7 7 0 0 1-14 0v-2 M12 19v3',
+        camera: 'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8',
+        x: 'M18 6L6 18 M6 6l12 12'
     };
+    function ic2(n) { return '<svg class="tw-i" viewBox="0 0 24 24"><path d="' + (P[n] || P.check) + '"/></svg>'; }
     function ic(n) { return '<svg class="tw-ic" viewBox="0 0 24 24"><path d="' + (P[n] || P.check) + '"/></svg>'; }
 
     var TW = {
@@ -14810,6 +14838,18 @@ ${closeBtnHtml}
         wpThis: { ar: 'الأسبوع ده', en: 'This week' }, wpPrev: { ar: '◀ أسبوع قبل', en: '◀ Previous week' }, wpNext: { ar: 'أسبوع بعد ▶', en: 'Next week ▶' },
         moreDet: { ar: 'تفاصيل أكتر', en: 'More details' }, lessDet: { ar: 'تفاصيل أقل', en: 'Fewer details' },
         gsAppts: { ar: 'مواعيد', en: 'Appointments' },
+        customDates: { ar: 'تواريخ مخصصة', en: 'Custom dates' },
+        accOn: { ar: 'حساب دخول شغال', en: 'Login active' }, accOff: { ar: 'الحساب موقوف', en: 'Login paused' },
+        accReset: { ar: '🔑 كلمة السر', en: '🔑 Password' }, accStop: { ar: 'إيقاف', en: 'Pause' }, accStart: { ar: 'تفعيل', en: 'Enable' },
+        accConfirmCreate: { ar: 'إنشاء حساب دخول للفني بالإيميل {e} وإرسال رابط له يحط منه كلمة السر بنفسه؟', en: 'Create a login for {e} and email them a link to set their own password?' },
+        accCreated: { ar: 'اتعمل الحساب واتبعت رابط تعيين كلمة السر على {e}. لو ما وصلش قوله يبص في Spam.', en: 'Login created. A set-password link was emailed to {e}. If it does not arrive, ask them to check Spam.' },
+        accSentExisting: { ar: 'الحساب كان موجود بالفعل. اتبعت رابط كلمة سر جديدة على {e}.', en: 'That login already existed. A new password link was emailed to {e}.' },
+        accConfirmReset: { ar: 'نبعت رابط إعادة تعيين كلمة السر على {e}؟', en: 'Email a password reset link to {e}?' },
+        accResetSent: { ar: 'اتبعت رابط إعادة تعيين كلمة السر على {e}.', en: 'Password reset link sent to {e}.' },
+        accConfirmStop: { ar: 'إيقاف دخول {e}؟ بياناته وشغله هيفضلوا زي ما هما، وتقدر ترجعه في أي وقت.', en: 'Pause login for {e}? His data stays untouched and you can re-enable him any time.' },
+        accConfirmStart: { ar: 'تفعيل دخول {e} تاني؟', en: 'Re-enable login for {e}?' },
+        accStopped: { ar: 'اتوقف الدخول.', en: 'Login paused.' }, accStarted: { ar: 'اتفعّل الدخول.', en: 'Login enabled.' },
+        accFail: { ar: 'ما اتنفذش', en: 'Did not work' },
         apFilt1: { ar: 'ظاهر', en: 'Showing' }, apFilt2: { ar: 'من', en: 'of' }, apFilt3: { ar: 'بسبب فلتر الولاية', en: 'because of the state filter' }, apShowAll: { ar: 'اعرض كل الولايات', en: 'Show all states' }
     };
     function tw(k) { var o = TW[k]; return o ? (o[currentLang] || o.en) : k; }
@@ -14833,9 +14873,9 @@ ${closeBtnHtml}
         { k: 'workers', ic: 'hat', badge: true, subs: [
             { k: 'wData', ic: 'user', go: go('wdata'), scr: 'wdata' },
             { k: 'wAct', ic: 'pulse', go: function () { openWorkerActivity(); } },
-            { k: 'wGuide', ic: 'book', go: function () { openTechGuideModal(); } },
+            { k: 'wGuide', ic: 'book', go: go('wguide'), scr: 'wguide' },
             { k: 'wPay', ic: 'wallet', go: go('wpay'), scr: 'wpay' },
-            { k: 'wRep', ic: 'pie', go: function () { openTechPartnerReportModal(); } },
+            { k: 'wRep', ic: 'pie', go: function () { openTechPartnerReportModal(); }, scr: 'wrep' },
             { k: 'wFind', ic: 'pin', go: function () { openFindTechModal(); } }] },
         { k: 'more', ic: 'menu', hub: go('more'), scr: ['more'], subs: [
             { k: 'mReports', ic: 'receipt', go: function () { twMoreGo('reports'); } },
@@ -14929,6 +14969,8 @@ ${closeBtnHtml}
             '<button class="tw-iconbtn" onclick="openGlobalSearch()" aria-label="search">' + ic('search') + '</button></div>' +
             '<div id="screenHome" class="tw-panel no-print"></div><div id="screenWData" class="tw-panel no-print"></div><div id="screenWPay" class="tw-panel no-print"></div><div id="screenMore" class="tw-panel no-print"></div>';
         while (wrap.firstChild) anchor.parentNode.insertBefore(wrap.firstChild, anchor);
+        ['techGuideModal', 'techPartnerReportModal'].forEach(function (id) { var m = $(id); if (m) { m.classList.add('tw-pg'); anchor.parentNode.insertBefore(m, anchor); } });
+        try { restyleReport(); } catch (e) { console.error('rep', e); }
         var tb0 = $('twTop'), bn0 = $('todayJobsBanner'); if (tb0 && bn0) tb0.parentNode.insertBefore(bn0, tb0.nextSibling);
         document.body.classList.add('tw-on', 'tw-hide-old');
         // simpler Log & Reports: 4 main numbers, everything else behind one toggle
@@ -14975,7 +15017,8 @@ ${closeBtnHtml}
     function brandKey() { try { return (companyProfile.name || '') + (companyProfile.logo ? companyProfile.logo.length : 0) + userName() + greet(); } catch (e) { return ''; } }
 
     // ---- wrap the screen switcher so our panels are first-class screens ----
-    var PANELS = { home: 'screenHome', more: 'screenMore', wdata: 'screenWData', wpay: 'screenWPay' };
+    var PANELS = { home: 'screenHome', more: 'screenMore', wdata: 'screenWData', wpay: 'screenWPay', wguide: 'techGuideModal', wrep: 'techPartnerReportModal' };
+    var FLEXP = { wguide: 1, wrep: 1 }, TICKP = { home: 1, wdata: 1, wpay: 1, more: 1 };
     var _old = switchScreenNow;
     switchScreenNow = function (name) {
         buildShell();
@@ -14983,14 +15026,14 @@ ${closeBtnHtml}
         Object.keys(PANELS).forEach(function (k) { $(PANELS[k]).style.display = 'none'; });
         if (PANELS[name]) {
             _old('none'); currentScreen = name;
-            $(PANELS[name]).style.display = 'block';
+            $(PANELS[name]).style.display = FLEXP[name] ? 'flex' : 'block';
             renderPanel(name);
         } else { _old(name); }
         var gi = groupIndexOf(name); if (NAV[gi].subs && isDesk()) openGrp = gi;
         closeSheet(); syncNav(true); try { window.scrollTo(0, 0); } catch (e) {}
     };
     function renderPanel(name) {
-        if (name === 'home') renderHome(); else if (name === 'wdata') renderWData(); else if (name === 'wpay') renderWPay(); else if (name === 'more') renderMore();
+        if (name === 'home') renderHome(); else if (name === 'wdata') renderWData(); else if (name === 'wpay') renderWPay(); else if (name === 'more') renderMore(); else if (name === 'wguide') { try { renderTechGuideContent(); } catch (e) {} } else if (name === 'wrep') { try { renderTechPartnerReportContent(); } catch (e) {} }
     }
 
     // ---------- data helpers ----------
@@ -15056,6 +15099,14 @@ ${closeBtnHtml}
         });
         return out ? '<div class="tw-sec">' + escHtml(tw('attSec')) + '</div>' + out : '';
     }
+    function accRow(n) {
+        var a = null; try { a = accFor(n); } catch (e) {}
+        if (!a) return '';
+        var on = a.active !== false, em = escHtml(a.email), ej = jsArg(a.email), lj = jsArg(a.lang || 'en');
+        return '<div class="tw-acc"><span class="tag ' + (on ? 'on' : 'off') + '" title="' + em + '">📲 ' + escHtml(tw(on ? 'accOn' : 'accOff')) + '</span>' +
+            '<button class="tw-sbtn sm" onclick="twAccReset(\'' + ej + '\',\'' + lj + '\')">' + escHtml(tw('accReset')) + '</button>' +
+            '<button class="tw-sbtn sm" onclick="twAccToggle(\'' + ej + '\')">' + escHtml(tw(on ? 'accStop' : 'accStart')) + '</button></div>';
+    }
     window.renderWData = function renderWData() {
         var names = []; try { names = getUniqueRegisteredTechnicians(); } catch (e) {}
         var h = '<div class="tw-pagehead"><h2>' + escHtml(tw('wData')) + '</h2><button class="tw-sbtn p" onclick="openAddTechnicianModal()">' + escHtml(tw('wdAdd')) + '</button></div>' + attentionCards();
@@ -15065,7 +15116,7 @@ ${closeBtnHtml}
             var raw = (technicianPhones && technicianPhones[n]) || '', ph = '';
             if (raw) { try { var sp = splitPhoneForEdit(raw); ph = sp.code === 'other' ? raw : '+' + sp.code + ' ' + sp.local; } catch (e) { ph = raw; } }
             var login = false; try { login = !!workerAccountForTech(n); } catch (e) {}
-            h += '<div class="tw-card nc"><div class="tw-av">' + escHtml(n.charAt(0).toUpperCase()) + '</div><div class="tx"><h4>' + escHtml(n) + (login ? ' <span title="' + escHtml(tw('hasLogin')) + '">📲</span>' : '') + '</h4><p dir="ltr" style="text-align:start;unicode-bidi:isolate">' + (ph ? escHtml(ph) : escHtml(tw('noPhone'))) + '</p></div>' +
+            h += '<div class="tw-card nc"><div class="tw-av">' + escHtml(n.charAt(0).toUpperCase()) + '</div><div class="tx"><h4>' + escHtml(n) + '</h4><p dir="ltr" style="text-align:start;unicode-bidi:isolate">' + (ph ? escHtml(ph) : escHtml(tw('noPhone'))) + '</p>' + accRow(n) + '</div>' +
                 '<div class="tw-btns"><button class="tw-sbtn" onclick="openEditTechnicianModal(\'' + jsArg(n) + '\')">' + escHtml(tw('edit')) + '</button><button class="tw-sbtn" onclick="twDetails(\'' + jsArg(n) + '\')">' + escHtml(tw('details')) + '</button><button class="tw-sbtn d" onclick="deleteTechnicianFromDirectory(\'' + jsArg(n) + '\')">' + escHtml(tw('del')) + '</button></div></div>';
         });
         setHtml('screenWData', h + '</div>');
@@ -15191,6 +15242,126 @@ ${closeBtnHtml}
     var _dtd = deleteTechnicianFromDirectory;
     deleteTechnicianFromDirectory = async function () { var r = await _dtd.apply(this, arguments); try { if (currentScreen === 'wdata') renderWData(); } catch (e) {} return r; };
 
+
+    // ---------- guide + partner report become real screens (same logic, same ids) ----------
+    function restyleReport() {
+        var m = $('techPartnerReportModal'); if (!m || m.__tw) return; m.__tw = 1;
+        var box = m.firstElementChild, grid = box.querySelector('.grid-2'); if (!grid) return;
+        var presets = grid.nextElementSibling; if (!presets) return;
+        var b = Array.prototype.slice.call(presets.children); // today, <, week, lastweek, >, clear
+        if (b.length < 6) return;
+        presets.className = 'tw-chips'; presets.removeAttribute('style');
+        var det = document.createElement('details'); det.className = 'tw-cd';
+        var sm = document.createElement('summary'); sm.setAttribute('data-tw', 'customDates'); sm.textContent = tw('customDates'); det.appendChild(sm);
+        var extra = document.createElement('div'); extra.className = 'tw-chips';
+        det.appendChild(grid); extra.appendChild(b[0]); extra.appendChild(b[1]); extra.appendChild(b[4]); det.appendChild(extra);
+        presets.innerHTML = ''; presets.appendChild(b[2]); presets.appendChild(b[3]); presets.appendChild(b[5]);
+        presets.parentNode.insertBefore(det, presets.nextSibling);
+    }
+    var _otg = openTechGuideModal;
+    openTechGuideModal = function () { switchScreen('wguide'); };
+    closeTechGuideModal = function () { if (currentScreen === 'wguide') switchScreen('wdata'); };
+    openTechPartnerReportModal = function () {
+        var sel = $('techPartnerReportSelect'), names = getAllTechAndPartnerNames();
+        sel.innerHTML = names.length ? names.map(function (n) { return '<option value="' + escHtml(n) + '">' + escHtml(n) + '</option>'; }).join('') : '<option value="">' + escHtml(t('techPartnerNoNamesYet')) + '</option>';
+        $('techPartnerReportFrom').value = ''; $('techPartnerReportTo').value = '';
+        switchScreen('wrep');
+    };
+    closeTechPartnerReportModal = function () { if (currentScreen === 'wrep') switchScreen('wdata'); };
+    // other pop-ups call closeOtherTopModals; never let that blank the page we are on
+    var _cotm = closeOtherTopModals;
+    closeOtherTopModals = function () { var r = _cotm.apply(this, arguments); try { var pid = PANELS[currentScreen]; if (pid && $(pid) && $(pid).style.display === 'none') $(pid).style.display = FLEXP[currentScreen] ? 'flex' : 'block'; } catch (e) {} return r; };
+
+    // ---------- worker logins: create, reset password, pause (no password is ever seen) ----------
+    function accFor(name) {
+        var all = Object.values(workerAccounts || {}).filter(function (a) { return a && a.tech === name && a.email; });
+        return all.find(function (a) { return a.active !== false; }) || all[0] || null;
+    }
+    function randPw() { var a = new Uint8Array(18); (window.crypto || window.msCrypto).getRandomValues(a); return Array.prototype.map.call(a, function (x) { return ('0' + x.toString(16)).slice(-2); }).join('') + 'Aa1!'; }
+    var appN = 0;
+    async function authMail(email, lang, create) {
+        var app = firebase.initializeApp(firebaseConfig, 'tw-sec-' + (++appN) + '-' + Date.now());
+        try {
+            var au = app.auth(); try { au.languageCode = lang || 'en'; } catch (e) {}
+            var existed = false;
+            if (create) { try { await au.createUserWithEmailAndPassword(email, randPw()); } catch (e) { if (e && e.code === 'auth/email-already-in-use') existed = true; else throw e; } }
+            await au.sendPasswordResetEmail(email);
+            return { existed: existed };
+        } finally { try { await app.auth().signOut(); } catch (e) {} try { await app.delete(); } catch (e) {} }
+    }
+    function errTxt(e) { return (e && (e.code || e.message)) || '?'; }
+    window.twAccCreate = async function (email, name, lang) {
+        if (!confirm(tw('accConfirmCreate').replace('{e}', email))) return false;
+        try {
+            var r = await authMail(email, lang, true);
+            await WORKER_ACCOUNTS.doc(email).set({ authCreated: true, authCreatedAt: Date.now(), updatedAt: Date.now() }, { merge: true });
+            alert(tw(r.existed ? 'accSentExisting' : 'accCreated').replace('{e}', email));
+            return true;
+        } catch (e) { alert(tw('accFail') + ' (' + errTxt(e) + ')'); return false; }
+    };
+    window.twAccReset = async function (email, lang) {
+        if (!confirm(tw('accConfirmReset').replace('{e}', email))) return;
+        try { await authMail(email, lang, false); alert(tw('accResetSent').replace('{e}', email)); }
+        catch (e) {
+            if (e && e.code === 'auth/user-not-found') { if (await twAccCreate(email, '', lang)) return; }
+            else alert(tw('accFail') + ' (' + errTxt(e) + ')');
+        }
+    };
+    window.twAccToggle = async function (email) {
+        var a = workerAccounts[email]; if (!a) return;
+        var on = a.active !== false;
+        if (!confirm(tw(on ? 'accConfirmStop' : 'accConfirmStart').replace('{e}', email))) return;
+        try { await WORKER_ACCOUNTS.doc(email).set({ active: !on, updatedAt: Date.now() }, { merge: true }); showToast(tw(on ? 'accStopped' : 'accStarted')); if (currentScreen === 'wdata') renderWData(); }
+        catch (e) { alert(tw('accFail') + ' (' + errTxt(e) + ')'); }
+    };
+    // after saving a worker that has an email but no login yet, offer to create the login
+    var _snt2 = saveNewTechnician;
+    saveNewTechnician = async function () {
+        var email = ($('newTechWorkerEmail').value || '').trim().toLowerCase(), name = ($('newTechName').value || '').trim(), lang = $('newTechWorkerLang').value || 'es';
+        var r = await _snt2.apply(this, arguments);
+        try {
+            var fc = $('addTechFormContainer');
+            if (email && /^\S+@\S+\.\S+$/.test(email) && fc && fc.style.display === 'none') {
+                var rec = workerAccounts[email];
+                if (!rec || !rec.authCreated) await twAccCreate(email, name, lang);
+            }
+        } catch (e) { console.error('acc', e); }
+        return r;
+    };
+
+
+    // ---------- one clear icon per action on the older screens (replaces the emoji, text stays) ----------
+    var ICON_RULES = [
+        ['showJobQuickDetails(', 'info'], ['openInvoiceModal(', 'receipt'], ['openJobPayModal(', 'wallet'], ['openJobOverlay(', 'edit'], ['duplicateJob(', 'copy'],
+        ['revertJobToAppointment(', 'undo'], ['deleteJob(', 'trash'], ['printSelectedJobs(', 'print'], ['markSelectedAsDone(', 'check'], ['toggleJobsFilterPanel(', 'filter'],
+        ['openNewScheduleModal(', 'plus'], ['openSendScheduleModal(', 'send'], ['toggleAllPendingMode(', 'list'],
+        ['openFollowUpReasonModal(', 'bell'], ['openAppointmentQuoteModal(', 'receipt'], ['convertAppointmentToJob(', 'check'], ['editAppointment(', 'edit'], ['deleteAppointment(', 'trash'], ['openSendWorkerModal(', 'send'],
+        ['improveScopeWithAI(', 'sparkle'], ['startVoiceScope(', 'mic'], ["document.getElementById('apptPhotoInput')", 'camera'], ["document.getElementById('jobPhotoInput')", 'camera'], ['startQuoteAiAnalysis(', 'camera'], ['showTechDetails(', 'info'], ['openTechPaymentPrompt(', 'wallet'], ['openEditTechnicianModal(', 'edit'], ['deleteTechnicianFromDirectory(', 'trash'], ['printTechnicianReport(', 'print'], ['openTechBonusPrompt(', 'sparkle'], ['sendWhatsAppTech(', 'send']
+    ];
+    var EMO = new RegExp('^[\\s\\p{Extended_Pictographic}\\uFE0F\\u200D\\u20E3\\u2714\\u2715\\u2716\\u2795]+', 'u');
+    var iconBusy = false, iconTimer = null, iconObs = null;
+    function iconify() {
+        if (iconBusy) return; iconBusy = true;
+        try {
+            if (iconObs) iconObs.disconnect();
+            document.querySelectorAll('button[onclick]').forEach(function (btn) {
+                if (btn.querySelector(':scope > svg.tw-i') || btn.closest('#twSide,#twNav,#twSheet,.tw-panel')) return;
+                var oc = btn.getAttribute('onclick') || '', rule = null;
+                for (var i = 0; i < ICON_RULES.length; i++) if (oc.indexOf(ICON_RULES[i][0]) === 0 || oc.indexOf(' ' + ICON_RULES[i][0]) >= 0) { rule = ICON_RULES[i]; break; }
+                if (!rule) { if (/^close\w*\(/.test(oc)) rule = ['', 'x']; else if (/^save\w*\(/.test(oc)) rule = ['', 'check']; }
+                if (!rule) return;
+                var n = btn.firstChild; while (n && n.nodeType === 3 && !n.nodeValue.trim()) n = n.nextSibling;
+                if (n && n.nodeType === 3) { n.nodeValue = n.nodeValue.replace(EMO, ''); if (n.nodeValue) n.nodeValue = ' ' + n.nodeValue; }
+                btn.insertAdjacentHTML('afterbegin', ic2(rule[1]));
+                if (btn.textContent.trim()) btn.firstChild.style.marginInlineEnd = '5px';
+            });
+        } catch (e) { console.error('icons', e); }
+        iconBusy = false;
+        if (iconObs) iconObs.observe(document.body, { childList: true, subtree: true, characterData: true });
+    }
+    function iconSoon() { clearTimeout(iconTimer); iconTimer = setTimeout(iconify, 120); }
+    if (window.MutationObserver) { iconObs = new MutationObserver(iconSoon); iconObs.observe(document.body, { childList: true, subtree: true, characterData: true }); }
+
     // the appointments list is filtered by the state picker: say so instead of silently showing "3 of 12"
     var _rap = renderAppointments;
     renderAppointments = function () {
@@ -15246,7 +15417,7 @@ ${closeBtnHtml}
         maybeStart();
         if (!started) return;
         paintBrand(); paintState();
-        if (PANELS[currentScreen]) renderPanel(currentScreen);
+        if (TICKP[currentScreen]) renderPanel(currentScreen);
         syncNav();
     }
     setInterval(tick, 2500);
