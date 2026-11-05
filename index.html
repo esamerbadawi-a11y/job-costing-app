@@ -386,7 +386,17 @@ body.tw-on .card{border-radius:18px}
 body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),body.tw-on #screenEntry select,body.tw-on #screenEntry textarea,body.tw-on #jobOverlay input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),body.tw-on #jobOverlay select,body.tw-on #jobOverlay textarea{border-radius:12px}
 @media(max-width:420px){select.tw-sel{max-width:96px}}
 
-    </style>
+    
+.more-box{margin:4px 0 12px;border:1px dashed var(--border-color);border-radius:12px;padding:0 12px}
+.more-box>summary{cursor:pointer;padding:11px 0;font-size:.85rem;font-weight:700;color:var(--accent);list-style:none}
+.more-box>summary::-webkit-details-marker{display:none}
+.more-box[open]>summary{border-bottom:1px solid var(--border-color);margin-bottom:12px}
+.more-box[open]{padding-bottom:4px}
+.map-btn{display:inline-block;margin-inline-start:6px;padding:0 7px;border-radius:8px;background:rgba(2,132,199,.18);cursor:pointer;font-size:.8rem}
+.site-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.site-chips button{padding:5px 11px;font-size:.76rem;border-radius:14px;background:var(--card-dark);color:var(--text-main);border:1px solid var(--border-color);box-shadow:none;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.site-chips button.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+</style>
 </head>
 <body>
 
@@ -788,6 +798,35 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                     </div>
                 </div>
 
+                <div class="form-group" style="position: relative;">
+                    <label><span data-i18n="lblJobSite"></span> <span class="map-btn" onclick="openMapFor('clientAddress')" title="Map">🗺</span></label>
+                    <input type="text" id="clientAddress" data-i18n-ph="phAddress" oninput="onAddressInput('clientAddress','addressAutocompleteList'); renderSiteChips()" autocomplete="off">
+                    <div id="addressAutocompleteList" class="autocomplete-items" style="display: none;"></div>
+                    <div id="siteChips" class="site-chips" style="display:none;"></div>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="lblDescription"></label>
+                    <textarea id="clientDescription" data-i18n-ph="phDescription"></textarea>
+                    <input type="text" id="aiInstructionInput" data-i18n-ph="aiInstructionPh" style="margin-top:6px;">
+                    <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">
+                        <button type="button" onclick="improveScopeWithAI()" id="aiScopeBtn" style="background:linear-gradient(135deg,#7c3aed,#38bdf8); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">✨ <span data-i18n="aiScopeBtn"></span></button>
+                        <button type="button" onclick="startVoiceScope()" id="voiceScopeBtn" style="background:linear-gradient(135deg,#dc2626,#f97316); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">🎤 <span data-i18n="voiceScopeBtn"></span></button>
+                        <button type="button" onclick="document.getElementById('jobPhotoInput').click()" id="jobPhotoBtn" style="background:linear-gradient(135deg,#0ea5e9,#0284c7); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">📷 <span data-i18n="photoScopeBtn"></span></button>
+                        <input type="file" id="jobPhotoInput" accept="image/*" multiple style="display:none;" onchange="analyzePhotoForScope(event,'clientDescription','jobPhotoBtn','jobPhotoGallery')">
+                    </div>
+                    <div id="jobPhotoGallery" style="display:none; gap:8px; flex-wrap:wrap; margin-top:6px;"></div>
+                </div>
+                <details id="moreClientBox" class="more-box">
+                    <summary data-i18n="lblMoreDetails"></summary>
+                <div class="form-group">
+                    <label><span data-i18n="lblCompanyAddr"></span> <span class="map-btn" onclick="openMapFor('companyAddress')" title="Map">🗺</span></label>
+                    <input type="text" id="companyAddress" data-i18n-ph="phCompanyAddr" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="lblClientEmail"></label>
+                    <input type="email" id="clientEmail" data-i18n-ph="apptEmailPh">
+                </div>
+
                 <div class="chip-row" style="margin-bottom:12px;">
                     <button type="button" class="secondary" id="toggleTenantBtn" onclick="toggleOptionalContactSection('tenant')" data-i18n="btnToggleTenant"></button>
                     <button type="button" class="secondary" id="toggleCcBtn" onclick="toggleOptionalContactSection('cc')" data-i18n="btnToggleCc"></button>
@@ -802,11 +841,6 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                         <label data-i18n="lblTenantPhone"></label>
                         <input type="text" id="tenantPhone" placeholder="(555) 123-4567">
                     </div>
-                </div>
-
-                <div class="form-group">
-                    <label data-i18n="lblClientEmail"></label>
-                    <input type="email" id="clientEmail" data-i18n-ph="apptEmailPh">
                 </div>
 
                 <div class="form-group" id="ccSection" style="display:none; background: rgba(14, 165, 233, 0.06); border: 1px dashed var(--border-color); border-radius: 10px; padding: 12px;">
@@ -827,23 +861,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                     </div>
                 </div>
 
-                <div class="form-group" style="position: relative;">
-                    <label data-i18n="lblAddress"></label>
-                    <input type="text" id="clientAddress" data-i18n-ph="phAddress" oninput="onAddressInput('clientAddress','addressAutocompleteList')" autocomplete="off">
-                    <div id="addressAutocompleteList" class="autocomplete-items" style="display: none;"></div>
-                </div>
-                <div class="form-group">
-                    <label data-i18n="lblDescription"></label>
-                    <textarea id="clientDescription" data-i18n-ph="phDescription"></textarea>
-                    <input type="text" id="aiInstructionInput" data-i18n-ph="aiInstructionPh" style="margin-top:6px;">
-                    <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">
-                        <button type="button" onclick="improveScopeWithAI()" id="aiScopeBtn" style="background:linear-gradient(135deg,#7c3aed,#38bdf8); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">✨ <span data-i18n="aiScopeBtn"></span></button>
-                        <button type="button" onclick="startVoiceScope()" id="voiceScopeBtn" style="background:linear-gradient(135deg,#dc2626,#f97316); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">🎤 <span data-i18n="voiceScopeBtn"></span></button>
-                        <button type="button" onclick="document.getElementById('jobPhotoInput').click()" id="jobPhotoBtn" style="background:linear-gradient(135deg,#0ea5e9,#0284c7); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer;">📷 <span data-i18n="photoScopeBtn"></span></button>
-                        <input type="file" id="jobPhotoInput" accept="image/*" multiple style="display:none;" onchange="analyzePhotoForScope(event,'clientDescription','jobPhotoBtn','jobPhotoGallery')">
-                    </div>
-                    <div id="jobPhotoGallery" style="display:none; gap:8px; flex-wrap:wrap; margin-top:6px;"></div>
-                </div>
+                </details>
                 </div>
 
                 <div class="job-step" id="jobStep2">
@@ -2400,6 +2418,10 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         statusDoneShort: { ar: 'خلص', en: 'Done' },
         statusCancelledShort: { ar: 'ملغي', en: 'Cancelled' },
         lblAddress: { ar: 'عنوان العميل / موقع العمل:', en: 'Client Address / Job Site:' },
+        lblJobSite: { ar: '📍 مكان الشغلانة (الفني يشوف ده):', en: '📍 Job site (the worker sees this):' },
+        lblCompanyAddr: { ar: '🏢 عنوان الشركة (إنت بس اللي بتشوفه):', en: '🏢 Company address (only you see it):' },
+        phCompanyAddr: { ar: 'عنوان مكتب الشركة أو المالك', en: 'Company / landlord office address' },
+        lblMoreDetails: { ar: '＋ تفاصيل أكتر (إيميل، عنوان الشركة، مستأجر…)', en: '＋ More details (email, company address, tenant…)' },
         phAddress: { ar: 'أدخل عنوان العميل أو موقع العمل...', en: 'Enter client address or job site...' },
         lblDescription: { ar: 'وصف الشغلانة / تفاصيل العمل:', en: 'Job Description / Details:' },
         phDescription: { ar: 'أدخل تفاصيل وملاحظات الشغلانة هنا...', en: 'Enter job details and notes here...' },
@@ -4210,11 +4232,12 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         const team = (entry && entry.team && entry.team.length > 0) ? entry.team.join(', ') : '';
         const phone = job.clientPhone ? `<a href="#" onclick="event.preventDefault(); showPhoneChoice('${jsArg(job.clientPhone)}');">📞 <span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${escHtml(job.clientPhone)}</span></a>` : '';
         const addr = job.clientAddress ? `<a href="#" onclick="event.preventDefault(); showMapChoice('${jsArg(job.clientAddress)}');">📍 ${escHtml(job.clientAddress)}</a>` : '';
+        const coAddr = job.companyAddress ? `<a href="#" onclick="event.preventDefault(); showMapChoice('${jsArg(job.companyAddress)}');">🏢 ${escHtml(job.companyAddress)}</a>` : '';
         const postponed = (entry && entry.postponedFrom) ? `<span class="ag-badge">⏭ ${t('postponedFromLabel')} ${escHtml(entry.postponedFrom)}</span>` : '';
         const when = entry ? `<span class="ag-time">${entry.time ? escHtml(entry.time) : t('agendaNoTime')}</span>` : `<span class="ag-time">${ltrRange(job.startDate, job.endDate || job.startDate)}</span>`;
         return `<div class="ag-item">
             <div class="ag-line">${when}<strong>${escHtml(job.clientName || '')}</strong>${postponed}</div>
-            ${(addr || phone) ? `<div class="ag-meta">${[addr, phone].filter(Boolean).join(' &nbsp; ')}</div>` : ''}
+            ${(addr || phone || coAddr) ? `<div class="ag-meta">${[addr, coAddr, phone].filter(Boolean).join(' &nbsp; ')}</div>` : ''}
             ${entry ? `<div class="ag-meta" style="color:#38bdf8;">${t('weeklyTechsLabel')} ${team ? escHtml(team) : t('agendaNoTeam')}</div>` : ''}
             ${entry && entry.note ? `<div class="ag-meta">🔧 ${escHtml(entry.note)}</div>` : ''}
             ${agendaActionsHtml(job, entry ? entry.date : '')}
@@ -4701,6 +4724,9 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 document.getElementById('clientPhone').value = job.clientPhone || '';
                 document.getElementById('clientEmail').value = job.clientEmail || '';
                 document.getElementById('clientAddress').value = job.clientAddress || '';
+                const ca = companyAddrFor(job.clientName, job.clientPhone);
+                document.getElementById('companyAddress').value = ca;
+                if (ca || job.clientEmail) document.getElementById('moreClientBox').open = true;
                 listDiv.style.display = 'none';
                 checkCrmCustomerData();
             };
@@ -6466,6 +6492,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             ccContactEmail: document.getElementById('ccContactEmail').value.trim(),
             jobStatus: document.getElementById('jobStatus').value,
             clientAddress: document.getElementById('clientAddress').value.trim(),
+            companyAddress: document.getElementById('companyAddress').value.trim(),
             clientDescription: document.getElementById('clientDescription').value.trim(),
             startDate: document.getElementById('startDate').value,
             endDate: document.getElementById('endDate').value,
@@ -6568,6 +6595,52 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     // Tenant and CC-contact are both collapsed behind a button by default so an empty job form
     // stays short — most jobs need neither. Clicking a button just flips that one section's
     // own visibility; the other one is untouched.
+    // ---------- Job site vs company address ----------
+    // clientAddress  = the JOB SITE (the only address a worker ever receives)
+    // companyAddress = the client's / landlord's office address (for the office only)
+    function openMapFor(id) {
+        const v = (document.getElementById(id).value || '').trim(); if (!v) return;
+        window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(v), '_blank');
+    }
+    function contactAddressFor(name, phone) {
+        const n = (name || '').trim().toLowerCase(), p = (phone || '').replace(/\D/g, '');
+        const c = (typeof contacts !== 'undefined' ? contacts : []).find(x => (p.length >= 7 && (x.phone || '').replace(/\D/g, '') === p) || (n && (x.name || '').trim().toLowerCase() === n));
+        return c ? (c.address || '') : '';
+    }
+    // the client's company address: from their most recent job that has one, else from "Customer data"
+    function companyAddrFor(name, phone) {
+        const n = (name || '').trim().toLowerCase(), p = (phone || '').replace(/\D/g, '');
+        const j = (savedJobs || []).filter(x => x.companyAddress && ((n && (x.clientName || '').trim().toLowerCase() === n) || (p.length >= 7 && (x.clientPhone || '').replace(/\D/g, '') === p)))
+            .sort((a, b) => String(b.startDate || '').localeCompare(String(a.startDate || '')))[0];
+        return j ? j.companyAddress : contactAddressFor(name, phone);
+    }
+    let siteChipList = [];
+    function renderSiteChips() {
+        const box = document.getElementById('siteChips'); if (!box) return;
+        const name = (document.getElementById('clientName').value || '').trim().toLowerCase();
+        const ph = (document.getElementById('clientPhone').value || '').replace(/\D/g, '');
+        const cur = (document.getElementById('clientAddress').value || '').trim();
+        const seen = new Map();
+        (savedJobs || []).filter(j => j.clientAddress && ((name && (j.clientName || '').trim().toLowerCase() === name) || (ph.length >= 7 && (j.clientPhone || '').replace(/\D/g, '') === ph)))
+            .sort((a, b) => String(b.startDate || '').localeCompare(String(a.startDate || '')))
+            .forEach(j => { const k = j.clientAddress.trim().toLowerCase(); if (!seen.has(k)) seen.set(k, j.clientAddress.trim()); });
+        siteChipList = Array.from(seen.values()).slice(0, 5);
+        const hide = siteChipList.length === 0 || (siteChipList.length === 1 && siteChipList[0].toLowerCase() === cur.toLowerCase());
+        if (hide) { box.style.display = 'none'; box.innerHTML = ''; return; }
+        box.innerHTML = siteChipList.map((a, i) => `<button type="button" class="${a.toLowerCase() === cur.toLowerCase() ? 'on' : ''}" onclick="pickSite(${i})" title="${escHtml(a)}">${escHtml(a)}</button>`).join('');
+        box.style.display = 'flex';
+    }
+    function pickSite(i) {
+        if (!siteChipList[i]) return;
+        document.getElementById('clientAddress').value = siteChipList[i];
+        try { jobFormDirty = true; } catch (e) {}
+        renderSiteChips();
+    }
+    {
+        const _checkCrm = checkCrmCustomerData;
+        checkCrmCustomerData = function () { const r = _checkCrm.apply(this, arguments); try { renderSiteChips(); } catch (e) {} return r; };
+    }
+
     function toggleOptionalContactSection(which) {
         const el = document.getElementById(which === 'tenant' ? 'tenantSection' : 'ccSection');
         if (!el) return;
@@ -6578,6 +6651,9 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     function showOptionalContactSectionsFor(job) {
         document.getElementById('tenantSection').style.display = (job.tenantName || job.tenantPhone) ? '' : 'none';
         document.getElementById('ccSection').style.display = (job.ccContactName || job.ccContactPhone || job.ccContactEmail) ? '' : 'none';
+        document.getElementById('companyAddress').value = job.companyAddress || '';
+        // the "more details" box opens by itself whenever something inside it already has data
+        document.getElementById('moreClientBox').open = !!(job.clientEmail || job.companyAddress || job.tenantName || job.tenantPhone || job.ccContactName || job.ccContactPhone || job.ccContactEmail);
     }
 
     function resetForm() {
@@ -6595,6 +6671,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         document.getElementById('ccContactEmail').value = '';
         document.getElementById('tenantSection').style.display = 'none';
         document.getElementById('ccSection').style.display = 'none';
+        document.getElementById('companyAddress').value = '';
+        document.getElementById('moreClientBox').open = false;
         document.getElementById('jobStatus').value = 'شغال';
         document.getElementById('clientAddress').value = '';
         document.getElementById('clientDescription').value = '';
@@ -6905,7 +6983,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             const statusBadgeClass = job.jobStatus === 'خلص' ? 'completed' : (job.jobStatus === 'ملغي' ? 'cancelled' : 'active');
             tr.innerHTML = `
                 <td data-label="" style="text-align: center;"><input type="checkbox" class="job-checkbox" value="${job.id}" ${selectedJobIds.has(String(job.id)) ? 'checked' : ''} onchange="toggleJobSelection('${job.id}', this)"></td>
-                <td data-label="${t('thClient')}"><strong>${job.clientName}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.clientPhone ? `<a href="tel:${job.clientPhone.replace(/[^+\d]/g, '')}" style="color:#38bdf8; text-decoration:none;" onclick="event.stopPropagation();">📞 ${job.clientPhone}</a>` : ''}${job.clientPhone && job.clientAddress ? ' - ' : ''}${job.clientAddress ? `<a href="#" onclick="event.stopPropagation(); event.preventDefault(); showMapChoice('${job.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${job.clientAddress}</a>` : ''}</span>${hasDebt ? '<br><span class="debt-alert-badge">' + t('debtBadgePrefix') + ' $' + rem.toFixed(2) + '</span> <button onclick="event.stopPropagation(); sendAiPaymentReminder(\'' + job.id + '\');" style="background:linear-gradient(135deg,#7c3aed,#38bdf8); color:#fff; border:none; border-radius:6px; padding:2px 8px; font-size:0.68rem; font-weight:700; cursor:pointer;">✨ ' + t('aiReminderBtn') + '</button>' : ''}${isOverdue ? '<br><span class="debt-alert-badge" style="background:rgba(217,119,6,0.2); color:#fbbf24; border-color:rgba(217,119,6,0.4);">🔔 ' + t('reminderOverdueSuffix') + '</span>' : ''}</td>
+                <td data-label="${t('thClient')}"><strong>${job.clientName}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.clientPhone ? `<a href="tel:${job.clientPhone.replace(/[^+\d]/g, '')}" style="color:#38bdf8; text-decoration:none;" onclick="event.stopPropagation();">📞 ${job.clientPhone}</a>` : ''}${job.clientPhone && job.clientAddress ? ' - ' : ''}${job.clientAddress ? `<a href="#" onclick="event.stopPropagation(); event.preventDefault(); showMapChoice('${job.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${job.clientAddress}</a>` : ''}${job.companyAddress ? `<br><a href="#" onclick="event.stopPropagation(); event.preventDefault(); showMapChoice('${job.companyAddress.replace(/'/g, "\\'")}');" style="color:#94a3b8; text-decoration:none;">🏢 ${escHtml(job.companyAddress)}</a>` : ''}</span>${hasDebt ? '<br><span class="debt-alert-badge">' + t('debtBadgePrefix') + ' $' + rem.toFixed(2) + '</span> <button onclick="event.stopPropagation(); sendAiPaymentReminder(\'' + job.id + '\');" style="background:linear-gradient(135deg,#7c3aed,#38bdf8); color:#fff; border:none; border-radius:6px; padding:2px 8px; font-size:0.68rem; font-weight:700; cursor:pointer;">✨ ' + t('aiReminderBtn') + '</button>' : ''}${isOverdue ? '<br><span class="debt-alert-badge" style="background:rgba(217,119,6,0.2); color:#fbbf24; border-color:rgba(217,119,6,0.4);">🔔 ' + t('reminderOverdueSuffix') + '</span>' : ''}</td>
                 <td data-label="${t('thDateStatus')}"><span class="badge ${statusBadgeClass}">${statusLabel(job.jobStatus)}</span><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.startDate || ''}</span></td>
                 <td data-label="${t('thAmounts')}" style="font-size: 0.82rem;">$${rev.toFixed(2)} / <span style="color:#34d399;">$${rec.toFixed(2)}</span> / <span style="color:#f87171; font-weight:700;">$${rem.toFixed(2)}</span></td>
                 <td data-label="${t('thMaterials')}" style="color:#f87171;">$${parseVal(job.materialCost).toFixed(2)}</td>
