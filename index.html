@@ -553,6 +553,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 <div class="form-group" style="position: relative;">
                     <input type="text" id="apptClientAddress" data-i18n-ph="apptAddressPh" oninput="onAddressInput('apptClientAddress','apptAddressAutocompleteList')" autocomplete="off">
                     <div id="apptAddressAutocompleteList" class="autocomplete-items" style="display: none;"></div>
+                    <div style="margin-top:4px;"><span class="map-btn" onclick="toggleUnitRow(undefined,'apptUnitRow','apptUnitNo')" data-i18n="btnUnit"></span></div>
+                    <div id="apptUnitRow" style="display:none; margin-top:6px;"><input type="text" id="apptUnitNo" data-i18n-ph="phUnit" autocomplete="off"></div>
                 </div>
                 <div class="grid-2" style="margin-bottom:10px;">
                     <div class="form-group" style="margin-bottom:0;">
@@ -799,9 +801,10 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 </div>
 
                 <div class="form-group" style="position: relative;">
-                    <label><span data-i18n="lblJobSite"></span> <span class="map-btn" onclick="openMapFor('clientAddress')" title="Map">🗺</span></label>
+                    <label><span data-i18n="lblJobSite"></span> <span class="map-btn" onclick="openMapFor('clientAddress')" title="Map">🗺</span> <span class="map-btn" id="unitToggle" onclick="toggleUnitRow()" data-i18n="btnUnit"></span></label>
                     <input type="text" id="clientAddress" data-i18n-ph="phAddress" oninput="onAddressInput('clientAddress','addressAutocompleteList'); renderSiteChips()" autocomplete="off">
                     <div id="addressAutocompleteList" class="autocomplete-items" style="display: none;"></div>
+                    <div id="unitRow" style="display:none; margin-top:6px;"><input type="text" id="unitNo" data-i18n-ph="phUnit" autocomplete="off" oninput="renderSiteChips()"></div>
                     <div id="siteChips" class="site-chips" style="display:none;"></div>
                 </div>
                 <div class="form-group">
@@ -818,9 +821,10 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 </div>
                 <details id="moreClientBox" class="more-box">
                     <summary data-i18n="lblMoreDetails"></summary>
-                <div class="form-group">
+                <div class="form-group" style="position: relative;">
                     <label><span data-i18n="lblCompanyAddr"></span> <span class="map-btn" onclick="openMapFor('companyAddress')" title="Map">🗺</span></label>
-                    <input type="text" id="companyAddress" data-i18n-ph="phCompanyAddr" autocomplete="off">
+                    <input type="text" id="companyAddress" data-i18n-ph="phCompanyAddr" oninput="onAddressInput('companyAddress','companyAddrAutocompleteList')" autocomplete="off">
+                    <div id="companyAddrAutocompleteList" class="autocomplete-items" style="display: none;"></div>
                 </div>
                 <div class="form-group">
                     <label data-i18n="lblClientEmail"></label>
@@ -1391,9 +1395,10 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 </div>
             </div>
         </div>
-        <div class="form-group">
+        <div class="form-group" style="position: relative;">
             <label data-i18n="lblCompanyAddress"></label>
-            <input type="text" id="companyProfileAddress">
+            <input type="text" id="companyProfileAddress" oninput="onAddressInput('companyProfileAddress','companyProfileAddrList')" autocomplete="off">
+            <div id="companyProfileAddrList" class="autocomplete-items" style="display: none;"></div>
         </div>
         <div class="form-group">
             <label data-i18n="lblCompanyPhone"></label>
@@ -1710,6 +1715,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 <label data-i18n="lblAddress"></label>
                 <input type="text" id="qsClientAddress" data-i18n-ph="phAddress" oninput="onAddressInput('qsClientAddress','qsAddressAutocompleteList')" autocomplete="off">
                 <div id="qsAddressAutocompleteList" class="autocomplete-items" style="display: none;"></div>
+                <div style="margin-top:4px;"><span class="map-btn" onclick="toggleUnitRow(undefined,'qsUnitRow','qsUnitNo')" data-i18n="btnUnit"></span></div>
+                <div id="qsUnitRow" style="display:none; margin-top:6px;"><input type="text" id="qsUnitNo" data-i18n-ph="phUnit" autocomplete="off"></div>
             </div>
         </div>
         <div id="qsExistingJobFields" style="display:none;">
@@ -2418,6 +2425,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         statusDoneShort: { ar: 'خلص', en: 'Done' },
         statusCancelledShort: { ar: 'ملغي', en: 'Cancelled' },
         lblAddress: { ar: 'عنوان العميل / موقع العمل:', en: 'Client Address / Job Site:' },
+        btnUnit: { ar: '＋ شقة / وحدة', en: '＋ Apt / Unit' },
+        phUnit: { ar: 'مثلاً: Apt 204 أو Unit B أو Bldg 3', en: 'e.g. Apt 204, Unit B, Bldg 3' },
         lblJobSite: { ar: '📍 مكان الشغلانة (الفني يشوف ده):', en: '📍 Job site (the worker sees this):' },
         lblCompanyAddr: { ar: '🏢 عنوان الشركة (إنت بس اللي بتشوفه):', en: '🏢 Company address (only you see it):' },
         phCompanyAddr: { ar: 'عنوان مكتب الشركة أو المالك', en: 'Company / landlord office address' },
@@ -4231,7 +4240,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     function agendaItemHtml(job, entry, dayLabelIfRunning) {
         const team = (entry && entry.team && entry.team.length > 0) ? entry.team.join(', ') : '';
         const phone = job.clientPhone ? `<a href="#" onclick="event.preventDefault(); showPhoneChoice('${jsArg(job.clientPhone)}');">📞 <span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${escHtml(job.clientPhone)}</span></a>` : '';
-        const addr = job.clientAddress ? `<a href="#" onclick="event.preventDefault(); showMapChoice('${jsArg(job.clientAddress)}');">📍 ${escHtml(job.clientAddress)}</a>` : '';
+        const addr = job.clientAddress ? `<a href="#" onclick="event.preventDefault(); showMapChoice('${jsArg(job.clientAddress)}');">📍 ${escHtml(jobFullAddr(job))}</a>` : '';
         const coAddr = job.companyAddress ? `<a href="#" onclick="event.preventDefault(); showMapChoice('${jsArg(job.companyAddress)}');">🏢 ${escHtml(job.companyAddress)}</a>` : '';
         const postponed = (entry && entry.postponedFrom) ? `<span class="ag-badge">⏭ ${t('postponedFromLabel')} ${escHtml(entry.postponedFrom)}</span>` : '';
         const when = entry ? `<span class="ag-time">${entry.time ? escHtml(entry.time) : t('agendaNoTime')}</span>` : `<span class="ag-time">${ltrRange(job.startDate, job.endDate || job.startDate)}</span>`;
@@ -4640,9 +4649,28 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         return short || r.display_name;
     }
 
+    // Cleans what a person pastes or types so the address search understands it:
+    //  - a copied multi-line address ("203 Palmetto Ct / Oldsmar, FL  34677 / United States") -> one clean line
+    //  - drops "United States" / USA and double spaces
+    //  - takes an apartment / unit / suite / building part OUT of the search (maps cannot match it) and hands it back separately
+    //  - second try: just "street, state, zip" when the full text finds nothing
+    function parseAddressQuery(raw) {
+        let s = String(raw || '').replace(/[\r\n\t]+/g, ', ').replace(/\s{2,}/g, ' ').replace(/(,\s*){2,}/g, ', ').replace(/^[,\s]+|[,\s]+$/g, '');
+        s = s.replace(/[,\s]*\b(united states( of america)?|u\.?s\.?a\.?)\s*$/i, '').replace(/[,\s]+$/g, '');
+        let unit = '';
+        const um = s.match(/[,\s]+((?:apt\.?|apartment|unit|suite|ste\.?|bldg\.?|building|#)\s*#?\s*[A-Za-z0-9-]+)/i);
+        if (um) { unit = um[1].replace(/\s+/g, ' ').trim(); s = (s.slice(0, um.index) + s.slice(um.index + um[0].length)).replace(/\s{2,}/g, ' ').replace(/\s+,/g, ',').trim(); }
+        let alt = '';
+        const st = s.match(/^(.*?\b(?:st|street|ave|avenue|rd|road|dr|drive|ln|lane|blvd|boulevard|ct|court|pl|place|way|cir|circle|ter|terrace|pkwy|parkway|hwy|highway|trl|trail|loop|run|path|pt|point|sq|square)\b\.?)(?:[,\s]|$)/i);
+        const zip = s.match(/\b(\d{5})(?:-\d{4})?\b/), stt = s.match(/\b([A-Z]{2})\b(?=[\s,]*\d{5}|\s*$)/);
+        if (st && (zip || stt)) alt = [st[1], stt ? stt[1] : '', zip ? zip[1] : ''].filter(Boolean).join(', ');
+        return { q: s, alt: alt !== s ? alt : '', unit };
+    }
+
     function onAddressInput(inputId, listId) {
         clearTimeout(addressAutocompleteTimer);
-        const query = document.getElementById(inputId).value.trim();
+        const parsedQ = parseAddressQuery(document.getElementById(inputId).value);
+        const query = parsedQ.q;
         const listDiv = document.getElementById(listId);
         if (query.length < 3) { listDiv.style.display = 'none'; listDiv.innerHTML = ''; return; }
 
@@ -4659,7 +4687,11 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 const url = `https://nominatim.openstreetmap.org/search?format=json&limit=8&addressdetails=1&countrycodes=us&viewbox=${FL_VIEWBOX}&bounded=0&accept-language=${currentLang}&q=${encodeURIComponent(query)}`;
                 const res = await fetch(url);
                 if (!res.ok) throw new Error('Nominatim HTTP ' + res.status);
-                const results = await res.json();
+                let results = await res.json();
+                if ((!results || results.length === 0) && parsedQ.alt) {   // nothing for the full text: try just street + state + zip
+                    const res2 = await fetch(url.replace(/&q=[^&]*$/, '&q=' + encodeURIComponent(parsedQ.alt)));
+                    if (res2.ok) results = await res2.json();
+                }
                 if (myRequestId !== addressRequestId) return; // a newer keystroke already superseded this request
                 listDiv.innerHTML = '';
                 if (!results || results.length === 0) {
@@ -4674,6 +4706,14 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                     item.onclick = () => {
                         document.getElementById(inputId).value = label;
                         listDiv.style.display = 'none';
+                        // an apartment / unit typed or pasted inside the address goes to its own field (or, if the screen has none, stays at the end of the address)
+                        if (parsedQ.unit) {
+                            const UM = { clientAddress: ['unitNo', 'unitRow'], apptClientAddress: ['apptUnitNo', 'apptUnitRow'], qsClientAddress: ['qsUnitNo', 'qsUnitRow'] }[inputId];
+                            const ue = UM && document.getElementById(UM[0]);
+                            if (ue) { if (!ue.value.trim()) ue.value = parsedQ.unit; document.getElementById(UM[1]).style.display = ''; }
+                            else document.getElementById(inputId).value = label + ', ' + parsedQ.unit;
+                        }
+                        try { renderSiteChips(); } catch (e) {}
                     };
                     listDiv.appendChild(item);
                 });
@@ -4726,6 +4766,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 document.getElementById('clientAddress').value = job.clientAddress || '';
                 const ca = companyAddrFor(job.clientName, job.clientPhone);
                 document.getElementById('companyAddress').value = ca;
+                document.getElementById('unitNo').value = job.unitNo || '';
+                document.getElementById('unitRow').style.display = job.unitNo ? '' : 'none';
                 if (ca || job.clientEmail) document.getElementById('moreClientBox').open = true;
                 listDiv.style.display = 'none';
                 checkCrmCustomerData();
@@ -4751,6 +4793,10 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         if (!e.target.closest('#contactAddress') && !e.target.closest('#contactAddressAutocompleteList')) {
             document.getElementById('contactAddressAutocompleteList').style.display = 'none';
         }
+        [['companyAddress','companyAddrAutocompleteList'],['companyProfileAddress','companyProfileAddrList']].forEach(function(p){
+            const l = document.getElementById(p[1]);
+            if (l && !e.target.closest('#' + p[0]) && !e.target.closest('#' + p[1])) l.style.display = 'none';
+        });
     });
 
     function checkCrmCustomerData() {
@@ -6493,6 +6539,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             jobStatus: document.getElementById('jobStatus').value,
             clientAddress: document.getElementById('clientAddress').value.trim(),
             companyAddress: document.getElementById('companyAddress').value.trim(),
+            unitNo: document.getElementById('unitNo').value.trim(),
             clientDescription: document.getElementById('clientDescription').value.trim(),
             startDate: document.getElementById('startDate').value,
             endDate: document.getElementById('endDate').value,
@@ -6598,6 +6645,15 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     // ---------- Job site vs company address ----------
     // clientAddress  = the JOB SITE (the only address a worker ever receives)
     // companyAddress = the client's / landlord's office address (for the office only)
+    // The unit / apartment lives in its own field so the street address stays clean for maps and address search.
+    // The worker and the office views show them together: "street address — Apt 204".
+    function jobFullAddr(job) { return ((job && job.clientAddress) || '') + (job && job.unitNo ? ' — ' + job.unitNo : ''); }
+    function toggleUnitRow(forceOpen, rowId, inputId) {
+        const row = document.getElementById(rowId || 'unitRow'); if (!row) return;
+        const open = forceOpen === true ? true : row.style.display === 'none';
+        row.style.display = open ? '' : 'none';
+        if (open) { try { document.getElementById(inputId || 'unitNo').focus(); } catch (e) {} }
+    }
     function openMapFor(id) {
         const v = (document.getElementById(id).value || '').trim(); if (!v) return;
         window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(v), '_blank');
@@ -6623,16 +6679,20 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         const seen = new Map();
         (savedJobs || []).filter(j => j.clientAddress && ((name && (j.clientName || '').trim().toLowerCase() === name) || (ph.length >= 7 && (j.clientPhone || '').replace(/\D/g, '') === ph)))
             .sort((a, b) => String(b.startDate || '').localeCompare(String(a.startDate || '')))
-            .forEach(j => { const k = j.clientAddress.trim().toLowerCase(); if (!seen.has(k)) seen.set(k, j.clientAddress.trim()); });
+            .forEach(j => { const k = (j.clientAddress.trim() + '|' + (j.unitNo || '').trim()).toLowerCase(); if (!seen.has(k)) seen.set(k, { a: j.clientAddress.trim(), u: (j.unitNo || '').trim() }); });
         siteChipList = Array.from(seen.values()).slice(0, 5);
-        const hide = siteChipList.length === 0 || (siteChipList.length === 1 && siteChipList[0].toLowerCase() === cur.toLowerCase());
+        const curU = (document.getElementById('unitNo').value || '').trim();
+        const isCur = o => o.a.toLowerCase() === cur.toLowerCase() && o.u.toLowerCase() === curU.toLowerCase();
+        const hide = siteChipList.length === 0 || (siteChipList.length === 1 && isCur(siteChipList[0]));
         if (hide) { box.style.display = 'none'; box.innerHTML = ''; return; }
-        box.innerHTML = siteChipList.map((a, i) => `<button type="button" class="${a.toLowerCase() === cur.toLowerCase() ? 'on' : ''}" onclick="pickSite(${i})" title="${escHtml(a)}">${escHtml(a)}</button>`).join('');
+        box.innerHTML = siteChipList.map((o, i) => { const lbl = o.a + (o.u ? ' — ' + o.u : ''); return `<button type="button" class="${isCur(o) ? 'on' : ''}" onclick="pickSite(${i})" title="${escHtml(lbl)}">${escHtml(lbl)}</button>`; }).join('');
         box.style.display = 'flex';
     }
     function pickSite(i) {
         if (!siteChipList[i]) return;
-        document.getElementById('clientAddress').value = siteChipList[i];
+        document.getElementById('clientAddress').value = siteChipList[i].a;
+        document.getElementById('unitNo').value = siteChipList[i].u;
+        toggleUnitRow(!!siteChipList[i].u); if (!siteChipList[i].u) document.getElementById('unitRow').style.display = 'none';
         try { jobFormDirty = true; } catch (e) {}
         renderSiteChips();
     }
@@ -6652,6 +6712,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         document.getElementById('tenantSection').style.display = (job.tenantName || job.tenantPhone) ? '' : 'none';
         document.getElementById('ccSection').style.display = (job.ccContactName || job.ccContactPhone || job.ccContactEmail) ? '' : 'none';
         document.getElementById('companyAddress').value = job.companyAddress || '';
+        document.getElementById('unitNo').value = job.unitNo || '';
+        document.getElementById('unitRow').style.display = job.unitNo ? '' : 'none';
         // the "more details" box opens by itself whenever something inside it already has data
         document.getElementById('moreClientBox').open = !!(job.clientEmail || job.companyAddress || job.tenantName || job.tenantPhone || job.ccContactName || job.ccContactPhone || job.ccContactEmail);
     }
@@ -6672,6 +6734,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         document.getElementById('tenantSection').style.display = 'none';
         document.getElementById('ccSection').style.display = 'none';
         document.getElementById('companyAddress').value = '';
+        document.getElementById('unitNo').value = '';
+        document.getElementById('unitRow').style.display = 'none';
         document.getElementById('moreClientBox').open = false;
         document.getElementById('jobStatus').value = 'شغال';
         document.getElementById('clientAddress').value = '';
@@ -6830,7 +6894,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
 
         let lines = [];
         lines.push(job.clientName || '');
-        if (job.clientAddress) lines.push('📍 ' + job.clientAddress);
+        if (job.clientAddress) lines.push('📍 ' + jobFullAddr(job));
         if (job.tenantName || job.tenantPhone) lines.push('🏠 ' + t('lblTenantName').replace(':', '') + ' ' + [job.tenantName, job.tenantPhone].filter(Boolean).join(' — '));
         lines.push('─────────────────');
         lines.push(t('qdScopeOfWork'));
@@ -6983,7 +7047,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             const statusBadgeClass = job.jobStatus === 'خلص' ? 'completed' : (job.jobStatus === 'ملغي' ? 'cancelled' : 'active');
             tr.innerHTML = `
                 <td data-label="" style="text-align: center;"><input type="checkbox" class="job-checkbox" value="${job.id}" ${selectedJobIds.has(String(job.id)) ? 'checked' : ''} onchange="toggleJobSelection('${job.id}', this)"></td>
-                <td data-label="${t('thClient')}"><strong>${job.clientName}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.clientPhone ? `<a href="tel:${job.clientPhone.replace(/[^+\d]/g, '')}" style="color:#38bdf8; text-decoration:none;" onclick="event.stopPropagation();">📞 ${job.clientPhone}</a>` : ''}${job.clientPhone && job.clientAddress ? ' - ' : ''}${job.clientAddress ? `<a href="#" onclick="event.stopPropagation(); event.preventDefault(); showMapChoice('${job.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${job.clientAddress}</a>` : ''}${job.companyAddress ? `<br><a href="#" onclick="event.stopPropagation(); event.preventDefault(); showMapChoice('${job.companyAddress.replace(/'/g, "\\'")}');" style="color:#94a3b8; text-decoration:none;">🏢 ${escHtml(job.companyAddress)}</a>` : ''}</span>${hasDebt ? '<br><span class="debt-alert-badge">' + t('debtBadgePrefix') + ' $' + rem.toFixed(2) + '</span> <button onclick="event.stopPropagation(); sendAiPaymentReminder(\'' + job.id + '\');" style="background:linear-gradient(135deg,#7c3aed,#38bdf8); color:#fff; border:none; border-radius:6px; padding:2px 8px; font-size:0.68rem; font-weight:700; cursor:pointer;">✨ ' + t('aiReminderBtn') + '</button>' : ''}${isOverdue ? '<br><span class="debt-alert-badge" style="background:rgba(217,119,6,0.2); color:#fbbf24; border-color:rgba(217,119,6,0.4);">🔔 ' + t('reminderOverdueSuffix') + '</span>' : ''}</td>
+                <td data-label="${t('thClient')}"><strong>${job.clientName}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.clientPhone ? `<a href="tel:${job.clientPhone.replace(/[^+\d]/g, '')}" style="color:#38bdf8; text-decoration:none;" onclick="event.stopPropagation();">📞 ${job.clientPhone}</a>` : ''}${job.clientPhone && job.clientAddress ? ' - ' : ''}${job.clientAddress ? `<a href="#" onclick="event.stopPropagation(); event.preventDefault(); showMapChoice('${job.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${escHtml(jobFullAddr(job))}</a>` : ''}${job.companyAddress ? `<br><a href="#" onclick="event.stopPropagation(); event.preventDefault(); showMapChoice('${job.companyAddress.replace(/'/g, "\\'")}');" style="color:#94a3b8; text-decoration:none;">🏢 ${escHtml(job.companyAddress)}</a>` : ''}</span>${hasDebt ? '<br><span class="debt-alert-badge">' + t('debtBadgePrefix') + ' $' + rem.toFixed(2) + '</span> <button onclick="event.stopPropagation(); sendAiPaymentReminder(\'' + job.id + '\');" style="background:linear-gradient(135deg,#7c3aed,#38bdf8); color:#fff; border:none; border-radius:6px; padding:2px 8px; font-size:0.68rem; font-weight:700; cursor:pointer;">✨ ' + t('aiReminderBtn') + '</button>' : ''}${isOverdue ? '<br><span class="debt-alert-badge" style="background:rgba(217,119,6,0.2); color:#fbbf24; border-color:rgba(217,119,6,0.4);">🔔 ' + t('reminderOverdueSuffix') + '</span>' : ''}</td>
                 <td data-label="${t('thDateStatus')}"><span class="badge ${statusBadgeClass}">${statusLabel(job.jobStatus)}</span><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.startDate || ''}</span></td>
                 <td data-label="${t('thAmounts')}" style="font-size: 0.82rem;">$${rev.toFixed(2)} / <span style="color:#34d399;">$${rec.toFixed(2)}</span> / <span style="color:#f87171; font-weight:700;">$${rem.toFixed(2)}</span></td>
                 <td data-label="${t('thMaterials')}" style="color:#f87171;">$${parseVal(job.materialCost).toFixed(2)}</td>
@@ -8696,7 +8760,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
 
             <div style="background:var(--panel-bg); border:1px solid var(--border-color); padding:12px 15px; border-radius:10px; margin-bottom:14px; font-size:0.85rem; line-height:1.8;">
                 <div><b>${t('invoiceBillTo')}</b> ${escHtml(job.clientName)}</div>
-                <div><b>${t('invoiceAddressLabel')}:</b> ${escHtml(job.clientAddress || '')}</div>
+                <div><b>${t('invoiceAddressLabel')}:</b> ${escHtml(jobFullAddr(job))}</div>
                 <div><b>${t('invoicePhoneLabel')}:</b> ${escHtml(job.clientPhone || '')}</div>
             </div>
 
@@ -8924,7 +8988,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         const closeBtnHtml = `<button type="button" class="no-print" onclick="window.close()" title="${closeLabel}" style="position:fixed; top:14px; right:14px; z-index:999; background:#241F1A; color:#fff; border:none; border-radius:50%; width:38px; height:38px; font-size:18px; line-height:1; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.35);">✕</button>`;
 
         const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escHtml(invoiceState.invoiceNo)}</title>
+<title>Tallywork</title>
 <style>
   @page { size: letter; margin: 0; }
   *{ -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
@@ -10950,12 +11014,12 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             const job = savedJobs.find(j => String(j.id) === String(refId));
             if (!job) return;
             const entry = getScheduleEntries(job).find(e => (e.date || '') === (date || '')) || {};
-            ctx = { kind, refId: String(job.id), entryDate: entry.date || '', date: entry.date || '', time: entry.time || '', clientName: job.clientName || '', address: job.clientAddress || '', phone: job.clientPhone || job.tenantPhone || '', team: entry.team || [],
+            ctx = { kind, refId: String(job.id), entryDate: entry.date || '', date: entry.date || '', time: entry.time || '', clientName: job.clientName || '', address: jobFullAddr(job), phone: job.clientPhone || job.tenantPhone || '', team: entry.team || [],
                 instr: (entry.note && String(entry.note).trim()) ? String(entry.note).trim() : (job.clientDescription || '') };
         } else {
             const appt = appointments.find(a => String(a.id) === String(refId));
             if (!appt) return;
-            ctx = { kind: 'appt', refId: String(appt.id), entryDate: appt.requestedDate || '', date: appt.requestedDate || '', time: appt.requestedTime || '', clientName: appt.clientName || '', address: appt.clientAddress || '', phone: appt.clientPhone || '', team: [],
+            ctx = { kind: 'appt', refId: String(appt.id), entryDate: appt.requestedDate || '', date: appt.requestedDate || '', time: appt.requestedTime || '', clientName: appt.clientName || '', address: jobFullAddr(appt), phone: appt.clientPhone || '', team: [],
                 instr: [(appt.services || []).join(', '), appt.note || ''].filter(Boolean).join('\n') };
         }
         sendWorkerCtx = ctx;
@@ -12185,6 +12249,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('qsDateInput').value = quickScheduleDay;
         document.getElementById('qsClientName').value = '';
         document.getElementById('qsClientAddress').value = '';
+        document.getElementById('qsUnitNo').value = ''; document.getElementById('qsUnitRow').style.display = 'none';
         document.getElementById('qsAddressAutocompleteList').style.display = 'none';
         document.getElementById('qsTime').value = '';
         document.getElementById('qsNote').value = '';
@@ -12239,6 +12304,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                 clientPhone: '',
                 jobStatus: 'شغال',
                 clientAddress: document.getElementById('qsClientAddress').value.trim(),
+                unitNo: document.getElementById('qsUnitNo').value.trim(),
                 clientDescription: '',
                 startDate: quickScheduleDay,
                 endDate: quickScheduleDay,
@@ -12315,6 +12381,8 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const appt = appointments.find(a => a.id === id);
         if (!appt) return;
         closeAppointmentsListModal(); // the edit form lives on the Appointments screen itself, underneath the list modal
+        // the list can now be opened from ANY screen (sidebar), so go to the screen that holds the form first
+        if (typeof currentScreen !== 'undefined' && currentScreen !== 'appointments') { switchScreenNow('appointments'); }
         editingApptId = id;
         document.getElementById('apptClientName').value = appt.clientName || '';
         document.getElementById('apptClientPhone').value = appt.clientPhone || '';
@@ -12324,6 +12392,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('apptCcContactEmail').value = appt.ccContactEmail || '';
         document.getElementById('apptCcSection').style.display = (appt.ccContactName || appt.ccContactPhone || appt.ccContactEmail) ? '' : 'none';
         document.getElementById('apptClientAddress').value = appt.clientAddress || '';
+        document.getElementById('apptUnitNo').value = appt.unitNo || ''; document.getElementById('apptUnitRow').style.display = appt.unitNo ? '' : 'none';
         document.getElementById('apptDate').value = appt.requestedDate || '';
         document.getElementById('apptTime').value = appt.requestedTime || '';
         document.getElementById('apptNote').value = appt.note || '';
@@ -12355,6 +12424,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('apptCcContactEmail').value = '';
         document.getElementById('apptCcSection').style.display = 'none';
         document.getElementById('apptClientAddress').value = '';
+        document.getElementById('apptUnitNo').value = ''; document.getElementById('apptUnitRow').style.display = 'none';
         document.getElementById('apptDate').value = '';
         document.getElementById('apptTime').value = '';
         document.getElementById('apptNote').value = '';
@@ -12379,6 +12449,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             ccContactPhone: document.getElementById('apptCcContactPhone').value.trim(),
             ccContactEmail: document.getElementById('apptCcContactEmail').value.trim(),
             clientAddress: document.getElementById('apptClientAddress').value.trim(),
+            unitNo: document.getElementById('apptUnitNo').value.trim(),
             requestedDate: document.getElementById('apptDate').value,
             requestedTime: document.getElementById('apptTime').value,
             services: Array.from(document.querySelectorAll('.appt-service-check:checked')).map(cb => cb.value),
@@ -12433,6 +12504,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             ccContactEmail: appt.ccContactEmail || '',
             jobStatus: 'شغال',
             clientAddress: appt.clientAddress || '',
+            unitNo: appt.unitNo || '',
             clientDescription: [servicesLine, appt.note || ''].filter(Boolean).join('\n'),
             startDate: appt.requestedDate || '',
             endDate: appt.requestedDate || '',
@@ -13346,7 +13418,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const todayStr = isoDate(new Date());
 
         return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escHtml(invoiceDocTypeDisplay('ESTIMATE'))} - ${escHtml(appt.clientName || '')}</title>
+<title>Tallywork</title>
 <style>
   body{margin:0; font-family: Arial, Helvetica, sans-serif; background:#FDFBF6;}
   .ui{font-family: Arial, Helvetica, sans-serif;}
@@ -13375,7 +13447,7 @@ ${closeBtnHtml}
     <div style="display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:24px;">
       <div class="ui" style="font-size:13px; line-height:1.9; min-width:0; overflow-wrap:break-word;">
         <div><b>${escHtml(t('invoiceBillTo'))}</b> ${escHtml(titleCaseName(appt.clientName || ''))}</div>
-        <div><b>${escHtml(t('invoiceAddressLabel'))}:</b> ${escHtml(appt.clientAddress || '')}</div>
+        <div><b>${escHtml(t('invoiceAddressLabel'))}:</b> ${escHtml(jobFullAddr(appt))}</div>
         <div><b>${escHtml(t('invoicePhoneLabel'))}:</b> ${escHtml(formatUsPhone(appt.clientPhone))}</div>
       </div>
       <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px; min-width:0;">
@@ -13536,7 +13608,7 @@ ${closeBtnHtml}
                 <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
                     <div>
                         <strong>${appt.clientName}</strong><br>
-                        <span style="font-size:0.78rem; color:var(--text-muted);">${appt.clientPhone ? `<a href="tel:${appt.clientPhone.replace(/[^+\d]/g, '')}" style="color:#38bdf8; text-decoration:none;">📞 ${appt.clientPhone}</a>` : ''}${appt.clientPhone && appt.clientAddress ? ' — ' : ''}${appt.clientAddress ? `<a href="#" onclick="event.preventDefault(); showMapChoice('${appt.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${appt.clientAddress}</a>` : ''}${appt.clientEmail ? ` — <a href="mailto:${appt.clientEmail}" style="color:#38bdf8; text-decoration:none;">✉️ ${appt.clientEmail}</a>` : ''}</span><br>
+                        <span style="font-size:0.78rem; color:var(--text-muted);">${appt.clientPhone ? `<a href="tel:${appt.clientPhone.replace(/[^+\d]/g, '')}" style="color:#38bdf8; text-decoration:none;">📞 ${appt.clientPhone}</a>` : ''}${appt.clientPhone && appt.clientAddress ? ' — ' : ''}${appt.clientAddress ? `<a href="#" onclick="event.preventDefault(); showMapChoice('${appt.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${jobFullAddr(appt)}</a>` : ''}${appt.clientEmail ? ` — <a href="mailto:${appt.clientEmail}" style="color:#38bdf8; text-decoration:none;">✉️ ${appt.clientEmail}</a>` : ''}</span><br>
                         <span style="font-size:0.78rem; color:#38bdf8;">${appt.requestedDate || t('noDateSet')} ${appt.requestedTime || ''}</span>
                         ${serviceTags}
                         ${appt.note ? `<div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">${appt.note}</div>` : ''}
@@ -15316,7 +15388,7 @@ ${closeBtnHtml}
                 (jobRemaining(j) > 0 ? '<span class="tw-tag" style="background:#d97706">' + money(jobRemaining(j)) + '</span>' : '<span class="tw-tag" style="background:#059669">✔</span>') + '</div>';
         });
         todayAppts.forEach(function (a) {
-            left += '<div class="tw-card" onclick="editAppointment(\'' + jsArg(String(a.id)) + '\')"><div class="tx"><h4>' + escHtml(a.clientName || '—') + '</h4><p>' + escHtml(a.clientAddress || '') + (a.requestedTime ? ' · ' + escHtml(a.requestedTime) : '') + '</p></div><span class="tw-tag" style="background:#4f46e5">' + escHtml(tw('appts')) + '</span></div>';
+            left += '<div class="tw-card" onclick="editAppointment(\'' + jsArg(String(a.id)) + '\')"><div class="tx"><h4>' + escHtml(a.clientName || '—') + '</h4><p>' + escHtml(jobFullAddr(a)) + (a.requestedTime ? ' · ' + escHtml(a.requestedTime) : '') + '</p></div><span class="tw-tag" style="background:#4f46e5">' + escHtml(tw('appts')) + '</span></div>';
         });
         var att = [], cnt = workerFlagCounts();
         var follow = jobs.filter(function (j) { return j.followUpDate && j.followUpDate <= today && jobRemaining(j) > 0; }).length;
@@ -15632,7 +15704,7 @@ ${closeBtnHtml}
         _rgs.apply(this, arguments);
         try {
             var q = $('globalSearchInput').value.trim().toLowerCase(); if (!q) return;
-            var hits = (appointments || []).filter(function (a) { return [a.clientName, a.clientPhone, a.clientAddress, a.clientEmail].some(function (f) { return (f || '').toLowerCase().indexOf(q) >= 0; }); }).slice(0, 8);
+            var hits = (appointments || []).filter(function (a) { return [a.clientName, a.clientPhone, a.clientAddress, a.unitNo, a.clientEmail].some(function (f) { return (f || '').toLowerCase().indexOf(q) >= 0; }); }).slice(0, 8);
             if (!hits.length) return;
             var box = $('globalSearchResults'), h = '<div class="ag-section-title">' + escHtml(tw('gsAppts')) + ' (' + hits.length + ')</div>' + hits.map(function (a) {
                 return '<div class="ag-item" style="cursor:pointer;" onclick="closeGlobalSearch(); switchScreen(\'appointments\'); editAppointment(\'' + jsArg(String(a.id)) + '\');"><div class="ag-line"><strong>' + escHtml(a.clientName || '') + '</strong></div><div class="ag-meta">' + escHtml(a.requestedDate || '') + (a.clientAddress ? ' — ' + escHtml(a.clientAddress) : '') + '</div></div>';
