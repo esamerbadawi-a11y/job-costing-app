@@ -249,23 +249,36 @@
             .no-print, header, .stats-grid, .card:not(#selectedStatsCard):not(#jobsTableCard) { display: none !important; }
             #selectedStatsCard { display: block !important; border: 1px solid #000 !important; background: #fff !important; color: #000 !important; box-shadow: none !important; }
         }
-    /* ===== Tallywork shell (sidebar / bottom nav / home / more) ===== */
+    /* ===== Tallywork shell v2 (sidebar tree / bottom nav / top bar / home / screens) ===== */
 .tw-ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
-.tw-hide-old header, .tw-hide-old #twOldTabs, .tw-hide-old #checkTodayFab{display:none !important}
+.tw-hide-old header, .tw-hide-old #twOldTabs, .tw-hide-old #checkTodayFab, .tw-hide-old #stateFilterBar{display:none !important}
 #twSide{display:none}
-#twNav{display:flex;position:fixed;bottom:0;inset-inline:0;z-index:900;background:var(--card-dark);border-top:1px solid var(--border-color);padding:6px 4px calc(10px + env(safe-area-inset-bottom,0px));box-shadow:0 -6px 18px rgba(0,0,0,.18)}
-#twNav button{flex:1;background:none;border:none;color:var(--text-muted);display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.68rem;padding:6px 2px;position:relative;border-radius:12px;cursor:pointer}
+#twNav{display:flex;position:fixed;bottom:0;inset-inline:0;z-index:900;background:var(--card-dark);border-top:1px solid var(--border-color);padding:6px 2px calc(10px + env(safe-area-inset-bottom,0px));box-shadow:0 -6px 18px rgba(0,0,0,.18)}
+#twNav button{flex:1;min-width:0;background:none;border:none;color:var(--text-muted);display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.64rem;padding:6px 1px;position:relative;border-radius:12px;cursor:pointer}
+#twNav button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #twNav button.on{color:var(--primary);font-weight:700}
-.tw-badge{position:absolute;top:2px;inset-inline-end:22%;min-width:17px;height:17px;border-radius:9px;background:#e11d48;color:#fff;font-size:.62rem;display:none;align-items:center;justify-content:center;padding:0 4px;font-weight:700}
-#twTop{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-#twTop .tw-title{font-weight:800;font-size:1.15rem;flex:1;display:flex;gap:8px;align-items:center}
-#twTop .tw-title i{width:34px;height:34px;border-radius:10px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:.9rem}
-.tw-iconbtn{background:var(--card-dark);border:1px solid var(--border-color);color:var(--text-main);width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
-#twSync{width:10px;height:10px;border-radius:50%;background:#10b981;display:inline-block}
-#twSync.off{background:#f59e0b}
-#twSub{display:none;gap:8px;margin-bottom:12px;flex-wrap:wrap}
-#twSub button{padding:9px 16px;border-radius:12px;font-size:.88rem;background:var(--secondary-bg);color:var(--text-main);border:1px solid var(--border-color);cursor:pointer}
-#twSub button.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+.tw-badge{position:absolute;top:2px;inset-inline-end:18%;min-width:17px;height:17px;border-radius:9px;background:#e11d48;color:#fff;font-size:.62rem;display:none;align-items:center;justify-content:center;padding:0 4px;font-weight:700}
+#twScrim{position:fixed;inset:0;z-index:940;display:none}
+#twSheet{position:fixed;inset-inline:10px;bottom:calc(76px + env(safe-area-inset-bottom,0px));background:var(--card-dark);border:1px solid var(--border-color);border-radius:18px;box-shadow:0 12px 34px rgba(0,0,0,.4);z-index:950;padding:8px;display:none}
+#twSheet .sh-t{padding:6px 14px 8px;color:var(--text-muted);font-size:.78rem;font-weight:700}
+#twSheet button{display:flex;justify-content:flex-start;gap:12px;align-items:center;width:100%;padding:12px 14px;border-radius:12px;background:none;border:none;color:var(--text-main);font-size:.95rem;text-align:start;cursor:pointer}
+#twSheet button.on{background:rgba(79,70,229,.14);color:var(--primary);font-weight:700}
+#twSheet .cnt, #twSide .cnt{margin-inline-start:auto;font-size:.75rem;color:var(--text-muted);white-space:nowrap}
+#twTop{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.tw-brand{display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer}
+.tw-logo{width:40px;height:40px;border-radius:12px;object-fit:contain;background:#fff;border:1px solid var(--border-color);flex:none;display:flex;align-items:center;justify-content:center;font-style:normal;font-weight:800;color:#fff}
+i.tw-logo{background:var(--primary);border:none}
+.tw-hello{min-width:0;line-height:1.25}
+.tw-hello b{display:block;font-size:1.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tw-hello small{display:block;color:var(--text-muted);font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:899px){.tw-hello small.co{display:none}}
+body.tw-home #todayJobsBanner{display:none !important}
+.tw-sync{width:9px;height:9px;border-radius:50%;background:#10b981;display:inline-block;flex:none}
+.tw-sync.off{background:#f59e0b}
+.tw-lang{height:42px;padding:0 12px;border-radius:12px;display:flex;align-items:center;gap:6px;background:var(--card-dark);border:1px solid var(--border-color);color:var(--text-main);cursor:pointer;font-weight:700;font-size:.85rem;white-space:nowrap}
+.tw-lang svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8}
+select.tw-sel{height:42px;padding:0 10px;border-radius:12px;background:var(--card-dark);border:1px solid var(--border-color);color:var(--text-main);width:auto !important;min-width:0;max-width:130px;font-size:.84rem;display:none}
+.tw-iconbtn{background:var(--card-dark);border:1px solid var(--border-color);color:var(--text-main);width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;flex:none}
 .tw-panel{display:none}
 .tw-kp{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
 .tw-k{background:var(--card-dark);border:1px solid var(--border-color);border-radius:16px;padding:14px;display:flex;gap:12px;align-items:center;cursor:pointer}
@@ -273,7 +286,9 @@
 .tw-k small{color:var(--text-muted);display:block;font-size:.76rem}.tw-k b{font-size:1.3rem}
 .tw-sec{margin:16px 4px 8px;color:var(--text-muted);font-size:.82rem;font-weight:700}
 .tw-card{background:var(--card-dark);border:1px solid var(--border-color);border-radius:16px;padding:13px 14px;margin-bottom:9px;display:flex;gap:12px;align-items:center;cursor:pointer}
+.tw-card.nc{cursor:default}
 .tw-card .tx{flex:1;min-width:0}.tw-card h4{margin:0;font-size:1rem}.tw-card p{margin:3px 0 0;color:var(--text-muted);font-size:.82rem}
+.tw-av{width:42px;height:42px;border-radius:50%;background:rgba(79,70,229,.16);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;flex:none}
 .tw-tag{padding:3px 10px;border-radius:9px;font-size:.72rem;color:#fff;white-space:nowrap}
 .tw-big{display:flex;gap:10px;align-items:center;justify-content:center;background:var(--primary);color:#fff;border-radius:16px;padding:15px;font-weight:700;font-size:1.05rem;margin-bottom:14px;cursor:pointer;border:none;width:100%}
 .tw-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
@@ -281,27 +296,69 @@
 .tw-tile .ib{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center}
 .tw-tile.danger{color:#e11d48}
 .tw-empty{color:var(--text-muted);text-align:center;padding:18px;font-size:.88rem}
+.tw-pagehead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 2px 12px;flex-wrap:wrap}
+.tw-pagehead h2{margin:0;border:none;padding:0;font-size:1.2rem;font-weight:800}
+.tw-btns{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tw-sbtn{padding:8px 13px;border-radius:10px;font-size:.82rem;border:1px solid var(--border-color);background:var(--secondary-bg);color:var(--text-main);cursor:pointer;white-space:nowrap}
+.tw-sbtn.p{background:var(--primary);color:#fff;border-color:var(--primary)}
+.tw-sbtn.g{background:#16a34a;color:#fff;border-color:#16a34a}
+.tw-money{font-weight:800;white-space:nowrap}
+.tw-money.red{color:#f87171}.tw-money.grn{color:#34d399}
 #twFab{position:fixed;bottom:86px;inset-inline-start:16px;width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;display:none;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(79,70,229,.45);z-index:890;cursor:pointer;border:none;padding:0}
 #twFab .tw-ic{width:26px;height:26px}
+#twTechFormModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;padding:14px}
+#twTechFormModal .tw-fbox{background:var(--card-dark);border:1px solid var(--border-color);border-radius:14px;width:100%;max-width:560px;max-height:90vh;overflow:auto;padding:16px}
+#twTechFormModal #addTechFormContainer{margin-bottom:0}
 body.tw-on{padding-bottom:92px}
 body.tw-on #pdfContentArea{padding-bottom:64px}
-@media(min-width:900px){body.tw-on #pdfContentArea{padding-bottom:0}}
+/* ---- simpler Log & Reports ---- */
+body.tw-on:not(.tw-more) #statsGridFull .tw-x{display:none}
+body.tw-on:not(.tw-more) #jobsTableCard thead th:nth-child(5),body.tw-on:not(.tw-more) #jobsTableCard thead th:nth-child(6),body.tw-on:not(.tw-more) #jobsTableCard thead th:nth-child(7),body.tw-on:not(.tw-more) #jobsTableCard thead th:nth-child(9),body.tw-on:not(.tw-more) #jobsTableCard thead th:nth-child(10),body.tw-on:not(.tw-more) #jobsTableCard thead th:nth-child(11),
+body.tw-on:not(.tw-more) #jobsTableBody td:nth-child(5),body.tw-on:not(.tw-more) #jobsTableBody td:nth-child(6),body.tw-on:not(.tw-more) #jobsTableBody td:nth-child(7),body.tw-on:not(.tw-more) #jobsTableBody td:nth-child(9),body.tw-on:not(.tw-more) #jobsTableBody td:nth-child(10),body.tw-on:not(.tw-more) #jobsTableBody td:nth-child(11){display:none}
+.tw-bulk.tw-hide{display:none !important}
+.tw-act{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.tw-act details{display:inline-block}
+.tw-act details>summary{list-style:none;cursor:pointer;padding:4px 10px;border-radius:6px;background:#334155;color:#fff;font-weight:700;font-size:.85rem;user-select:none}
+.tw-act details>summary::-webkit-details-marker{display:none}
+.tw-act details[open]{display:block;flex:1 1 100%}
+.tw-act details[open]>summary{background:var(--primary)}
+.tw-act .tw-pop{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+#twMoreBtn{padding:6px 14px;font-size:.8rem}
+.badge.cancelled{background:rgba(148,163,184,.18);color:#94a3b8;border:1px solid rgba(148,163,184,.4)}
+#debtReminderText{cursor:pointer;text-decoration:underline dotted}
+/* ---- appointments: services as chips ---- */
+#apptServiceCheckboxes label{position:relative;padding:6px 13px;border:1px solid var(--border-color);border-radius:999px;background:var(--card-dark)}
+#apptServiceCheckboxes label input{position:absolute;opacity:0;pointer-events:none;width:0;height:0}
+#apptServiceCheckboxes label:has(input:checked){background:var(--primary);color:#fff;border-color:var(--primary)}
+body.tw-on #screenAppointments .card>div:first-child button[onclick^="openAppointmentsListModal"]{display:none}
 @media(min-width:900px){
   body.tw-on{padding-bottom:16px}
-  #twNav{display:none}#twFab{display:none !important}
-  #twSide{display:flex;position:fixed;top:0;bottom:0;inset-inline-start:0;width:216px;background:var(--card-dark);border-inline-end:1px solid var(--border-color);padding:16px 10px;flex-direction:column;gap:2px;z-index:900}
-  #twSide .logo{font-weight:800;font-size:1.1rem;color:var(--primary);padding:6px 10px 14px;display:flex;gap:8px;align-items:center}
-  #twSide button{display:flex;gap:12px;align-items:center;padding:11px 12px;border-radius:12px;color:var(--text-muted);font-size:.92rem;background:none;border:none;cursor:pointer;text-align:start;width:100%;position:relative}
-  #twSide button.on{background:rgba(79,70,229,.14);color:var(--primary);font-weight:700}
-  #twSide button{justify-content:flex-start}
-  #twTop .tw-title>*{display:none !important}
-  #twSide button:hover{background:var(--card-hover)}
+  #twNav,#twSheet,#twScrim{display:none !important}#twFab{display:none !important}
+  #twSide{display:flex;position:fixed;top:0;bottom:0;inset-inline-start:0;width:236px;background:var(--card-dark);border-inline-end:1px solid var(--border-color);padding:14px 10px;flex-direction:column;gap:2px;z-index:900;overflow-y:auto}
+  #twSide .tw-brand{flex:none;padding:4px 6px 12px}
+  #twSide .tw-newjob{display:flex;gap:8px;align-items:center;justify-content:center;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:11px;font-weight:700;font-size:.92rem;cursor:pointer;margin:0 2px 10px;width:calc(100% - 4px)}
+  #twSide .tw-newjob .tw-ic{width:18px;height:18px}
+  #twSide .gb{display:flex;gap:12px;align-items:center;padding:11px 12px;border-radius:12px;color:var(--text-muted);font-size:.92rem;background:none;border:none;cursor:pointer;text-align:start;width:100%;position:relative;justify-content:flex-start}
+  #twSide .gb:hover,#twSide .sb:hover{background:var(--card-hover)}
+  #twSide .gb.on{background:rgba(79,70,229,.14);color:var(--primary);font-weight:700}
+  #twSide .gb .chev{margin-inline-start:auto;width:16px;height:16px;transition:transform .15s}
+  #twSide .grp.open .gb .chev{transform:rotate(180deg)}
+  #twSide .subs{display:none;margin:2px 0 6px;padding-inline-start:16px;border-inline-start:2px solid var(--border-color);margin-inline-start:20px}
+  #twSide .grp.open .subs{display:block}
+  #twSide .sb{display:flex;justify-content:flex-start;gap:10px;align-items:center;padding:8px 10px;border-radius:10px;color:var(--text-muted);font-size:.86rem;background:none;border:none;cursor:pointer;text-align:start;width:100%}
+  #twSide .sb .tw-ic{width:17px;height:17px}
+  #twSide .sb.on{color:var(--primary);font-weight:700;background:rgba(79,70,229,.1)}
   #twSide .tw-badge{position:static;margin-inline-start:auto}
-  body.tw-on #pdfContentArea{margin-inline-start:232px}
+  #twSide .gb .tw-badge + .chev{margin-inline-start:6px}
+  #twTop .tw-brand{display:none}
+  #twTop{justify-content:flex-end}
+  body.tw-on #pdfContentArea{margin-inline-start:252px}
   .tw-kp{grid-template-columns:repeat(4,1fr)}
   .tw-grid{grid-template-columns:repeat(4,1fr)}
   #twHomeCols{display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start}
+  .tw-wgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 }
+@media(max-width:420px){.tw-lang span{display:none}select.tw-sel{max-width:96px}}
 
     </style>
 </head>
@@ -2147,9 +2204,9 @@ body.tw-on #pdfContentArea{padding-bottom:64px}
         qsSaveBtn: { ar: 'حفظ في الجدول', en: 'Save to Schedule' },
         qsAddBtn: { ar: 'إضافة', en: 'Add' },
         tabAppointmentsLabel: { ar: '📆 المواعيد', en: '📆 Appointments' },
-        tabContactsLabel: { ar: '📇 جهات الاتصال', en: '📇 Contacts' },
-        contactsTitle: { ar: '📇 جهات الاتصال', en: '📇 Contacts' },
-        viewContactsListBtn: { ar: 'عرض جهات الاتصال', en: 'View Contacts List' },
+        tabContactsLabel: { ar: '📇 بيانات العملاء', en: '📇 Customer Data' },
+        contactsTitle: { ar: '📇 بيانات العملاء', en: '📇 Customer Data' },
+        viewContactsListBtn: { ar: 'عرض بيانات العملاء', en: 'View Customer Data' },
         importContactsBtn: { ar: '🔄 استيراد من الشغلانات', en: '🔄 Import from Jobs' },
         addContactBtn: { ar: '+ إضافة عميل', en: '+ Add Contact' },
         contactsSearchPh: { ar: 'دوّر بالاسم، التليفون، الإيميل، العنوان، أو الشركة...', en: 'Search by name, phone, email, address, or company...' },
@@ -2773,7 +2830,7 @@ body.tw-on #pdfContentArea{padding-bottom:64px}
         gsPlaceholder: { ar: 'دوّر باسم العميل، رقم الهاتف، العنوان، أو اسم الفني...', en: 'Search by client name, phone, address, or technician name...' },
         gsJobs: { ar: 'شغلانات', en: 'Jobs' },
         gsTechnicians: { ar: 'فنيين', en: 'Technicians' },
-        gsContacts: { ar: 'جهات اتصال', en: 'Contacts' },
+        gsContacts: { ar: 'بيانات العملاء', en: 'Customer data' },
         gsNoResults: { ar: 'مفيش نتايج.', en: 'No results.' },
         splitRatioTitle: { ar: '💰 توزيع الأرباح لهذه الشغلانة', en: '💰 Profit Split for This Job' },
         splitRatioHelp: { ar: 'افتراضيًا الشركة بتقسم الصافي (بعد الفنيين والخامات) 40% لك، 40% لشريكك، 20% للشركة. لو الشغلانة دي ليها اتفاق مختلف، غيّر النسب هنا — الشغلانات التانية مش بتتأثر خالص.', en: "By default the net (after technicians and materials) splits 40% to you, 40% to your partner, 20% to the company. If this job has a different arrangement, change the percentages here — no other job is affected." },
@@ -14673,7 +14730,7 @@ ${closeBtnHtml}
         }
     }
 
-/* ===================== Tallywork shell layer (nav, home, workers, more) ===================== */
+/* ===================== Tallywork shell layer v2 (top bar, tree nav, home, worker screens) ===================== */
 (function () {
     var P = {
         home: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10',
@@ -14688,9 +14745,12 @@ ${closeBtnHtml}
         chart: 'M12 20V10 M18 20V4 M6 20v-4',
         book: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z M20 17v4H6.5a2.5 2.5 0 0 1 0-5',
         pin: 'M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z M12 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6',
-        send: 'M22 2L11 13 M22 2l-7 20-4-9-9-4z',
         receipt: 'M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z M16 8h-6 M16 12H8',
         users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8 M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75',
+        user: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8',
+        contact: 'M16 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z M12 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4z M8.5 17a3.5 3.5 0 0 1 7 0',
+        list: 'M8 6h13 M8 12h13 M8 18h13 M3 6h.01 M3 12h.01 M3 18h.01',
+        edit: 'M12 20h9 M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z',
         pie: 'M21.2 15.9A10 10 0 1 1 8 2.8 M22 12A10 10 0 0 0 12 2v10z',
         bank: 'M3 22h18 M6 18v-7 M10 18v-7 M14 18v-7 M18 18v-7 M12 2l9 5H3z',
         lock: 'M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z M7 11V7a5 5 0 0 1 10 0v4',
@@ -14707,16 +14767,20 @@ ${closeBtnHtml}
         logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9',
         shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4',
         bell: 'M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9 M13.7 21a2 2 0 0 1-3.4 0',
-        check: 'M20 6L9 17l-5-5'
+        check: 'M20 6L9 17l-5-5',
+        chev: 'M6 9l6 6 6-6'
     };
     function ic(n) { return '<svg class="tw-ic" viewBox="0 0 24 24"><path d="' + (P[n] || P.check) + '"/></svg>'; }
 
     var TW = {
         home: { ar: 'الرئيسية', en: 'Home' }, jobs: { ar: 'الشغلانات', en: 'Jobs' }, appts: { ar: 'المواعيد', en: 'Appointments' },
-        workers: { ar: 'الفنيين', en: 'Workers' }, more: { ar: 'المزيد', en: 'More' },
-        sLog: { ar: 'السجل والتقارير', en: 'Log & Reports' }, sWeekly: { ar: 'شغل الأسبوع', en: 'Weekly Board' }, sEntry: { ar: '＋ شغلانة جديدة', en: '+ New Job' },
-        sAppts: { ar: 'المواعيد', en: 'Appointments' }, sContacts: { ar: 'جهات الاتصال', en: 'Contacts' },
-        hello: { ar: 'أهلاً', en: 'Hello' }, kToday: { ar: 'شغل النهاردة', en: 'Jobs today' }, kRemain: { ar: 'متبقي تحصيله', en: 'Left to collect' },
+        clients: { ar: 'العملاء', en: 'Customers' }, workers: { ar: 'الفنيين', en: 'Workers' }, more: { ar: 'المزيد', en: 'More' },
+        sLog: { ar: 'السجل والتقارير', en: 'Log & Reports' }, sWeekly: { ar: 'شغل الأسبوع', en: 'Weekly Board' }, sEntry: { ar: 'شغلانة جديدة', en: 'New Job' },
+        sApptNew: { ar: 'طلب ميعاد جديد', en: 'New appointment' }, sApptList: { ar: 'قائمة المواعيد', en: 'Appointments list' },
+        wData: { ar: 'بيانات الفنيين', en: 'Worker data' }, wAct: { ar: 'نشاط الفنيين', en: 'Worker activity' }, wGuide: { ar: 'دليل الحسابات الشامل', en: 'Full accounts guide' },
+        wPay: { ar: 'دفعات الأسبوع ده', en: "This week's payments" }, wRep: { ar: 'تقرير الفني والشريك', en: 'Worker & partner report' }, wFind: { ar: 'فين الفني؟', en: 'Where is the worker?' },
+        hello: { ar: 'أهلاً', en: 'Hello' }, gM: { ar: 'صباح الخير', en: 'Good morning' }, gA: { ar: 'مساء الخير', en: 'Good afternoon' }, gE: { ar: 'مساء الخير', en: 'Good evening' },
+        kToday: { ar: 'شغل النهاردة', en: 'Jobs today' }, kRemain: { ar: 'متبقي تحصيله', en: 'Left to collect' },
         kOpen: { ar: 'شغلانات شغالة', en: 'Active jobs' }, kAppts: { ar: 'مواعيد النهاردة', en: 'Appointments today' },
         newJob: { ar: 'شغلانة جديدة', en: 'New job' }, checkToday: { ar: 'تحقق من النهاردة', en: 'Check today' },
         todaySec: { ar: 'النهاردة', en: 'Today' }, noToday: { ar: 'مفيش شغل أو مواعيد النهاردة', en: 'No jobs or appointments today' },
@@ -14730,74 +14794,199 @@ ${closeBtnHtml}
         backupLbl: { ar: 'آخر نسخة احتياطية من الجهاز ده:', en: 'Last backup from this device:' },
         noBackup: { ar: 'ما اتحفظتش نسخة احتياطية من الجهاز ده', en: 'No backup saved from this device yet' },
         daysAgo: { ar: 'يوم', en: 'day(s) ago' }, todayWord: { ar: 'النهاردة', en: 'today' }, backupNow: { ar: 'نسخة احتياطية الآن', en: 'Back up now' },
-        wTitle: { ar: 'الفنيين', en: 'Workers' },
         mReports: { ar: 'التقارير', en: 'Reports' }, mAccounts: { ar: 'الحسابات', en: 'Accounts' }, mData: { ar: 'البيانات', en: 'Data' },
         mSettings: { ar: 'الإعدادات', en: 'Settings' }, mAdmin: { ar: 'الأدمن', en: 'Admin' },
-        lang: { ar: 'English', en: 'عربي' }, themeL: { ar: 'الوضع الفاتح / الغامق', en: 'Light / Dark mode' }, offline: { ar: 'مفيش إنترنت – التغييرات هتتحفظ لما يرجع', en: 'Offline – changes will sync when back online' }
+        lang: { ar: 'English', en: 'عربي' }, themeL: { ar: 'الوضع الفاتح / الغامق', en: 'Light / Dark mode' }, offline: { ar: 'مفيش إنترنت – التغييرات هتتحفظ لما يرجع', en: 'Offline – changes will sync when back online' },
+        wdAdd: { ar: '＋ إضافة فني جديد', en: '+ Add worker' }, wdEmpty: { ar: 'مفيش فنيين لسه. اضغط "إضافة فني جديد".', en: 'No workers yet. Tap "Add worker".' },
+        edit: { ar: 'تعديل', en: 'Edit' }, details: { ar: 'تفاصيل', en: 'Details' }, pay: { ar: 'دفع', en: 'Pay' },
+        hasLogin: { ar: 'عنده حساب دخول', en: 'Has app login' }, noPhone: { ar: 'مفيش رقم', en: 'No phone' },
+        wpDue: { ar: 'المستحق', en: 'Due' }, wpPaid: { ar: 'المدفوع', en: 'Paid' }, wpLeft: { ar: 'المتبقي', en: 'Left' },
+        wpNone: { ar: 'مفيش مستحقات للفنيين في الأسبوع ده', en: 'No worker dues in this week' },
+        wpTotal: { ar: 'إجمالي المتبقي الأسبوع ده', en: 'Total left this week' },
+        wpThis: { ar: 'الأسبوع ده', en: 'This week' }, wpPrev: { ar: '◀ أسبوع قبل', en: '◀ Previous week' }, wpNext: { ar: 'أسبوع بعد ▶', en: 'Next week ▶' },
+        moreDet: { ar: 'تفاصيل أكتر', en: 'More details' }, lessDet: { ar: 'تفاصيل أقل', en: 'Fewer details' },
+        gsAppts: { ar: 'مواعيد', en: 'Appointments' }
     };
     function tw(k) { var o = TW[k]; return o ? (o[currentLang] || o.en) : k; }
     function tt(key, fb) { try { var v = t(key); if (v && v !== key) return String(v).replace(/^[^\p{L}\p{N}]+/u, ''); } catch (e) {} return fb || key; }
     function $(id) { return document.getElementById(id); }
-    var NAVMAP = { home: 'home', log: 'jobs', weekly: 'jobs', entry: 'jobs', appointments: 'appts', contacts: 'appts', workers: 'workers', more: 'more' };
-    var NAVGO = { home: 'home', jobs: 'log', appts: 'appointments', workers: 'workers', more: 'more' };
-    var NAVICON = { home: 'home', jobs: 'wrench', appts: 'cal', workers: 'hat', more: 'menu' };
-    var NAVKEYS = ['home', 'jobs', 'appts', 'workers', 'more'];
+    function isDesk() { return window.matchMedia && window.matchMedia('(min-width:900px)').matches; }
+    function money(n) { return '$' + (Math.round(n * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
+    function go(s) { return function () { switchScreen(s); }; }
+
+    // ----- navigation model (screens belong to groups; modal-style items have no screen) -----
+    var NAV = [
+        { k: 'home', ic: 'home', go: go('home'), scr: ['home'] },
+        { k: 'jobs', ic: 'wrench', subs: [
+            { k: 'sLog', ic: 'chart', go: go('log'), scr: 'log' },
+            { k: 'sWeekly', ic: 'table', go: go('weekly'), scr: 'weekly' },
+            { k: 'sEntry', ic: 'plus', go: go('entry'), scr: 'entry' }] },
+        { k: 'appts', ic: 'cal', subs: [
+            { k: 'sApptNew', ic: 'edit', go: go('appointments'), scr: 'appointments' },
+            { k: 'sApptList', ic: 'list', go: function () { openAppointmentsListModal(); }, cnt: 'appt' }] },
+        { k: 'clients', ic: 'contact', go: go('contacts'), scr: ['contacts'] },
+        { k: 'workers', ic: 'hat', badge: true, subs: [
+            { k: 'wData', ic: 'user', go: go('wdata'), scr: 'wdata' },
+            { k: 'wAct', ic: 'pulse', go: function () { openWorkerActivity(); } },
+            { k: 'wGuide', ic: 'book', go: function () { openTechGuideModal(); } },
+            { k: 'wPay', ic: 'wallet', go: go('wpay'), scr: 'wpay' },
+            { k: 'wRep', ic: 'pie', go: function () { openTechPartnerReportModal(); } },
+            { k: 'wFind', ic: 'pin', go: function () { openFindTechModal(); } }] },
+        { k: 'more', ic: 'menu', hub: go('more'), scr: ['more'], subs: [
+            { k: 'mReports', ic: 'receipt', go: function () { twMoreGo('reports'); } },
+            { k: 'mAccounts', ic: 'bank', go: function () { twMoreGo('accounts'); } },
+            { k: 'mData', ic: 'cloud', go: function () { twMoreGo('data'); } },
+            { k: 'mSettings', ic: 'building', go: function () { twMoreGo('settings'); } }] }
+    ];
+    function screenOf(g) { var r = []; if (g.scr) r = r.concat(g.scr); (g.subs || []).forEach(function (s) { if (s.scr) r.push(s.scr); }); return r; }
+    function groupIndexOf(cur) { for (var i = 0; i < NAV.length; i++) if (screenOf(NAV[i]).indexOf(cur) >= 0) return i; return 0; }
+    var openGrp = null, sheetGrp = null;
+
+    function twMoreGo(id) {
+        switchScreen('more');
+        setTimeout(function () { var el = $('twg_' + id); if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60);
+    }
+    window.twGrp = function (i) {
+        var g = NAV[i];
+        if (!g.subs) { closeSheet(); g.go(); return; }
+        if (isDesk()) {
+            var cur = (typeof currentScreen === 'string') ? currentScreen : 'home';
+            if (groupIndexOf(cur) === i && openGrp === i) { openGrp = -1; syncNav(true); return; }
+            openGrp = i; closeSheet();
+            if (groupIndexOf(cur) !== i) { (g.hub || g.subs[0].go)(); } else syncNav(true);
+        } else {
+            if (g.hub) { closeSheet(); g.hub(); return; }
+            if (sheetGrp === i) closeSheet(); else openSheet(i);
+        }
+    };
+    window.twSub = function (i, j) { closeSheet(); NAV[i].subs[j].go(); };
+    function openSheet(i) { sheetGrp = i; paintSheet(); $('twSheet').style.display = 'block'; $('twScrim').style.display = 'block'; }
+    function closeSheet() { sheetGrp = null; if ($('twSheet')) { $('twSheet').style.display = 'none'; $('twScrim').style.display = 'none'; } }
+    window.twCloseSheet = closeSheet;
+
+    function apptCnt() {
+        try { var n = appointments.length, f = appointments.filter(function (a) { return a.followUpNeeded; }).length; return n ? '(' + n + (f ? ' · 🔔' + f : '') + ')' : ''; } catch (e) { return ''; }
+    }
+    function paintSheet() {
+        var g = NAV[sheetGrp]; if (!g) return;
+        var cur = (typeof currentScreen === 'string') ? currentScreen : 'home';
+        $('twSheet').innerHTML = '<div class="sh-t">' + escHtml(tw(g.k)) + '</div>' + g.subs.map(function (s, j) {
+            return '<button class="' + (s.scr === cur ? 'on' : '') + '" onclick="twSub(' + sheetGrp + ',' + j + ')">' + ic(s.ic) + '<span>' + escHtml(tw(s.k)) + '</span>' + (s.cnt ? '<span class="cnt" dir="ltr">' + escHtml(apptCnt()) + '</span>' : '') + '</button>';
+        }).join('');
+    }
+
+    // ----- brand: company logo + greeting + name -----
+    function userName() {
+        var n = ''; try { n = (USER_DISPLAY_NAMES[currentUserEmail] || '').split(' ')[0]; } catch (e) {}
+        if (!n) { try { n = String(currentUserEmail || '').split('@')[0]; } catch (e) {} }
+        return n ? n.charAt(0).toUpperCase() + n.slice(1).toLowerCase() : '';
+    }
+    function greet() { var h = new Date().getHours(); return tw(h < 12 ? 'gM' : (h < 18 ? 'gA' : 'gE')); }
+    function brandHtml() {
+        var cp = {}; try { cp = companyProfile || {}; } catch (e) {}
+        var nm = (cp.name || '').trim();
+        var logo = cp.logo ? '<img class="tw-logo" alt="" src="' + String(cp.logo).replace(/"/g, '&quot;') + '">' : '<i class="tw-logo">' + escHtml((nm || userName() || 'T').charAt(0).toUpperCase()) + '</i>';
+        return logo + '<div class="tw-hello"><small>' + escHtml(greet()) + '</small><b>' + escHtml(userName() || nm) + '</b>' + (nm && userName() ? '<small class="co">' + escHtml(nm) + '</small>' : '') + '</div><span class="tw-sync' + (navigator.onLine ? '' : ' off') + '" title="' + (navigator.onLine ? '' : escHtml(tw('offline'))) + '"></span>';
+    }
+    function paintBrand() {
+        var h = brandHtml();
+        document.querySelectorAll('.tw-brand').forEach(function (el) { if (el.__h !== h) { el.innerHTML = h; el.__h = h; } });
+    }
+
+    // ----- state picker (moved to the top bar) -----
+    function paintState() {
+        var sel = $('twStateSel'); if (!sel) return;
+        var ks = { list: [], unknown: false }; try { ks = knownStates(); } catch (e) {}
+        var show = (ks.list.length + (ks.unknown ? 1 : 0) >= 2) || (typeof stateFilter !== 'undefined' && stateFilter !== 'ALL');
+        sel.style.display = show ? 'block' : 'none';
+        var h = '<option value="ALL">📍 ' + (currentLang === 'ar' ? 'الكل' : 'All') + '</option>' + ks.list.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('') + (ks.unknown ? '<option value="?">❔</option>' : '');
+        if (sel.__h !== h) { sel.innerHTML = h; sel.__h = h; }
+        try { sel.value = stateFilter; } catch (e) {}
+    }
 
     function buildShell() {
         if ($('twNav')) return;
         var nav = document.createElement('nav'); nav.id = 'twNav';
         var side = document.createElement('aside'); side.id = 'twSide';
-        document.body.appendChild(nav); document.body.appendChild(side);
+        var sheet = document.createElement('div'); sheet.id = 'twSheet';
+        var scrim = document.createElement('div'); scrim.id = 'twScrim'; scrim.setAttribute('onclick', 'twCloseSheet()');
+        document.body.appendChild(scrim); document.body.appendChild(sheet); document.body.appendChild(nav); document.body.appendChild(side);
         var fab = document.createElement('button'); fab.id = 'twFab'; fab.setAttribute('onclick', "switchScreen('entry')"); fab.innerHTML = ic('plus'); document.body.appendChild(fab);
+        // the add/edit worker form lives in its own pop-up now (it used to sit inside the accounts guide)
+        var fc = $('addTechFormContainer');
+        if (fc) { var m = document.createElement('div'); m.id = 'twTechFormModal'; m.innerHTML = '<div class="tw-fbox"></div>'; document.body.appendChild(m); m.firstChild.appendChild(fc); }
         var anchor = $('todayJobsBanner') || $('twOldTabs');
         var wrap = document.createElement('div');
         wrap.innerHTML =
-            '<div id="twTop" class="no-print"><div class="tw-title"><i>T</i><span id="twTitleTx"></span><span id="twSync" title=""></span></div>' +
+            '<div id="twTop" class="no-print"><div class="tw-brand" onclick="openCompanyProfileModal()"></div>' +
+            '<select id="twStateSel" class="tw-sel" onchange="setStateFilter(this.value)" aria-label="state"></select>' +
+            '<button class="tw-lang" id="twLangBtn" onclick="toggleLanguage()" aria-label="language"></button>' +
             '<button class="tw-iconbtn" onclick="openGlobalSearch()" aria-label="search">' + ic('search') + '</button></div>' +
-            '<div id="twSub" class="no-print"></div>' +
-            '<div id="screenHome" class="tw-panel no-print"></div><div id="screenWorkers" class="tw-panel no-print"></div><div id="screenMore" class="tw-panel no-print"></div>';
+            '<div id="screenHome" class="tw-panel no-print"></div><div id="screenWData" class="tw-panel no-print"></div><div id="screenWPay" class="tw-panel no-print"></div><div id="screenMore" class="tw-panel no-print"></div>';
         while (wrap.firstChild) anchor.parentNode.insertBefore(wrap.firstChild, anchor);
-        var sf = $('stateFilterBar'), sb = $('twSub'); if (sf && sb) sb.parentNode.insertBefore(sf, sb.nextSibling);
+        var tb0 = $('twTop'), bn0 = $('todayJobsBanner'); if (tb0 && bn0) tb0.parentNode.insertBefore(bn0, tb0.nextSibling);
         document.body.classList.add('tw-on', 'tw-hide-old');
-        paintNav();
+        // simpler Log & Reports: 4 main numbers, everything else behind one toggle
+        var prim = { statTotalJobs: 1, statTotalReceived: 1, statActualRemaining: 1, statTotalNet: 1 };
+        document.querySelectorAll('#statsGridFull .stat-card').forEach(function (c) { var s = c.querySelector('strong'); if (s && !prim[s.id]) c.classList.add('tw-x'); });
+        var tb = $('statsToggleBtn');
+        if (tb && !$('twMoreBtn')) { var mb = document.createElement('button'); mb.id = 'twMoreBtn'; mb.className = 'secondary'; mb.setAttribute('onclick', 'twToggleMore()'); tb.parentNode.insertBefore(mb, tb.nextSibling); tb.parentNode.style.gap = '8px'; tb.parentNode.style.justifyContent = 'flex-start'; }
+        try { if (localStorage.getItem('tw_more') === '1') document.body.classList.add('tw-more'); } catch (e) {}
+        var bb = document.querySelector('button[onclick="printSelectedJobs()"]'); if (bb) bb.parentElement.classList.add('tw-bulk');
+        var dt = $('debtReminderText'); if (dt) dt.setAttribute('onclick', 'toggleDebtFilter(); dismissDebtReminderBanner();');
+        paintLang(); syncNav(true);
     }
-    function paintNav() {
-        var html = '', sh = '<div class="logo"><i style="width:34px;height:34px;border-radius:10px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-style:normal">T</i>' + (typeof t === 'function' ? escHtml(t('appTitle')) : 'Tallywork') + '</div>';
-        NAVKEYS.forEach(function (k) {
-            var b = '<button data-k="' + k + '" onclick="twNav(\'' + k + '\')">' + ic(NAVICON[k]) + '<span>' + escHtml(tw(k)) + '</span><b class="tw-badge" id="twBadge_' + k + '"></b></button>';
-            html += b; sh += b;
-        });
-        $('twNav').innerHTML = html; $('twSide').innerHTML = sh;
-        if ($('twTitleTx')) $('twTitleTx').textContent = (typeof t === 'function' ? t('appTitle') : 'Tallywork');
-        syncNav(); renderBadges();
-    }
-    window.twNav = function (k) { switchScreen(NAVGO[k]); };
-    function syncNav() {
-        var cur = (typeof currentScreen === 'string') ? currentScreen : 'home';
-        var group = NAVMAP[cur] || 'home';
-        document.querySelectorAll('#twNav button,#twSide button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-k') === group); });
-        var sub = $('twSub'), items = null;
-        if (group === 'jobs') items = [['log', 'sLog'], ['weekly', 'sWeekly'], ['entry', 'sEntry']];
-        if (group === 'appts') items = [['appointments', 'sAppts'], ['contacts', 'sContacts']];
-        if (items) {
-            sub.style.display = 'flex';
-            sub.innerHTML = items.map(function (i) { return '<button class="' + (cur === i[0] ? 'on' : '') + '" onclick="switchScreen(\'' + i[0] + '\')">' + escHtml(tw(i[1])) + '</button>'; }).join('');
-        } else { sub.style.display = 'none'; sub.innerHTML = ''; }
-        var fab = $('twFab'); if (fab) fab.style.display = (group === 'home' || (group === 'jobs' && cur !== 'entry')) && !(typeof jobOverlayOpen !== 'undefined' && jobOverlayOpen) ? 'flex' : 'none';
-    }
+    window.twToggleMore = function () {
+        var on = document.body.classList.toggle('tw-more');
+        try { localStorage.setItem('tw_more', on ? '1' : '0'); } catch (e) {}
+        paintMoreBtn();
+    };
+    function paintMoreBtn() { var b = $('twMoreBtn'); if (b) b.textContent = tw(document.body.classList.contains('tw-more') ? 'lessDet' : 'moreDet'); }
+    function paintLang() { var b = $('twLangBtn'); if (b) b.innerHTML = ic('globe') + '<span>' + (currentLang === 'ar' ? 'English' : 'عربي') + '</span>'; }
 
-    // ---- wrap the screen switcher so home/workers/more are first-class screens ----
+    var lastSig = '';
+    function syncNav(force) {
+        var cur = (typeof currentScreen === 'string') ? currentScreen : 'home';
+        var gi = groupIndexOf(cur);
+        if (openGrp === null && NAV[gi].subs && isDesk()) openGrp = gi;
+        var c = workerFlagCounts(), n = c.handover + c.nophoto + c.overdue + c.stuck;
+        var sig = [cur, openGrp, currentLang, n, apptCnt(), isDesk() ? 'd' : 'm', brandKey()].join('|');
+        if (!force && sig === lastSig) return; lastSig = sig;
+        var nb = '', sb = '<div class="tw-brand" onclick="openCompanyProfileModal()"></div><button class="tw-newjob" onclick="switchScreen(\'entry\')">' + ic('plus') + escHtml(tw('newJob')) + '</button>';
+        NAV.forEach(function (g, i) {
+            var on = i === gi, badge = g.badge ? '<b class="tw-badge" style="' + (n ? 'display:flex' : '') + '">' + n + '</b>' : '';
+            nb += '<button class="' + (on ? 'on' : '') + '" onclick="twGrp(' + i + ')">' + ic(g.ic) + '<span>' + escHtml(tw(g.k)) + '</span>' + badge + '</button>';
+            if (!g.subs) { sb += '<button class="gb ' + (on ? 'on' : '') + '" onclick="twGrp(' + i + ')">' + ic(g.ic) + '<span>' + escHtml(tw(g.k)) + '</span></button>'; return; }
+            sb += '<div class="grp' + (openGrp === i ? ' open' : '') + '"><button class="gb ' + (on ? 'on' : '') + '" onclick="twGrp(' + i + ')">' + ic(g.ic) + '<span>' + escHtml(tw(g.k)) + '</span>' + badge + ic('chev').replace('tw-ic', 'tw-ic chev') + '</button><div class="subs">' +
+                g.subs.map(function (s, j) { return '<button class="sb ' + (s.scr === cur ? 'on' : '') + '" onclick="twSub(' + i + ',' + j + ')">' + ic(s.ic) + '<span>' + escHtml(tw(s.k)) + '</span>' + (s.cnt ? '<span class="cnt" dir="ltr">' + escHtml(apptCnt()) + '</span>' : '') + '</button>'; }).join('') + '</div></div>';
+        });
+        $('twNav').innerHTML = nb; $('twSide').innerHTML = sb;
+        document.querySelectorAll('.tw-brand').forEach(function (el) { el.__h = null; });
+        paintBrand(); paintMoreBtn();
+        document.body.classList.toggle('tw-home', cur === 'home');
+        var fab = $('twFab'); if (fab) fab.style.display = ((cur === 'log') && !(typeof jobOverlayOpen !== 'undefined' && jobOverlayOpen)) ? 'flex' : 'none';
+        if (sheetGrp !== null) paintSheet();
+    }
+    function brandKey() { try { return (companyProfile.name || '') + (companyProfile.logo ? companyProfile.logo.length : 0) + userName() + greet(); } catch (e) { return ''; } }
+
+    // ---- wrap the screen switcher so our panels are first-class screens ----
+    var PANELS = { home: 'screenHome', more: 'screenMore', wdata: 'screenWData', wpay: 'screenWPay' };
     var _old = switchScreenNow;
     switchScreenNow = function (name) {
         buildShell();
-        ['screenHome', 'screenWorkers', 'screenMore'].forEach(function (id) { $(id).style.display = 'none'; });
-        if (name === 'home' || name === 'workers' || name === 'more') {
+        if (name === 'workers') name = 'wdata';
+        Object.keys(PANELS).forEach(function (k) { $(PANELS[k]).style.display = 'none'; });
+        if (PANELS[name]) {
             _old('none'); currentScreen = name;
-            var el = $({ home: 'screenHome', workers: 'screenWorkers', more: 'screenMore' }[name]); el.style.display = 'block';
-            if (name === 'home') renderHome(); if (name === 'workers') renderWorkers(); if (name === 'more') renderMore();
+            $(PANELS[name]).style.display = 'block';
+            renderPanel(name);
         } else { _old(name); }
-        syncNav(); try { window.scrollTo(0, 0); } catch (e) {}
+        var gi = groupIndexOf(name); if (NAV[gi].subs && isDesk()) openGrp = gi;
+        closeSheet(); syncNav(true); try { window.scrollTo(0, 0); } catch (e) {}
     };
+    function renderPanel(name) {
+        if (name === 'home') renderHome(); else if (name === 'wdata') renderWData(); else if (name === 'wpay') renderWPay(); else if (name === 'more') renderMore();
+    }
 
     // ---------- data helpers ----------
     function todayIso() { return isoDate(new Date()); }
@@ -14807,15 +14996,11 @@ ${closeBtnHtml}
         try { (workerTasks || []).forEach(function (x) { workerTaskFlags(x).forEach(function (f) { if (c[f.k] !== undefined) c[f.k]++; }); }); } catch (e) {}
         return c;
     }
-    function renderBadges() {
-        var c = workerFlagCounts(), n = c.handover + c.nophoto + c.overdue + c.stuck;
-        document.querySelectorAll('#twBadge_workers').forEach(function (b) { b.textContent = n; b.style.display = n ? 'flex' : 'none'; });
-        document.querySelectorAll('.tw-badge[id="twBadge_workers"]').forEach(function () {});
-    }
-    function money(n) { return '$' + (Math.round(n * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
     function kpi(icon, label, val, color, bg, onclick) {
         return '<div class="tw-k" onclick="' + onclick + '"><div class="ib" style="background:' + bg + ';color:' + color + '">' + ic(icon) + '</div><div><small>' + escHtml(label) + '</small><b>' + val + '</b></div></div>';
     }
+    window.twShowDebt = function () { switchScreen('log'); setTimeout(function () { try { if (!onlyShowDebt) toggleDebtFilter(); } catch (e) {} }, 30); };
+    function setHtml(id, html) { var el = $(id); if (el && el.__twLast !== html) { el.innerHTML = html; el.__twLast = html; } }
 
     function homeHtml() {
         var today = todayIso(), jobs = activeJobs();
@@ -14823,36 +15008,32 @@ ${closeBtnHtml}
         var todayAppts = (appointments || []).filter(function (a) { return a.requestedDate === today && passesStateFilter(stateOfText(a.clientAddress || '')); });
         var remain = 0; jobs.forEach(function (j) { var r = jobRemaining(j); if (r > 0) remain += r; });
         var open = jobs.filter(function (j) { return j.jobStatus === 'شغال'; }).length;
-        var name = ''; try { name = (USER_DISPLAY_NAMES[currentUserEmail] || '').split(' ')[0]; } catch (e) {}
-        var h = '<div style="font-weight:800;font-size:1.25rem;margin:2px 2px 12px">' + escHtml(tw('hello')) + (name ? ' ' + escHtml(name) : '') + '</div>';
-        h += '<div class="tw-kp">' + kpi('wrench', tw('kToday'), todayJobs.length, '#4f46e5', 'rgba(79,70,229,.14)', "switchScreen('weekly')") +
-            kpi('wallet', tw('kRemain'), money(remain), '#d97706', 'rgba(217,119,6,.16)', "switchScreen('log')") +
+        var h = '<div class="tw-kp">' + kpi('wrench', tw('kToday'), todayJobs.length, '#4f46e5', 'rgba(79,70,229,.14)', "switchScreen('weekly')") +
+            kpi('wallet', tw('kRemain'), money(remain), '#d97706', 'rgba(217,119,6,.16)', 'twShowDebt()') +
             kpi('pulse', tw('kOpen'), open, '#0ea5e9', 'rgba(14,165,233,.16)', "switchScreen('log')") +
             kpi('cal', tw('kAppts'), todayAppts.length, '#059669', 'rgba(5,150,105,.16)', "switchScreen('appointments')") + '</div>';
         h += '<button class="tw-big" onclick="switchScreen(\'entry\')">' + ic('plus') + escHtml(tw('newJob')) + '</button>';
         var left = '<div class="tw-sec">' + escHtml(tw('todaySec')) + '</div>';
         if (!todayJobs.length && !todayAppts.length) left += '<div class="tw-empty">' + escHtml(tw('noToday')) + '</div>';
         todayJobs.forEach(function (j) {
-            left += '<div class="tw-card" onclick="openJobOverlay(\'' + String(j.id).replace(/'/g, '') + '\')"><div class="tx"><h4>' + escHtml(j.clientName || '—') + '</h4><p>' + escHtml(j.clientAddress || '') + (j.scheduledTime ? ' · ' + escHtml(j.scheduledTime) : '') + '</p></div>' +
+            left += '<div class="tw-card" onclick="openJobOverlay(\'' + jsArg(String(j.id)) + '\')"><div class="tx"><h4>' + escHtml(j.clientName || '—') + '</h4><p>' + escHtml(j.clientAddress || '') + (j.scheduledTime ? ' · ' + escHtml(j.scheduledTime) : '') + '</p></div>' +
                 (jobRemaining(j) > 0 ? '<span class="tw-tag" style="background:#d97706">' + money(jobRemaining(j)) + '</span>' : '<span class="tw-tag" style="background:#059669">✔</span>') + '</div>';
         });
         todayAppts.forEach(function (a) {
-            left += '<div class="tw-card" onclick="editAppointment(\'' + String(a.id).replace(/'/g, '') + '\')"><div class="tx"><h4>' + escHtml(a.clientName || '—') + '</h4><p>' + escHtml(a.clientAddress || '') + (a.requestedTime ? ' · ' + escHtml(a.requestedTime) : '') + '</p></div><span class="tw-tag" style="background:#4f46e5">' + escHtml(tw('sAppts')) + '</span></div>';
+            left += '<div class="tw-card" onclick="editAppointment(\'' + jsArg(String(a.id)) + '\')"><div class="tx"><h4>' + escHtml(a.clientName || '—') + '</h4><p>' + escHtml(a.clientAddress || '') + (a.requestedTime ? ' · ' + escHtml(a.requestedTime) : '') + '</p></div><span class="tw-tag" style="background:#4f46e5">' + escHtml(tw('appts')) + '</span></div>';
         });
-        // attention
         var att = [], cnt = workerFlagCounts();
         var follow = jobs.filter(function (j) { return j.followUpDate && j.followUpDate <= today && jobRemaining(j) > 0; }).length;
         var doneUnpaid = jobs.filter(function (j) { return j.jobStatus === 'خلص' && jobRemaining(j) > 0; }).length;
-        if (follow) att.push([follow, 'aFollow', 'wallet', "switchScreen('log')"]);
-        if (doneUnpaid) att.push([doneUnpaid, 'aDoneUnpaid', 'receipt', "switchScreen('log')"]);
-        if (cnt.handover) att.push([cnt.handover, 'aHandover', 'hat', "switchScreen('workers')"]);
-        if (cnt.nophoto) att.push([cnt.nophoto, 'aNoPhoto', 'bell', "switchScreen('workers')"]);
-        if (cnt.overdue) att.push([cnt.overdue, 'aOverdue', 'cal', "switchScreen('workers')"]);
-        if (cnt.stuck) att.push([cnt.stuck, 'aStuck', 'pin', "switchScreen('workers')"]);
+        if (follow) att.push([follow, 'aFollow', 'wallet', 'twShowDebt()']);
+        if (doneUnpaid) att.push([doneUnpaid, 'aDoneUnpaid', 'receipt', 'twShowDebt()']);
+        if (cnt.handover) att.push([cnt.handover, 'aHandover', 'hat', "switchScreen('wdata')"]);
+        if (cnt.nophoto) att.push([cnt.nophoto, 'aNoPhoto', 'bell', "switchScreen('wdata')"]);
+        if (cnt.overdue) att.push([cnt.overdue, 'aOverdue', 'cal', "switchScreen('wdata')"]);
+        if (cnt.stuck) att.push([cnt.stuck, 'aStuck', 'pin', "switchScreen('wdata')"]);
         var right = '<div class="tw-sec">' + escHtml(tw('attSec')) + '</div>';
         if (!att.length) right += '<div class="tw-empty">' + escHtml(tw('allGood')) + '</div>';
         att.forEach(function (a) { right += '<div class="tw-card" onclick="' + a[3] + '"><div style="color:#d97706">' + ic(a[2]) + '</div><div class="tx"><h4>' + a[0] + '</h4><p>' + escHtml(tw(a[1])) + '</p></div></div>'; });
-        // backup
         var b = null; try { b = parseInt(localStorage.getItem('tw_last_backup') || '', 10) || null; } catch (e) {}
         var days = b ? Math.floor((Date.now() - b) / 86400000) : null;
         right += '<div class="tw-card" onclick="exportBackupJSON()"><div style="color:' + (days === null || days > 7 ? '#e11d48' : '#059669') + '">' + ic('cloud') + '</div><div class="tx"><h4>' + escHtml(tw('backupNow')) + '</h4><p>' +
@@ -14860,79 +15041,193 @@ ${closeBtnHtml}
         right += '<div class="tw-card" onclick="openAgendaModal()"><div style="color:#4f46e5">' + ic('check') + '</div><div class="tx"><h4>' + escHtml(tw('checkToday')) + '</h4></div></div>';
         return h + '<div id="twHomeCols"><div>' + left + '</div><div>' + right + '</div></div>';
     }
-    function setHtml(id, html) { var el = $(id); if (el && el.__twLast !== html) { el.innerHTML = html; el.__twLast = html; } }
-    window.renderHome = function renderHome() { try { setHtml('screenHome', homeHtml()); } catch (e) { console.error('home', e); } renderBadges(); };
+    window.renderHome = function renderHome() { try { setHtml('screenHome', homeHtml()); } catch (e) { console.error('home', e); } };
 
+    // ---------- Worker data (its own screen) ----------
+    function attentionCards() {
+        var c = workerFlagCounts(), out = '';
+        [['handover', 'aHandover'], ['nophoto', 'aNoPhoto'], ['overdue', 'aOverdue'], ['stuck', 'aStuck']].forEach(function (a) {
+            if (c[a[0]]) out += '<div class="tw-card" onclick="openWorkerActivity()"><div style="color:#d97706">' + ic('bell') + '</div><div class="tx"><h4>' + c[a[0]] + '</h4><p>' + escHtml(tw(a[1])) + '</p></div></div>';
+        });
+        return out ? '<div class="tw-sec">' + escHtml(tw('attSec')) + '</div>' + out : '';
+    }
+    window.renderWData = function renderWData() {
+        var names = []; try { names = getUniqueRegisteredTechnicians(); } catch (e) {}
+        var h = '<div class="tw-pagehead"><h2>' + escHtml(tw('wData')) + '</h2><button class="tw-sbtn p" onclick="openAddTechnicianModal()">' + escHtml(tw('wdAdd')) + '</button></div>' + attentionCards();
+        if (!names.length) h += '<div class="tw-empty">' + escHtml(tw('wdEmpty')) + '</div>';
+        h += '<div class="tw-wgrid">';
+        names.forEach(function (n) {
+            var raw = (technicianPhones && technicianPhones[n]) || '', ph = '';
+            if (raw) { try { var sp = splitPhoneForEdit(raw); ph = sp.code === 'other' ? raw : '+' + sp.code + ' ' + sp.local; } catch (e) { ph = raw; } }
+            var login = false; try { login = !!workerAccountForTech(n); } catch (e) {}
+            h += '<div class="tw-card nc"><div class="tw-av">' + escHtml(n.charAt(0).toUpperCase()) + '</div><div class="tx"><h4>' + escHtml(n) + (login ? ' <span title="' + escHtml(tw('hasLogin')) + '">📲</span>' : '') + '</h4><p dir="ltr" style="text-align:start;unicode-bidi:isolate">' + (ph ? escHtml(ph) : escHtml(tw('noPhone'))) + '</p></div>' +
+                '<div class="tw-btns"><button class="tw-sbtn" onclick="openEditTechnicianModal(\'' + jsArg(n) + '\')">' + escHtml(tw('edit')) + '</button><button class="tw-sbtn" onclick="twDetails(\'' + jsArg(n) + '\')">' + escHtml(tw('details')) + '</button></div></div>';
+        });
+        setHtml('screenWData', h + '</div>');
+    };
+    window.renderWorkers = window.renderWData;
+    window.twDetails = function (name, wk) {
+        if (wk) { var w = weekWindow(); try { $('guideDateFrom').value = w.start; $('guideDateTo').value = w.end; } catch (e) {} }
+        openTechGuideModal(); showTechDetails(name);
+    };
+
+    // ---------- This week's payments (its own screen; fixes it opening the whole guide) ----------
+    var wpOff = 0;
+    function weekWindow() { return weekOf(todayIso(), wpOff); }
+    function weekPayRows() {
+        var w = weekWindow(), rows = [];
+        try {
+            var stats = computeTechPeriodStats(w.start, w.end);
+            var names = new Set(Object.keys(stats).concat(techBonuses.filter(function (b) { return b.date >= w.start && b.date <= w.end; }).map(function (b) { return b.name; }), getExtraPartnerNames()));
+            names.forEach(function (name) {
+                var due = round2((stats[name] ? stats[name].dues : 0) + partnerShareInPeriod(name, w.start, w.end).total + techBonusTotalInPeriod(name, w.start, w.end));
+                var paid = round2(techPaymentsInPeriod(name, w.start, w.end).reduce(function (s, p) { return s + parseVal(p.amount); }, 0));
+                if (due > 0.005 || paid > 0.005) rows.push({ name: name, due: due, paid: paid, left: round2(due - paid) });
+            });
+        } catch (e) { console.error('weekPay', e); }
+        return rows.sort(function (a, b) { return b.left - a.left; });
+    }
+    window.twWeek = function (d) { wpOff = d === 0 ? 0 : wpOff + d; renderWPay(); };
+    window.twPay = function (name) { var w = weekWindow(); try { $('guideDateFrom').value = w.start; $('guideDateTo').value = w.end; } catch (e) {} openTechPaymentPrompt(name, null, true); };
+    window.renderWPay = function renderWPay() {
+        var w = weekWindow(), rows = weekPayRows(), total = 0; rows.forEach(function (r) { if (r.left > 0) total += r.left; });
+        var h = '<div class="tw-pagehead"><h2>' + escHtml(tw('wPay')) + '</h2><div class="tw-btns"><button class="tw-sbtn" onclick="twWeek(-1)">' + escHtml(tw('wpPrev')) + '</button><button class="tw-sbtn' + (wpOff === 0 ? ' p' : '') + '" onclick="twWeek(0)">' + escHtml(tw('wpThis')) + '</button><button class="tw-sbtn" onclick="twWeek(1)">' + escHtml(tw('wpNext')) + '</button></div></div>' +
+            '<div class="tw-sec" dir="ltr" style="text-align:start">' + w.start + ' → ' + w.end + '</div>';
+        if (!rows.length) h += '<div class="tw-empty">' + escHtml(tw('wpNone')) + '</div>';
+        rows.forEach(function (r) {
+            h += '<div class="tw-card nc"><div class="tw-av">' + escHtml(r.name.charAt(0).toUpperCase()) + '</div><div class="tx"><h4>' + escHtml(r.name) + '</h4><p>' + escHtml(tw('wpDue')) + ' ' + money(r.due) + ' · ' + escHtml(tw('wpPaid')) + ' ' + money(r.paid) + '</p></div>' +
+                '<div style="text-align:end"><div class="tw-money ' + (r.left > 0.005 ? 'red' : 'grn') + '">' + (r.left > 0.005 ? money(r.left) : '✔') + '</div><small style="color:var(--text-muted)">' + escHtml(tw('wpLeft')) + '</small></div>' +
+                '<div class="tw-btns">' + (r.left > 0.005 ? '<button class="tw-sbtn g" onclick="twPay(\'' + jsArg(r.name) + '\')">' + escHtml(tw('pay')) + '</button>' : '') + '<button class="tw-sbtn" onclick="twDetails(\'' + jsArg(r.name) + '\',1)">' + escHtml(tw('details')) + '</button></div></div>';
+        });
+        if (rows.length) h += '<div class="tw-sec">' + escHtml(tw('wpTotal')) + ': <span class="tw-money red">' + money(total) + '</span></div>';
+        setHtml('screenWPay', h);
+    };
+
+    // ---------- More ----------
     function tile(icon, label, onclick, color, danger) {
         return '<div class="tw-tile' + (danger ? ' danger' : '') + '" onclick="' + onclick + '"><div class="ib" style="background:' + color + '22;color:' + color + '">' + ic(icon) + '</div><span>' + escHtml(label) + '</span></div>';
     }
-    function group(title, tiles) { return '<div class="tw-sec">' + escHtml(title) + '</div><div class="tw-grid">' + tiles.join('') + '</div>'; }
-    window.renderWorkers = function renderWorkers() {
-        var c = workerFlagCounts();
-        var h = '<div style="font-weight:800;font-size:1.2rem;margin:2px 2px 8px">' + escHtml(tw('wTitle')) + '</div>' + group(tw('wTitle'), [
-            tile('pulse', tt('wkActBtn', 'Activity'), 'openWorkerActivity()', '#0d9488'),
-            tile('book', tt('guideBtn', 'Guide'), 'openTechGuideModal()', '#7c3aed'),
-            tile('wallet', tt('weeklyPayBtn', 'Weekly pay'), 'openWeeklyPayScreen()', '#059669'),
-            tile('pie', tt('techPartnerReportBtn', 'Report'), 'openTechPartnerReportModal()', '#d97706'),
-            tile('pin', tt('findTechBtn', 'Find tech'), 'openFindTechModal()', '#0ea5e9'),
-            tile('send', tt('sendScheduleBtn', 'Send schedule'), 'openSendScheduleModal()', '#4f46e5')]);
-        var n = c.handover + c.nophoto + c.overdue + c.stuck;
-        if (n) h += '<div class="tw-sec">' + escHtml(tw('attSec')) + '</div>' + [['handover', 'aHandover'], ['nophoto', 'aNoPhoto'], ['overdue', 'aOverdue'], ['stuck', 'aStuck']].filter(function (a) { return c[a[0]]; }).map(function (a) { return '<div class="tw-card" onclick="openWorkerActivity()"><div style="color:#d97706">' + ic('bell') + '</div><div class="tx"><h4>' + c[a[0]] + '</h4><p>' + escHtml(tw(a[1])) + '</p></div></div>'; }).join('');
-        setHtml('screenWorkers', h); renderBadges();
-    };
+    function group(id, title, tiles) { return '<div class="tw-sec" id="twg_' + id + '">' + escHtml(title) + '</div><div class="tw-grid">' + tiles.join('') + '</div>'; }
     window.renderMore = function renderMore() {
         var isAdmin = false; try { isAdmin = currentUserEmail === ADMIN_EMAIL; } catch (e) {}
-        var h = '<div style="font-weight:800;font-size:1.2rem;margin:2px 2px 8px">' + escHtml(tw('more')) + '</div>';
-        h += group(tw('mReports'), [
+        var h = '<div class="tw-pagehead"><h2>' + escHtml(tw('more')) + '</h2></div>';
+        h += group('reports', tw('mReports'), [
             tile('receipt', tt('expenseReportBtn', 'Expenses'), 'openExpenseReportModal()', '#e11d48'),
             tile('pie', tt('partnerReportBtn', 'Partner report'), 'openPartnerReportModal()', '#7c3aed'),
             tile('chart', tt('techPartnerReportBtn', 'Tech report'), 'openTechPartnerReportModal()', '#d97706')]);
-        h += group(tw('mAccounts'), [
+        h += group('accounts', tw('mAccounts'), [
             tile('users', tt('partnerAccountBtn', 'Partner account'), 'openPartnerAccountModal()', '#4f46e5'),
             tile('bank', tt('companyAccountBtn', 'Company account'), 'openCompanyAccountModal()', '#0d9488'),
             tile('lock', tt('periodLockBtn', 'Period lock'), 'openPeriodLockModal()', '#64748b')]);
-        h += group(tw('mData'), [
+        h += group('data', tw('mData'), [
             tile('cloud', tt('exportBackupBtn', 'Backup'), 'exportBackupJSON()', '#0d9488'),
             tile('upload', tt('importBackupBtn', 'Import'), "document.getElementById('importBackupInput').click()", '#0d9488'),
             tile('table', tt('exportCsvBtn', 'CSV'), 'exportData()', '#059669'),
             tile('pdf', tt('exportPdfBtn', 'PDF'), 'exportPDF()', '#e11d48'),
             tile('calc', tt('exportAccountingBtn', 'Accounting'), 'exportAccountingDetailed()', '#0ea5e9')]);
-        h += group(tw('mSettings'), [
+        h += group('settings', tw('mSettings'), [
             tile('building', tt('companyProfileBtn', 'Company profile'), 'openCompanyProfileModal()', '#4f46e5'),
             tile('sparkle', tt('whatsNewBtn', "What's new"), 'checkWhatsNew(true)', '#d97706'),
             tile('key', tt('resetAiKeyBtn', 'AI key'), 'resetGeminiApiKey()', '#7c3aed'),
             tile('globe', tw('lang'), 'toggleLanguage()', '#0ea5e9'),
             tile('sun', tw('themeL'), 'toggleTheme()', '#f59e0b'),
             tile('logout', tt('logoutBtn', 'Logout'), 'doLogout()', '#e11d48', true)]);
-        if (isAdmin) h += group(tw('mAdmin'), [tile('shield', tt('activityLogBtn', 'Activity log'), 'openActivityLogModal()', '#475569')]);
+        if (isAdmin) h += group('admin', tw('mAdmin'), [tile('shield', tt('activityLogBtn', 'Activity log'), 'openActivityLogModal()', '#475569')]);
         setHtml('screenMore', h);
     };
 
-    // refresh when the language flips, and keep dynamic panels current
+    // ---------- wraps around existing functions (original logic untouched) ----------
     var _al = applyLanguage;
-    applyLanguage = function () { _al.apply(this, arguments); try { if ($('twNav')) { paintNav(); if (currentScreen === 'home') renderHome(); if (currentScreen === 'workers') renderWorkers(); if (currentScreen === 'more') renderMore(); syncNav(); } } catch (e) {} };
+    applyLanguage = function () {
+        _al.apply(this, arguments);
+        try { if ($('twNav')) { lastSig = ''; Object.keys(PANELS).forEach(function (k) { var el = $(PANELS[k]); if (el) el.__twLast = null; }); paintLang(); syncNav(true); paintState(); if (PANELS[currentScreen]) renderPanel(currentScreen); } } catch (e) {}
+    };
     var _eb = exportBackupJSON;
     exportBackupJSON = function () { var r = _eb.apply(this, arguments); try { localStorage.setItem('tw_last_backup', String(Date.now())); } catch (e) {} setTimeout(function () { if (currentScreen === 'home') renderHome(); }, 400); return r; };
-    function updSync() { var s = $('twSync'); if (!s) return; var off = !navigator.onLine; s.classList.toggle('off', off); s.title = off ? tw('offline') : ''; }
-    window.addEventListener('online', updSync); window.addEventListener('offline', updSync);
+    var _rsb = renderStateBar;
+    renderStateBar = function () { _rsb.apply(this, arguments); try { paintState(); } catch (e) {} };
+    var _rav = refreshAllViews;
+    refreshAllViews = function () { _rav.apply(this, arguments); try { tick(); } catch (e) {} };
+    var _rjt = renderJobsTable;
+    renderJobsTable = function () { var r = _rjt.apply(this, arguments); try { tidyJobs(); } catch (e) {} return r; };
 
-    // first launch after login: open on Home
+    // job rows: Edit + Pay stay visible, the rest live behind one "⋯"
+    function tidyJobs() {
+        document.querySelectorAll('#jobsTableBody tr').forEach(function (tr) {
+            var td = tr.querySelector('td.no-print:last-child'); if (!td || td.__tw) return;
+            var btns = Array.prototype.slice.call(td.children).filter(function (e) { return e.tagName === 'BUTTON'; }); if (btns.length < 3) return;
+            var keep = [], rest = [];
+            btns.forEach(function (b) { var oc = b.getAttribute('onclick') || ''; (/openJobOverlay|openJobPayModal/.test(oc) ? keep : rest).push(b); });
+            var wrap = document.createElement('div'); wrap.className = 'tw-act';
+            keep.forEach(function (b) { wrap.appendChild(b); });
+            if (rest.length) { var d = document.createElement('details'), s = document.createElement('summary'), p = document.createElement('div'); s.textContent = '⋯'; p.className = 'tw-pop'; rest.forEach(function (b) { p.appendChild(b); }); d.appendChild(s); d.appendChild(p); wrap.appendChild(d); }
+            td.appendChild(wrap); td.__tw = 1;
+        });
+    }
+    // bulk actions only when something is selected (or the "owed" filter is on, or Undo is available)
+    function tickBulk() {
+        var bar = document.querySelector('.tw-bulk'); if (!bar) return;
+        var ub = $('undoDeleteBtn'), undo = ub && ub.style.display !== 'none';
+        var show = false; try { show = selectedJobIds.size > 0 || onlyShowDebt || undo; } catch (e) { show = true; }
+        bar.classList.toggle('tw-hide', !show);
+    }
+    setInterval(function () { try { tickBulk(); } catch (e) {} }, 500);
+
+    // tech add/edit form pops up on its own
+    function formModalSync() { var fc = $('addTechFormContainer'), m = $('twTechFormModal'); if (fc && m) m.style.display = fc.style.display === 'block' ? 'flex' : 'none'; }
+    ['openAddTechnicianModal', 'openEditTechnicianModal', 'closeAddTechnicianModal'].forEach(function (fn) {
+        var o = window[fn]; if (typeof o !== 'function') return;
+        window[fn] = function () { var r = o.apply(this, arguments); try { formModalSync(); } catch (e) {} return r; };
+    });
+    // saving a worker is async: re-check the pop-up and refresh the data screen once it is done
+    var _snt = saveNewTechnician;
+    saveNewTechnician = async function () { var r = await _snt.apply(this, arguments); try { formModalSync(); if (currentScreen === 'wdata') renderWData(); } catch (e) {} return r; };
+
+    // search also finds appointments
+    var _rgs = renderGlobalSearch;
+    renderGlobalSearch = function () {
+        _rgs.apply(this, arguments);
+        try {
+            var q = $('globalSearchInput').value.trim().toLowerCase(); if (!q) return;
+            var hits = (appointments || []).filter(function (a) { return [a.clientName, a.clientPhone, a.clientAddress, a.clientEmail].some(function (f) { return (f || '').toLowerCase().indexOf(q) >= 0; }); }).slice(0, 8);
+            if (!hits.length) return;
+            var box = $('globalSearchResults'), h = '<div class="ag-section-title">' + escHtml(tw('gsAppts')) + ' (' + hits.length + ')</div>' + hits.map(function (a) {
+                return '<div class="ag-item" style="cursor:pointer;" onclick="closeGlobalSearch(); switchScreen(\'appointments\'); editAppointment(\'' + jsArg(String(a.id)) + '\');"><div class="ag-line"><strong>' + escHtml(a.clientName || '') + '</strong></div><div class="ag-meta">' + escHtml(a.requestedDate || '') + (a.clientAddress ? ' — ' + escHtml(a.clientAddress) : '') + '</div></div>';
+            }).join('');
+            var nores = box.querySelector('.tg-empty'); if (nores && box.children.length === 1) box.innerHTML = h; else box.insertAdjacentHTML('beforeend', h);
+        } catch (e) { console.error('gs', e); }
+    };
+
+    // desktop shortcuts: "/" search, "N" new job
+    document.addEventListener('keydown', function (e) {
+        if (e.ctrlKey || e.metaKey || e.altKey || !$('twNav')) return;
+        var el = document.activeElement, tag = el && el.tagName; if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el && el.isContentEditable)) return;
+        var anyModal = Array.prototype.some.call(document.querySelectorAll('[id$="Modal"]'), function (m) { return m.style.display === 'flex'; });
+        if (anyModal) return;
+        if (e.key === '/') { e.preventDefault(); openGlobalSearch(); } else if (e.key === 'n' || e.key === 'N') { e.preventDefault(); switchScreen('entry'); }
+    });
+
+    function updSync() { document.querySelectorAll('.tw-sync').forEach(function (s) { s.classList.toggle('off', !navigator.onLine); s.title = navigator.onLine ? '' : tw('offline'); }); }
+    window.addEventListener('online', updSync); window.addEventListener('offline', updSync);
+    window.addEventListener('resize', function () { lastSig = ''; try { syncNav(true); } catch (e) {} });
+
     var started = false;
     function maybeStart() {
         var area = $('pdfContentArea');
         if (!area || area.style.display === 'none' || started) return;
-        started = true; buildShell(); updSync();
+        started = true; buildShell(); updSync(); paintState();
         try { switchScreen('home'); } catch (e) { console.error(e); }
     }
     function tick() {
         maybeStart();
         if (!started) return;
-        if (currentScreen === 'home') renderHome(); else if (currentScreen === 'workers') renderWorkers(); else renderBadges();
+        paintBrand(); paintState();
+        if (PANELS[currentScreen]) renderPanel(currentScreen);
         syncNav();
     }
     setInterval(tick, 2500);
     var area0 = $('pdfContentArea'); if (area0 && window.MutationObserver) new MutationObserver(maybeStart).observe(area0, { attributes: true, attributeFilter: ['style'] });
-    window.__tw = { renderHome: renderHome, renderWorkers: renderWorkers, renderMore: renderMore, buildShell: buildShell };
+    window.__tw = { renderHome: renderHome, renderWData: renderWData, renderWPay: renderWPay, renderMore: renderMore, buildShell: buildShell };
 })();
 </script>
 </body>
