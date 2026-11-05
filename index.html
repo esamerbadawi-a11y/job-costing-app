@@ -306,8 +306,11 @@ select.tw-sel{height:42px;padding:0 10px;border-radius:12px;background:var(--car
 .tw-sbtn.d{background:rgba(225,29,72,.14);color:#e11d48;border-color:rgba(225,29,72,.4)}
 .tw-money{font-weight:800;white-space:nowrap}
 .tw-money.red{color:#f87171}.tw-money.grn{color:#34d399}
-#twFab{position:fixed;bottom:86px;inset-inline-start:16px;width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;display:none;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(79,70,229,.45);z-index:890;cursor:pointer;border:none;padding:0}
-#twFab .tw-ic{width:26px;height:26px}
+#twFab{position:fixed;bottom:86px;inset-inline-start:14px;width:48px;height:48px;opacity:.94;border-radius:50%;background:var(--primary);color:#fff;display:none;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(79,70,229,.45);z-index:890;cursor:pointer;border:none;padding:0}
+#twFab .tw-ic{width:24px;height:24px;transition:transform .2s}#twFab.open .tw-ic{transform:rotate(45deg)}
+#twFabMenu{position:fixed;bottom:142px;inset-inline-start:14px;z-index:891;display:none;flex-direction:column;gap:8px}#twFabMenu.show{display:flex}
+#twFabMenu button{display:flex;align-items:center;gap:8px;height:44px;padding:0 16px;border-radius:22px;background:var(--card-dark);color:var(--text-main);border:1px solid var(--border-color);box-shadow:0 6px 16px rgba(0,0,0,.3);font-weight:700;font-size:.9rem;white-space:nowrap}
+#twFabMenu button .tw-ic{width:18px;height:18px;color:var(--primary)}
 #twTechFormModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;padding:14px}
 #twTechFormModal .tw-fbox{background:var(--card-dark);border:1px solid var(--border-color);border-radius:14px;width:100%;max-width:560px;max-height:90vh;overflow:auto;padding:16px}
 #twTechFormModal #addTechFormContainer{margin-bottom:0}
@@ -335,7 +338,7 @@ body.tw-on:not(.tw-more) #jobsTableBody td:nth-child(5),body.tw-on:not(.tw-more)
 body.tw-on #screenAppointments .card>div:first-child button[onclick^="openAppointmentsListModal"]{display:none}
 @media(min-width:900px){
   body.tw-on{padding-bottom:16px}
-  #twNav,#twSheet,#twScrim{display:none !important}#twFab{display:none !important}
+  #twNav,#twSheet,#twScrim{display:none !important}#twFab{bottom:22px;inset-inline-start:auto;inset-inline-end:22px}#twFabMenu{bottom:78px;inset-inline-start:auto;inset-inline-end:22px}
   #twSide{display:flex;position:fixed;top:0;bottom:0;inset-inline-start:0;width:260px;background:var(--card-dark);border-inline-end:1px solid var(--border-color);padding:14px 10px;flex-direction:column;gap:2px;z-index:900;overflow-y:auto}
   #twSide .tw-brand{flex:none;padding:4px 6px 12px}
   #twSide .tw-newjob{display:flex;gap:8px;align-items:center;justify-content:center;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:11px;font-weight:700;font-size:.92rem;cursor:pointer;margin:0 2px 10px;width:calc(100% - 4px)}
@@ -2698,6 +2701,9 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         aiCopied: { ar: 'اتنسخت الرسالة', en: 'Message copied' },
         aiCopyFailed: { ar: 'مقدرش ينسخ. اضغط مطولًا على النص وانسخه بإيدك.', en: 'Could not copy. Long-press the text and copy it yourself.' },
         aiShareBtn: { ar: '📎 إرفاق وإرسال', en: '📎 Attach & Share' },
+        aiCopiedPhone: { ar: '📋 اتنسخ رقم العميل: {v} — الصقه في خانة (إلى)', en: '📋 Client phone copied: {v} — paste it in the “To” field' },
+        aiCopiedEmail: { ar: '📋 اتنسخ إيميل العميل: {v} — الصقه في خانة (إلى)', en: '📋 Client email copied: {v} — paste it in the “To” field' },
+        aiFileDownloaded: { ar: '⬇️ الملف اتنزّل على الجهاز — ارفقه في الإيميل', en: '⬇️ The file was downloaded — attach it to your email' },
         aiSharing: { ar: 'بيجهّز الملف...', en: 'Preparing document...' },
         alertShareNotSupported: { ar: 'المشاركة بالصورة مش متاحة على الجهاز/المتصفح ده. جرّب من الموبايل، أو استخدم أزرار الإرسال التانية.', en: 'Sharing with an image isn\'t supported on this device/browser. Try from a phone, or use the other send buttons.' },
         aiUseTemplateBtn: { ar: 'رسالة جاهزة (من غير AI)', en: 'Ready-made message (no AI)' },
@@ -5585,6 +5591,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     // overdue it is) and opens WhatsApp with it ready to send to the client.
     // ---------- AI calls: never hang silently ----------
     const GEMINI_MODEL = 'gemini-3.6-flash';
+    // Load the AI library quietly in the background a few seconds after the app opens, so the first AI request doesn't wait for it.
+    setTimeout(function () { try { var k = getGeminiApiKey(); if (k) getGenAIClient(k).catch(function () {}); } catch (e) {} }, 4000);
     let AI_TIMEOUT_MS = 45000;
 
     function withTimeout(promise, ms, stageKey) {
@@ -5612,7 +5620,15 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         let response, lastErr;
         for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
-                response = await withTimeout(ai.models.generateContent({ model: GEMINI_MODEL, contents }), AI_TIMEOUT_MS, 'aiStageModel');
+                // Ask the model to think only a little (short messages don't need long reasoning, which is what made it slow).
+                // If this model doesn't accept that setting, the same request is sent once more without it.
+                try {
+                    response = await withTimeout(ai.models.generateContent({ model: GEMINI_MODEL, contents, config: { thinkingConfig: { thinkingLevel: 'low' } } }), AI_TIMEOUT_MS, 'aiStageModel');
+                } catch (e0) {
+                    if (/thinking|INVALID_ARGUMENT|\b400\b/i.test((e0 && e0.message) || '') && !isRetryableAiError(e0)) {
+                        response = await withTimeout(ai.models.generateContent({ model: GEMINI_MODEL, contents }), AI_TIMEOUT_MS, 'aiStageModel');
+                    } else throw e0;
+                }
                 lastErr = null;
                 break;
             } catch (e) {
@@ -5802,7 +5818,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         document.getElementById('aiCustomInstructions').value = '';
         // Sharing an image only makes sense when there's an invoice open to render, and only on
         // devices whose share sheet can take a file (desktop Chrome, for example, cannot).
-        document.getElementById('aiShareBtn').style.display = (navigator.share && navigator.canShare) ? '' : 'none';
+        document.getElementById('aiShareBtn').style.display = '';
         document.getElementById('aiCallBtn').style.display = job.clientPhone ? '' : 'none';
         setAiPaymentLinkToggleVisibility(aiReminderCtx.msgKind);
         document.getElementById('aiReminderModal').style.display = 'flex';
@@ -9222,7 +9238,14 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const text = document.getElementById('aiReminderText').value.trim();
         if (!c || !text) return;
         if (!c.fromInvoice && !(c.msgKind === 'quote' && c.apptId)) return;
-        if (!navigator.share || !navigator.canShare) { alert(t('alertShareNotSupported')); return; }
+        // Copy the client's phone (or e-mail) FIRST, while the tap is still fresh: no share sheet can pre-fill the recipient, so it is one paste away instead.
+        const canShareFiles = !!(navigator.share && navigator.canShare);
+        const toPhone = (c.job.clientPhone || '').trim(), toEmail = (c.job.clientEmail || '').trim();
+        const copyVal = (canShareFiles ? (toPhone || toEmail) : (toEmail || toPhone));
+        let copyMsg = '';
+        if (copyVal) {
+            try { navigator.clipboard.writeText(copyVal).catch(function () {}); copyMsg = t(copyVal === toPhone ? 'aiCopiedPhone' : 'aiCopiedEmail').replace('{v}', copyVal); } catch (e) { copyMsg = ''; }
+        }
         const btn = document.getElementById('aiShareBtn');
         const prevLabel = btn.textContent;
         btn.disabled = true;
@@ -9236,7 +9259,16 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                 const appt = appointments.find(a => a.id === c.apptId);
                 if (appt) file = await buildLinkedPdfFile(buildAppointmentQuoteHtmlDoc(appt), '.quote-page', `${companyFileSlug()}_Estimate_${nameSlug}`, '#FDFBF6');
             }
-            if (!file || !navigator.canShare({ files: [file] })) { alert(t('alertShareNotSupported')); return; }
+            if (!file) { alert(t('alertShareNotSupported')); return; }
+            if (!canShareFiles || !navigator.canShare({ files: [file] })) {
+                // computer / browser without file sharing: save the PDF on the device so it can be attached by hand
+                const url = URL.createObjectURL(file), a = document.createElement('a');
+                a.href = url; a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+                showToast(t('aiFileDownloaded') + (copyVal ? ' · ' + copyMsg : ''));
+                return;
+            }
+            if (copyMsg) showToast(copyMsg);
             try {
                 await navigator.share({ files: [file], text: stripPaymentLinkLine(text) });
             } catch (e) {
@@ -12833,8 +12865,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     async function adjustQuoteItemsWithAI() {
         const apiKey = getGeminiApiKey();
         if (!apiKey) { alert(t('aiNoKeyNote')); return; }
-        const price = parseVal(document.getElementById('quotePriceInput').value);
-        if (!price) { alert(t('alertQuoteNeedsPrice')); return; }
+        const price = parseVal(document.getElementById('quotePriceInput').value);   // 0 = no price yet: the AI then works out the total itself
         const instructions = (document.getElementById('quoteAiInstructions').value || '').trim();
         if (!instructions && quoteItemsState.length === 0) { alert(t('alertQuoteAdjustNeedsInput')); return; }
 
@@ -12845,11 +12876,18 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         try {
             const currentItemsJson = JSON.stringify(quoteItemsState.map(it => ({ desc: it.desc, qty: parseVal(it.qty) || 1, amount: parseVal(it.amount) })));
             const promptText = currentLang === 'ar'
-                ? `دي تفاصيل عرض سعر شغل صيانة/مقاولات حاليًا (JSON، "amount" سعر الوحدة و"qty" عدد الوحدات): ${currentItemsJson}. السعر الإجمالي ثابت عند $${price.toFixed(2)}. عدّل البنود دي حسب التوجيه ده من صاحب الشغل: "${instructions}"، مع إنك تخلي (سعر الوحدة × العدد) لكل البنود يساوي $${price.toFixed(2)} بالظبط. لو فيه نفس الشغلانة في أكتر من مكان خليها بند واحد بـ qty أعلى بدل ما تكررها. رجّعلي JSON فقط، من غير أي نص تاني ولا \`\`\`، بالشكل ده: [{"desc":"وصف البند","qty":1,"amount":123.45}, ...]`
-                : `Here is the current price breakdown for a handyman/contracting quote (JSON; "amount" is the per-unit price, "qty" is how many units): ${currentItemsJson}. The total price is fixed at $${price.toFixed(2)}. Adjust these items per this instruction from the business owner: "${instructions}", keeping (unit amount × qty) summing to exactly $${price.toFixed(2)}. If the same task applies in more than one spot, use one item with a higher qty instead of repeating it. Return ONLY JSON, no other text and no \`\`\`, in this shape: [{"desc":"item description","qty":1,"amount":123.45}, ...]`;
+                ? `دي تفاصيل عرض سعر شغل صيانة/مقاولات حاليًا (JSON، "amount" سعر الوحدة و"qty" عدد الوحدات): ${currentItemsJson}. ${price ? 'السعر الإجمالي ثابت عند $' + price.toFixed(2) + '.' : 'مفيش سعر إجمالي محدد لسه.'} عدّل البنود دي حسب التوجيه ده من صاحب الشغل: "${instructions}"${price ? '، مع إنك تخلي (سعر الوحدة × العدد) لكل البنود يساوي $' + price.toFixed(2) + ' بالظبط' : '، وحدد أسعار البنود بنفسك بشكل واقعي'}. لو فيه نفس الشغلانة في أكتر من مكان خليها بند واحد بـ qty أعلى بدل ما تكررها. رجّعلي JSON فقط، من غير أي نص تاني ولا \`\`\`، بالشكل ده: [{"desc":"وصف البند","qty":1,"amount":123.45}, ...]`
+                : `Here is the current price breakdown for a handyman/contracting quote (JSON; "amount" is the per-unit price, "qty" is how many units): ${currentItemsJson}. ${price ? 'The total price is fixed at $' + price.toFixed(2) + '.' : 'No total price has been set yet.'} Adjust these items per this instruction from the business owner: "${instructions}"${price ? ', keeping (unit amount × qty) summing to exactly $' + price.toFixed(2) : ', and set realistic prices for the items yourself'}. If the same task applies in more than one spot, use one item with a higher qty instead of repeating it. Return ONLY JSON, no other text and no \`\`\`, in this shape: [{"desc":"item description","qty":1,"amount":123.45}, ...]`;
 
             const resultText = await aiGenerate(apiKey, promptText);
-            const parsed = parseAndNormalizeQuoteItemsJson(resultText, price);
+            let target = price;
+            if (!target) {   // no price typed: the total becomes whatever the items add up to
+                const raw = JSON.parse(resultText.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim());
+                target = round2((Array.isArray(raw) ? raw : []).reduce((sum, it) => sum + (parseVal(it && it.amount) * (parseVal(it && it.qty) || 1)), 0));
+                if (!target) throw new Error('no price');
+                document.getElementById('quotePriceInput').value = target;
+            }
+            const parsed = parseAndNormalizeQuoteItemsJson(resultText, target);
             quoteItemsState = parsed;
             renderQuoteItemsTable();
         } catch (err) {
@@ -12945,7 +12983,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         // Sharing an image only makes sense when there's a quote to render, and only on devices
         // whose share sheet can take a file (desktop Chrome, for example, cannot) — same check
         // sendInvoiceClientMessage uses.
-        document.getElementById('aiShareBtn').style.display = (navigator.share && navigator.canShare) ? '' : 'none';
+        document.getElementById('aiShareBtn').style.display = '';
         document.getElementById('aiCallBtn').style.display = appt.clientPhone ? '' : 'none';
         setAiPaymentLinkToggleVisibility(aiReminderCtx.msgKind);
         document.getElementById('aiReminderModal').style.display = 'flex';
@@ -14962,7 +15000,9 @@ ${closeBtnHtml}
         var sheet = document.createElement('div'); sheet.id = 'twSheet';
         var scrim = document.createElement('div'); scrim.id = 'twScrim'; scrim.setAttribute('onclick', 'twCloseSheet()');
         document.body.appendChild(scrim); document.body.appendChild(sheet); document.body.appendChild(nav); document.body.appendChild(side);
-        var fab = document.createElement('button'); fab.id = 'twFab'; fab.setAttribute('onclick', "switchScreen('entry')"); fab.innerHTML = ic('plus'); document.body.appendChild(fab);
+        var fab = document.createElement('button'); fab.id = 'twFab'; fab.setAttribute('onclick', 'twFabToggle()'); fab.setAttribute('aria-label', 'new'); fab.innerHTML = ic('plus'); document.body.appendChild(fab);
+        var fm = document.createElement('div'); fm.id = 'twFabMenu'; document.body.appendChild(fm);
+        document.addEventListener('click', function (e) { var m = $('twFabMenu'); if (m && m.classList.contains('show') && !e.target.closest('#twFab') && !e.target.closest('#twFabMenu')) twFabClose(); });
         // the add/edit worker form lives in its own pop-up now (it used to sit inside the accounts guide)
         var fc = $('addTechFormContainer');
         if (fc) { var m = document.createElement('div'); m.id = 'twTechFormModal'; m.innerHTML = '<div class="tw-fbox"></div>'; document.body.appendChild(m); m.firstChild.appendChild(fc); }
@@ -15017,9 +15057,17 @@ ${closeBtnHtml}
         document.querySelectorAll('.tw-brand').forEach(function (el) { el.__h = null; });
         paintBrand(); paintMoreBtn();
         document.body.classList.toggle('tw-home', cur === 'home');
-        var fab = $('twFab'); if (fab) fab.style.display = ((cur === 'log') && !(typeof jobOverlayOpen !== 'undefined' && jobOverlayOpen)) ? 'flex' : 'none';
+        var fab = $('twFab'); if (fab) { var showFab = (cur !== 'entry') && !(typeof jobOverlayOpen !== 'undefined' && jobOverlayOpen); fab.style.display = showFab ? 'flex' : 'none'; if (!showFab) twFabClose(); }
         if (sheetGrp !== null) paintSheet();
     }
+    window.twFabClose = function () { var m = $('twFabMenu'), f = $('twFab'); if (m) m.classList.remove('show'); if (f) f.classList.remove('open'); }
+    window.twFabToggle = function () {
+        var m = $('twFabMenu'), f = $('twFab'); if (!m) return;
+        if (m.classList.contains('show')) { twFabClose(); return; }
+        m.innerHTML = '<button onclick="twFabGo(\'entry\')">' + ic('plus') + '<span>' + escHtml(tw('sEntry')) + '</span></button><button onclick="twFabGo(\'appointments\')">' + ic('edit') + '<span>' + escHtml(tw('sApptNew')) + '</span></button>';
+        m.classList.add('show'); f.classList.add('open');
+    }
+    window.twFabGo = function (scr) { twFabClose(); switchScreen(scr); window.scrollTo({ top: 0, behavior: 'auto' }); }
     function brandKey() { try { return (companyProfile.name || '') + (companyProfile.logo ? companyProfile.logo.length : 0) + userName() + greet(); } catch (e) { return ''; } }
 
     // ---- wrap the screen switcher so our panels are first-class screens ----
