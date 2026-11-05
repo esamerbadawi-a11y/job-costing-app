@@ -249,6 +249,139 @@
             .no-print, header, .stats-grid, .card:not(#selectedStatsCard):not(#jobsTableCard) { display: none !important; }
             #selectedStatsCard { display: block !important; border: 1px solid #000 !important; background: #fff !important; color: #000 !important; box-shadow: none !important; }
         }
+    /* ===== Tallywork shell v2 (sidebar tree / bottom nav / top bar / home / screens) ===== */
+.tw-ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.tw-hide-old header, .tw-hide-old #twOldTabs, .tw-hide-old #checkTodayFab, .tw-hide-old #stateFilterBar{display:none !important}
+#twSide{display:none}
+#twNav{display:flex;position:fixed;bottom:0;inset-inline:0;z-index:900;background:var(--card-dark);border-top:1px solid var(--border-color);padding:6px 2px calc(10px + env(safe-area-inset-bottom,0px));box-shadow:0 -6px 18px rgba(0,0,0,.18)}
+#twNav button{flex:1;min-width:0;background:none;border:none;color:var(--text-muted);display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.64rem;padding:6px 1px;position:relative;border-radius:12px;cursor:pointer}
+#twNav button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#twNav button.on{color:var(--primary);font-weight:700}
+.tw-badge{position:absolute;top:2px;inset-inline-end:18%;min-width:17px;height:17px;border-radius:9px;background:#e11d48;color:#fff;font-size:.62rem;display:none;align-items:center;justify-content:center;padding:0 4px;font-weight:700}
+#twScrim{position:fixed;inset:0;z-index:940;display:none}
+#twSheet{position:fixed;inset-inline:10px;bottom:calc(76px + env(safe-area-inset-bottom,0px));background:var(--card-dark);border:1px solid var(--border-color);border-radius:18px;box-shadow:0 12px 34px rgba(0,0,0,.4);z-index:950;padding:8px;display:none}
+#twSheet .sh-t{padding:6px 14px 8px;color:var(--text-muted);font-size:.78rem;font-weight:700}
+#twSheet button{display:flex;justify-content:flex-start;gap:12px;align-items:center;width:100%;padding:12px 14px;border-radius:12px;background:none;border:none;color:var(--text-main);font-size:.95rem;text-align:start;cursor:pointer}
+#twSheet button.on{background:rgba(79,70,229,.14);color:var(--primary);font-weight:700}
+#twSheet .cnt, #twSide .cnt{margin-inline-start:auto;font-size:.75rem;color:var(--text-muted);white-space:nowrap}
+#twTop{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.tw-brand{display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer}
+.tw-logo{width:40px;height:40px;border-radius:12px;object-fit:contain;background:#fff;border:1px solid var(--border-color);flex:none;display:flex;align-items:center;justify-content:center;font-style:normal;font-weight:800;color:#fff}
+i.tw-logo{background:var(--primary);border:none}
+.tw-hello{min-width:0;line-height:1.25}
+.tw-hello b{display:block;font-size:1.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tw-hello small{display:block;color:var(--text-muted);font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:899px){.tw-hello small.co{display:none}}
+body.tw-home #todayJobsBanner{display:none !important}
+.tw-sync{width:9px;height:9px;border-radius:50%;background:#10b981;display:inline-block;flex:none}
+.tw-sync.off{background:#f59e0b}
+.tw-lang{height:42px;padding:0 12px;border-radius:12px;display:flex;align-items:center;gap:6px;background:var(--card-dark);border:1px solid var(--border-color);color:var(--text-main);cursor:pointer;font-weight:700;font-size:.85rem;white-space:nowrap}
+.tw-lang svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8}
+select.tw-sel{height:42px;padding:0 10px;border-radius:12px;background:var(--card-dark);border:1px solid var(--border-color);color:var(--text-main);width:auto !important;min-width:0;max-width:130px;font-size:.84rem;display:none}
+.tw-iconbtn{background:var(--card-dark);border:1px solid var(--border-color);color:var(--text-main);width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;flex:none}
+.tw-panel{display:none}
+.tw-kp{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+.tw-k{background:var(--card-dark);border:1px solid var(--border-color);border-radius:16px;padding:14px;display:flex;gap:12px;align-items:center;cursor:pointer}
+.tw-k .ib{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:none}
+.tw-k small{color:var(--text-muted);display:block;font-size:.76rem}.tw-k b{font-size:1.3rem}
+.tw-sec{margin:16px 4px 8px;color:var(--text-muted);font-size:.82rem;font-weight:700}
+.tw-card{background:var(--card-dark);border:1px solid var(--border-color);border-radius:16px;padding:13px 14px;margin-bottom:9px;display:flex;gap:12px;align-items:center;cursor:pointer}
+.tw-card.nc{cursor:default}
+.tw-card .tx{flex:1;min-width:0}.tw-card h4{margin:0;font-size:1rem}.tw-card p{margin:3px 0 0;color:var(--text-muted);font-size:.82rem}
+.tw-av{width:42px;height:42px;border-radius:50%;background:rgba(79,70,229,.16);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;flex:none}
+.tw-tag{padding:3px 10px;border-radius:9px;font-size:.72rem;color:#fff;white-space:nowrap}
+.tw-big{display:flex;gap:10px;align-items:center;justify-content:center;background:var(--primary);color:#fff;border-radius:16px;padding:15px;font-weight:700;font-size:1.05rem;margin-bottom:14px;cursor:pointer;border:none;width:100%}
+.tw-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.tw-tile{background:var(--card-dark);border:1px solid var(--border-color);border-radius:16px;padding:14px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;font-size:.84rem;cursor:pointer;color:var(--text-main);min-height:92px;justify-content:center}
+.tw-tile .ib{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.tw-tile.danger{color:#e11d48}
+.tw-empty{color:var(--text-muted);text-align:center;padding:18px;font-size:.88rem}
+.tw-pagehead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 2px 12px;flex-wrap:wrap}
+.tw-pagehead h2{margin:0;border:none;padding:0;font-size:1.2rem;font-weight:800}
+.tw-btns{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tw-sbtn{padding:8px 13px;border-radius:10px;font-size:.82rem;border:1px solid var(--border-color);background:var(--secondary-bg);color:var(--text-main);cursor:pointer;white-space:nowrap}
+.tw-sbtn.p{background:var(--primary);color:#fff;border-color:var(--primary)}
+.tw-sbtn.g{background:#16a34a;color:#fff;border-color:#16a34a}
+.tw-sbtn.d{background:rgba(225,29,72,.14);color:#e11d48;border-color:rgba(225,29,72,.4)}
+.tw-money{font-weight:800;white-space:nowrap}
+.tw-money.red{color:#f87171}.tw-money.grn{color:#34d399}
+#twFab{position:fixed;bottom:86px;inset-inline-start:16px;width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;display:none;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(79,70,229,.45);z-index:890;cursor:pointer;border:none;padding:0}
+#twFab .tw-ic{width:26px;height:26px}
+#twTechFormModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;padding:14px}
+#twTechFormModal .tw-fbox{background:var(--card-dark);border:1px solid var(--border-color);border-radius:14px;width:100%;max-width:560px;max-height:90vh;overflow:auto;padding:16px}
+#twTechFormModal #addTechFormContainer{margin-bottom:0}
+body.tw-on{padding-bottom:92px}
+body.tw-on #pdfContentArea{padding-bottom:64px}
+/* ---- simpler Log & Reports ---- */
+body.tw-on:not(.tw-more) #statsGridFull .tw-x{display:none}
+body.tw-on:not(.tw-more) #jobsTableCard thead th:nth-child(5),body.tw-on:not(.tw-more) #jobsTableCard thead th:nth-child(6),body.tw-on:not(.tw-more) #jobsTableCard thead th:nth-child(7),body.tw-on:not(.tw-more) #jobsTableCard thead th:nth-child(9),body.tw-on:not(.tw-more) #jobsTableCard thead th:nth-child(10),body.tw-on:not(.tw-more) #jobsTableCard thead th:nth-child(11),
+body.tw-on:not(.tw-more) #jobsTableBody td:nth-child(5),body.tw-on:not(.tw-more) #jobsTableBody td:nth-child(6),body.tw-on:not(.tw-more) #jobsTableBody td:nth-child(7),body.tw-on:not(.tw-more) #jobsTableBody td:nth-child(9),body.tw-on:not(.tw-more) #jobsTableBody td:nth-child(10),body.tw-on:not(.tw-more) #jobsTableBody td:nth-child(11){display:none}
+.tw-bulk.tw-hide{display:none !important}
+.tw-act{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.tw-act details{display:inline-block}
+.tw-act details>summary{list-style:none;cursor:pointer;padding:4px 10px;border-radius:6px;background:#334155;color:#fff;font-weight:700;font-size:.85rem;user-select:none}
+.tw-act details>summary::-webkit-details-marker{display:none}
+.tw-act details[open]{display:block;flex:1 1 100%}
+.tw-act details[open]>summary{background:var(--primary)}
+.tw-act .tw-pop{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+#twMoreBtn{padding:6px 14px;font-size:.8rem}
+.badge.cancelled{background:rgba(148,163,184,.18);color:#94a3b8;border:1px solid rgba(148,163,184,.4)}
+#debtReminderText{cursor:pointer;text-decoration:underline dotted}
+/* ---- appointments: services as chips ---- */
+#apptServiceCheckboxes label{position:relative;padding:6px 13px;border:1px solid var(--border-color);border-radius:999px;background:var(--card-dark)}
+#apptServiceCheckboxes label input{position:absolute;opacity:0;pointer-events:none;width:0;height:0}
+#apptServiceCheckboxes label:has(input:checked){background:var(--primary);color:#fff;border-color:var(--primary)}
+body.tw-on #screenAppointments .card>div:first-child button[onclick^="openAppointmentsListModal"]{display:none}
+@media(min-width:900px){
+  body.tw-on{padding-bottom:16px}
+  #twNav,#twSheet,#twScrim{display:none !important}#twFab{display:none !important}
+  #twSide{display:flex;position:fixed;top:0;bottom:0;inset-inline-start:0;width:260px;background:var(--card-dark);border-inline-end:1px solid var(--border-color);padding:14px 10px;flex-direction:column;gap:2px;z-index:900;overflow-y:auto}
+  #twSide .tw-brand{flex:none;padding:4px 6px 12px}
+  #twSide .tw-newjob{display:flex;gap:8px;align-items:center;justify-content:center;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:11px;font-weight:700;font-size:.92rem;cursor:pointer;margin:0 2px 10px;width:calc(100% - 4px)}
+  #twSide .tw-newjob .tw-ic{width:18px;height:18px}
+  #twSide .gb{display:flex;gap:12px;align-items:center;padding:11px 12px;border-radius:12px;color:var(--text-muted);font-size:.92rem;background:none;border:none;cursor:pointer;text-align:start;width:100%;position:relative;justify-content:flex-start}
+  #twSide .gb:hover,#twSide .sb:hover{background:var(--card-hover)}
+  #twSide .gb.on{background:rgba(79,70,229,.14);color:var(--primary);font-weight:700}
+  #twSide .gb .chev{margin-inline-start:auto;width:16px;height:16px;transition:transform .15s}
+  #twSide .grp.open .gb .chev{transform:rotate(180deg)}
+  #twSide .subs{display:none;margin:2px 0 6px;padding-inline-start:8px;border-inline-start:2px solid var(--border-color);margin-inline-start:16px}
+  #twSide .grp.open .subs{display:block}
+  #twSide .sb{display:flex;justify-content:flex-start;gap:10px;align-items:center;padding:8px 10px;border-radius:10px;color:var(--text-muted);font-size:.86rem;background:none;border:none;cursor:pointer;text-align:start;width:100%}
+  #twSide .sb .tw-ic{width:17px;height:17px}
+  #twSide .sb span:not(.cnt){white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  #twSide .sb .cnt2{display:block;font-size:.72rem;font-weight:400;color:var(--text-muted)}
+  #twSide .sb span:not(.cnt):has(.cnt2){white-space:normal}
+  #twSide .sb.on{color:var(--primary);font-weight:700;background:rgba(79,70,229,.1)}
+  #twSide .tw-badge{position:static;margin-inline-start:auto}
+  #twSide .gb .tw-badge + .chev{margin-inline-start:6px}
+  #twTop .tw-brand{display:none}
+  #twTop{justify-content:flex-end}
+  body.tw-on #pdfContentArea{margin-inline-start:276px}
+  .tw-kp{grid-template-columns:repeat(4,1fr)}
+  .tw-grid{grid-template-columns:repeat(4,1fr)}
+  #twHomeCols{display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start}
+  .tw-wgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+}
+.tw-pg{position:static !important;background:none !important;width:auto !important;height:auto !important;z-index:auto !important;align-items:stretch !important;justify-content:flex-start !important}
+.tw-pg>div{width:100% !important;max-width:none !important;max-height:none !important;overflow:visible !important;box-shadow:none !important;border:none !important;background:none !important;padding:0 !important;border-radius:0 !important}
+.tw-pg button.danger[onclick^="closeTechGuideModal"],.tw-pg button.danger[onclick^="closeTechPartnerReportModal"]{display:none}
+#techGuideModal button[onclick^="openAddTechnicianModal"]{display:none}
+.tw-pg h2{font-size:1.2rem}
+.tw-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tw-chips button{flex:1;min-width:90px}
+details.tw-cd{margin-bottom:14px}
+details.tw-cd>summary{cursor:pointer;color:var(--text-muted);font-size:.82rem;margin-bottom:8px}
+#screenWeekly button[onclick^="openFindTechModal"],#screenWeekly button[onclick^="openWorkerActivity"]{display:none}
+.tw-acc{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.tw-acc .tag{font-size:.72rem;padding:2px 9px;border-radius:9px}
+.tw-acc .tag.on{background:rgba(16,185,129,.16);color:#10b981}.tw-acc .tag.off{background:rgba(148,163,184,.2);color:#94a3b8}
+.tw-sbtn.sm{padding:4px 10px;font-size:.74rem}
+.tw-i{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px;flex:none}
+@media(max-width:700px){.tw-card.nc{flex-wrap:wrap}.tw-card.nc .tw-btns{width:100%;justify-content:flex-end}}
+body.tw-on .card{border-radius:18px}
+body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),body.tw-on #screenEntry select,body.tw-on #screenEntry textarea,body.tw-on #jobOverlay input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),body.tw-on #jobOverlay select,body.tw-on #jobOverlay textarea{border-radius:12px}
+@media(max-width:420px){.tw-lang span{display:none}select.tw-sel{max-width:96px}}
+
     </style>
 </head>
 <body>
@@ -336,7 +469,7 @@
         <div id="todayJobsContent" style="font-size:0.85rem;"></div>
     </div>
 
-    <div class="no-print" style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+    <div id="twOldTabs" class="no-print" style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
         <button id="tabEntryBtn" onclick="switchScreen('entry')" class="secondary" data-i18n="tabEntryLabel" style="flex:1; padding:12px; min-width:120px;"></button>
         <button id="tabWeeklyBtn" onclick="switchScreen('weekly')" class="secondary" data-i18n="tabWeeklyLabel" style="flex:1; padding:12px; min-width:120px;"></button>
         <button id="tabAppointmentsBtn" onclick="switchScreen('appointments')" class="secondary" data-i18n="tabAppointmentsLabel" style="flex:1; padding:12px; min-width:120px;"></button>
@@ -2093,9 +2226,9 @@
         qsSaveBtn: { ar: 'حفظ في الجدول', en: 'Save to Schedule' },
         qsAddBtn: { ar: 'إضافة', en: 'Add' },
         tabAppointmentsLabel: { ar: '📆 المواعيد', en: '📆 Appointments' },
-        tabContactsLabel: { ar: '📇 جهات الاتصال', en: '📇 Contacts' },
-        contactsTitle: { ar: '📇 جهات الاتصال', en: '📇 Contacts' },
-        viewContactsListBtn: { ar: 'عرض جهات الاتصال', en: 'View Contacts List' },
+        tabContactsLabel: { ar: '📇 بيانات العملاء', en: '📇 Customer Data' },
+        contactsTitle: { ar: '📇 بيانات العملاء', en: '📇 Customer Data' },
+        viewContactsListBtn: { ar: 'عرض بيانات العملاء', en: 'View Customer Data' },
         importContactsBtn: { ar: '🔄 استيراد من الشغلانات', en: '🔄 Import from Jobs' },
         addContactBtn: { ar: '+ إضافة عميل', en: '+ Add Contact' },
         contactsSearchPh: { ar: 'دوّر بالاسم، التليفون، الإيميل، العنوان، أو الشركة...', en: 'Search by name, phone, email, address, or company...' },
@@ -2719,7 +2852,7 @@
         gsPlaceholder: { ar: 'دوّر باسم العميل، رقم الهاتف، العنوان، أو اسم الفني...', en: 'Search by client name, phone, address, or technician name...' },
         gsJobs: { ar: 'شغلانات', en: 'Jobs' },
         gsTechnicians: { ar: 'فنيين', en: 'Technicians' },
-        gsContacts: { ar: 'جهات اتصال', en: 'Contacts' },
+        gsContacts: { ar: 'بيانات العملاء', en: 'Customer data' },
         gsNoResults: { ar: 'مفيش نتايج.', en: 'No results.' },
         splitRatioTitle: { ar: '💰 توزيع الأرباح لهذه الشغلانة', en: '💰 Profit Split for This Job' },
         splitRatioHelp: { ar: 'افتراضيًا الشركة بتقسم الصافي (بعد الفنيين والخامات) 40% لك، 40% لشريكك، 20% للشركة. لو الشغلانة دي ليها اتفاق مختلف، غيّر النسب هنا — الشغلانات التانية مش بتتأثر خالص.', en: "By default the net (after technicians and materials) splits 40% to you, 40% to your partner, 20% to the company. If this job has a different arrangement, change the percentages here — no other job is affected." },
@@ -14618,6 +14751,679 @@ ${closeBtnHtml}
             if (btn) { btn.disabled = false; btn.textContent = prevLabel; }
         }
     }
+
+/* ===================== Tallywork shell layer v2 (top bar, tree nav, home, worker screens) ===================== */
+(function () {
+    var P = {
+        home: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10',
+        wrench: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z',
+        cal: 'M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M16 2v4 M8 2v4 M3 10h18',
+        hat: 'M2 18a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1z M10 10V5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5 M4 15v-3a6 6 0 0 1 6-6 M14 6a6 6 0 0 1 6 6v3',
+        menu: 'M4 6h16 M4 12h16 M4 18h16',
+        search: 'M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16 M21 21l-4.3-4.3',
+        plus: 'M12 5v14 M5 12h14',
+        wallet: 'M20 12V8H6a2 2 0 0 1 0-4h12v4 M4 6v12a2 2 0 0 0 2 2h14v-4 M18 12a2 2 0 0 0 0 4h4v-4z',
+        pulse: 'M22 12h-4l-3 9L9 3l-3 9H2',
+        chart: 'M12 20V10 M18 20V4 M6 20v-4',
+        book: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z M20 17v4H6.5a2.5 2.5 0 0 1 0-5',
+        pin: 'M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z M12 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6',
+        receipt: 'M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z M16 8h-6 M16 12H8',
+        users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8 M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75',
+        user: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8',
+        contact: 'M16 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z M12 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4z M8.5 17a3.5 3.5 0 0 1 7 0',
+        list: 'M8 6h13 M8 12h13 M8 18h13 M3 6h.01 M3 12h.01 M3 18h.01',
+        edit: 'M12 20h9 M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z',
+        pie: 'M21.2 15.9A10 10 0 1 1 8 2.8 M22 12A10 10 0 0 0 12 2v10z',
+        bank: 'M3 22h18 M6 18v-7 M10 18v-7 M14 18v-7 M18 18v-7 M12 2l9 5H3z',
+        lock: 'M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z M7 11V7a5 5 0 0 1 10 0v4',
+        cloud: 'M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z',
+        upload: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M17 8l-5-5-5 5 M12 3v12',
+        table: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M3 10h18 M3 15h18 M9 3v18',
+        pdf: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M12 12v6 M9 15l3 3 3-3',
+        calc: 'M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z M8 6h8 M8 11h.01 M12 11h.01 M16 11h.01 M8 15h.01 M12 15h.01 M16 15h.01',
+        building: 'M3 21h18 M5 21V7l7-4 7 4v14 M9 10h.01 M9 14h.01 M15 10h.01 M15 14h.01',
+        sparkle: 'M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z',
+        key: 'M15 7a4 4 0 1 1-3.5 5.9L4 20.5V22h2v-2h2v-2h2l2.1-2.1A4 4 0 0 1 15 7z',
+        globe: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20 M2 12h20 M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20',
+        sun: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8 M12 2v2 M12 20v2 M2 12h2 M20 12h2 M4.9 4.9l1.4 1.4 M17.7 17.7l1.4 1.4 M4.9 19.1l1.4-1.4 M17.7 6.3l1.4-1.4',
+        logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9',
+        shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4',
+        bell: 'M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9 M13.7 21a2 2 0 0 1-3.4 0',
+        check: 'M20 6L9 17l-5-5',
+        chev: 'M6 9l6 6 6-6',
+        print: 'M6 9V2h12v7 M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2 M6 14h12v8H6z',
+        trash: 'M3 6h18 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6 M10 11v6 M14 11v6',
+        copy: 'M9 9h11a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1',
+        undo: 'M3 7v6h6 M3 13a9 9 0 1 0 3-7.7L3 8',
+        info: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20 M12 16v-4 M12 8h.01',
+        filter: 'M22 3H2l8 9.5V19l4 2v-8.5z',
+        mic: 'M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z M19 10v2a7 7 0 0 1-14 0v-2 M12 19v3',
+        camera: 'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8',
+        x: 'M18 6L6 18 M6 6l12 12'
+    };
+    function ic2(n) { return '<svg class="tw-i" viewBox="0 0 24 24"><path d="' + (P[n] || P.check) + '"/></svg>'; }
+    function ic(n) { return '<svg class="tw-ic" viewBox="0 0 24 24"><path d="' + (P[n] || P.check) + '"/></svg>'; }
+
+    var TW = {
+        home: { ar: 'الرئيسية', en: 'Home' }, jobs: { ar: 'الشغلانات', en: 'Jobs' }, appts: { ar: 'المواعيد', en: 'Appointments' },
+        clients: { ar: 'العملاء', en: 'Customers' }, workers: { ar: 'الفنيين', en: 'Workers' }, more: { ar: 'المزيد', en: 'More' },
+        sLog: { ar: 'السجل والتقارير', en: 'Log & Reports' }, sWeekly: { ar: 'شغل الأسبوع', en: 'Weekly Board' }, sEntry: { ar: 'شغلانة جديدة', en: 'New Job' },
+        sApptNew: { ar: 'طلب ميعاد جديد', en: 'New appointment' }, sApptList: { ar: 'قائمة المواعيد', en: 'Appointments list' },
+        wData: { ar: 'بيانات الفنيين', en: 'Worker data' }, wAct: { ar: 'نشاط الفنيين', en: 'Worker activity' }, wGuide: { ar: 'دليل الحسابات الشامل', en: 'Full accounts guide' },
+        wPay: { ar: 'دفعات الأسبوع ده', en: "This week's payments" }, wRep: { ar: 'تقرير الفني والشريك', en: 'Worker & partner report' }, wFind: { ar: 'فين الفني؟', en: 'Where is the worker?' },
+        hello: { ar: 'أهلاً', en: 'Hello' }, gM: { ar: 'صباح الخير', en: 'Good morning' }, gA: { ar: 'مساء الخير', en: 'Good afternoon' }, gE: { ar: 'مساء الخير', en: 'Good evening' },
+        kToday: { ar: 'شغل النهاردة', en: 'Jobs today' }, kRemain: { ar: 'متبقي تحصيله', en: 'Left to collect' },
+        kOpen: { ar: 'شغلانات شغالة', en: 'Active jobs' }, kAppts: { ar: 'مواعيد النهاردة', en: 'Appointments today' },
+        newJob: { ar: 'شغلانة جديدة', en: 'New job' }, checkToday: { ar: 'تحقق من النهاردة', en: 'Check today' },
+        todaySec: { ar: 'النهاردة', en: 'Today' }, noToday: { ar: 'مفيش شغل أو مواعيد النهاردة', en: 'No jobs or appointments today' },
+        attSec: { ar: 'محتاج انتباهك', en: 'Needs your attention' }, allGood: { ar: 'كله تمام ✔', en: 'All good ✔' },
+        aFollow: { ar: 'عميل موعد المتابعة بتاعه جه وعليه متبقي', en: 'client(s) due for follow-up with a balance' },
+        aDoneUnpaid: { ar: 'شغلانة خلصت وفيها متبقي لسه', en: 'finished job(s) with a balance left' },
+        aHandover: { ar: 'طلب تسليم من فني', en: 'handover request(s) from a worker' },
+        aNoPhoto: { ar: 'شغلانة مؤجلة من غير صور تقدّم', en: 'paused job(s) without progress photos' },
+        aOverdue: { ar: 'شغلانة مؤجلة عدّى ميعاد رجوعها', en: 'paused job(s) past their return date' },
+        aStuck: { ar: 'فني وصل ولسه ما خلّصش من يوم فات', en: 'worker(s) arrived but not finished since a previous day' },
+        backupLbl: { ar: 'آخر نسخة احتياطية من الجهاز ده:', en: 'Last backup from this device:' },
+        noBackup: { ar: 'ما اتحفظتش نسخة احتياطية من الجهاز ده', en: 'No backup saved from this device yet' },
+        daysAgo: { ar: 'يوم', en: 'day(s) ago' }, todayWord: { ar: 'النهاردة', en: 'today' }, backupNow: { ar: 'نسخة احتياطية الآن', en: 'Back up now' },
+        mReports: { ar: 'التقارير', en: 'Reports' }, mAccounts: { ar: 'الحسابات', en: 'Accounts' }, mData: { ar: 'البيانات', en: 'Data' },
+        mSettings: { ar: 'الإعدادات', en: 'Settings' }, mAdmin: { ar: 'الأدمن', en: 'Admin' },
+        lang: { ar: 'English', en: 'عربي' }, themeL: { ar: 'الوضع الفاتح / الغامق', en: 'Light / Dark mode' }, offline: { ar: 'مفيش إنترنت – التغييرات هتتحفظ لما يرجع', en: 'Offline – changes will sync when back online' },
+        wdAdd: { ar: '＋ إضافة فني جديد', en: '+ Add worker' }, wdEmpty: { ar: 'مفيش فنيين لسه. اضغط "إضافة فني جديد".', en: 'No workers yet. Tap "Add worker".' },
+        edit: { ar: 'تعديل', en: 'Edit' }, del: { ar: 'حذف', en: 'Delete' }, details: { ar: 'تفاصيل', en: 'Details' }, pay: { ar: 'دفع', en: 'Pay' },
+        hasLogin: { ar: 'عنده حساب دخول', en: 'Has app login' }, noPhone: { ar: 'مفيش رقم', en: 'No phone' },
+        wpDue: { ar: 'المستحق', en: 'Due' }, wpPaid: { ar: 'المدفوع', en: 'Paid' }, wpLeft: { ar: 'المتبقي', en: 'Left' },
+        wpNone: { ar: 'مفيش مستحقات للفنيين في الأسبوع ده', en: 'No worker dues in this week' },
+        wpTotal: { ar: 'إجمالي المتبقي الأسبوع ده', en: 'Total left this week' },
+        wpThis: { ar: 'الأسبوع ده', en: 'This week' }, wpPrev: { ar: '◀ أسبوع قبل', en: '◀ Previous week' }, wpNext: { ar: 'أسبوع بعد ▶', en: 'Next week ▶' },
+        moreDet: { ar: 'تفاصيل أكتر', en: 'More details' }, lessDet: { ar: 'تفاصيل أقل', en: 'Fewer details' },
+        gsAppts: { ar: 'مواعيد', en: 'Appointments' },
+        customDates: { ar: 'تواريخ مخصصة', en: 'Custom dates' },
+        accOn: { ar: 'حساب دخول شغال', en: 'Login active' }, accOff: { ar: 'الحساب موقوف', en: 'Login paused' },
+        accReset: { ar: '🔑 كلمة السر', en: '🔑 Password' }, accStop: { ar: 'إيقاف', en: 'Pause' }, accStart: { ar: 'تفعيل', en: 'Enable' },
+        accConfirmCreate: { ar: 'إنشاء حساب دخول للفني بالإيميل {e} وإرسال رابط له يحط منه كلمة السر بنفسه؟', en: 'Create a login for {e} and email them a link to set their own password?' },
+        accCreated: { ar: 'اتعمل الحساب واتبعت رابط تعيين كلمة السر على {e}. لو ما وصلش قوله يبص في Spam.', en: 'Login created. A set-password link was emailed to {e}. If it does not arrive, ask them to check Spam.' },
+        accSentExisting: { ar: 'الحساب كان موجود بالفعل. اتبعت رابط كلمة سر جديدة على {e}.', en: 'That login already existed. A new password link was emailed to {e}.' },
+        accConfirmReset: { ar: 'نبعت رابط إعادة تعيين كلمة السر على {e}؟', en: 'Email a password reset link to {e}?' },
+        accResetSent: { ar: 'اتبعت رابط إعادة تعيين كلمة السر على {e}.', en: 'Password reset link sent to {e}.' },
+        accConfirmStop: { ar: 'إيقاف دخول {e}؟ بياناته وشغله هيفضلوا زي ما هما، وتقدر ترجعه في أي وقت.', en: 'Pause login for {e}? His data stays untouched and you can re-enable him any time.' },
+        accConfirmStart: { ar: 'تفعيل دخول {e} تاني؟', en: 'Re-enable login for {e}?' },
+        accStopped: { ar: 'اتوقف الدخول.', en: 'Login paused.' }, accStarted: { ar: 'اتفعّل الدخول.', en: 'Login enabled.' },
+        accFail: { ar: 'ما اتنفذش', en: 'Did not work' },
+        apFilt1: { ar: 'ظاهر', en: 'Showing' }, apFilt2: { ar: 'من', en: 'of' }, apFilt3: { ar: 'بسبب فلتر الولاية', en: 'because of the state filter' }, apShowAll: { ar: 'اعرض كل الولايات', en: 'Show all states' }
+    };
+    function tw(k) { var o = TW[k]; return o ? (o[currentLang] || o.en) : k; }
+    function tt(key, fb) { try { var v = t(key); if (v && v !== key) return String(v).replace(/^[^\p{L}\p{N}]+/u, ''); } catch (e) {} return fb || key; }
+    function $(id) { return document.getElementById(id); }
+    function isDesk() { return window.matchMedia && window.matchMedia('(min-width:900px)').matches; }
+    function money(n) { return '$' + (Math.round(n * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
+    function go(s) { return function () { switchScreen(s); }; }
+
+    // ----- navigation model (screens belong to groups; modal-style items have no screen) -----
+    var NAV = [
+        { k: 'home', ic: 'home', go: go('home'), scr: ['home'] },
+        { k: 'jobs', ic: 'wrench', land: go('log'), subs: [
+            { k: 'sEntry', ic: 'plus', go: go('entry'), scr: 'entry' },
+            { k: 'sWeekly', ic: 'table', go: go('weekly'), scr: 'weekly' },
+            { k: 'sLog', ic: 'chart', go: go('log'), scr: 'log' }] },
+        { k: 'appts', ic: 'cal', subs: [
+            { k: 'sApptNew', ic: 'edit', go: go('appointments'), scr: 'appointments' },
+            { k: 'sApptList', ic: 'list', go: function () { openAppointmentsListModal(); }, cnt: 'appt' }] },
+        { k: 'clients', ic: 'contact', go: go('contacts'), scr: ['contacts'] },
+        { k: 'workers', ic: 'hat', badge: true, subs: [
+            { k: 'wData', ic: 'user', go: go('wdata'), scr: 'wdata' },
+            { k: 'wAct', ic: 'pulse', go: function () { openWorkerActivity(); } },
+            { k: 'wGuide', ic: 'book', go: go('wguide'), scr: 'wguide' },
+            { k: 'wPay', ic: 'wallet', go: go('wpay'), scr: 'wpay' },
+            { k: 'wRep', ic: 'pie', go: function () { openTechPartnerReportModal(); }, scr: 'wrep' },
+            { k: 'wFind', ic: 'pin', go: function () { openFindTechModal(); } }] },
+        { k: 'more', ic: 'menu', hub: go('more'), scr: ['more'], subs: [
+            { k: 'mReports', ic: 'receipt', go: function () { twMoreGo('reports'); } },
+            { k: 'mAccounts', ic: 'bank', go: function () { twMoreGo('accounts'); } },
+            { k: 'mData', ic: 'cloud', go: function () { twMoreGo('data'); } },
+            { k: 'mSettings', ic: 'building', go: function () { twMoreGo('settings'); } }] }
+    ];
+    function screenOf(g) { var r = []; if (g.scr) r = r.concat(g.scr); (g.subs || []).forEach(function (s) { if (s.scr) r.push(s.scr); }); return r; }
+    function groupIndexOf(cur) { for (var i = 0; i < NAV.length; i++) if (screenOf(NAV[i]).indexOf(cur) >= 0) return i; return 0; }
+    var openGrp = null, sheetGrp = null;
+
+    function twMoreGo(id) {
+        switchScreen('more');
+        setTimeout(function () { var el = $('twg_' + id); if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60);
+    }
+    window.twGrp = function (i) {
+        var g = NAV[i];
+        if (!g.subs) { closeSheet(); g.go(); return; }
+        if (isDesk()) {
+            var cur = (typeof currentScreen === 'string') ? currentScreen : 'home';
+            if (groupIndexOf(cur) === i && openGrp === i) { openGrp = -1; syncNav(true); return; }
+            openGrp = i; closeSheet();
+            if (groupIndexOf(cur) !== i) { (g.land || g.hub || g.subs[0].go)(); } else syncNav(true);
+        } else {
+            if (g.hub) { closeSheet(); g.hub(); return; }
+            if (sheetGrp === i) closeSheet(); else openSheet(i);
+        }
+    };
+    window.twSub = function (i, j) { closeSheet(); NAV[i].subs[j].go(); };
+    function openSheet(i) { sheetGrp = i; paintSheet(); $('twSheet').style.display = 'block'; $('twScrim').style.display = 'block'; }
+    function closeSheet() { sheetGrp = null; if ($('twSheet')) { $('twSheet').style.display = 'none'; $('twScrim').style.display = 'none'; } }
+    window.twCloseSheet = closeSheet;
+
+    function apptCnt() {
+        try { var n = appointments.length, f = appointments.filter(function (a) { return a.followUpNeeded; }).length; return n ? '(' + n + (f ? ' · 🔔' + f : '') + ')' : ''; } catch (e) { return ''; }
+    }
+    function paintSheet() {
+        var g = NAV[sheetGrp]; if (!g) return;
+        var cur = (typeof currentScreen === 'string') ? currentScreen : 'home';
+        $('twSheet').innerHTML = '<div class="sh-t">' + escHtml(tw(g.k)) + '</div>' + g.subs.map(function (s, j) {
+            return '<button class="' + (s.scr === cur ? 'on' : '') + '" onclick="twSub(' + sheetGrp + ',' + j + ')">' + ic(s.ic) + '<span>' + escHtml(tw(s.k)) + '</span>' + (s.cnt ? '<span class="cnt" dir="ltr">' + escHtml(apptCnt()) + '</span>' : '') + '</button>';
+        }).join('');
+    }
+
+    // ----- brand: company logo + greeting + name -----
+    function userName() {
+        var n = ''; try { n = (USER_DISPLAY_NAMES[currentUserEmail] || '').split(' ')[0]; } catch (e) {}
+        if (!n) { try { n = String(currentUserEmail || '').split('@')[0]; } catch (e) {} }
+        return n ? n.charAt(0).toUpperCase() + n.slice(1).toLowerCase() : '';
+    }
+    function greet() { var h = new Date().getHours(); return tw(h < 12 ? 'gM' : (h < 18 ? 'gA' : 'gE')); }
+    function brandHtml() {
+        var cp = {}; try { cp = companyProfile || {}; } catch (e) {}
+        var nm = (cp.name || '').trim();
+        var logo = cp.logo ? '<img class="tw-logo" alt="" src="' + String(cp.logo).replace(/"/g, '&quot;') + '">' : '<i class="tw-logo">' + escHtml((nm || userName() || 'T').charAt(0).toUpperCase()) + '</i>';
+        return logo + '<div class="tw-hello"><small>' + escHtml(greet()) + '</small><b>' + escHtml(userName() || nm) + '</b>' + (nm && userName() ? '<small class="co">' + escHtml(nm) + '</small>' : '') + '</div><span class="tw-sync' + (navigator.onLine ? '' : ' off') + '" title="' + (navigator.onLine ? '' : escHtml(tw('offline'))) + '"></span>';
+    }
+    function paintBrand() {
+        var h = brandHtml();
+        document.querySelectorAll('.tw-brand').forEach(function (el) { if (el.__h !== h) { el.innerHTML = h; el.__h = h; } });
+    }
+
+    // ----- state picker (moved to the top bar) -----
+    function paintState() {
+        var sel = $('twStateSel'); if (!sel) return;
+        var ks = { list: [], unknown: false }; try { ks = knownStates(); } catch (e) {}
+        var show = (ks.list.length + (ks.unknown ? 1 : 0) >= 2) || (typeof stateFilter !== 'undefined' && stateFilter !== 'ALL');
+        sel.style.display = show ? 'block' : 'none';
+        var h = '<option value="ALL">📍 ' + (currentLang === 'ar' ? 'الكل' : 'All') + '</option>' + ks.list.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('') + (ks.unknown ? '<option value="?">❔</option>' : '');
+        if (sel.__h !== h) { sel.innerHTML = h; sel.__h = h; }
+        try { sel.value = stateFilter; } catch (e) {}
+    }
+
+    function buildShell() {
+        if ($('twNav')) return;
+        var nav = document.createElement('nav'); nav.id = 'twNav';
+        var side = document.createElement('aside'); side.id = 'twSide';
+        var sheet = document.createElement('div'); sheet.id = 'twSheet';
+        var scrim = document.createElement('div'); scrim.id = 'twScrim'; scrim.setAttribute('onclick', 'twCloseSheet()');
+        document.body.appendChild(scrim); document.body.appendChild(sheet); document.body.appendChild(nav); document.body.appendChild(side);
+        var fab = document.createElement('button'); fab.id = 'twFab'; fab.setAttribute('onclick', "switchScreen('entry')"); fab.innerHTML = ic('plus'); document.body.appendChild(fab);
+        // the add/edit worker form lives in its own pop-up now (it used to sit inside the accounts guide)
+        var fc = $('addTechFormContainer');
+        if (fc) { var m = document.createElement('div'); m.id = 'twTechFormModal'; m.innerHTML = '<div class="tw-fbox"></div>'; document.body.appendChild(m); m.firstChild.appendChild(fc); }
+        var anchor = $('todayJobsBanner') || $('twOldTabs');
+        var wrap = document.createElement('div');
+        wrap.innerHTML =
+            '<div id="twTop" class="no-print"><div class="tw-brand" onclick="openCompanyProfileModal()"></div>' +
+            '<select id="twStateSel" class="tw-sel" onchange="setStateFilter(this.value)" aria-label="state"></select>' +
+            '<button class="tw-lang" id="twLangBtn" onclick="toggleLanguage()" aria-label="language"></button>' +
+            '<button class="tw-iconbtn" onclick="openGlobalSearch()" aria-label="search">' + ic('search') + '</button></div>' +
+            '<div id="screenHome" class="tw-panel no-print"></div><div id="screenWData" class="tw-panel no-print"></div><div id="screenWPay" class="tw-panel no-print"></div><div id="screenMore" class="tw-panel no-print"></div>';
+        while (wrap.firstChild) anchor.parentNode.insertBefore(wrap.firstChild, anchor);
+        ['techGuideModal', 'techPartnerReportModal'].forEach(function (id) { var m = $(id); if (m) { m.classList.add('tw-pg'); anchor.parentNode.insertBefore(m, anchor); } });
+        try { restyleReport(); } catch (e) { console.error('rep', e); }
+        var tb0 = $('twTop'), bn0 = $('todayJobsBanner'); if (tb0 && bn0) tb0.parentNode.insertBefore(bn0, tb0.nextSibling);
+        document.body.classList.add('tw-on', 'tw-hide-old');
+        // simpler Log & Reports: 4 main numbers, everything else behind one toggle
+        var prim = { statTotalJobs: 1, statTotalReceived: 1, statActualRemaining: 1, statTotalNet: 1 };
+        document.querySelectorAll('#statsGridFull .stat-card').forEach(function (c) { var s = c.querySelector('strong'); if (s && !prim[s.id]) c.classList.add('tw-x'); });
+        var tb = $('statsToggleBtn');
+        if (tb && !$('twMoreBtn')) { var mb = document.createElement('button'); mb.id = 'twMoreBtn'; mb.className = 'secondary'; mb.setAttribute('onclick', 'twToggleMore()'); tb.parentNode.insertBefore(mb, tb.nextSibling); tb.parentNode.style.gap = '8px'; tb.parentNode.style.justifyContent = 'flex-start'; }
+        try { if (localStorage.getItem('tw_more') === '1') document.body.classList.add('tw-more'); } catch (e) {}
+        var bb = document.querySelector('button[onclick="printSelectedJobs()"]'); if (bb) bb.parentElement.classList.add('tw-bulk');
+        var dt = $('debtReminderText'); if (dt) dt.setAttribute('onclick', 'toggleDebtFilter(); dismissDebtReminderBanner();');
+        paintLang(); syncNav(true);
+    }
+    window.twToggleMore = function () {
+        var on = document.body.classList.toggle('tw-more');
+        try { localStorage.setItem('tw_more', on ? '1' : '0'); } catch (e) {}
+        paintMoreBtn();
+    };
+    function paintMoreBtn() { var b = $('twMoreBtn'); if (b) b.textContent = tw(document.body.classList.contains('tw-more') ? 'lessDet' : 'moreDet'); }
+    function paintLang() { var b = $('twLangBtn'); if (b) b.innerHTML = ic('globe') + '<span>' + (currentLang === 'ar' ? 'English' : 'عربي') + '</span>'; }
+
+    var lastSig = '';
+    function syncNav(force) {
+        var cur = (typeof currentScreen === 'string') ? currentScreen : 'home';
+        var gi = groupIndexOf(cur);
+        if (openGrp === null && NAV[gi].subs && isDesk()) openGrp = gi;
+        var c = workerFlagCounts(), n = c.handover + c.nophoto + c.overdue + c.stuck;
+        var sig = [cur, openGrp, currentLang, n, apptCnt(), isDesk() ? 'd' : 'm', brandKey()].join('|');
+        if (!force && sig === lastSig) return; lastSig = sig;
+        var nb = '', sb = '<div class="tw-brand" onclick="openCompanyProfileModal()"></div><button class="tw-newjob" onclick="switchScreen(\'entry\')">' + ic('plus') + escHtml(tw('newJob')) + '</button>';
+        NAV.forEach(function (g, i) {
+            var on = i === gi, badge = g.badge ? '<b class="tw-badge" style="' + (n ? 'display:flex' : '') + '">' + n + '</b>' : '';
+            nb += '<button class="' + (on ? 'on' : '') + '" onclick="twGrp(' + i + ')">' + ic(g.ic) + '<span>' + escHtml(tw(g.k)) + '</span>' + badge + '</button>';
+            if (!g.subs) { sb += '<button class="gb ' + (on ? 'on' : '') + '" onclick="twGrp(' + i + ')">' + ic(g.ic) + '<span>' + escHtml(tw(g.k)) + '</span></button>'; return; }
+            sb += '<div class="grp' + (openGrp === i ? ' open' : '') + '"><button class="gb ' + (on ? 'on' : '') + '" onclick="twGrp(' + i + ')">' + ic(g.ic) + '<span>' + escHtml(tw(g.k)) + '</span>' + badge + ic('chev').replace('tw-ic', 'tw-ic chev') + '</button><div class="subs">' +
+                g.subs.map(function (s, j) { return '<button class="sb ' + (s.scr === cur ? 'on' : '') + '" onclick="twSub(' + i + ',' + j + ')">' + ic(s.ic) + '<span>' + escHtml(tw(s.k)) + (s.cnt && apptCnt() ? '<small class="cnt2" dir="ltr">' + escHtml(apptCnt()) + '</small>' : '') + '</span></button>'; }).join('') + '</div></div>';
+        });
+        $('twNav').innerHTML = nb; $('twSide').innerHTML = sb;
+        document.querySelectorAll('.tw-brand').forEach(function (el) { el.__h = null; });
+        paintBrand(); paintMoreBtn();
+        document.body.classList.toggle('tw-home', cur === 'home');
+        var fab = $('twFab'); if (fab) fab.style.display = ((cur === 'log') && !(typeof jobOverlayOpen !== 'undefined' && jobOverlayOpen)) ? 'flex' : 'none';
+        if (sheetGrp !== null) paintSheet();
+    }
+    function brandKey() { try { return (companyProfile.name || '') + (companyProfile.logo ? companyProfile.logo.length : 0) + userName() + greet(); } catch (e) { return ''; } }
+
+    // ---- wrap the screen switcher so our panels are first-class screens ----
+    var PANELS = { home: 'screenHome', more: 'screenMore', wdata: 'screenWData', wpay: 'screenWPay', wguide: 'techGuideModal', wrep: 'techPartnerReportModal' };
+    var FLEXP = { wguide: 1, wrep: 1 }, TICKP = { home: 1, wdata: 1, wpay: 1, more: 1 };
+    var _old = switchScreenNow;
+    switchScreenNow = function (name) {
+        buildShell();
+        if (name === 'workers') name = 'wdata';
+        Object.keys(PANELS).forEach(function (k) { $(PANELS[k]).style.display = 'none'; });
+        if (PANELS[name]) {
+            _old('none'); currentScreen = name;
+            $(PANELS[name]).style.display = FLEXP[name] ? 'flex' : 'block';
+            renderPanel(name);
+        } else { _old(name); }
+        var gi = groupIndexOf(name); if (NAV[gi].subs && isDesk()) openGrp = gi;
+        closeSheet(); syncNav(true); try { window.scrollTo(0, 0); } catch (e) {}
+    };
+    function renderPanel(name) {
+        if (name === 'home') renderHome(); else if (name === 'wdata') renderWData(); else if (name === 'wpay') renderWPay(); else if (name === 'more') renderMore(); else if (name === 'wguide') { try { renderTechGuideContent(); } catch (e) {} } else if (name === 'wrep') { try { renderTechPartnerReportContent(); } catch (e) {} }
+    }
+
+    // ---------- data helpers ----------
+    function todayIso() { return isoDate(new Date()); }
+    function activeJobs() { return (savedJobs || []).filter(function (j) { return j.jobStatus !== 'ملغي' && passesStateFilter(jobState(j)); }); }
+    function workerFlagCounts() {
+        var c = { handover: 0, nophoto: 0, overdue: 0, stuck: 0 };
+        try { (workerTasks || []).filter(function (x) { return !x.hidden && passesStateFilter(stateOfText(x.address)); }).forEach(function (x) { workerTaskFlags(x).forEach(function (f) { if (c[f.k] !== undefined) c[f.k]++; }); }); } catch (e) {}
+        return c;
+    }
+    function kpi(icon, label, val, color, bg, onclick) {
+        return '<div class="tw-k" onclick="' + onclick + '"><div class="ib" style="background:' + bg + ';color:' + color + '">' + ic(icon) + '</div><div><small>' + escHtml(label) + '</small><b>' + val + '</b></div></div>';
+    }
+    window.twShowDebt = function () { switchScreen('log'); setTimeout(function () { try { if (!onlyShowDebt) toggleDebtFilter(); } catch (e) {} }, 30); };
+    function setHtml(id, html) { var el = $(id); if (el && el.__twLast !== html) { el.innerHTML = html; el.__twLast = html; } }
+
+    function homeHtml() {
+        var today = todayIso(), jobs = activeJobs();
+        var todayJobs = jobs.filter(function (j) { return j.jobStatus === 'شغال' && j.startDate && j.startDate <= today && (j.endDate || j.startDate) >= today; });
+        var todayAppts = (appointments || []).filter(function (a) { return a.requestedDate === today && passesStateFilter(stateOfText(a.clientAddress || '')); });
+        var remain = 0; jobs.forEach(function (j) { var r = jobRemaining(j); if (r > 0) remain += r; });
+        var open = jobs.filter(function (j) { return j.jobStatus === 'شغال'; }).length;
+        var h = '<div class="tw-kp">' + kpi('wrench', tw('kToday'), todayJobs.length, '#4f46e5', 'rgba(79,70,229,.14)', "switchScreen('weekly')") +
+            kpi('wallet', tw('kRemain'), money(remain), '#d97706', 'rgba(217,119,6,.16)', 'twShowDebt()') +
+            kpi('pulse', tw('kOpen'), open, '#0ea5e9', 'rgba(14,165,233,.16)', "switchScreen('log')") +
+            kpi('cal', tw('kAppts'), todayAppts.length, '#059669', 'rgba(5,150,105,.16)', "switchScreen('appointments')") + '</div>';
+        h += '<button class="tw-big" onclick="switchScreen(\'entry\')">' + ic('plus') + escHtml(tw('newJob')) + '</button>';
+        var left = '<div class="tw-sec">' + escHtml(tw('todaySec')) + '</div>';
+        if (!todayJobs.length && !todayAppts.length) left += '<div class="tw-empty">' + escHtml(tw('noToday')) + '</div>';
+        todayJobs.forEach(function (j) {
+            left += '<div class="tw-card" onclick="openJobOverlay(\'' + jsArg(String(j.id)) + '\')"><div class="tx"><h4>' + escHtml(j.clientName || '—') + '</h4><p>' + escHtml(j.clientAddress || '') + (j.scheduledTime ? ' · ' + escHtml(j.scheduledTime) : '') + '</p></div>' +
+                (jobRemaining(j) > 0 ? '<span class="tw-tag" style="background:#d97706">' + money(jobRemaining(j)) + '</span>' : '<span class="tw-tag" style="background:#059669">✔</span>') + '</div>';
+        });
+        todayAppts.forEach(function (a) {
+            left += '<div class="tw-card" onclick="editAppointment(\'' + jsArg(String(a.id)) + '\')"><div class="tx"><h4>' + escHtml(a.clientName || '—') + '</h4><p>' + escHtml(a.clientAddress || '') + (a.requestedTime ? ' · ' + escHtml(a.requestedTime) : '') + '</p></div><span class="tw-tag" style="background:#4f46e5">' + escHtml(tw('appts')) + '</span></div>';
+        });
+        var att = [], cnt = workerFlagCounts();
+        var follow = jobs.filter(function (j) { return j.followUpDate && j.followUpDate <= today && jobRemaining(j) > 0; }).length;
+        var doneUnpaid = jobs.filter(function (j) { return j.jobStatus === 'خلص' && jobRemaining(j) > 0; }).length;
+        if (follow) att.push([follow, 'aFollow', 'wallet', 'twShowDebt()']);
+        if (doneUnpaid) att.push([doneUnpaid, 'aDoneUnpaid', 'receipt', 'twShowDebt()']);
+        if (cnt.handover) att.push([cnt.handover, 'aHandover', 'hat', "switchScreen('wdata')"]);
+        if (cnt.nophoto) att.push([cnt.nophoto, 'aNoPhoto', 'bell', "switchScreen('wdata')"]);
+        if (cnt.overdue) att.push([cnt.overdue, 'aOverdue', 'cal', "switchScreen('wdata')"]);
+        if (cnt.stuck) att.push([cnt.stuck, 'aStuck', 'pin', "switchScreen('wdata')"]);
+        var right = '<div class="tw-sec">' + escHtml(tw('attSec')) + '</div>';
+        if (!att.length) right += '<div class="tw-empty">' + escHtml(tw('allGood')) + '</div>';
+        att.forEach(function (a) { right += '<div class="tw-card" onclick="' + a[3] + '"><div style="color:#d97706">' + ic(a[2]) + '</div><div class="tx"><h4>' + a[0] + '</h4><p>' + escHtml(tw(a[1])) + '</p></div></div>'; });
+        var b = null; try { b = parseInt(localStorage.getItem('tw_last_backup') || '', 10) || null; } catch (e) {}
+        var days = b ? Math.floor((Date.now() - b) / 86400000) : null;
+        right += '<div class="tw-card" onclick="exportBackupJSON()"><div style="color:' + (days === null || days > 7 ? '#e11d48' : '#059669') + '">' + ic('cloud') + '</div><div class="tx"><h4>' + escHtml(tw('backupNow')) + '</h4><p>' +
+            (days === null ? escHtml(tw('noBackup')) : escHtml(tw('backupLbl')) + ' ' + (days === 0 ? escHtml(tw('todayWord')) : days + ' ' + escHtml(tw('daysAgo')))) + '</p></div></div>';
+        right += '<div class="tw-card" onclick="openAgendaModal()"><div style="color:#4f46e5">' + ic('check') + '</div><div class="tx"><h4>' + escHtml(tw('checkToday')) + '</h4></div></div>';
+        return h + '<div id="twHomeCols"><div>' + left + '</div><div>' + right + '</div></div>';
+    }
+    window.renderHome = function renderHome() { try { setHtml('screenHome', homeHtml()); } catch (e) { console.error('home', e); } };
+
+    // ---------- Worker data (its own screen) ----------
+    function attentionCards() {
+        var c = workerFlagCounts(), out = '';
+        [['handover', 'aHandover'], ['nophoto', 'aNoPhoto'], ['overdue', 'aOverdue'], ['stuck', 'aStuck']].forEach(function (a) {
+            if (c[a[0]]) out += '<div class="tw-card" onclick="openWorkerActivity()"><div style="color:#d97706">' + ic('bell') + '</div><div class="tx"><h4>' + c[a[0]] + '</h4><p>' + escHtml(tw(a[1])) + '</p></div></div>';
+        });
+        return out ? '<div class="tw-sec">' + escHtml(tw('attSec')) + '</div>' + out : '';
+    }
+    function accRow(n) {
+        var a = null; try { a = accFor(n); } catch (e) {}
+        if (!a) return '';
+        var on = a.active !== false, em = escHtml(a.email), ej = jsArg(a.email), lj = jsArg(a.lang || 'en');
+        return '<div class="tw-acc"><span class="tag ' + (on ? 'on' : 'off') + '" title="' + em + '">📲 ' + escHtml(tw(on ? 'accOn' : 'accOff')) + '</span>' +
+            '<button class="tw-sbtn sm" onclick="twAccReset(\'' + ej + '\',\'' + lj + '\')">' + escHtml(tw('accReset')) + '</button>' +
+            '<button class="tw-sbtn sm" onclick="twAccToggle(\'' + ej + '\')">' + escHtml(tw(on ? 'accStop' : 'accStart')) + '</button></div>';
+    }
+    window.renderWData = function renderWData() {
+        var names = []; try { names = getUniqueRegisteredTechnicians(); } catch (e) {}
+        var h = '<div class="tw-pagehead"><h2>' + escHtml(tw('wData')) + '</h2><button class="tw-sbtn p" onclick="openAddTechnicianModal()">' + escHtml(tw('wdAdd')) + '</button></div>' + attentionCards();
+        if (!names.length) h += '<div class="tw-empty">' + escHtml(tw('wdEmpty')) + '</div>';
+        h += '<div class="tw-wgrid">';
+        names.forEach(function (n) {
+            var raw = (technicianPhones && technicianPhones[n]) || '', ph = '';
+            if (raw) { try { var sp = splitPhoneForEdit(raw); ph = sp.code === 'other' ? raw : '+' + sp.code + ' ' + sp.local; } catch (e) { ph = raw; } }
+            var login = false; try { login = !!workerAccountForTech(n); } catch (e) {}
+            h += '<div class="tw-card nc"><div class="tw-av">' + escHtml(n.charAt(0).toUpperCase()) + '</div><div class="tx"><h4>' + escHtml(n) + '</h4><p dir="ltr" style="text-align:start;unicode-bidi:isolate">' + (ph ? escHtml(ph) : escHtml(tw('noPhone'))) + '</p>' + accRow(n) + '</div>' +
+                '<div class="tw-btns"><button class="tw-sbtn" onclick="openEditTechnicianModal(\'' + jsArg(n) + '\')">' + escHtml(tw('edit')) + '</button><button class="tw-sbtn" onclick="twDetails(\'' + jsArg(n) + '\')">' + escHtml(tw('details')) + '</button><button class="tw-sbtn d" onclick="deleteTechnicianFromDirectory(\'' + jsArg(n) + '\')">' + escHtml(tw('del')) + '</button></div></div>';
+        });
+        setHtml('screenWData', h + '</div>');
+    };
+    window.renderWorkers = window.renderWData;
+    window.twDetails = function (name, wk) {
+        if (wk) { var w = weekWindow(); try { $('guideDateFrom').value = w.start; $('guideDateTo').value = w.end; } catch (e) {} }
+        openTechGuideModal(); showTechDetails(name);
+    };
+
+    // ---------- This week's payments (its own screen; fixes it opening the whole guide) ----------
+    var wpOff = 0;
+    function weekWindow() { return weekOf(todayIso(), wpOff); }
+    function weekPayRows() {
+        var w = weekWindow(), rows = [];
+        try {
+            var stats = computeTechPeriodStats(w.start, w.end);
+            var names = new Set(Object.keys(stats).concat(techBonuses.filter(function (b) { return b.date >= w.start && b.date <= w.end; }).map(function (b) { return b.name; }), getExtraPartnerNames()));
+            names.forEach(function (name) {
+                var due = round2((stats[name] ? stats[name].dues : 0) + partnerShareInPeriod(name, w.start, w.end).total + techBonusTotalInPeriod(name, w.start, w.end));
+                var paid = round2(techPaymentsInPeriod(name, w.start, w.end).reduce(function (s, p) { return s + parseVal(p.amount); }, 0));
+                if (due > 0.005 || paid > 0.005) rows.push({ name: name, due: due, paid: paid, left: round2(due - paid) });
+            });
+        } catch (e) { console.error('weekPay', e); }
+        return rows.sort(function (a, b) { return b.left - a.left; });
+    }
+    window.twWeek = function (d) { wpOff = d === 0 ? 0 : wpOff + d; renderWPay(); };
+    window.twPay = function (name) { var w = weekWindow(); try { $('guideDateFrom').value = w.start; $('guideDateTo').value = w.end; } catch (e) {} openTechPaymentPrompt(name, null, true); };
+    window.renderWPay = function renderWPay() {
+        var w = weekWindow(), rows = weekPayRows(), total = 0; rows.forEach(function (r) { if (r.left > 0) total += r.left; });
+        var h = '<div class="tw-pagehead"><h2>' + escHtml(tw('wPay')) + '</h2><div class="tw-btns"><button class="tw-sbtn" onclick="twWeek(-1)">' + escHtml(tw('wpPrev')) + '</button><button class="tw-sbtn' + (wpOff === 0 ? ' p' : '') + '" onclick="twWeek(0)">' + escHtml(tw('wpThis')) + '</button><button class="tw-sbtn" onclick="twWeek(1)">' + escHtml(tw('wpNext')) + '</button></div></div>' +
+            '<div class="tw-sec" dir="ltr" style="text-align:start">' + w.start + ' → ' + w.end + '</div>';
+        if (!rows.length) h += '<div class="tw-empty">' + escHtml(tw('wpNone')) + '</div>';
+        rows.forEach(function (r) {
+            h += '<div class="tw-card nc"><div class="tw-av">' + escHtml(r.name.charAt(0).toUpperCase()) + '</div><div class="tx"><h4>' + escHtml(r.name) + '</h4><p>' + escHtml(tw('wpDue')) + ' ' + money(r.due) + ' · ' + escHtml(tw('wpPaid')) + ' ' + money(r.paid) + '</p></div>' +
+                '<div style="text-align:end"><div class="tw-money ' + (r.left > 0.005 ? 'red' : 'grn') + '">' + (r.left > 0.005 ? money(r.left) : '✔') + '</div><small style="color:var(--text-muted)">' + escHtml(tw('wpLeft')) + '</small></div>' +
+                '<div class="tw-btns">' + (r.left > 0.005 ? '<button class="tw-sbtn g" onclick="twPay(\'' + jsArg(r.name) + '\')">' + escHtml(tw('pay')) + '</button>' : '') + '<button class="tw-sbtn" onclick="twDetails(\'' + jsArg(r.name) + '\',1)">' + escHtml(tw('details')) + '</button></div></div>';
+        });
+        if (rows.length) h += '<div class="tw-sec">' + escHtml(tw('wpTotal')) + ': <span class="tw-money red">' + money(total) + '</span></div>';
+        setHtml('screenWPay', h);
+    };
+
+    // ---------- More ----------
+    function tile(icon, label, onclick, color, danger) {
+        return '<div class="tw-tile' + (danger ? ' danger' : '') + '" onclick="' + onclick + '"><div class="ib" style="background:' + color + '22;color:' + color + '">' + ic(icon) + '</div><span>' + escHtml(label) + '</span></div>';
+    }
+    function group(id, title, tiles) { return '<div class="tw-sec" id="twg_' + id + '">' + escHtml(title) + '</div><div class="tw-grid">' + tiles.join('') + '</div>'; }
+    window.renderMore = function renderMore() {
+        var isAdmin = false; try { isAdmin = currentUserEmail === ADMIN_EMAIL; } catch (e) {}
+        var h = '<div class="tw-pagehead"><h2>' + escHtml(tw('more')) + '</h2></div>';
+        h += group('reports', tw('mReports'), [
+            tile('receipt', tt('expenseReportBtn', 'Expenses'), 'openExpenseReportModal()', '#e11d48'),
+            tile('pie', tt('partnerReportBtn', 'Partner report'), 'openPartnerReportModal()', '#7c3aed'),
+            tile('chart', tt('techPartnerReportBtn', 'Tech report'), 'openTechPartnerReportModal()', '#d97706')]);
+        h += group('accounts', tw('mAccounts'), [
+            tile('users', tt('partnerAccountBtn', 'Partner account'), 'openPartnerAccountModal()', '#4f46e5'),
+            tile('bank', tt('companyAccountBtn', 'Company account'), 'openCompanyAccountModal()', '#0d9488'),
+            tile('lock', tt('periodLockBtn', 'Period lock'), 'openPeriodLockModal()', '#64748b')]);
+        h += group('data', tw('mData'), [
+            tile('cloud', tt('exportBackupBtn', 'Backup'), 'exportBackupJSON()', '#0d9488'),
+            tile('upload', tt('importBackupBtn', 'Import'), "document.getElementById('importBackupInput').click()", '#0d9488'),
+            tile('table', tt('exportCsvBtn', 'CSV'), 'exportData()', '#059669'),
+            tile('pdf', tt('exportPdfBtn', 'PDF'), 'exportPDF()', '#e11d48'),
+            tile('calc', tt('exportAccountingBtn', 'Accounting'), 'exportAccountingDetailed()', '#0ea5e9')]);
+        h += group('settings', tw('mSettings'), [
+            tile('building', tt('companyProfileBtn', 'Company profile'), 'openCompanyProfileModal()', '#4f46e5'),
+            tile('sparkle', tt('whatsNewBtn', "What's new"), 'checkWhatsNew(true)', '#d97706'),
+            tile('key', tt('resetAiKeyBtn', 'AI key'), 'resetGeminiApiKey()', '#7c3aed'),
+            tile('globe', tw('lang'), 'toggleLanguage()', '#0ea5e9'),
+            tile('sun', tw('themeL'), 'toggleTheme()', '#f59e0b'),
+            tile('logout', tt('logoutBtn', 'Logout'), 'doLogout()', '#e11d48', true)]);
+        if (isAdmin) h += group('admin', tw('mAdmin'), [tile('shield', tt('activityLogBtn', 'Activity log'), 'openActivityLogModal()', '#475569')]);
+        setHtml('screenMore', h);
+    };
+
+    // ---------- wraps around existing functions (original logic untouched) ----------
+    var _al = applyLanguage;
+    applyLanguage = function () {
+        _al.apply(this, arguments);
+        try { if ($('twNav')) { lastSig = ''; Object.keys(PANELS).forEach(function (k) { var el = $(PANELS[k]); if (el) el.__twLast = null; }); paintLang(); syncNav(true); paintState(); if (PANELS[currentScreen]) renderPanel(currentScreen); } } catch (e) {}
+    };
+    var _eb = exportBackupJSON;
+    exportBackupJSON = function () { var r = _eb.apply(this, arguments); try { localStorage.setItem('tw_last_backup', String(Date.now())); } catch (e) {} setTimeout(function () { if (currentScreen === 'home') renderHome(); }, 400); return r; };
+    var _rsb = renderStateBar;
+    renderStateBar = function () { _rsb.apply(this, arguments); try { paintState(); } catch (e) {} };
+    var _rav = refreshAllViews;
+    refreshAllViews = function () { _rav.apply(this, arguments); try { tick(); } catch (e) {} };
+    var _rjt = renderJobsTable;
+    renderJobsTable = function () { var r = _rjt.apply(this, arguments); try { tidyJobs(); } catch (e) {} return r; };
+
+    // job rows: Edit + Pay stay visible, the rest live behind one "⋯"
+    function tidyJobs() {
+        document.querySelectorAll('#jobsTableBody tr').forEach(function (tr) {
+            var td = tr.querySelector('td.no-print:last-child'); if (!td || td.__tw) return;
+            var btns = Array.prototype.slice.call(td.children).filter(function (e) { return e.tagName === 'BUTTON'; }); if (btns.length < 3) return;
+            var keep = [], rest = [];
+            btns.forEach(function (b) { var oc = b.getAttribute('onclick') || ''; (/openJobOverlay|openJobPayModal/.test(oc) ? keep : rest).push(b); });
+            var wrap = document.createElement('div'); wrap.className = 'tw-act';
+            keep.forEach(function (b) { wrap.appendChild(b); });
+            if (rest.length) { var d = document.createElement('details'), s = document.createElement('summary'), p = document.createElement('div'); s.textContent = '⋯'; p.className = 'tw-pop'; rest.forEach(function (b) { p.appendChild(b); }); d.appendChild(s); d.appendChild(p); wrap.appendChild(d); }
+            td.appendChild(wrap); td.__tw = 1;
+        });
+    }
+    // bulk actions only when something is selected (or the "owed" filter is on, or Undo is available)
+    function tickBulk() {
+        var bar = document.querySelector('.tw-bulk'); if (!bar) return;
+        var ub = $('undoDeleteBtn'), undo = ub && ub.style.display !== 'none';
+        var show = false; try { show = selectedJobIds.size > 0 || onlyShowDebt || undo; } catch (e) { show = true; }
+        bar.classList.toggle('tw-hide', !show);
+    }
+    setInterval(function () { try { tickBulk(); } catch (e) {} }, 500);
+
+    // tech add/edit form pops up on its own
+    function formModalSync() { var fc = $('addTechFormContainer'), m = $('twTechFormModal'); if (fc && m) m.style.display = fc.style.display === 'block' ? 'flex' : 'none'; }
+    ['openAddTechnicianModal', 'openEditTechnicianModal', 'closeAddTechnicianModal'].forEach(function (fn) {
+        var o = window[fn]; if (typeof o !== 'function') return;
+        window[fn] = function () { var r = o.apply(this, arguments); try { formModalSync(); } catch (e) {} return r; };
+    });
+    // saving a worker is async: re-check the pop-up and refresh the data screen once it is done
+    var _snt = saveNewTechnician;
+    saveNewTechnician = async function () { var r = await _snt.apply(this, arguments); try { formModalSync(); if (currentScreen === 'wdata') renderWData(); } catch (e) {} return r; };
+
+    var _dtd = deleteTechnicianFromDirectory;
+    deleteTechnicianFromDirectory = async function () { var r = await _dtd.apply(this, arguments); try { if (currentScreen === 'wdata') renderWData(); } catch (e) {} return r; };
+
+
+    // ---------- guide + partner report become real screens (same logic, same ids) ----------
+    function restyleReport() {
+        var m = $('techPartnerReportModal'); if (!m || m.__tw) return; m.__tw = 1;
+        var box = m.firstElementChild, grid = box.querySelector('.grid-2'); if (!grid) return;
+        var presets = grid.nextElementSibling; if (!presets) return;
+        var b = Array.prototype.slice.call(presets.children); // today, <, week, lastweek, >, clear
+        if (b.length < 6) return;
+        presets.className = 'tw-chips'; presets.removeAttribute('style');
+        var det = document.createElement('details'); det.className = 'tw-cd';
+        var sm = document.createElement('summary'); sm.setAttribute('data-tw', 'customDates'); sm.textContent = tw('customDates'); det.appendChild(sm);
+        var extra = document.createElement('div'); extra.className = 'tw-chips';
+        det.appendChild(grid); extra.appendChild(b[0]); extra.appendChild(b[1]); extra.appendChild(b[4]); det.appendChild(extra);
+        presets.innerHTML = ''; presets.appendChild(b[2]); presets.appendChild(b[3]); presets.appendChild(b[5]);
+        presets.parentNode.insertBefore(det, presets.nextSibling);
+    }
+    var _otg = openTechGuideModal;
+    openTechGuideModal = function () { switchScreen('wguide'); };
+    closeTechGuideModal = function () { if (currentScreen === 'wguide') switchScreen('wdata'); };
+    openTechPartnerReportModal = function () {
+        var sel = $('techPartnerReportSelect'), names = getAllTechAndPartnerNames();
+        sel.innerHTML = names.length ? names.map(function (n) { return '<option value="' + escHtml(n) + '">' + escHtml(n) + '</option>'; }).join('') : '<option value="">' + escHtml(t('techPartnerNoNamesYet')) + '</option>';
+        $('techPartnerReportFrom').value = ''; $('techPartnerReportTo').value = '';
+        switchScreen('wrep');
+    };
+    closeTechPartnerReportModal = function () { if (currentScreen === 'wrep') switchScreen('wdata'); };
+    // other pop-ups call closeOtherTopModals; never let that blank the page we are on
+    var _cotm = closeOtherTopModals;
+    closeOtherTopModals = function () { var r = _cotm.apply(this, arguments); try { var pid = PANELS[currentScreen]; if (pid && $(pid) && $(pid).style.display === 'none') $(pid).style.display = FLEXP[currentScreen] ? 'flex' : 'block'; } catch (e) {} return r; };
+
+    // ---------- worker logins: create, reset password, pause (no password is ever seen) ----------
+    function accFor(name) {
+        var all = Object.values(workerAccounts || {}).filter(function (a) { return a && a.tech === name && a.email; });
+        return all.find(function (a) { return a.active !== false; }) || all[0] || null;
+    }
+    function randPw() { var a = new Uint8Array(18); (window.crypto || window.msCrypto).getRandomValues(a); return Array.prototype.map.call(a, function (x) { return ('0' + x.toString(16)).slice(-2); }).join('') + 'Aa1!'; }
+    var appN = 0;
+    async function authMail(email, lang, create) {
+        var app = firebase.initializeApp(firebaseConfig, 'tw-sec-' + (++appN) + '-' + Date.now());
+        try {
+            var au = app.auth(); try { au.languageCode = lang || 'en'; } catch (e) {}
+            var existed = false;
+            if (create) { try { await au.createUserWithEmailAndPassword(email, randPw()); } catch (e) { if (e && e.code === 'auth/email-already-in-use') existed = true; else throw e; } }
+            await au.sendPasswordResetEmail(email);
+            return { existed: existed };
+        } finally { try { await app.auth().signOut(); } catch (e) {} try { await app.delete(); } catch (e) {} }
+    }
+    function errTxt(e) { return (e && (e.code || e.message)) || '?'; }
+    window.twAccCreate = async function (email, name, lang) {
+        if (!confirm(tw('accConfirmCreate').replace('{e}', email))) return false;
+        try {
+            var r = await authMail(email, lang, true);
+            await WORKER_ACCOUNTS.doc(email).set({ authCreated: true, authCreatedAt: Date.now(), updatedAt: Date.now() }, { merge: true });
+            alert(tw(r.existed ? 'accSentExisting' : 'accCreated').replace('{e}', email));
+            return true;
+        } catch (e) { alert(tw('accFail') + ' (' + errTxt(e) + ')'); return false; }
+    };
+    window.twAccReset = async function (email, lang) {
+        if (!confirm(tw('accConfirmReset').replace('{e}', email))) return;
+        try { await authMail(email, lang, false); alert(tw('accResetSent').replace('{e}', email)); }
+        catch (e) {
+            if (e && e.code === 'auth/user-not-found') { if (await twAccCreate(email, '', lang)) return; }
+            else alert(tw('accFail') + ' (' + errTxt(e) + ')');
+        }
+    };
+    window.twAccToggle = async function (email) {
+        var a = workerAccounts[email]; if (!a) return;
+        var on = a.active !== false;
+        if (!confirm(tw(on ? 'accConfirmStop' : 'accConfirmStart').replace('{e}', email))) return;
+        try { await WORKER_ACCOUNTS.doc(email).set({ active: !on, updatedAt: Date.now() }, { merge: true }); showToast(tw(on ? 'accStopped' : 'accStarted')); if (currentScreen === 'wdata') renderWData(); }
+        catch (e) { alert(tw('accFail') + ' (' + errTxt(e) + ')'); }
+    };
+    // after saving a worker that has an email but no login yet, offer to create the login
+    var _snt2 = saveNewTechnician;
+    saveNewTechnician = async function () {
+        var email = ($('newTechWorkerEmail').value || '').trim().toLowerCase(), name = ($('newTechName').value || '').trim(), lang = $('newTechWorkerLang').value || 'es';
+        var r = await _snt2.apply(this, arguments);
+        try {
+            var fc = $('addTechFormContainer');
+            if (email && /^\S+@\S+\.\S+$/.test(email) && fc && fc.style.display === 'none') {
+                var rec = workerAccounts[email];
+                if (!rec || !rec.authCreated) await twAccCreate(email, name, lang);
+            }
+        } catch (e) { console.error('acc', e); }
+        return r;
+    };
+
+
+    // ---------- one clear icon per action on the older screens (replaces the emoji, text stays) ----------
+    var ICON_RULES = [
+        ['showJobQuickDetails(', 'info'], ['openInvoiceModal(', 'receipt'], ['openJobPayModal(', 'wallet'], ['openJobOverlay(', 'edit'], ['duplicateJob(', 'copy'],
+        ['revertJobToAppointment(', 'undo'], ['deleteJob(', 'trash'], ['printSelectedJobs(', 'print'], ['markSelectedAsDone(', 'check'], ['toggleJobsFilterPanel(', 'filter'],
+        ['openNewScheduleModal(', 'plus'], ['openSendScheduleModal(', 'send'], ['toggleAllPendingMode(', 'list'],
+        ['openFollowUpReasonModal(', 'bell'], ['openAppointmentQuoteModal(', 'receipt'], ['convertAppointmentToJob(', 'check'], ['editAppointment(', 'edit'], ['deleteAppointment(', 'trash'], ['openSendWorkerModal(', 'send'],
+        ['improveScopeWithAI(', 'sparkle'], ['startVoiceScope(', 'mic'], ["document.getElementById('apptPhotoInput')", 'camera'], ["document.getElementById('jobPhotoInput')", 'camera'], ['startQuoteAiAnalysis(', 'camera'], ['showTechDetails(', 'info'], ['openTechPaymentPrompt(', 'wallet'], ['openEditTechnicianModal(', 'edit'], ['deleteTechnicianFromDirectory(', 'trash'], ['printTechnicianReport(', 'print'], ['openTechBonusPrompt(', 'sparkle'], ['sendWhatsAppTech(', 'send']
+    ];
+    var EMO = new RegExp('^[\\s\\p{Extended_Pictographic}\\uFE0F\\u200D\\u20E3\\u2714\\u2715\\u2716\\u2795]+', 'u');
+    var iconBusy = false, iconTimer = null, iconObs = null;
+    function iconify() {
+        if (iconBusy) return; iconBusy = true;
+        try {
+            if (iconObs) iconObs.disconnect();
+            document.querySelectorAll('button[onclick]').forEach(function (btn) {
+                if (btn.querySelector(':scope > svg.tw-i') || btn.closest('#twSide,#twNav,#twSheet,.tw-panel')) return;
+                var oc = btn.getAttribute('onclick') || '', rule = null;
+                for (var i = 0; i < ICON_RULES.length; i++) if (oc.indexOf(ICON_RULES[i][0]) === 0 || oc.indexOf(' ' + ICON_RULES[i][0]) >= 0) { rule = ICON_RULES[i]; break; }
+                if (!rule) { if (/^close\w*\(/.test(oc)) rule = ['', 'x']; else if (/^save\w*\(/.test(oc)) rule = ['', 'check']; }
+                if (!rule) return;
+                var n = btn.firstChild; while (n && n.nodeType === 3 && !n.nodeValue.trim()) n = n.nextSibling;
+                if (n && n.nodeType === 3) { n.nodeValue = n.nodeValue.replace(EMO, ''); if (n.nodeValue) n.nodeValue = ' ' + n.nodeValue; }
+                btn.insertAdjacentHTML('afterbegin', ic2(rule[1]));
+                if (btn.textContent.trim()) btn.firstChild.style.marginInlineEnd = '5px';
+            });
+        } catch (e) { console.error('icons', e); }
+        iconBusy = false;
+        if (iconObs) iconObs.observe(document.body, { childList: true, subtree: true, characterData: true });
+    }
+    function iconSoon() { clearTimeout(iconTimer); iconTimer = setTimeout(iconify, 120); }
+    if (window.MutationObserver) { iconObs = new MutationObserver(iconSoon); iconObs.observe(document.body, { childList: true, subtree: true, characterData: true }); }
+
+    // the appointments list is filtered by the state picker: say so instead of silently showing "3 of 12"
+    var _rap = renderAppointments;
+    renderAppointments = function () {
+        var r = _rap.apply(this, arguments);
+        try {
+            var box = $('appointmentsContent'); if (!box) return r;
+            var shown = appointments.filter(function (a) { return passesStateFilter(stateOfText(a.clientAddress)); }).length, total = appointments.length;
+            if (total > shown) {
+                var lbl = stateFilter === '?' ? '❔' : stateFilter;
+                box.insertAdjacentHTML('afterbegin', '<div style="background:rgba(217,119,6,.14);border:1px solid var(--warning);border-radius:10px;padding:10px 12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:.85rem">' +
+                    escHtml(tw('apFilt1')) + ' <b>' + shown + '</b> ' + escHtml(tw('apFilt2')) + ' <b>' + total + '</b> — ' + escHtml(tw('apFilt3')) + ' (' + escHtml(lbl) + ')</span><button class="tw-sbtn p" onclick="setStateFilter(\'ALL\')">' + escHtml(tw('apShowAll')) + '</button></div>');
+            }
+        } catch (e) { console.error('apf', e); }
+        return r;
+    };
+
+    // search also finds appointments
+    var _rgs = renderGlobalSearch;
+    renderGlobalSearch = function () {
+        _rgs.apply(this, arguments);
+        try {
+            var q = $('globalSearchInput').value.trim().toLowerCase(); if (!q) return;
+            var hits = (appointments || []).filter(function (a) { return [a.clientName, a.clientPhone, a.clientAddress, a.clientEmail].some(function (f) { return (f || '').toLowerCase().indexOf(q) >= 0; }); }).slice(0, 8);
+            if (!hits.length) return;
+            var box = $('globalSearchResults'), h = '<div class="ag-section-title">' + escHtml(tw('gsAppts')) + ' (' + hits.length + ')</div>' + hits.map(function (a) {
+                return '<div class="ag-item" style="cursor:pointer;" onclick="closeGlobalSearch(); switchScreen(\'appointments\'); editAppointment(\'' + jsArg(String(a.id)) + '\');"><div class="ag-line"><strong>' + escHtml(a.clientName || '') + '</strong></div><div class="ag-meta">' + escHtml(a.requestedDate || '') + (a.clientAddress ? ' — ' + escHtml(a.clientAddress) : '') + '</div></div>';
+            }).join('');
+            var nores = box.querySelector('.tg-empty'); if (nores && box.children.length === 1) box.innerHTML = h; else box.insertAdjacentHTML('beforeend', h);
+        } catch (e) { console.error('gs', e); }
+    };
+
+    // desktop shortcuts: "/" search, "N" new job
+    document.addEventListener('keydown', function (e) {
+        if (e.ctrlKey || e.metaKey || e.altKey || !$('twNav')) return;
+        var el = document.activeElement, tag = el && el.tagName; if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el && el.isContentEditable)) return;
+        var anyModal = Array.prototype.some.call(document.querySelectorAll('[id$="Modal"]'), function (m) { return m.style.display === 'flex'; });
+        if (anyModal) return;
+        if (e.key === '/') { e.preventDefault(); openGlobalSearch(); } else if (e.key === 'n' || e.key === 'N') { e.preventDefault(); switchScreen('entry'); }
+    });
+
+    function updSync() { document.querySelectorAll('.tw-sync').forEach(function (s) { s.classList.toggle('off', !navigator.onLine); s.title = navigator.onLine ? '' : tw('offline'); }); }
+    window.addEventListener('online', updSync); window.addEventListener('offline', updSync);
+    window.addEventListener('resize', function () { lastSig = ''; try { syncNav(true); } catch (e) {} });
+
+    var started = false;
+    function maybeStart() {
+        var area = $('pdfContentArea');
+        if (!area || area.style.display === 'none' || started) return;
+        started = true; buildShell(); updSync(); paintState();
+        try { switchScreen('home'); } catch (e) { console.error(e); }
+    }
+    function tick() {
+        maybeStart();
+        if (!started) return;
+        paintBrand(); paintState();
+        if (TICKP[currentScreen]) renderPanel(currentScreen);
+        syncNav();
+    }
+    setInterval(tick, 2500);
+    var area0 = $('pdfContentArea'); if (area0 && window.MutationObserver) new MutationObserver(maybeStart).observe(area0, { attributes: true, attributeFilter: ['style'] });
+    window.__tw = { renderHome: renderHome, renderWData: renderWData, renderWPay: renderWPay, renderMore: renderMore, buildShell: buildShell };
+})();
 </script>
 </body>
 </html>
