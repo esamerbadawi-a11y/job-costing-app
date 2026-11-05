@@ -277,6 +277,7 @@ body.tw-home #todayJobsBanner{display:none !important}
 .tw-sync.off{background:#f59e0b}
 .tw-lang{height:42px;padding:0 12px;border-radius:12px;display:flex;align-items:center;gap:6px;background:var(--card-dark);border:1px solid var(--border-color);color:var(--text-main);cursor:pointer;font-weight:700;font-size:.85rem;white-space:nowrap}
 .tw-lang svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8}
+.tw-lang{padding:0 5px;gap:3px}.tw-lang b{min-width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.95rem;font-weight:800;color:var(--text-muted,#94a3b8)}.tw-lang b.on{background:var(--primary,#4f46e5);color:#fff}
 select.tw-sel{height:42px;padding:0 10px;border-radius:12px;background:var(--card-dark);border:1px solid var(--border-color);color:var(--text-main);width:auto !important;min-width:0;max-width:130px;font-size:.84rem;display:none}
 .tw-iconbtn{background:var(--card-dark);border:1px solid var(--border-color);color:var(--text-main);width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;flex:none}
 .tw-panel{display:none}
@@ -380,7 +381,7 @@ details.tw-cd>summary{cursor:pointer;color:var(--text-muted);font-size:.82rem;ma
 @media(max-width:700px){.tw-card.nc{flex-wrap:wrap}.tw-card.nc .tw-btns{width:100%;justify-content:flex-end}}
 body.tw-on .card{border-radius:18px}
 body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),body.tw-on #screenEntry select,body.tw-on #screenEntry textarea,body.tw-on #jobOverlay input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),body.tw-on #jobOverlay select,body.tw-on #jobOverlay textarea{border-radius:12px}
-@media(max-width:420px){.tw-lang span{display:none}select.tw-sel{max-width:96px}}
+@media(max-width:420px){select.tw-sel{max-width:96px}}
 
     </style>
 </head>
@@ -3560,10 +3561,15 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         });
         const keys = Object.keys(agg).sort();
         if (keys.length < 2) { box.innerHTML = ''; return; }
+        const jobsBy = {};
+        (savedJobs || []).filter(j => j.jobStatus !== 'ملغي').forEach(j => { const c = jobState(j) || '?'; (jobsBy[c] = jobsBy[c] || []).push(j); });
+        const lbl = (k, v) => `<div style="display:flex; flex-direction:column; min-width:0;"><span style="font-size:0.7rem; color:var(--text-muted);">${k}</span><b style="font-size:0.9rem;">${v}</b></div>`;
         box.innerHTML = `<details style="margin-bottom:10px;"><summary style="cursor:pointer; font-weight:700; font-size:0.9rem;">${t('stSumTitle')}</summary>
-            <table style="width:100%; border-collapse:collapse; margin-top:8px; font-size:0.85rem;"><thead><tr><th style="text-align:start;">📍</th><th>${t('stSumJobs')}</th><th>${t('stSumRev')}</th><th>${t('stSumRec')}</th><th>${t('stSumNet')}</th></tr></thead><tbody>
-            ${keys.map(k => { const a = agg[k]; return `<tr><td><b>${k === '?' ? '❔' : k}</b></td><td style="text-align:center;">${a.n}</td><td style="text-align:center;">${fmtUsd(a.rev)}</td><td style="text-align:center;">${fmtUsd(a.rec)}</td><td style="text-align:center;">${fmtUsd(a.net)}</td></tr>`; }).join('')}
-            </tbody></table></details>`;
+            <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+            ${keys.map(k => { const a = agg[k]; const list = (jobsBy[k] || []).slice().sort((x, y) => String(y.startDate || '').localeCompare(String(x.startDate || '')));
+                return `<details style="border:1px solid var(--border-color); border-radius:12px; padding:10px 12px;"><summary style="cursor:pointer; display:flex; flex-wrap:wrap; gap:8px 18px; align-items:center; list-style-position:inside;"><b style="font-size:1rem; min-width:34px;">${k === '?' ? '❔' : k}</b>${lbl(t('stSumJobs'), a.n)}${lbl(t('stSumRev'), fmtUsd(a.rev))}${lbl(t('stSumRec'), fmtUsd(a.rec))}${lbl(t('stSumNet'), fmtUsd(a.net))}</summary>
+                <div style="margin-top:8px; display:flex; flex-direction:column; gap:6px;">${list.map(j => `<div onclick="editJob('${escHtml(j.id)}')" style="cursor:pointer; padding:8px 10px; border-radius:10px; background:var(--card-dark); display:flex; flex-direction:column; gap:2px;"><b style="font-size:0.88rem;">${escHtml(j.clientName || '—')}</b><span style="font-size:0.78rem; color:var(--text-muted);">${escHtml(j.clientAddress || '')}</span><span style="font-size:0.78rem;">${escHtml(j.startDate || '')} · ${escHtml(j.jobStatus || '')}</span><span style="font-size:0.78rem;">${t('stSumRev')}: <bdi>${fmtUsd(parseVal(j.totalRevenue))}</bdi> · ${t('stSumRec')}: <bdi>${fmtUsd(parseVal(j.amountReceived))}</bdi></span></div>`).join('')}</div></details>`; }).join('')}
+            </div></details>`;
     }
     let stateSettingsWorking = {};
     function stateSetOptionsHtml() {
@@ -14989,7 +14995,7 @@ ${closeBtnHtml}
         paintMoreBtn();
     };
     function paintMoreBtn() { var b = $('twMoreBtn'); if (b) b.textContent = tw(document.body.classList.contains('tw-more') ? 'lessDet' : 'moreDet'); }
-    function paintLang() { var b = $('twLangBtn'); if (b) b.innerHTML = ic('globe') + '<span>' + (currentLang === 'ar' ? 'English' : 'عربي') + '</span>'; }
+    function paintLang() { var b = $('twLangBtn'); if (b) b.innerHTML = '<b class="' + (currentLang === 'ar' ? 'on' : '') + '">A</b><b class="' + (currentLang === 'ar' ? '' : 'on') + '">E</b>'; }
 
     var lastSig = '';
     function syncNav(force) {
