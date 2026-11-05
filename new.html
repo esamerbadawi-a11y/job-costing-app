@@ -334,7 +334,7 @@ body.tw-on #screenAppointments .card>div:first-child button[onclick^="openAppoin
 @media(min-width:900px){
   body.tw-on{padding-bottom:16px}
   #twNav,#twSheet,#twScrim{display:none !important}#twFab{display:none !important}
-  #twSide{display:flex;position:fixed;top:0;bottom:0;inset-inline-start:0;width:236px;background:var(--card-dark);border-inline-end:1px solid var(--border-color);padding:14px 10px;flex-direction:column;gap:2px;z-index:900;overflow-y:auto}
+  #twSide{display:flex;position:fixed;top:0;bottom:0;inset-inline-start:0;width:260px;background:var(--card-dark);border-inline-end:1px solid var(--border-color);padding:14px 10px;flex-direction:column;gap:2px;z-index:900;overflow-y:auto}
   #twSide .tw-brand{flex:none;padding:4px 6px 12px}
   #twSide .tw-newjob{display:flex;gap:8px;align-items:center;justify-content:center;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:11px;font-weight:700;font-size:.92rem;cursor:pointer;margin:0 2px 10px;width:calc(100% - 4px)}
   #twSide .tw-newjob .tw-ic{width:18px;height:18px}
@@ -343,16 +343,19 @@ body.tw-on #screenAppointments .card>div:first-child button[onclick^="openAppoin
   #twSide .gb.on{background:rgba(79,70,229,.14);color:var(--primary);font-weight:700}
   #twSide .gb .chev{margin-inline-start:auto;width:16px;height:16px;transition:transform .15s}
   #twSide .grp.open .gb .chev{transform:rotate(180deg)}
-  #twSide .subs{display:none;margin:2px 0 6px;padding-inline-start:16px;border-inline-start:2px solid var(--border-color);margin-inline-start:20px}
+  #twSide .subs{display:none;margin:2px 0 6px;padding-inline-start:8px;border-inline-start:2px solid var(--border-color);margin-inline-start:16px}
   #twSide .grp.open .subs{display:block}
   #twSide .sb{display:flex;justify-content:flex-start;gap:10px;align-items:center;padding:8px 10px;border-radius:10px;color:var(--text-muted);font-size:.86rem;background:none;border:none;cursor:pointer;text-align:start;width:100%}
   #twSide .sb .tw-ic{width:17px;height:17px}
+  #twSide .sb span:not(.cnt){white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  #twSide .sb .cnt2{display:block;font-size:.72rem;font-weight:400;color:var(--text-muted)}
+  #twSide .sb span:not(.cnt):has(.cnt2){white-space:normal}
   #twSide .sb.on{color:var(--primary);font-weight:700;background:rgba(79,70,229,.1)}
   #twSide .tw-badge{position:static;margin-inline-start:auto}
   #twSide .gb .tw-badge + .chev{margin-inline-start:6px}
   #twTop .tw-brand{display:none}
   #twTop{justify-content:flex-end}
-  body.tw-on #pdfContentArea{margin-inline-start:252px}
+  body.tw-on #pdfContentArea{margin-inline-start:276px}
   .tw-kp{grid-template-columns:repeat(4,1fr)}
   .tw-grid{grid-template-columns:repeat(4,1fr)}
   #twHomeCols{display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start}
@@ -14817,10 +14820,10 @@ ${closeBtnHtml}
     // ----- navigation model (screens belong to groups; modal-style items have no screen) -----
     var NAV = [
         { k: 'home', ic: 'home', go: go('home'), scr: ['home'] },
-        { k: 'jobs', ic: 'wrench', subs: [
-            { k: 'sLog', ic: 'chart', go: go('log'), scr: 'log' },
+        { k: 'jobs', ic: 'wrench', land: go('log'), subs: [
+            { k: 'sEntry', ic: 'plus', go: go('entry'), scr: 'entry' },
             { k: 'sWeekly', ic: 'table', go: go('weekly'), scr: 'weekly' },
-            { k: 'sEntry', ic: 'plus', go: go('entry'), scr: 'entry' }] },
+            { k: 'sLog', ic: 'chart', go: go('log'), scr: 'log' }] },
         { k: 'appts', ic: 'cal', subs: [
             { k: 'sApptNew', ic: 'edit', go: go('appointments'), scr: 'appointments' },
             { k: 'sApptList', ic: 'list', go: function () { openAppointmentsListModal(); }, cnt: 'appt' }] },
@@ -14853,7 +14856,7 @@ ${closeBtnHtml}
             var cur = (typeof currentScreen === 'string') ? currentScreen : 'home';
             if (groupIndexOf(cur) === i && openGrp === i) { openGrp = -1; syncNav(true); return; }
             openGrp = i; closeSheet();
-            if (groupIndexOf(cur) !== i) { (g.hub || g.subs[0].go)(); } else syncNav(true);
+            if (groupIndexOf(cur) !== i) { (g.land || g.hub || g.subs[0].go)(); } else syncNav(true);
         } else {
             if (g.hub) { closeSheet(); g.hub(); return; }
             if (sheetGrp === i) closeSheet(); else openSheet(i);
@@ -14958,7 +14961,7 @@ ${closeBtnHtml}
             nb += '<button class="' + (on ? 'on' : '') + '" onclick="twGrp(' + i + ')">' + ic(g.ic) + '<span>' + escHtml(tw(g.k)) + '</span>' + badge + '</button>';
             if (!g.subs) { sb += '<button class="gb ' + (on ? 'on' : '') + '" onclick="twGrp(' + i + ')">' + ic(g.ic) + '<span>' + escHtml(tw(g.k)) + '</span></button>'; return; }
             sb += '<div class="grp' + (openGrp === i ? ' open' : '') + '"><button class="gb ' + (on ? 'on' : '') + '" onclick="twGrp(' + i + ')">' + ic(g.ic) + '<span>' + escHtml(tw(g.k)) + '</span>' + badge + ic('chev').replace('tw-ic', 'tw-ic chev') + '</button><div class="subs">' +
-                g.subs.map(function (s, j) { return '<button class="sb ' + (s.scr === cur ? 'on' : '') + '" onclick="twSub(' + i + ',' + j + ')">' + ic(s.ic) + '<span>' + escHtml(tw(s.k)) + '</span>' + (s.cnt ? '<span class="cnt" dir="ltr">' + escHtml(apptCnt()) + '</span>' : '') + '</button>'; }).join('') + '</div></div>';
+                g.subs.map(function (s, j) { return '<button class="sb ' + (s.scr === cur ? 'on' : '') + '" onclick="twSub(' + i + ',' + j + ')">' + ic(s.ic) + '<span>' + escHtml(tw(s.k)) + (s.cnt && apptCnt() ? '<small class="cnt2" dir="ltr">' + escHtml(apptCnt()) + '</small>' : '') + '</span></button>'; }).join('') + '</div></div>';
         });
         $('twNav').innerHTML = nb; $('twSide').innerHTML = sb;
         document.querySelectorAll('.tw-brand').forEach(function (el) { el.__h = null; });
