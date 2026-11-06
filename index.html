@@ -1666,6 +1666,19 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     </div>
 </div>
 
+<div id="techGasModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center;">
+    <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:85%; max-width:360px; padding:20px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+        <h3 style="color:#fb923c; margin:0 0 4px; font-size:1rem;" data-i18n="techGasTitle"></h3>
+        <div id="techGasJobLabel" style="font-weight:700; margin-bottom:14px;"></div>
+        <div class="form-group"><label data-i18n="techGasWho"></label><select id="techGasTech"></select></div>
+        <div class="form-group"><label data-i18n="withdrawalAmountLabel"></label><input type="text" id="techGasAmount" placeholder="0" onfocus="this.select()"></div>
+        <div class="form-group"><label data-i18n="lblReceiptDate"></label><input type="date" id="techGasDate"></div>
+        <input type="text" id="techGasNote" data-i18n-ph="techBonusNotePh" style="margin-bottom:12px;">
+        <button class="success" style="width:100%; padding:11px; margin-bottom:8px; background:#fb923c; border-color:#fb923c; color:#1a1a1a;" onclick="saveTechGas()" data-i18n="techBonusSaveBtn"></button>
+        <button class="danger" style="width:100%; padding:8px; font-size:0.85rem;" onclick="closeTechGasModal()" data-i18n="cancelBtn"></button>
+    </div>
+</div>
+
 <div id="splitDayModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center;">
     <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; width:90%; max-width:380px; padding:20px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
         <h3 style="color:#a78bfa; margin:0 0 4px; font-size:1rem;" data-i18n="splitDayTitle"></h3>
@@ -2618,6 +2631,9 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         techBonusBtn: { ar: '🎁 بونس', en: '🎁 Bonus' },
         techPayBtn: { ar: '💵 دفع', en: '💵 Pay' },
         guideThBonusInPeriod: { ar: 'بونس الفترة', en: 'Bonus (period)' },
+        techGasTitle: { ar: '⛽ جاز', en: '⛽ Gas' },
+        techGasWho: { ar: 'الفني:', en: 'Technician:' },
+        alertGasPickTech: { ar: 'اختار الفني الأول', en: 'Pick the technician first' },
         guideBonusesTitle: { ar: '🎁 بونساته في الفترة', en: '🎁 His Bonuses in the Period' },
         guideBonusesTitleAll: { ar: '🎁 كل البونسات', en: '🎁 All Bonuses' },
         guideNoBonusesInPeriod: { ar: 'مفيش بونسات مسجلة في الفترة دي.', en: 'No bonuses recorded in this period.' },
@@ -7517,7 +7533,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         doc.setTextColor(0, 0, 0);
 
         const rows = [];
-        let totalDues = 0, totalMaterials = 0, totalBonus = 0, totalPaid = 0;
+        let totalDues = 0, totalMaterials = 0, totalBonus = 0, totalGas = 0, totalPaid = 0;
         const techStats = computeTechPeriodStats(dateFrom, dateTo)[techName];
         if (techStats) {
             techStats.jobs.forEach(j => {
@@ -7571,8 +7587,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             .slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''))
             .forEach(b => {
                 const amt = parseVal(b.amount);
-                totalBonus += amt;
-                rows.push({ date: b.date || '', client: 'Bonus' + (b.jobClientName ? ' (' + b.jobClientName + ')' : '') + (b.note ? ' - ' + b.note : ''), type: '-', dues: amt, materials: null, paid: null, remaining: null });
+                if (b.kind === 'gas') totalGas += amt; else totalBonus += amt;
+                rows.push({ date: b.date || '', client: (b.kind === 'gas' ? 'Gas' : 'Bonus') + (b.jobClientName ? ' (' + b.jobClientName + ')' : '') + (b.note ? ' - ' + b.note : ''), type: '-', dues: amt, materials: null, paid: null, remaining: null });
             });
         // Payments come only from the 💵 button (same as the Guide), listed as their own rows.
         // Job rows show what was earned; payments are per technician, not per job, so the running
@@ -7639,7 +7655,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         // ---- Summary: laid out as a plain step-by-step table so anyone can follow it without
         // knowing how the app works: what he earned, minus what he was paid, plus any older
         // balance, ending in ONE clearly-colored bottom line. ----
-        const periodEarned = round2(totalDues + totalMaterials + totalBonus + totalPartner);
+        const periodEarned = round2(totalDues + totalMaterials + totalBonus + totalGas + totalPartner);
         const periodBalance = round2(periodEarned - totalPaid);
         let priorBalance = 0;
         if (dateFrom) {
@@ -7658,6 +7674,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         if (totalMaterials > 0.005) sumRows.push({ label: '+ Materials he bought (reimbursement)', value: fmtMoney(totalMaterials), kind: 'normal' });
         if (totalPartner > 0.005) sumRows.push({ label: '+ Partner share (profit from partner jobs)', value: fmtMoney(totalPartner), kind: 'normal' });
         if (totalBonus > 0.005) sumRows.push({ label: '+ Bonus', value: fmtMoney(totalBonus), kind: 'bonus' });
+        if (totalGas > 0.005) sumRows.push({ label: '+ Gas', value: fmtMoney(totalGas), kind: 'bonus' });
         sumRows.push({ label: '= Total Earned in this period', value: fmtMoney(periodEarned), kind: 'sub' });
         sumRows.push({ label: '- Total Paid in this period', value: fmtMoney(totalPaid), kind: 'paid' });
         if (hasPrior) {
@@ -13888,6 +13905,7 @@ ${closeBtnHtml}
                     <button class="secondary" onclick="openEditScheduleModal('${job.id}', '${entry.date}')" style="padding:4px 10px; font-size:0.75rem;">${t('editBtn')}</button>
                     <button class="warning" title="${t('postponeBtn')}" onclick="event.stopPropagation(); openPostponeModal('${job.id}', '${entry.date}')" style="padding:4px 10px; font-size:0.75rem;">⏭</button>
                     <button class="secondary" title="${t('partnerGoesBtn')}" onclick="event.stopPropagation(); partnerGoes('${job.id}', '${entry.date}')" style="padding:4px 10px; font-size:0.75rem; background:#0284c7;">🤝</button>
+                    <button class="secondary" title="${t('techGasTitle')}" onclick="event.stopPropagation(); openTechGas('${job.id}', '${entry.date}')" style="padding:4px 10px; font-size:0.75rem; background:#ea580c;">⛽</button>
                     <button class="secondary" onclick="event.stopPropagation(); downloadJobICS('${job.id}', '${entry.date}')" style="padding:4px 10px; font-size:0.7rem;">📆</button>
                     <button class="secondary" title="${t('wkSendBtnTitle')}" onclick="event.stopPropagation(); openSendWorkerModal('job', '${jsArg(job.id)}', '${jsArg(entry.date || '')}')" style="padding:4px 10px; font-size:0.75rem; background:#16a34a;">📲</button>
                 </div>
@@ -13998,7 +14016,9 @@ ${closeBtnHtml}
         days.forEach(d => {
             const dateStr = isoDate(d);
             let pairs = [];
-            boardJobs.forEach(job => { getScheduleEntries(job).forEach(entry => { if (entry.date === dateStr) pairs.push({ job, entry }); }); });
+            // A day shows here only when it was put on the schedule on purpose ("+ Add", new schedule, moving a day...).
+            // A job that just has a start date and no scheduled days never appears on its own; it stays under "All unfinished".
+            boardJobs.forEach(job => { (Array.isArray(job.dailySchedule) ? job.dailySchedule : []).forEach(entry => { if (entry.date === dateStr) pairs.push({ job, entry }); }); });
             pairs = sortDayEntries(pairs);
             const isToday = dateStr === todayStr;
             html += `<div style="margin-bottom:14px; border:1px solid var(--border-color); border-radius:10px; overflow:hidden;">
@@ -14259,7 +14279,7 @@ ${closeBtnHtml}
         // same treatment as technician dues. A bonus tied to a specific job comes off THAT job's
         // own net (at that job's own split ratio); a bonus with no job comes off the combined
         // total at the company's default 40/40 ratio, since there's no specific job's ratio to use.
-        const bonusesInRange = techBonuses.filter(b => (!dateFrom || b.date >= dateFrom) && (!dateTo || b.date <= dateTo));
+        const bonusesInRange = techBonuses.filter(b => b.kind !== 'gas' && (!dateFrom || b.date >= dateFrom) && (!dateTo || b.date <= dateTo)); // gas (⛽) is only a payout to the technician, not a job/company cost here
         const jobPeriodBonus = {};
         let generalBonusTotal = 0;
         bonusesInRange.forEach(b => {
@@ -14520,6 +14540,7 @@ ${closeBtnHtml}
     function openTechBonusEdit(at) {
         const b = techBonuses.find(x => x.at === at);
         if (!b) return;
+        if (b.kind === 'gas') { openTechGasEdit(at); return; }
         editingBonusAt = at;
         techBonusName = b.name;
         document.getElementById('techBonusTitleEl').textContent = t('techBonusTitle');
@@ -14533,6 +14554,66 @@ ${closeBtnHtml}
             jobs.map(j => `<option value="${escHtml(j.id)}">${escHtml(j.clientName || '')}${j.startDate ? ' — ' + escHtml(j.startDate) : ''}</option>`).join('');
         jobSel.value = b.jobId || '';
         document.getElementById('techBonusModal').style.display = 'flex';
+    }
+    // ---------- ⛽ Gas: money given to a technician for a trip (e.g. the day's work fell through). It is paid out
+    // with his weekly account like a bonus, but it never touches the job's profit or the partner split. ----------
+    let gasJobId = null, editingGasAt = '';
+    function fillGasTechSelect(preferred, selected) {
+        const sel = document.getElementById('techGasTech');
+        let all = []; try { all = getUniqueRegisteredTechnicians(); } catch (e) {}
+        const names = Array.from(new Set((preferred || []).concat(all)));
+        if (selected && !names.includes(selected)) names.unshift(selected);
+        sel.innerHTML = names.map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
+        sel.value = selected || (preferred && preferred[0]) || names[0] || '';
+    }
+    function openTechGas(jobId, date) {
+        const job = savedJobs.find(j => String(j.id) === String(jobId)); if (!job) return;
+        editingGasAt = ''; gasJobId = job.id;
+        const entry = getScheduleEntries(job).find(e => e.date === date);
+        document.getElementById('techGasJobLabel').textContent = (job.clientName || '') + (date ? ' — ' + date : '');
+        fillGasTechSelect(entry ? (entry.team || []) : [], '');
+        document.getElementById('techGasAmount').value = '';
+        document.getElementById('techGasDate').value = date || isoDate(new Date());
+        document.getElementById('techGasNote').value = '';
+        document.getElementById('techGasModal').style.display = 'flex';
+    }
+    function openTechGasEdit(at) {
+        const b = techBonuses.find(x => x.at === at); if (!b) return;
+        editingGasAt = at; gasJobId = b.jobId || null;
+        document.getElementById('techGasJobLabel').textContent = (b.jobClientName || '') + (b.date ? ' — ' + b.date : '');
+        fillGasTechSelect([], b.name);
+        document.getElementById('techGasAmount').value = parseVal(b.amount);
+        document.getElementById('techGasDate').value = b.date || isoDate(new Date());
+        document.getElementById('techGasNote').value = b.note || '';
+        document.getElementById('techGasModal').style.display = 'flex';
+    }
+    function closeTechGasModal() { document.getElementById('techGasModal').style.display = 'none'; editingGasAt = ''; }
+    async function saveTechGas() {
+        const name = document.getElementById('techGasTech').value;
+        const amount = parseVal(document.getElementById('techGasAmount').value);
+        const date = document.getElementById('techGasDate').value;
+        const note = document.getElementById('techGasNote').value.trim();
+        if (!name) { alert(t('alertGasPickTech')); return; }
+        if (amount <= 0) { alert(t('alertBonusAmountRequired')); return; }
+        const job = gasJobId ? savedJobs.find(j => String(j.id) === String(gasJobId)) : null;
+        const jobFields = { jobId: gasJobId || null, jobClientName: job ? (job.clientName || '') : '' };
+        if (editingGasAt) {
+            const idx = techBonuses.findIndex(x => x.at === editingGasAt);
+            if (idx === -1) { closeTechGasModal(); renderTechGuideContent(); return; }
+            const backup = { ...techBonuses[idx] };
+            techBonuses[idx] = { ...backup, name, amount, date, note, editedBy: currentUserEmail || '?', editedAt: new Date().toISOString() };
+            try { await TECH_BONUSES_DOC.set({ entries: techBonuses }); logActivity('edit', name, `${t('techGasTitle')}: $${amount.toFixed(2)} (${date})`); }
+            catch (err) { techBonuses[idx] = backup; alertSaveError(err); return; }
+            closeTechGasModal(); renderTechGuideContent(); return;
+        }
+        const entry = { kind: 'gas', name, amount, date, note, ...jobFields, by: currentUserEmail || '?', at: new Date().toISOString() };
+        try {
+            techBonuses.unshift(entry);
+            await TECH_BONUSES_DOC.set({ entries: techBonuses });
+            logActivity('add', name, `${t('techGasTitle')}: $${amount.toFixed(2)}`);
+            closeTechGasModal();
+            safeCall(renderTechGuideContent); safeCall(renderWeeklyBoard);
+        } catch (err) { techBonuses = techBonuses.filter(x => x !== entry); alertSaveError(err); }
     }
     function closeTechBonusModal() { document.getElementById('techBonusModal').style.display = 'none'; editingBonusAt = ''; }
 
@@ -14827,7 +14908,7 @@ ${closeBtnHtml}
         h += `<h4 style="margin-top:14px;">${t(noDates ? 'guideBonusesTitleAll' : 'guideBonusesTitle')} (${bonuses.length})</h4>`;
         if (bonuses.length === 0) h += `<div class="tg-empty">${t('guideNoBonusesInPeriod')}</div>`;
         bonuses.forEach(b => {
-            h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(b.date || '')}</span><span class="tg-d-main">${escHtml(b.note || '')}${b.jobClientName ? `<div class="ag-meta" style="color:var(--text-muted);">${escHtml(b.jobClientName)}</div>` : ''}</span><strong style="color:#fbbf24;">🎁 $${parseVal(b.amount).toFixed(2)}</strong><button class="secondary" onclick="openTechBonusEdit('${jsArg(b.at || '')}')" style="padding:3px 9px; font-size:0.72rem;">${t('editBtn')}</button><button class="danger" onclick="deleteTechBonus('${escJs(b.at || '')}')" style="padding:3px 9px; font-size:0.72rem;">${t('deleteBtn')}</button></div>`;
+            h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(b.date || '')}</span><span class="tg-d-main">${escHtml(b.note || '')}${b.jobClientName ? `<div class="ag-meta" style="color:var(--text-muted);">${escHtml(b.jobClientName)}</div>` : ''}</span><strong style="color:#fbbf24;">${b.kind === 'gas' ? '⛽' : '🎁'} $${parseVal(b.amount).toFixed(2)}</strong><button class="secondary" onclick="openTechBonusEdit('${jsArg(b.at || '')}')" style="padding:3px 9px; font-size:0.72rem;">${t('editBtn')}</button><button class="danger" onclick="deleteTechBonus('${escJs(b.at || '')}')" style="padding:3px 9px; font-size:0.72rem;">${t('deleteBtn')}</button></div>`;
         });
         h += `<h4 style="margin-top:14px;">${t(noDates ? 'guidePaymentsTitleAll' : 'guidePaymentsTitle')} (${pays.length})</h4>`;
         if (pays.length === 0) h += `<div class="tg-empty">${t('guideNoPaymentsInPeriod')}</div>`;
