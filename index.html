@@ -1752,6 +1752,11 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             <label data-i18n="findTechPickLabel"></label>
             <select id="findTechSelect" onchange="renderFindTechResults()"></select>
         </div>
+        <div dir="ltr" id="findTechWeekBtns" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+            <button type="button" class="secondary" data-wk="-1" onclick="setFindTechWeek(-1)" style="flex:1; padding:7px 8px; font-size:0.78rem;" data-i18n="findTechPrevWk"></button>
+            <button type="button" class="secondary" data-wk="0" onclick="setFindTechWeek(0)" style="flex:1; padding:7px 8px; font-size:0.78rem;" data-i18n="findTechThisWk"></button>
+            <button type="button" class="secondary" data-wk="1" onclick="setFindTechWeek(1)" style="flex:1; padding:7px 8px; font-size:0.78rem;" data-i18n="findTechNextWk"></button>
+        </div>
         <div id="findTechResults"></div>
     </div>
 </div>
@@ -2227,6 +2232,9 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         weeklyTechsLabel: { ar: 'الفنيين:', en: 'Techs:' },
         weeklyNotPaidTechWarning: { ar: '⚠️ مش مضاف كفني مدفوع على الشغلانة دي، فمش هيتحسب له مستحقات على الأيام دي لحد ما تضيفه من جوه الشغلانة:', en: "⚠️ Not added as a paid technician on this job, so these days won't count toward his dues until you add him inside the job:" },
         findTechBtn: { ar: 'فين الفني؟', en: "Where's a tech?" },
+        findTechPrevWk: { ar: '◀ أسبوع قبل', en: '◀ Previous week' },
+        findTechThisWk: { ar: 'الأسبوع ده', en: 'This week' },
+        findTechNextWk: { ar: 'أسبوع بعد ▶', en: 'Next week ▶' },
         findTechTitle: { ar: 'فين الفني؟ (كل الأيام المجدول فيها)', en: "Where's a tech? (every day he's scheduled)" },
         findTechPickLabel: { ar: 'اختار الفني:', en: 'Pick a technician:' },
         findTechChooseOption: { ar: '— اختار —', en: '— choose —' },
@@ -13889,7 +13897,13 @@ ${closeBtnHtml}
     // see every day he's scheduled anywhere, each flagged if he isn't actually added as a paid
     // technician on that particular job yet (the same gap renderJobCard's own warning flags,
     // just gathered in one place instead of having to flip through each week looking for him).
+    let findTechWeek = null; // null = every day he's scheduled; -1 / 0 / 1 = previous / this / next week (same weeks as the weekly board)
+    function setFindTechWeek(off) {
+        findTechWeek = (findTechWeek === off) ? null : off; // tapping the same one again goes back to all days
+        renderFindTechResults();
+    }
     function openFindTechModal() {
+        findTechWeek = null;
         const sel = document.getElementById('findTechSelect');
         const names = ['SAMER', 'MOHAMED', ...getUniqueRegisteredTechnicians()];
         const uniqueNames = [...new Set(names)].sort((a, b) => a.localeCompare(b));
@@ -13919,7 +13933,12 @@ ${closeBtnHtml}
         const name = document.getElementById('findTechSelect').value;
         const container = document.getElementById('findTechResults');
         if (!name) { container.innerHTML = ''; return; }
-        const results = findTechSchedule(name);
+        document.querySelectorAll('#findTechWeekBtns button').forEach(b => { b.style.background = (findTechWeek !== null && Number(b.dataset.wk) === findTechWeek) ? 'var(--primary)' : ''; b.style.color = (findTechWeek !== null && Number(b.dataset.wk) === findTechWeek) ? '#fff' : ''; });
+        let results = findTechSchedule(name);
+        if (findTechWeek !== null) {
+            const wd = getWeekRange(findTechWeek).map(d => isoDate(d));
+            results = results.filter(r => r.entry.date && r.entry.date >= wd[0] && r.entry.date <= wd[wd.length - 1]);
+        }
         if (results.length === 0) { container.innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem; padding:4px 0;">${t('findTechNoDays')}</div>`; return; }
         container.innerHTML = results.map(r => `
             <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:7px 0; border-top:1px solid var(--border-color); font-size:0.85rem; ${r.isPast ? 'opacity:0.6;' : ''}">
