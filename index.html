@@ -6661,6 +6661,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 if (savedJobs[index].dayOrder !== undefined) slimJob.dayOrder = savedJobs[index].dayOrder;
                 if (savedJobs[index].scheduledDate !== undefined) slimJob.scheduledDate = savedJobs[index].scheduledDate;
                 if (savedJobs[index].dailySchedule !== undefined) slimJob.dailySchedule = savedJobs[index].dailySchedule;
+                if (savedJobs[index].scheduleCleared !== undefined) slimJob.scheduleCleared = savedJobs[index].scheduleCleared;
                 // The edit form has no fields for saved invoices — it only knows the core job
                 // fields (name, amounts, technicians, etc). Rebuilding jobData from the form alone
                 // and replacing the whole job object with it was silently dropping every invoice
@@ -12255,7 +12256,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             </label>`).join('');
 
         const removeBtn = document.getElementById('esRemoveDayBtn');
-        removeBtn.style.display = entries.length > 1 ? 'block' : 'none';
+        removeBtn.style.display = 'block'; // also for a job's only day (e.g. no work happened that day): the job stays, it just has no date
         removeBtn.onclick = () => removeScheduleDay(jobId, date);
 
         document.getElementById('esFullEditLink').onclick = () => requestFullEdit(jobId);
@@ -12270,6 +12271,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         if (idx === -1) return;
         const entries = getScheduleEntries(savedJobs[idx]).filter(e => e.date !== date);
         savedJobs[idx].dailySchedule = entries;
+        if (entries.length === 0) { savedJobs[idx].scheduleCleared = true; savedJobs[idx].scheduledDate = ''; savedJobs[idx].scheduledTime = ''; }
         savedJobs[idx].lastEditedBy = currentUserEmail;
         try {
             await saveSavedJobsData();
@@ -13726,6 +13728,7 @@ ${closeBtnHtml}
     // the old single-date/assignedTeam fields for jobs saved before this existed.
     function getScheduleEntries(job) {
         if (job.dailySchedule && job.dailySchedule.length > 0) return job.dailySchedule;
+        if (job.scheduleCleared) return []; // the last day was removed on purpose: don't rebuild it from the old start date
         const d = effectiveScheduleDate(job);
         if (!d) return [];
         return [{ date: d, time: job.scheduledTime || '', team: job.assignedTeam || (job.technicians || []).map(tc => tc.name).filter(Boolean), dayOrder: 0 }];
