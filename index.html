@@ -498,11 +498,11 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 <h2 style="margin:0; border:none; padding:0;" data-i18n="weeklyBoardTitle"></h2>
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
                     <button class="secondary" id="showAllPendingBtn" onclick="toggleAllPendingMode()" data-i18n="showAllPendingBtn"></button>
-                    <span style="display:inline-flex; gap:8px;">
-                        <button class="secondary" onclick="shiftWeek(1)">◀</button>
+                    <span dir="rtl" style="display:inline-flex; gap:8px;">
+                        <button class="secondary" onclick="shiftWeek(1)">▶</button>
                         <button class="secondary" onclick="shiftWeek(0)" data-i18n="thisWeekBtn"></button>
                         <button class="secondary" onclick="goToLastWeek()" data-i18n="presetLastWeekBtn"></button>
-                        <button class="secondary" onclick="shiftWeek(-1)">▶</button>
+                        <button class="secondary" onclick="shiftWeek(-1)">◀</button>
                     </span>
                     <button class="success" onclick="openNewScheduleModal()" data-i18n="newScheduleBtn"></button>
                     <button class="secondary" style="background:#059669;" onclick="openSendScheduleModal()" data-i18n="sendScheduleBtn"></button>
@@ -1073,10 +1073,10 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 <input type="date" id="guideDateTo" onchange="renderTechGuideContent()" style="min-width:130px;">
             </div>
             <button class="secondary" onclick="setGuideDateRange('today')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetTodayBtn"></button>
-            <button class="secondary" onclick="shiftGuideWeek(1)" style="padding:6px 12px; font-size:0.75rem;">◀</button>
+            <button class="secondary" onclick="shiftGuideWeek(1)" style="padding:6px 12px; font-size:0.75rem;" data-arr="next">◀</button>
             <button class="secondary" onclick="setGuideDateRange('week')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetWeekBtn"></button>
             <button class="secondary" onclick="setGuideDateRange('lastweek')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetLastWeekBtn"></button>
-            <button class="secondary" onclick="shiftGuideWeek(-1)" style="padding:6px 12px; font-size:0.75rem;">▶</button>
+            <button class="secondary" onclick="shiftGuideWeek(-1)" style="padding:6px 12px; font-size:0.75rem;" data-arr="prev">▶</button>
             <button class="secondary" onclick="setGuideDateRange('clear')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
             <div style="display:flex; align-items:center; gap:6px;">
                 <label style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;" data-i18n="lblTechShort"></label>
@@ -1161,10 +1161,10 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 <input type="date" id="wdFilterTo" onchange="renderPartnerAccountContent()" style="min-width:130px;">
             </div>
             <button class="secondary" onclick="setPartnerDateRange('today')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetTodayBtn"></button>
-            <button class="secondary" onclick="shiftPartnerWeek(1)" style="padding:6px 12px; font-size:0.75rem;">◀</button>
+            <button class="secondary" onclick="shiftPartnerWeek(1)" style="padding:6px 12px; font-size:0.75rem;" data-arr="next">◀</button>
             <button class="secondary" onclick="setPartnerDateRange('week')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetWeekBtn"></button>
             <button class="secondary" onclick="setPartnerDateRange('lastweek')" style="padding:6px 12px; font-size:0.75rem;" data-i18n="presetLastWeekBtn"></button>
-            <button class="secondary" onclick="shiftPartnerWeek(-1)" style="padding:6px 12px; font-size:0.75rem;">▶</button>
+            <button class="secondary" onclick="shiftPartnerWeek(-1)" style="padding:6px 12px; font-size:0.75rem;" data-arr="prev">▶</button>
             <button class="secondary" onclick="document.getElementById('wdFilterPartner').value=''; setPartnerDateRange('clear');" style="padding:6px 12px; font-size:0.75rem;" data-i18n="clearDateFilterBtn"></button>
         </div>
 
@@ -1232,10 +1232,10 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
 
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:15px;">
             <button class="secondary" onclick="setTechPartnerDateRange('today')" style="flex:1; min-width:80px; padding:9px 10px; font-size:0.78rem;" data-i18n="presetTodayBtn"></button>
-            <button class="secondary" onclick="shiftTechPartnerWeek(1)" style="padding:9px 14px; font-size:0.8rem;">◀</button>
+            <button class="secondary" onclick="shiftTechPartnerWeek(1)" style="padding:9px 14px; font-size:0.8rem;" data-arr="next">◀</button>
             <button class="secondary" onclick="setTechPartnerDateRange('week')" style="flex:1; min-width:100px; padding:9px 10px; font-size:0.78rem;" data-i18n="presetWeekBtn"></button>
             <button class="secondary" onclick="setTechPartnerDateRange('lastweek')" style="flex:1; min-width:100px; padding:9px 10px; font-size:0.78rem;" data-i18n="presetLastWeekBtn"></button>
-            <button class="secondary" onclick="shiftTechPartnerWeek(-1)" style="padding:9px 14px; font-size:0.8rem;">▶</button>
+            <button class="secondary" onclick="shiftTechPartnerWeek(-1)" style="padding:9px 14px; font-size:0.8rem;" data-arr="prev">▶</button>
             <button class="secondary" onclick="clearTechPartnerReportDates()" data-i18n="techPartnerClearDatesBtn" style="flex:1; min-width:100px; padding:9px 10px; font-size:0.78rem;"></button>
         </div>
 
@@ -3159,6 +3159,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
 
     function applyLanguage() {
         document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+        // prev/next week arrows point the way they move on screen: in Arabic (right-to-left) next is on the right
+        document.querySelectorAll('[data-arr]').forEach(function (b) { const rtl = currentLang === 'ar'; b.textContent = ((b.dataset.arr === 'next') === rtl) ? '▶' : '◀'; });
         document.documentElement.lang = currentLang;
         document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.getAttribute('data-i18n')); });
         document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.getAttribute('data-i18n-ph')); });
@@ -15540,7 +15542,7 @@ ${closeBtnHtml}
     window.twPay = function (name) { var w = weekWindow(); try { $('guideDateFrom').value = w.start; $('guideDateTo').value = w.end; } catch (e) {} openTechPaymentPrompt(name, null, true); };
     window.renderWPay = function renderWPay() {
         var w = weekWindow(), rows = weekPayRows(), total = 0; rows.forEach(function (r) { if (r.left > 0) total += r.left; });
-        var h = '<div class="tw-pagehead"><h2>' + escHtml(tw('wPay')) + '</h2><div class="tw-btns"><button class="tw-sbtn" onclick="twWeek(-1)">' + escHtml(tw('wpPrev')) + '</button><button class="tw-sbtn' + (wpOff === 0 ? ' p' : '') + '" onclick="twWeek(0)">' + escHtml(tw('wpThis')) + '</button><button class="tw-sbtn" onclick="twWeek(1)">' + escHtml(tw('wpNext')) + '</button></div></div>' +
+        var h = '<div class="tw-pagehead"><h2>' + escHtml(tw('wPay')) + '</h2><div class="tw-btns">' + (currentLang === 'ar' ? ('<button class="tw-sbtn" onclick="twWeek(1)">' + escHtml(tw('wpNext')) + '</button><button class="tw-sbtn' + (wpOff === 0 ? ' p' : '') + '" onclick="twWeek(0)">' + escHtml(tw('wpThis')) + '</button><button class="tw-sbtn" onclick="twWeek(-1)">' + escHtml(tw('wpPrev')) + '</button>') : ('<button class="tw-sbtn" onclick="twWeek(-1)">' + escHtml(tw('wpPrev')) + '</button><button class="tw-sbtn' + (wpOff === 0 ? ' p' : '') + '" onclick="twWeek(0)">' + escHtml(tw('wpThis')) + '</button><button class="tw-sbtn" onclick="twWeek(1)">' + escHtml(tw('wpNext')) + '</button>')) + '</div></div>' +
             '<div class="tw-sec" dir="ltr" style="text-align:start">' + w.start + ' → ' + w.end + '</div>';
         if (!rows.length) h += '<div class="tw-empty">' + escHtml(tw('wpNone')) + '</div>';
         rows.forEach(function (r) {
