@@ -2633,6 +2633,9 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         techBonusBtn: { ar: '🎁 بونس', en: '🎁 Bonus' },
         techPayBtn: { ar: '💵 دفع', en: '💵 Pay' },
         guideThBonusInPeriod: { ar: 'بونس الفترة', en: 'Bonus (period)' },
+        gasAddInJob: { ar: '⛽ إضافة جاز (بتاريخ الخانة اللي فوق)', en: '⛽ Add gas (uses the date above)' },
+        gasSaveJobFirst: { ar: 'احفظ الشغلانة الأول وبعدين ضيف الجاز', en: 'Save the job first, then add the gas' },
+        gasDupConfirm: { ar: 'فيه جاز متسجل قبل كده لـ {name} يوم {date}: {list}. تضيف مبلغ جاز تاني برضو؟', en: '{name} already has gas recorded on {date}: {list}. Add another gas amount anyway?' },
         techGasTitle: { ar: '⛽ جاز', en: '⛽ Gas' },
         techGasWho: { ar: 'الفني:', en: 'Technician:' },
         alertGasPickTech: { ar: 'اختار الفني الأول', en: 'Pick the technician first' },
@@ -4983,8 +4986,14 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 <button type="button" class="ledger-plus" onclick="addTechDaily(${index})" style="align-self:end;">+</button>
             </div>
             ${rows ? `<div style="margin-top:8px;">${rows}</div>` : ''}
+            ${techGasPanelHtml(tech, index, jobId)}
             <div class="daily-summary ag-meta" style="margin-top:6px;">${techDailySummaryHtml(tech, dues)}</div>
         </div>`;
+    }
+    function techGasPanelHtml(tech, index, jobId) {
+        const list = techBonuses.filter(b => b.kind === 'gas' && b.name === tech.name && String(b.jobId || '') === String(jobId)).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+        const rowsG = list.map(b => `<div class="ledger-row"><span dir="ltr" style="unicode-bidi:isolate;">${escHtml(b.date || '')}</span><strong style="color:#fb923c;">⛽ ${ltrAmt(b.amount)}</strong><span class="ledger-note">${escHtml(b.note || '')}</span><button type="button" class="ledger-del" style="color:#fb923c;" onclick="openTechGasEdit('${jsArg(b.at || '')}')">✏️</button><button type="button" class="ledger-del" onclick="deleteTechBonus('${jsArg(b.at || '')}')">🗑</button></div>`).join('');
+        return `<div style="margin-top:10px;"><button type="button" class="secondary" style="padding:6px 12px; font-size:0.8rem; background:#ea580c;" onclick="openTechGasFromJob(${index})">${t('gasAddInJob')}</button>${rowsG ? `<div style="margin-top:8px;">${rowsG}</div>` : ''}</div>`;
     }
     function addTechDaily(index) {
         const tech = technicians[index];
@@ -7635,8 +7644,10 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                     totalGas += amt;
                     // Gas goes in its own column on the row of the SAME day and job, so it's clear which day it belongs to;
                     // only if that day has no row (e.g. the job was cancelled) does it get a row of its own.
-                    const host = rows.find(r => r.date === b.date && r.client === (b.jobClientName || '') && r.type !== '-' && r.gas == null);
-                    if (host) { host.gas = amt; if (b.note) host.gasNote = b.note; }
+                    const host = rows.find(r => r.date === b.date && r.client === (b.jobClientName || '') && r.type !== '-');
+                    const gasOnly = rows.find(r => r.date === (b.date || '') && r.client === (b.jobClientName || '-') && r.type === '-' && r.gas != null);
+                    if (host) { host.gas = (host.gas || 0) + amt; if (b.note) host.gasNote = b.note; }
+                    else if (gasOnly) { gasOnly.gas += amt; if (b.note && !gasOnly.work) gasOnly.work = b.note; }
                     else rows.push({ date: b.date || '', client: b.jobClientName || '-', work: b.note || '', type: '-', dues: null, materials: null, gas: amt, paid: null, remaining: null });
                     return;
                 }
@@ -14650,6 +14661,14 @@ ${closeBtnHtml}
         document.getElementById('techGasNote').value = '';
         document.getElementById('techGasModal').style.display = 'flex';
     }
+    function openTechGasFromJob(index) {
+        const tech = technicians[index]; if (!tech || !tech.name) return;
+        const jobId = document.getElementById('editingJobId').value;
+        if (!jobId || !savedJobs.some(j => String(j.id) === String(jobId))) { alert(t('gasSaveJobFirst')); return; }
+        const dEl = document.getElementById('da-date-' + index);
+        openTechGas(jobId, dEl && dEl.value ? dEl.value : isoDate(new Date()));
+        fillGasTechSelect([tech.name], tech.name);
+    }
     function openTechGasEdit(at) {
         const b = techBonuses.find(x => x.at === at); if (!b) return;
         editingGasAt = at; gasJobId = b.jobId || null;
@@ -14677,7 +14696,12 @@ ${closeBtnHtml}
             techBonuses[idx] = { ...backup, name, amount, date, note, editedBy: currentUserEmail || '?', editedAt: new Date().toISOString() };
             try { await TECH_BONUSES_DOC.set({ entries: techBonuses }); logActivity('edit', name, `${t('techGasTitle')}: $${amount.toFixed(2)} (${date})`); }
             catch (err) { techBonuses[idx] = backup; alertSaveError(err); return; }
-            closeTechGasModal(); renderTechGuideContent(); return;
+            closeTechGasModal(); renderTechGuideContent(); safeCall(renderTechnicians); return;
+        }
+        const dupe = techBonuses.filter(x => x.kind === 'gas' && x.name === name && x.date === date);
+        if (dupe.length > 0) {
+            const dTxt = dupe.map(x => '$' + parseVal(x.amount).toFixed(2) + (x.jobClientName ? ' (' + x.jobClientName + ')' : '')).join(', ');
+            if (!confirm(t('gasDupConfirm').replace('{name}', name).replace('{date}', date).replace('{list}', dTxt))) return;
         }
         const entry = { kind: 'gas', name, amount, date, note, ...jobFields, by: currentUserEmail || '?', at: new Date().toISOString() };
         try {
@@ -14685,7 +14709,7 @@ ${closeBtnHtml}
             await TECH_BONUSES_DOC.set({ entries: techBonuses });
             logActivity('add', name, `${t('techGasTitle')}: $${amount.toFixed(2)}`);
             closeTechGasModal();
-            safeCall(renderTechGuideContent); safeCall(renderWeeklyBoard);
+            safeCall(renderTechGuideContent); safeCall(renderWeeklyBoard); safeCall(renderTechnicians);
         } catch (err) { techBonuses = techBonuses.filter(x => x !== entry); alertSaveError(err); }
     }
     function closeTechBonusModal() { document.getElementById('techBonusModal').style.display = 'none'; editingBonusAt = ''; }
@@ -14738,6 +14762,7 @@ ${closeBtnHtml}
         try {
             await TECH_BONUSES_DOC.set({ entries: techBonuses });
             logActivity('delete', removed.name || '', `${t('techBonusTitle')}: $${parseVal(removed.amount).toFixed(2)} (${removed.date || ''})`);
+            safeCall(renderTechnicians);
         } catch (err) {
             techBonuses.splice(idx, 0, removed);
             alertSaveError(err);
