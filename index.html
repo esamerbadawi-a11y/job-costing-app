@@ -2651,6 +2651,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         techPayDefaultRatePh: { ar: 'السعر (مثلاً 225)', en: 'Rate (e.g. 225)' },
         techPayDefaultHint: { ar: 'بيتملي لوحده لما تضيف الفني في شغلانة جديدة. تقدر تغيره جوه أي شغلانة. وتغييره هنا مبيأثرش على الشغلانات القديمة ولا التقارير.', en: 'Fills in automatically when you add him to a NEW job. You can change it inside any job. Changing it here never affects old jobs or reports.' },
         dailyQuickRateBtn: { ar: '+ يوم بسعره {amt}', en: '+ Day at {amt}' },
+        dailyClosedTitle: { ar: 'اليوم ده اتسجل له مبلغ. امسح المبلغ الأول لو عايز تغيره', en: 'This day already has an amount. Delete it first to change it' },
+        dailyAlreadyHasAlert: { ar: 'اليوم ده فيه مبلغ متسجل للفني ده في الشغلانة دي. امسح المبلغ القديم (🗑) الأول لو عايز تغيره.', en: 'This day already has an amount for this technician on this job. Delete the old amount (🗑) first if you want to change it.' },
         techGasTitle: { ar: '⛽ جاز', en: '⛽ Gas' },
         techGasWho: { ar: 'الفني:', en: 'Technician:' },
         alertGasPickTech: { ar: 'اختار الفني الأول', en: 'Pick the technician first' },
@@ -4994,7 +4996,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                         const title = t('dailyLockedTitle').replace('{job}', locked.jobName).replace('{amt}', '$' + locked.otherAmount.toFixed(2));
                         return `<button type="button" class="secondary" disabled title="${escHtml(title)}" style="opacity:0.4; cursor:not-allowed;">🔒 ${escHtml(d)}</button>`;
                     }
-                    return `<button type="button" class="secondary" style="${allocatedDates.has(d) ? 'opacity:0.55;' : ''}" onclick="pickTechDailyDate(${index}, '${jsArg(d)}')">📅 ${escHtml(d)}${allocatedDates.has(d) ? ' ✓' : ''}</button>`;
+                    if (allocatedDates.has(d)) return `<button type="button" class="secondary" disabled title="${escHtml(t('dailyClosedTitle'))}" style="opacity:0.45; cursor:not-allowed;">✅ ${escHtml(d)}</button>`;
+                    return `<button type="button" class="secondary" onclick="pickTechDailyDate(${index}, '${jsArg(d)}')">📅 ${escHtml(d)}</button>`;
                 }).join('')}
             </div>` : `<div class="ag-meta" style="margin-bottom:8px;">${t('dailyQuickPickNone')}</div>`;
         return `<div style="margin-top:12px; padding-top:12px; border-top:1px dashed var(--border-color);">
@@ -5027,6 +5030,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         const schedJob = savedJobs.find(j => j.id === jobId);
         const schedDates = schedJob ? getScheduleEntries(schedJob).map(e => e.date) : [];
         if (schedDates.length > 0 && !schedDates.includes(date) && !confirm(t('dailyNotScheduledConfirm'))) return;
+        if ((tech.dailyAlloc || []).some(e => e.date === date)) { alert(t('dailyAlreadyHasAlert')); return; }
         const locked = techLockedDatesFor(tech, jobId).get(date);
         if (locked) { alert(t('dailyLockedAlert').replace('{job}', locked.jobName).replace('{amt}', '$' + locked.otherAmount.toFixed(2))); return; }
         tech.dailyAlloc = tech.dailyAlloc || [];
