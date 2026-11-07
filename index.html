@@ -2275,6 +2275,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         confirmCountThisWeekOnly: { ar: 'تحسب أيام الأسبوع ده بس؟ (إلغاء = كل أيام الشغلانة من الأول)', en: "Count just this week's days? (Cancel = every day on this job from the start)" },
         alertNoDaysThisWeekForTech: { ar: 'الفني ده مالوش أي يوم مجدول الأسبوع ده.', en: 'This technician has no scheduled days this week.' },
         remindAdjustOtherJob: { ar: '⚠️ متنساش تظبط عدد أيام الفني ده يدويًا في شغلانة:', en: "⚠️ Don't forget to manually adjust this technician's days in:" },
+        confirmRemoveDayAmounts: { ar: 'وهيتشال معاه من حساب الفني:', en: "This will also remove from the technician's account:" },
+        dailyNotScheduledConfirm: { ar: 'اليوم ده مش في جدول الشغلانة. تكمل وتكتب المبلغ برضو؟', en: "This day isn't in the job's schedule. Add the amount anyway?" },
         confirmRemoveDay: { ar: 'متأكد من شيل اليوم ده من جدول الشغلانة؟', en: "Remove this day from the job's schedule?" },
         qsDateLabel: { ar: 'التاريخ:', en: 'Date:' },
         newScheduleBtn: { ar: '+ جدولة جديدة', en: '+ New Schedule' },
@@ -4992,6 +4994,9 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         if (amt <= 0) { alert(t('alertWithdrawalAmountRequired')); return; }
         if (!date) { alert(t('alertPickDate')); return; }
         const jobId = document.getElementById('editingJobId').value || '__unsaved__';
+        const schedJob = savedJobs.find(j => j.id === jobId);
+        const schedDates = schedJob ? getScheduleEntries(schedJob).map(e => e.date) : [];
+        if (schedDates.length > 0 && !schedDates.includes(date) && !confirm(t('dailyNotScheduledConfirm'))) return;
         const locked = techLockedDatesFor(tech, jobId).get(date);
         if (locked) { alert(t('dailyLockedAlert').replace('{job}', locked.jobName).replace('{amt}', '$' + locked.otherAmount.toFixed(2))); return; }
         tech.dailyAlloc = tech.dailyAlloc || [];
@@ -12339,16 +12344,22 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     function closeEditScheduleModal() { document.getElementById('editScheduleModal').style.display = 'none'; }
 
     async function removeScheduleDay(jobId, date) {
-        if (!confirm(t('confirmRemoveDay'))) return;
         const idx = savedJobs.findIndex(j => j.id === jobId);
         if (idx === -1) return;
+        // Amounts written for this exact day inside the job ("Amount per day") go with the day, so the technician's report
+        // doesn't keep counting a day that was taken off the schedule. The person is shown exactly what will go.
+        const dayAmounts = [];
+        (savedJobs[idx].technicians || []).forEach(tc => (tc.dailyAlloc || []).forEach(e => { if (e.date === date) dayAmounts.push({ name: tc.name, amount: round2(parseVal(e.amount)) }); }));
+        const amtText = dayAmounts.length ? '\n\n' + t('confirmRemoveDayAmounts') + '\n' + dayAmounts.map(a => `${a.name}: $${a.amount.toFixed(2)}`).join('\n') : '';
+        if (!confirm(t('confirmRemoveDay') + amtText)) return;
+        if (dayAmounts.length) (savedJobs[idx].technicians || []).forEach(tc => { if (tc.dailyAlloc) tc.dailyAlloc = tc.dailyAlloc.filter(e => e.date !== date); });
         const entries = getScheduleEntries(savedJobs[idx]).filter(e => e.date !== date);
         savedJobs[idx].dailySchedule = entries;
         if (entries.length === 0) { savedJobs[idx].scheduleCleared = true; savedJobs[idx].scheduledDate = ''; savedJobs[idx].scheduledTime = ''; }
         savedJobs[idx].lastEditedBy = currentUserEmail;
         try {
             await saveSavedJobsData();
-            logActivity('edit', savedJobs[idx].clientName, t('activityRemovedDay') + ' ' + date);
+            logActivity('edit', savedJobs[idx].clientName, t('activityRemovedDay') + ' ' + date + (dayAmounts.length ? ' (' + dayAmounts.map(a => a.name + ' $' + a.amount.toFixed(2)).join(', ') + ')' : ''));
         } catch (e) { alert(t('alertJobSaveFailed')); return; }
         closeEditScheduleModal();
         renderWeeklyBoard();
