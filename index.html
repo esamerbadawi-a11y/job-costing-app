@@ -2636,6 +2636,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         gasAddInJob: { ar: '⛽ إضافة جاز (بتاريخ الخانة اللي فوق)', en: '⛽ Add gas (uses the date above)' },
         gasSaveJobFirst: { ar: 'احفظ الشغلانة الأول وبعدين ضيف الجاز', en: 'Save the job first, then add the gas' },
         gasDupConfirm: { ar: 'فيه جاز متسجل قبل كده لـ {name} يوم {date}: {list}. تضيف مبلغ جاز تاني برضو؟', en: '{name} already has gas recorded on {date}: {list}. Add another gas amount anyway?' },
+        gasNoJobTitle: { ar: '⛽ جاز لفني من غير شغلانة', en: '⛽ Gas for a technician (no job)' },
+        gasNoJobLabel: { ar: 'من غير ربط بشغلانة', en: 'Not linked to a job' },
         techGasTitle: { ar: '⛽ جاز', en: '⛽ Gas' },
         techGasWho: { ar: 'الفني:', en: 'Technician:' },
         alertGasPickTech: { ar: 'اختار الفني الأول', en: 'Pick the technician first' },
@@ -14110,6 +14112,7 @@ ${closeBtnHtml}
                     <span>${dayNames[d.getDay() === 0 ? 6 : d.getDay() - 1]} — ${dateStr}</span>
                     <div style="display:flex; align-items:center; gap:10px;">
                         <span style="font-weight:400; font-size:0.78rem;">${pairs.length} ${t('jobsWord')}</span>
+                        <button class="secondary" title="${t('gasNoJobTitle')}" onclick="openTechGasDay('${dateStr}')" style="padding:3px 9px; font-size:0.72rem; background:#ea580c;">⛽</button>
                         <button class="success" onclick="openQuickScheduleModal('${dateStr}')" style="padding:3px 10px; font-size:0.72rem;">+ ${t('qsAddBtn')}</button>
                     </div>
                 </div>
@@ -14656,6 +14659,18 @@ ${closeBtnHtml}
         const entry = getScheduleEntries(job).find(e => e.date === date);
         document.getElementById('techGasJobLabel').textContent = (job.clientName || '') + (date ? ' — ' + date : '');
         fillGasTechSelect(entry ? (entry.team || []) : [], '');
+        document.getElementById('techGasAmount').value = '';
+        document.getElementById('techGasDate').value = date || isoDate(new Date());
+        document.getElementById('techGasNote').value = '';
+        document.getElementById('techGasModal').style.display = 'flex';
+    }
+    // Gas for a day with no job (the technician went somewhere and no work happened): not tied to any job.
+    function openTechGasDay(date) {
+        editingGasAt = ''; gasJobId = null;
+        const pref = [];
+        savedJobs.forEach(j => { if (j.jobStatus === 'ملغي') return; getScheduleEntries(j).forEach(e => { if (e.date === date) (e.team || []).forEach(n => { if (n && !pref.includes(n)) pref.push(n); }); }); });
+        document.getElementById('techGasJobLabel').textContent = t('gasNoJobLabel') + ' — ' + date;
+        fillGasTechSelect(pref, '');
         document.getElementById('techGasAmount').value = '';
         document.getElementById('techGasDate').value = date || isoDate(new Date());
         document.getElementById('techGasNote').value = '';
