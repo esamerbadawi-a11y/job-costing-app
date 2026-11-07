@@ -14016,9 +14016,15 @@ ${closeBtnHtml}
         days.forEach(d => {
             const dateStr = isoDate(d);
             let pairs = [];
-            // A day shows here only when it was put on the schedule on purpose ("+ Add", new schedule, moving a day...).
-            // A job that just has a start date and no scheduled days never appears on its own; it stays under "All unfinished".
-            boardJobs.forEach(job => { (Array.isArray(job.dailySchedule) ? job.dailySchedule : []).forEach(entry => { if (entry.date === dateStr) pairs.push({ job, entry }); }); });
+            // A day shows here when it was put on the schedule on purpose ("+ Add", new schedule, moving a day...), or when the job has no
+            // scheduled days of its own but a technician was added inside the job (then its start date is used). A job with only a start
+            // date and nobody added never appears on its own; it stays under "All unfinished".
+            boardJobs.forEach(job => {
+                const explicit = Array.isArray(job.dailySchedule) && job.dailySchedule.length > 0;
+                const hasTech = (job.technicians || []).some(tc => tc && tc.name);
+                const list = explicit ? job.dailySchedule : (hasTech ? getScheduleEntries(job) : []);
+                list.forEach(entry => { if (entry.date === dateStr) pairs.push({ job, entry }); });
+            });
             pairs = sortDayEntries(pairs);
             const isToday = dateStr === todayStr;
             html += `<div style="margin-bottom:14px; border:1px solid var(--border-color); border-radius:10px; overflow:hidden;">
