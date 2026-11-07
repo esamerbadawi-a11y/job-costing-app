@@ -2653,6 +2653,10 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         dailyQuickRateBtn: { ar: '+ يوم بسعره {amt}', en: '+ Day at {amt}' },
         dailyClosedTitle: { ar: 'اليوم ده اتسجل له مبلغ. امسح المبلغ الأول لو عايز تغيره', en: 'This day already has an amount. Delete it first to change it' },
         dailyAlreadyHasAlert: { ar: 'اليوم ده فيه مبلغ متسجل للفني ده في الشغلانة دي. امسح المبلغ القديم (🗑) الأول لو عايز تغيره.', en: 'This day already has an amount for this technician on this job. Delete the old amount (🗑) first if you want to change it.' },
+        reportReadyTitle: { ar: 'التقرير جاهز', en: 'Report is ready' },
+        reportShareBtn: { ar: '📤 مشاركة / حفظ', en: '📤 Share / Save' },
+        reportOpenBtn: { ar: '👁 فتح التقرير', en: '👁 Open report' },
+        reportSaveBtn: { ar: '⬇️ تحميل', en: '⬇️ Download' },
         techGasTitle: { ar: '⛽ جاز', en: '⛽ Gas' },
         techGasWho: { ar: 'الفني:', en: 'Technician:' },
         alertGasPickTech: { ar: 'اختار الفني الأول', en: 'Pick the technician first' },
@@ -7587,10 +7591,36 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         const first = raw.split(/[.،;؛]/)[0].trim() || raw;
         return first.length > 34 ? first.slice(0, 33).replace(/\s+\S*$/, '') + '...' : first;
     }
+    // Phone-friendly delivery: a card with fresh taps (share/save, open) — works where a blank pre-opened tab does not.
+    function showReportReady(doc, filename) {
+        const old = document.getElementById('reportReadyCard'); if (old) old.remove();
+        const blob = doc.output('blob');
+        const url = URL.createObjectURL(blob);
+        const file = new File([blob], filename, { type: 'application/pdf' });
+        const canShareFile = !!(navigator.share && navigator.canShare && navigator.canShare({ files: [file] }));
+        const wrap = document.createElement('div');
+        wrap.id = 'reportReadyCard';
+        wrap.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:20000; display:flex; justify-content:center; align-items:center;';
+        wrap.innerHTML = `<div style="background:var(--card-dark,#1e2433); color:var(--text-main,#fff); border:1px solid var(--border-color,#334); border-radius:14px; width:86%; max-width:340px; padding:20px; text-align:center;">
+            <div style="font-weight:800; margin-bottom:12px;">📄 ${t('reportReadyTitle')}</div>
+            ${canShareFile ? `<button id="rrShare" class="success" style="width:100%; padding:11px; margin-bottom:8px;">${t('reportShareBtn')}</button>` : ''}
+            <a id="rrOpen" href="${url}" target="_blank" rel="noopener" style="display:block; padding:11px; margin-bottom:8px; border-radius:8px; background:#0ea5e9; color:#fff; font-weight:700; text-decoration:none;">${t('reportOpenBtn')}</a>
+            <button id="rrSave" class="secondary" style="width:100%; padding:9px; margin-bottom:8px;">${t('reportSaveBtn')}</button>
+            <button id="rrClose" class="danger" style="width:100%; padding:8px; font-size:0.85rem;">${t('guideCloseBtn')}</button></div>`;
+        document.body.appendChild(wrap);
+        const close = () => { wrap.remove(); setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) {} }, 60000); };
+        document.getElementById('rrClose').onclick = close;
+        document.getElementById('rrSave').onclick = () => { try { doc.save(filename); } catch (e) { alert(t('alertShareNotSupported')); } };
+        const sh = document.getElementById('rrShare');
+        if (sh) sh.onclick = async () => { try { await navigator.share({ files: [file] }); } catch (e) { if (e && e.name !== 'AbortError') alert(t('alertShareNotSupported')); } };
+    }
     async function printTechnicianReport(techName) {
         // The AI step below can take a few seconds; open the tab now (while the tap still counts) so the phone doesn't block it later.
         let preWin = null;
-        try { if (getGeminiApiKey()) preWin = window.open('', '_blank'); } catch (e) { preWin = null; }
+        // On phones a blank pre-opened tab can't be pointed at the PDF afterwards (it stays about:blank), so there we skip it
+        // and show a "report ready" card with real buttons at the end instead.
+        const isMobileDev = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+        try { if (getGeminiApiKey() && !isMobileDev) preWin = window.open('', '_blank'); } catch (e) { preWin = null; }
         const closePre = () => { try { if (preWin) preWin.close(); } catch (e) {} };
         if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch(e) {} }
         const { jsPDF } = window.jspdf;
@@ -7820,6 +7850,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         }
 
         addLogoWatermark(doc);
+        if (isMobileDev) { showReportReady(doc, 'Technician_Report_' + String(techName).replace(/[^\w\u0600-\u06FF-]+/g, '_') + '.pdf'); return; }
         doc.autoPrint();
         const pdfUrl = doc.output('bloburl');
         if (preWin && !preWin.closed) { try { preWin.location.href = pdfUrl; } catch (e) { window.open(pdfUrl, '_blank'); } }
