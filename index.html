@@ -1044,6 +1044,14 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 </div>
             </div>
             <div style="border-top:1px dashed var(--border-color); padding-top:10px; margin-bottom:10px;">
+                <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:6px;">💵 <span data-i18n="techPayDefaultTitle"></span></div>
+                <div class="grid-2" style="margin-bottom:4px;">
+                    <select id="newTechPayType"></select>
+                    <input type="text" inputmode="decimal" id="newTechPayRate" data-i18n-ph="techPayDefaultRatePh" onfocus="this.select()">
+                </div>
+                <div class="ag-meta" data-i18n="techPayDefaultHint"></div>
+            </div>
+            <div style="border-top:1px dashed var(--border-color); padding-top:10px; margin-bottom:10px;">
                 <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:6px;">📲 <span data-i18n="wkWorkerLoginBadge"></span></div>
                 <div class="grid-2" style="margin-bottom:6px;">
                     <input type="email" id="newTechWorkerEmail" data-i18n-ph="wkEmailPh" autocomplete="off" autocapitalize="none">
@@ -2638,6 +2646,11 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         gasDupConfirm: { ar: 'فيه جاز متسجل قبل كده لـ {name} يوم {date}: {list}. تضيف مبلغ جاز تاني برضو؟', en: '{name} already has gas recorded on {date}: {list}. Add another gas amount anyway?' },
         gasNoJobTitle: { ar: '⛽ جاز لفني من غير شغلانة', en: '⛽ Gas for a technician (no job)' },
         gasNoJobLabel: { ar: 'من غير ربط بشغلانة', en: 'Not linked to a job' },
+        techPayDefaultTitle: { ar: 'نظام الدفع الافتراضي (اختياري)', en: 'Default pay system (optional)' },
+        techPayDefaultNone: { ar: '— من غير نظام افتراضي —', en: '— No default —' },
+        techPayDefaultRatePh: { ar: 'السعر (مثلاً 225)', en: 'Rate (e.g. 225)' },
+        techPayDefaultHint: { ar: 'بيتملي لوحده لما تضيف الفني في شغلانة جديدة. تقدر تغيره جوه أي شغلانة. وتغييره هنا مبيأثرش على الشغلانات القديمة ولا التقارير.', en: 'Fills in automatically when you add him to a NEW job. You can change it inside any job. Changing it here never affects old jobs or reports.' },
+        dailyQuickRateBtn: { ar: '+ يوم بسعره {amt}', en: '+ Day at {amt}' },
         techGasTitle: { ar: '⛽ جاز', en: '⛽ Gas' },
         techGasWho: { ar: 'الفني:', en: 'Technician:' },
         alertGasPickTech: { ar: 'اختار الفني الأول', en: 'Pick the technician first' },
@@ -3349,7 +3362,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             attachmentsMigrationAttempted = false; // allow a retry on the next snapshot
         }
     }
-    async function saveTechPhonesData(){ await TECHS_DOC.set({ phones: technicianPhones }); }
+    async function saveTechPhonesData(){ await TECHS_DOC.set({ phones: technicianPhones, payDefaults: techPayDefaults }); }
     async function saveCompanyProfileData(){ await COMPANY_PROFILE_DOC.set(companyProfile); }
 
     // Same 1MB fix as jobAttachmentsDocRef/splitJobAttachments above, applied to appointments:
@@ -3540,6 +3553,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     let expenseItems = [];
     let savedJobs = [];
     let technicianPhones = {};
+    let techPayDefaults = {};   // { name: {type, rate} } — only pre-fills a NEW technician card on a job; never touches saved jobs
     let selectedJobIds = new Set();
     let lastDeletedJobs = [];
     let partnerWithdrawals = [];
@@ -3858,6 +3872,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
 
         TECHS_DOC.onSnapshot(doc => {
             technicianPhones = (doc.exists && doc.data().phones) ? doc.data().phones : {};
+            techPayDefaults = (doc.exists && doc.data().payDefaults) ? doc.data().payDefaults : {};
             safeCall(updateTechDropdownFilter);
             safeCall(renderTechnicians);
             if (document.getElementById('techGuideModal').style.display !== 'none') safeCall(renderTechGuideContent);
@@ -4871,6 +4886,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         // New technician goes at the TOP of the list (not the bottom) so it's easy to see next to
         // "Who Worked When" without scrolling past technicians already on the job.
         technicians.unshift({ name, days, paid, type, rate, customPercent });
+        if (name) applyTechPayDefault(technicians[0]);
         renderTechnicians();
         calculate();
     }
@@ -4941,6 +4957,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         if (!dateEl) return;
         dateEl.value = date;
         const amtEl = document.getElementById(`da-amt-${index}`);
+        const tc = technicians[index];
+        if (amtEl && !amtEl.value && tc && tc.type === 'باليومية' && parseVal(tc.rate) > 0) amtEl.value = round2(parseVal(tc.rate));
         if (amtEl) { amtEl.focus(); amtEl.select(); }
     }
 
@@ -4988,6 +5006,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 <button type="button" class="ledger-plus" onclick="addTechDaily(${index})" style="align-self:end;">+</button>
             </div>
             ${rows ? `<div style="margin-top:8px;">${rows}</div>` : ''}
+            ${(tech.type === 'باليومية' && parseVal(tech.rate) > 0) ? `<div style="margin-top:8px;"><button type="button" class="secondary" style="padding:6px 12px; font-size:0.8rem;" onclick="addTechDaily(${index}, ${round2(parseVal(tech.rate))})">${t('dailyQuickRateBtn').replace('{amt}', '$' + round2(parseVal(tech.rate)).toFixed(2))}</button></div>` : ''}
             ${techGasPanelHtml(tech, index, jobId)}
             <div class="daily-summary ag-meta" style="margin-top:6px;">${techDailySummaryHtml(tech, dues)}</div>
         </div>`;
@@ -4997,11 +5016,11 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         const rowsG = list.map(b => `<div class="ledger-row"><span dir="ltr" style="unicode-bidi:isolate;">${escHtml(b.date || '')}</span><strong style="color:#fb923c;">⛽ ${ltrAmt(b.amount)}</strong><span class="ledger-note">${escHtml(b.note || '')}</span><button type="button" class="ledger-del" style="color:#fb923c;" onclick="openTechGasEdit('${jsArg(b.at || '')}')">✏️</button><button type="button" class="ledger-del" onclick="deleteTechBonus('${jsArg(b.at || '')}')">🗑</button></div>`).join('');
         return `<div style="margin-top:10px;"><button type="button" class="secondary" style="padding:6px 12px; font-size:0.8rem; background:#ea580c;" onclick="openTechGasFromJob(${index})">${t('gasAddInJob')}</button>${rowsG ? `<div style="margin-top:8px;">${rowsG}</div>` : ''}</div>`;
     }
-    function addTechDaily(index) {
+    function addTechDaily(index, rateOverride) {
         const tech = technicians[index];
         if (!tech) return;
         const date = document.getElementById(`da-date-${index}`).value;
-        const amt = round2(parseVal(document.getElementById(`da-amt-${index}`).value));
+        const amt = round2(parseVal(rateOverride !== undefined ? rateOverride : document.getElementById(`da-amt-${index}`).value));
         if (amt <= 0) { alert(t('alertWithdrawalAmountRequired')); return; }
         if (!date) { alert(t('alertPickDate')); return; }
         const jobId = document.getElementById('editingJobId').value || '__unsaved__';
@@ -5569,6 +5588,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             if (conflict) { alert(t('alertPercentConflict')); renderTechnicians(); return; }
         }
         technicians[index][field] = value;
+        if (field === 'name') applyTechPayDefault(technicians[index]);
         if (field === 'type' || field === 'name') renderTechnicians();
         else updateTechCardDues(index);
     }
@@ -10962,8 +10982,27 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('newTechWorkerEmail').value = '';
         document.getElementById('newTechRegion').value = '';
         document.getElementById('newTechWorkerLang').value = 'es';
+        fillTechPayDefaultForm('');
         safeCall(fillRegionList);
         document.getElementById('addTechFormContainer').style.display = 'block';
+    }
+    const PAY_DEFAULT_TYPES = ['باليومية', 'بالساعة', 'مبلغ ثابت', 'فني لوحده (%60)', 'نسبة (50%)'];
+    function fillTechPayDefaultForm(name) {
+        const d = (name && techPayDefaults[name]) || null;
+        document.getElementById('newTechPayType').innerHTML = `<option value="">${t('techPayDefaultNone')}</option>` +
+            PAY_DEFAULT_TYPES.map(v => `<option value="${v}">${techTypeLabel(v)}</option>`).join('');
+        document.getElementById('newTechPayType').value = d ? d.type : '';
+        document.getElementById('newTechPayRate').value = d && d.rate ? d.rate : '';
+    }
+    // Pre-fills ONLY a fresh technician card (nothing chosen yet) from his saved default. Saved jobs are never touched.
+    function applyTechPayDefault(tech) {
+        const d = tech && tech.name ? techPayDefaults[tech.name] : null;
+        if (!d || !d.type) return;
+        const fresh = tech.type === 'نسبة مخصصة' && !parseVal(tech.rate) && !(tech.dailyAlloc && tech.dailyAlloc.length);
+        if (!fresh) return;
+        if (EXCLUSIVE_PERCENT_TYPES.includes(d.type) && technicians.some(x => x !== tech && EXCLUSIVE_PERCENT_TYPES.includes(x.type))) return;
+        tech.type = d.type;
+        tech.rate = d.rate ? d.rate : 0;
     }
 
     function openEditTechnicianModal(name) {
@@ -10978,6 +11017,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         document.getElementById('newTechWorkerEmail').value = wkAcc ? (wkAcc.email || '') : '';
         document.getElementById('newTechRegion').value = wkAcc ? (wkAcc.region || '') : '';
         document.getElementById('newTechWorkerLang').value = (wkAcc && wkAcc.lang) ? wkAcc.lang : 'es';
+        fillTechPayDefaultForm(name);
         safeCall(fillRegionList);
         document.getElementById('addTechFormContainer').style.display = 'block';
         document.getElementById('addTechFormContainer').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -11002,8 +11042,12 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const wkEmail = document.getElementById('newTechWorkerEmail').value.trim().toLowerCase();
         if (wkEmail && !/^\S+@\S+\.\S+$/.test(wkEmail)) { alert(t('wkEmailInvalid')); return; }
         try {
-            if (editingName && editingName !== name) delete technicianPhones[editingName]; // renamed
+            if (editingName && editingName !== name) { delete technicianPhones[editingName]; delete techPayDefaults[editingName]; } // renamed
             technicianPhones[name] = phone;
+            const pdType = document.getElementById('newTechPayType').value;
+            const pdRate = round2(parseVal(document.getElementById('newTechPayRate').value));
+            if (pdType) techPayDefaults[name] = { type: pdType, rate: (pdType === 'فني لوحده (%60)' || pdType === 'نسبة (50%)') ? 0 : pdRate };
+            else delete techPayDefaults[name];
             await saveTechPhonesData();
             await saveWorkerAccountFromForm(name, editingName, wkEmail);
             closeAddTechnicianModal();
@@ -11020,6 +11064,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         if (!confirm(t('confirmDeleteTech'))) return;
         try {
             delete technicianPhones[name];
+            delete techPayDefaults[name];
             await saveTechPhonesData();
             renderTechGuideContent();
             updateTechDropdownFilter();
