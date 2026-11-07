@@ -7512,7 +7512,46 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
 
     // Builds and opens a print-ready report for a single technician: every job they
     // worked on, what they earned, what they were paid, and their running balance.
+    // Short AI labels ("Ceiling tile repair") for the Work column of the technician report. One request for all jobs in the report,
+    // remembered on this device so the same job isn't sent again. Nothing is saved to the job itself; any problem just returns {}.
+    async function aiWorkSummaries(rows) {
+        const key = getGeminiApiKey(); if (!key) return {};
+        const hash = str => { let h = 0; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0; return String(h); };
+        let cache = {}; try { cache = JSON.parse(localStorage.getItem('twWorkSummaries') || '{}') || {}; } catch (e) { cache = {}; }
+        const out = {}, todo = [];
+        Array.from(new Set(rows.map(r => r.wjobId).filter(Boolean))).forEach(id => {
+            const job = savedJobs.find(j => String(j.id) === String(id));
+            const desc = String((job && job.clientDescription) || '').trim().slice(0, 300);
+            if (!desc) return;
+            const ck = id + '|' + hash(desc);
+            if (cache[ck]) out[id] = cache[ck]; else todo.push({ id, ck, desc });
+        });
+        if (todo.length) {
+            const prompt = 'For each job below, write a very short label (2 to 5 words, at most 30 characters) saying what the work is, in the SAME language as that job\'s description (Arabic stays Arabic). Examples: "Ceiling tile repair", "تركيب باب". Reply with ONLY a JSON object that maps each id to its label, nothing else.\n' + JSON.stringify(todo.map(x => ({ id: x.id, description: x.desc })));
+            try {
+                const txt = await Promise.race([aiGenerate(key, prompt), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 12000))]);
+                const m = String(txt).replace(/```(?:json)?/g, '').match(/\{[\s\S]*\}/);
+                const obj = m ? JSON.parse(m[0]) : {};
+                todo.forEach(x => {
+                    const v = String(obj[x.id] || '').replace(/["\n]/g, ' ').trim().slice(0, 34);
+                    if (v) { out[x.id] = v; cache[x.ck] = v; }
+                });
+                try { localStorage.setItem('twWorkSummaries', JSON.stringify(cache)); } catch (e) {}
+            } catch (e) { /* AI unavailable or slow: the plain description is used */ }
+        }
+        return out;
+    }
+    // A short "what was this job" label for the technician report: the first meaningful line of the job description, trimmed.
+    function jobWorkSummary(job) {
+        const raw = String((job && job.clientDescription) || '').split(/\r?\n/).map(x => x.replace(/^[\s\-•*\d.)]+/, '').trim()).find(x => x) || '';
+        const first = raw.split(/[.،;؛]/)[0].trim() || raw;
+        return first.length > 34 ? first.slice(0, 33).replace(/\s+\S*$/, '') + '...' : first;
+    }
     async function printTechnicianReport(techName) {
+        // The AI step below can take a few seconds; open the tab now (while the tap still counts) so the phone doesn't block it later.
+        let preWin = null;
+        try { if (getGeminiApiKey()) preWin = window.open('', '_blank'); } catch (e) { preWin = null; }
+        const closePre = () => { try { if (preWin) preWin.close(); } catch (e) {} };
         if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch(e) {} }
         const { jsPDF } = window.jspdf;
         let doc = new jsPDF('p', 'mm', 'a4');
@@ -7550,28 +7589,28 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 // many days the job itself ran for. A typed week or a percentage job has no
                 // day-level split to show, so those stay as one row.
                 if (j.manual) {
-                    rows.push({ date: j.weeks.map(w => w.weekStart).filter(Boolean).sort().join(', ') || (j.job.startDate || ''), client: j.job.clientName || '', type: techTypeLabel(j.tech.type), dues: wageOnly, materials: null, paid: null, remaining: null });
+                    rows.push({ date: j.weeks.map(w => w.weekStart).filter(Boolean).sort().join(', ') || (j.job.startDate || ''), client: j.job.clientName || '', work: jobWorkSummary(j.job), wjobId: j.job.id, type: techTypeLabel(j.tech.type), dues: wageOnly, materials: null, paid: null, remaining: null });
                 } else if (j.dailyManual) {
                     // Already one $ amount per actual day — each gets its own row as-is.
                     j.dailyEntries.forEach(e => {
-                        rows.push({ date: e.date, client: j.job.clientName || '', type: techTypeLabel(j.tech.type), dues: round2(parseVal(e.amount)), materials: null, paid: null, remaining: null });
+                        rows.push({ date: e.date, client: j.job.clientName || '', work: jobWorkSummary(j.job), wjobId: j.job.id, type: techTypeLabel(j.tech.type), dues: round2(parseVal(e.amount)), materials: null, paid: null, remaining: null });
                     });
                 } else if (j.isPercentPeriod) {
-                    rows.push({ date: j.job.startDate || '', client: j.job.clientName || '', type: techTypeLabel(j.tech.type), dues: wageOnly, materials: null, paid: null, remaining: null });
+                    rows.push({ date: j.job.startDate || '', client: j.job.clientName || '', work: jobWorkSummary(j.job), wjobId: j.job.id, type: techTypeLabel(j.tech.type), dues: wageOnly, materials: null, paid: null, remaining: null });
                 } else {
                     const datesInPeriod = (j.dates || []).filter(d => (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo)).sort();
                     if (datesInPeriod.length === 0) {
-                        rows.push({ date: j.job.startDate || '', client: j.job.clientName || '', type: techTypeLabel(j.tech.type), dues: wageOnly, materials: null, paid: null, remaining: null });
+                        rows.push({ date: j.job.startDate || '', client: j.job.clientName || '', work: jobWorkSummary(j.job), wjobId: j.job.id, type: techTypeLabel(j.tech.type), dues: wageOnly, materials: null, paid: null, remaining: null });
                     } else {
                         splitAmountAcrossDates(wageOnly, datesInPeriod).forEach(r => {
-                            rows.push({ date: r.date, client: j.job.clientName || '', type: techTypeLabel(j.tech.type), dues: r.amount, materials: null, paid: null, remaining: null });
+                            rows.push({ date: r.date, client: j.job.clientName || '', work: jobWorkSummary(j.job), wjobId: j.job.id, type: techTypeLabel(j.tech.type), dues: r.amount, materials: null, paid: null, remaining: null });
                         });
                     }
                 }
                 // Materials he bought himself, each on its own actual purchase date — not folded
                 // into any one wage day.
                 (j.reimbEntries || []).forEach(e => {
-                    rows.push({ date: e.date || '', client: 'Materials (' + (j.job.clientName || '') + ')', type: '-', dues: null, materials: round2(parseVal(e.amount)), paid: null, remaining: null });
+                    rows.push({ date: e.date || '', client: 'Materials (' + (j.job.clientName || '') + ')', work: jobWorkSummary(j.job), wjobId: j.job.id, type: '-', dues: null, materials: round2(parseVal(e.amount)), paid: null, remaining: null });
                 });
             });
         }
@@ -7579,7 +7618,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         const partnerInfo = partnerShareInPeriod(techName, dateFrom, dateTo);
         const totalPartner = partnerInfo.total;
         partnerInfo.items.forEach(r => {
-            rows.push({ date: r.job.startDate || '', client: (r.job.clientName || '') + ' (partner ' + Math.round(r.percent) + '%)', type: 'Partner', dues: r.amount, materials: null, paid: null, remaining: null });
+            rows.push({ date: r.job.startDate || '', client: (r.job.clientName || '') + ' (partner ' + Math.round(r.percent) + '%)', work: jobWorkSummary(r.job), wjobId: r.job.id, type: 'Partner', dues: r.amount, materials: null, paid: null, remaining: null });
         });
         // Bonuses (🎁) get their own rows too, clearly labeled as a bonus — kept separate from
         // "Dues" in the totals below so it reads as a reward, not pay for extra job work.
@@ -7587,8 +7626,17 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             .slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''))
             .forEach(b => {
                 const amt = parseVal(b.amount);
-                if (b.kind === 'gas') totalGas += amt; else totalBonus += amt;
-                rows.push({ date: b.date || '', client: (b.kind === 'gas' ? 'Gas' : 'Bonus') + (b.jobClientName ? ' (' + b.jobClientName + ')' : '') + (b.note ? ' - ' + b.note : ''), type: '-', dues: amt, materials: null, paid: null, remaining: null });
+                if (b.kind === 'gas') {
+                    totalGas += amt;
+                    // Gas goes in its own column on the row of the SAME day and job, so it's clear which day it belongs to;
+                    // only if that day has no row (e.g. the job was cancelled) does it get a row of its own.
+                    const host = rows.find(r => r.date === b.date && r.client === (b.jobClientName || '') && r.type !== '-' && r.gas == null);
+                    if (host) { host.gas = amt; if (b.note) host.gasNote = b.note; }
+                    else rows.push({ date: b.date || '', client: b.jobClientName || '-', work: b.note || '', type: '-', dues: null, materials: null, gas: amt, paid: null, remaining: null });
+                    return;
+                }
+                totalBonus += amt;
+                rows.push({ date: b.date || '', client: 'Bonus' + (b.jobClientName ? ' (' + b.jobClientName + ')' : '') + (b.note ? ' - ' + b.note : ''), type: '-', dues: amt, materials: null, paid: null, remaining: null });
             });
         // Payments come only from the 💵 button (same as the Guide), listed as their own rows.
         // Job rows show what was earned; payments are per technician, not per job, so the running
@@ -7601,17 +7649,22 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 rows.push({ date: p.date || '', client: 'Payment' + (p.note ? ' - ' + p.note : ''), type: '-', dues: null, materials: null, paid: amt, remaining: null });
             });
 
-        if (rows.length === 0) { alert(currentLang === 'ar' ? 'الفني ده لسه مالوش شغلانات مسجلة في الفترة دي.' : 'This technician has no recorded jobs in this period.'); return; }
+        if (rows.length === 0) { closePre(); alert(currentLang === 'ar' ? 'الفني ده لسه مالوش شغلانات مسجلة في الفترة دي.' : 'This technician has no recorded jobs in this period.'); return; }
 
         // Oldest to newest, across jobs/bonuses/payments together — not grouped by type. A job
         // row's date can be a comma-joined list of days (e.g. earlier worked, later worked); it
         // sorts by its first (earliest) date since the list itself is already built ascending.
         rows.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+        // Work column: a short AI label of what each job is (falls back to the plain trimmed description if AI is off or slow)
+        try {
+            const sums = await aiWorkSummaries(rows);
+            rows.forEach(r => { if (r.wjobId && sums[r.wjobId]) r.work = sums[r.wjobId]; });
+        } catch (e) { /* keep the plain trimmed description */ }
 
-        const headers = [["Date", "Client", "Pay Type", "Dues", "Materials", "Paid", "Remaining"]];
+        const headers = [["Date", "Client", "Work", "Pay Type", "Dues", "Materials", "Gas", "Paid", "Remaining"]];
         const money = v => (v === null || v === undefined) ? '-' : '$' + v.toFixed(2);
-        const data = rows.map(r => [r.date, r.client, r.type, money(r.dues), money(r.materials), money(r.paid), money(r.remaining)]);
-        const TECH_REPORT_ARABIC_COLS = [1, 2]; // Client, Pay Type
+        const data = rows.map(r => [r.date, r.client, (r.work || '') + (r.gasNote ? (r.work ? ' | ' : '') + 'Gas: ' + r.gasNote : ''), r.type, money(r.dues), money(r.materials), money(r.gas), money(r.paid), money(r.remaining)]);
+        const TECH_REPORT_ARABIC_COLS = [1, 2, 3]; // Client, Work, Pay Type
 
         // Bonus (🎁) rows are highlighted and bolded throughout the table — same light-amber
         // background jsPDF-autoTable draws from styles.fillColor, plus a bold font, so a bonus
@@ -7622,7 +7675,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
 
         doc.autoTable({
             head: headers, body: data, startY: 27, theme: 'grid',
-            styles: { fontSize: 9, cellPadding: 2, halign: 'center' },
+            styles: { fontSize: 8, cellPadding: 1.6, halign: 'center' },
+            columnStyles: { 0: { cellWidth: 21 }, 2: { cellWidth: 36 } },
             headStyles: { fillColor: [41, 128, 185], textColor: 255 },
             didParseCell: function(cellData) {
                 if (cellData.section !== 'body') return;
@@ -7725,7 +7779,9 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
 
         addLogoWatermark(doc);
         doc.autoPrint();
-        window.open(doc.output('bloburl'), '_blank');
+        const pdfUrl = doc.output('bloburl');
+        if (preWin && !preWin.closed) { try { preWin.location.href = pdfUrl; } catch (e) { window.open(pdfUrl, '_blank'); } }
+        else window.open(pdfUrl, '_blank');
     }
 
     function exportBackupJSON() {
