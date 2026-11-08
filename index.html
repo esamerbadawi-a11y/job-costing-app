@@ -2752,6 +2752,9 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         guidePaymentsTitleAll: { ar: 'كل دفعاته (من غير فلتر تاريخ)', en: 'All his payments (no date filter)' },
         guideLegacyPaid: { ar: 'مكتوب جوه الشغلانة: مدفوع {a} (مش محسوب)', en: 'Job says paid {a} (not counted)' },
         guideLegacyTotal: { ar: 'تنبيه: الشغلانات دي مكتوب جواها إن الفني اتدفع له {a} (خانة قديمة). الرقم ده مش داخل في "المدفوع" لأن المدفوع بيتحسب من دفعات 💵 بس. لو الفلوس دي اتدفعت فعلًا، سجّلها بزرار 💵 عشان الباقي يبقى صح.', en: 'Note: these jobs say the technician was paid {a} (an old field). It is NOT part of "Paid", because Paid only counts 💵 payments. If that money really was paid, record it with the 💵 button so the remaining balance is right.' },
+        toastSavedGeneric: { ar: 'اتحفظ', en: 'Saved' },
+        toastApptSaved: { ar: 'اتحفظ الموعد', en: 'Appointment saved' },
+        toastContactSaved: { ar: 'اتحفظ العميل', en: 'Contact saved' },
         toastJobSaved: { ar: 'اتحفظت الشغلانة', en: 'Job saved' },
         unsavedTitle: { ar: 'فيه تعديلات لسه ما اتحفظتش', en: 'You have changes that are not saved' },
         unsavedMsg: { ar: 'غيّرت الوقت أو الفريق أو اليوم في النافذة دي ومحفظتهمش. تحفظهم الأول قبل ما تفتح تفاصيل الشغلانة؟', en: 'You changed the day, time or team in this window and did not save. Save them before opening the full job details?' },
@@ -4114,6 +4117,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         contactBox.addEventListener('change', () => { contactFormDirty = true; });
     });
 
+    // true while a form is being saved as part of "leave this screen" — then the save must NOT redirect anywhere itself
+    let suppressPostSaveNav = false;
     function guardJobFormExit(action) {
         if (currentScreen === 'entry' && jobFormDirty) {
             pendingJobFormExitAction = action;
@@ -4127,7 +4132,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         if (choice === 'cancel') { pendingJobFormExitAction = null; return; }
         if (choice === 'discard') { jobFormDirty = false; }
         if (choice === 'save') {
-            await saveJob();
+            suppressPostSaveNav = true; try { await saveJob(); } finally { suppressPostSaveNav = false; }
             if (jobFormDirty) { pendingJobFormExitAction = null; return; } // blocked (validation/error) — stay put
         }
         const action = pendingJobFormExitAction;
@@ -4149,7 +4154,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         if (choice === 'cancel') { pendingApptFormExitAction = null; return; }
         if (choice === 'discard') { apptFormDirty = false; }
         if (choice === 'save') {
-            await saveAppointment();
+            suppressPostSaveNav = true; try { await saveAppointment(); } finally { suppressPostSaveNav = false; }
             if (apptFormDirty) { pendingApptFormExitAction = null; return; } // blocked — stay put
         }
         const action = pendingApptFormExitAction;
@@ -4171,7 +4176,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         if (choice === 'cancel') { pendingContactFormExitAction = null; return; }
         if (choice === 'discard') { contactFormDirty = false; }
         if (choice === 'save') {
-            await saveContact();
+            suppressPostSaveNav = true; try { await saveContact(); } finally { suppressPostSaveNav = false; }
             if (contactFormDirty) { pendingContactFormExitAction = null; return; } // blocked — stay put
         }
         const action = pendingContactFormExitAction;
@@ -6752,6 +6757,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         // a full jobs-table rebuild + stats recompute happening TWICE back-to-back on every single
         // Save, which is exactly what got slower and more "hang"-y as the number of saved jobs grew.
         if (jobOverlayOpen) { closeJobOverlay(); showToast(t('toastJobSaved')); }
+        else { showToast('✅ ' + t('toastJobSaved')); if (!suppressPostSaveNav) { switchScreenNow('log'); window.scrollTo(0, 0); } }   // done: back to the jobs list instead of an empty form
     }
 
     // Splits the (long) job form into 4 tabs purely visually — every field from every tab
@@ -9887,6 +9893,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             document.getElementById('companyExpenseAmount').value = '';
             document.getElementById('companyExpenseNote').value = '';
             renderCompanyAccountContent();
+            showToast('✅ ' + t('toastSavedGeneric'));
         } catch (err) {
             alertSaveError(err);
         }
@@ -10188,6 +10195,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             document.getElementById('withdrawalAmount').value = '';
             document.getElementById('withdrawalNote').value = '';
             renderPartnerAccountContent();
+            showToast('✅ ' + t('toastSavedGeneric'));
         } catch (err) {
             alertSaveError(err);
         }
@@ -10466,6 +10474,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             await EXTRA_PARTNER_PAYMENTS_DOC.set({ entries: extraPartnerPayments });
             closeExtraPartnerPaymentForm();
             renderPartnerReportContent();
+            showToast('✅ ' + t('toastSavedGeneric'));
         } catch (err) {
             extraPartnerPayments = extraPartnerPayments.filter(x => x !== entry);
             alertSaveError(err);
@@ -11969,6 +11978,8 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             await CONTACTS_DOC.set({ entries: contacts });
             toggleContactFormNow(true);
             renderContacts();
+            showToast('✅ ' + t('toastContactSaved'));
+            if (!suppressPostSaveNav) safeCall(openContactsListModal);
         } catch (err) {
             alertSaveError(err);
         }
@@ -12289,6 +12300,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             safeCall(renderJobPayModalIfOpen);
             safeCall(renderTechPartnerReportContentIfOpen);
             safeCall(renderPartnerReportContentIfOpen);
+            showToast('✅ ' + t('toastSavedGeneric'));
         } catch (err) {
             techPayments = techPayments.filter(e => !entries.includes(e));   // the save failed: don't keep payments that were never stored
             alertSaveError(err);
@@ -12483,6 +12495,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         closeEditScheduleModal();
         renderWeeklyBoard();
         refreshGuideIfOpen();
+        showToast('✅ ' + t('toastSavedGeneric'));
         return true;
     }
 
@@ -12600,6 +12613,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         closeQuickScheduleModal();
         // No manual refreshAllViews() — the JOBS_DOC listener already re-renders once this write lands.
         renderWeeklyBoard();
+        showToast('✅ ' + t('toastSavedGeneric'));
     }
 
     /* ---------------- Appointments / Scheduling ---------------- */
@@ -12730,6 +12744,8 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             await saveAppointmentsData();
             resetAppointmentForm();
             renderAppointments();
+            showToast('✅ ' + t('toastApptSaved'));
+            if (!suppressPostSaveNav) safeCall(openAppointmentsListModal);   // show the list so the saved request is right there
         } catch (err) {
             alertSaveError(err);
         }
@@ -14791,7 +14807,7 @@ ${closeBtnHtml}
             techBonuses[idx] = { ...backup, name, amount, date, note, editedBy: currentUserEmail || '?', editedAt: new Date().toISOString() };
             try { await TECH_BONUSES_DOC.set({ entries: techBonuses }); logActivity('edit', name, `${t('techGasTitle')}: $${amount.toFixed(2)} (${date})`); }
             catch (err) { techBonuses[idx] = backup; alertSaveError(err); return; }
-            closeTechGasModal(); renderTechGuideContent(); safeCall(renderTechnicians); return;
+            closeTechGasModal(); renderTechGuideContent(); safeCall(renderTechnicians); showToast('✅ ' + t('toastSavedGeneric')); return;
         }
         const dupe = techBonuses.filter(x => x.kind === 'gas' && x.name === name && x.date === date);
         if (dupe.length > 0) {
@@ -14805,6 +14821,7 @@ ${closeBtnHtml}
             logActivity('add', name, `${t('techGasTitle')}: $${amount.toFixed(2)}`);
             closeTechGasModal();
             safeCall(renderTechGuideContent); safeCall(renderWeeklyBoard); safeCall(renderTechnicians);
+            showToast('✅ ' + t('toastSavedGeneric'));
         } catch (err) { techBonuses = techBonuses.filter(x => x !== entry); alertSaveError(err); }
     }
     function closeTechBonusModal() { document.getElementById('techBonusModal').style.display = 'none'; editingBonusAt = ''; }
@@ -14832,6 +14849,7 @@ ${closeBtnHtml}
             }
             closeTechBonusModal();
             renderTechGuideContent();
+            showToast('✅ ' + t('toastSavedGeneric'));
             return;
         }
 
@@ -14842,6 +14860,7 @@ ${closeBtnHtml}
             logActivity('add', techBonusName, `${t('techBonusTitle')}: $${amount.toFixed(2)}`);
             closeTechBonusModal();
             renderTechGuideContent();
+            showToast('✅ ' + t('toastSavedGeneric'));
         } catch (err) {
             techBonuses = techBonuses.filter(x => x !== entry);
             alertSaveError(err);
