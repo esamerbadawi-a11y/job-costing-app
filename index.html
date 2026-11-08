@@ -192,6 +192,23 @@
         .ag-badge { display: inline-block; background: rgba(217,119,6,0.18); color: #fbbf24; border: 1px solid rgba(217,119,6,0.4); border-radius: 8px; padding: 1px 7px; font-size: 0.7rem; font-weight: 700; }
         .chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
         .chip-row button { padding: 6px 12px; font-size: 0.78rem; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; direction: ltr; }
+        .cal-wd { text-align: center; font-size: 0.7rem; opacity: 0.7; padding: 2px 0; }
+        .cal-d { min-height: 52px; border-radius: 8px; padding: 3px; border: 1px solid rgba(127,127,127,0.18); cursor: pointer; display: flex; flex-direction: column; align-items: center; }
+        .cal-d.cal-out { border: none; cursor: default; }
+        .cal-d.cal-past { opacity: 0.55; }
+        .cal-d.cal-today { outline: 2px solid #0ea5e9; }
+        .cal-d.cal-l1 { background: rgba(79,70,229,0.12); }
+        .cal-d.cal-l2 { background: rgba(79,70,229,0.26); }
+        .cal-d.cal-l3 { background: rgba(225,29,72,0.28); }
+        .cal-num { font-size: 0.78rem; font-weight: 700; }
+        .cal-dots { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; margin-top: 2px; }
+        .cal-n { min-width: 16px; height: 16px; line-height: 16px; border-radius: 8px; color: #fff; font-size: 0.65rem; font-weight: 700; text-align: center; padding: 0 3px; }
+        .cal-tent { background: transparent; border: 2px dashed #f59e0b; color: #f59e0b; line-height: 12px; }
+        .cal-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.72rem; margin-top: 8px; opacity: 0.85; }
+        .cal-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 5px; margin-inline-end: 4px; vertical-align: middle; }
+        .cal-legend i.cal-tent { width: 10px; height: 10px; line-height: 10px; }
+        .cal-hint { font-size: 0.7rem; opacity: 0.65; margin-top: 4px; }
         #toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 90px; max-width: 92%; background: #059669; color: #fff; padding: 10px 18px; border-radius: 12px; font-weight: 700; font-size: 0.85rem; box-shadow: 0 8px 20px rgba(0,0,0,0.4); z-index: 10002; display: none; text-align: center; }
         /* ---- Dated client payments / material invoices (job form) ---- */
         .tms-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 0.82rem; border-top: 1px solid var(--border-color); }
@@ -2755,6 +2772,30 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         toastSavedGeneric: { ar: 'اتحفظ', en: 'Saved' },
         toastApptSaved: { ar: 'اتحفظ الموعد', en: 'Appointment saved' },
         toastContactSaved: { ar: 'اتحفظ العميل', en: 'Contact saved' },
+        calTitle: { ar: "التقويم — الشغل الجاي", en: "Calendar — upcoming work" },
+        calAddTentBtn: { ar: "شغلانة مبدئية", en: "Tentative job" },
+        calEditTentTitle: { ar: "تعديل الشغلانة المبدئية", en: "Edit tentative job" },
+        calTodayLink: { ar: "الشهر الحالي", en: "This month" },
+        calLegJobs: { ar: "شغلانات مؤكدة", en: "Confirmed jobs" },
+        calLegAppts: { ar: "مواعيد", en: "Appointments" },
+        calLegTent: { ar: "مبدئي (مش مؤكد)", en: "Tentative" },
+        calBusyHint: { ar: "لون اليوم: أزرق فاتح = شغلانة، أزرق غامق = 2، أحمر = 3 أو أكتر. المبدئي مبيلونش اليوم.", en: "Day colour: light blue = 1 job, darker = 2, red = 3 or more. Tentative holds do not colour the day." },
+        calDayFree: { ar: "اليوم ده فاضي", en: "This day is free" },
+        calNoTeam: { ar: "⚠️ لسه مفيش فني", en: "⚠️ No technician yet" },
+        calApptWord: { ar: "موعد", en: "Appointment" },
+        calTentWord: { ar: "مبدئي", en: "Tentative" },
+        calAddJobBtn: { ar: "شغلانة", en: "Job" },
+        calConfirmBtn: { ar: "تأكيد", en: "Confirm" },
+        calConfirmAsk: { ar: "تأكد الشغلانة دي؟ هتتحول لشغلانة حقيقية وتفتح لك علشان تكمل بياناتها.", en: "Confirm this job? It becomes a real job and opens so you can fill in the details." },
+        calConfirmDelete: { ar: "تمسح الشغلانة المبدئية دي؟", en: "Delete this tentative job?" },
+        calFName: { ar: "اسم العميل", en: "Client name" },
+        calFPhone: { ar: "التليفون (اختياري)", en: "Phone (optional)" },
+        calFAddr: { ar: "العنوان (اختياري)", en: "Address (optional)" },
+        calFStart: { ar: "تاريخ البداية", en: "Start date" },
+        calFEnd: { ar: "تاريخ النهاية (اختياري لو أكتر من يوم)", en: "End date (optional, if more than one day)" },
+        calFNote: { ar: "ملاحظة (اختياري)", en: "Note (optional)" },
+        calNeedDate: { ar: "اختار تاريخ البداية", en: "Pick a start date" },
+        calEndBeforeStart: { ar: "تاريخ النهاية قبل البداية", en: "End date is before the start date" },
         toastJobSaved: { ar: 'اتحفظت الشغلانة', en: 'Job saved' },
         unsavedTitle: { ar: 'فيه تعديلات لسه ما اتحفظتش', en: 'You have changes that are not saved' },
         unsavedMsg: { ar: 'غيّرت الوقت أو الفريق أو اليوم في النافذة دي ومحفظتهمش. تحفظهم الأول قبل ما تفتح تفاصيل الشغلانة؟', en: 'You changed the day, time or team in this window and did not save. Save them before opening the full job details?' },
@@ -3287,6 +3328,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     const CONTACTS_DOC = db.collection('jobCostingApp').doc('contacts');
     const TECH_PAYMENTS_DOC = db.collection('jobCostingApp').doc('techPayments');
     const TECH_BONUSES_DOC = db.collection('jobCostingApp').doc('techBonuses');
+    const FUTURE_DOC = db.collection('jobCostingApp').doc('futureJobs');
     const COMPANY_PROFILE_DOC = db.collection('jobCostingApp').doc('companyProfile');
     // Field-worker feature (worker.html). These live in their OWN collections, completely separate from
     // 'jobCostingApp' above, so nothing here can ever touch or overwrite the existing job/payment data.
@@ -3938,6 +3980,12 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             techBonuses = (doc.exists && doc.data().entries) ? doc.data().entries : [];
             if (document.getElementById('techGuideModal').style.display !== 'none') safeCall(renderTechGuideContent);
         }, err => console.error('Firestore tech bonuses sync error:', err));
+
+        FUTURE_DOC.onSnapshot(doc => {
+            futureJobs = (doc.exists && doc.data().entries) ? doc.data().entries : [];
+            if (typeof currentScreen !== 'undefined' && currentScreen === 'home') safeCall(() => window.renderHome());
+            if (calOpenDayStr) safeCall(() => calOpenDay(calOpenDayStr));
+        }, err => console.error('Firestore future jobs sync error:', err));
 
         COMPANY_PROFILE_DOC.onSnapshot(doc => {
             // The bug this guards against: the very first time the app opens, this snapshot
@@ -7864,7 +7912,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     }
 
     function exportBackupJSON() {
-        const backup = { savedJobs, technicianPhones, exportDate: new Date().toISOString(), version: 1 };
+        const backup = { savedJobs, technicianPhones, futureJobs, exportDate: new Date().toISOString(), version: 1 };
         const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -13913,6 +13961,184 @@ ${closeBtnHtml}
     // official record date (startDate) used in reports — so reordering a job's day here
     // never changes the date shown in Log & Reports. Falls back to startDate only for
     // older jobs saved before this field existed.
+    // ===== Upcoming-work calendar (Home): a month view of confirmed jobs, appointments and tentative holds =====
+    // Tentative holds live in their OWN list (futureJobs) — they are not jobs, so they never touch reports, profit or the board
+    // until the person confirms one (then it becomes a normal job through the usual job form).
+    let futureJobs = [];
+    let calMonthKey = '';   // 'YYYY-MM' shown on Home
+    let calOpenDayStr = '';
+    let calEditTentId = '';
+    function calMonthNow() { return calMonthKey || isoDate(new Date()).slice(0, 7); }
+    function calNav(delta) {
+        const [y, m] = calMonthNow().split('-').map(Number);
+        const d = new Date(y, m - 1 + delta, 1);
+        calMonthKey = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+        safeCall(() => window.renderHome());
+    }
+    function calToday() { calMonthKey = ''; safeCall(() => window.renderHome()); }
+    function calRange(a, b) {
+        const out = []; if (!a) return out;
+        const end = (b && b >= a) ? b : a;
+        let d = new Date(a + 'T12:00:00'), n = 0;
+        while (isoDate(d) <= end && n < 62) { out.push(isoDate(d)); d.setDate(d.getDate() + 1); n++; }
+        return out;
+    }
+    function calCollect() {
+        const map = {};
+        const slot = ds => (map[ds] = map[ds] || { jobs: [], appts: [], tent: [] });
+        (savedJobs || []).forEach(j => {
+            if (j.jobStatus === 'ملغي' || !passesStateFilter(jobState(j))) return;
+            const seen = new Set();
+            getScheduleEntries(j).forEach(e => { if (e.date && !seen.has(e.date)) { seen.add(e.date); slot(e.date).jobs.push({ job: j, entry: e }); } });
+        });
+        (appointments || []).forEach(a => { if (a.requestedDate && passesStateFilter(stateOfText(a.clientAddress || ''))) slot(a.requestedDate).appts.push(a); });
+        (futureJobs || []).forEach(f => calRange(f.date, f.endDate).forEach(ds => slot(ds).tent.push(f)));
+        return map;
+    }
+    function calendarHtml() {
+        const key = calMonthNow(), [y, m] = key.split('-').map(Number);
+        const map = calCollect(), today = isoDate(new Date());
+        const first = new Date(y, m - 1, 1), daysIn = new Date(y, m, 0).getDate();
+        const lead = (first.getDay() + 1) % 7;   // weeks start on Saturday, like the Weekly Work Board
+        const locale = currentLang === 'ar' ? 'ar-EG' : (currentLang === 'es' ? 'es' : 'en-US');
+        const title = first.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+        const wd = []; for (let i = 0; i < 7; i++) { const dd = new Date(2026, 10, 7 + i); wd.push(dd.toLocaleDateString(locale, { weekday: 'short' })); }
+        let h = '<div class="tw-sec" style="display:flex; align-items:center; justify-content:space-between; gap:8px;"><span>📆 ' + escHtml(t('calTitle')) + '</span>' +
+            '<button class="secondary" style="padding:5px 10px; font-size:0.78rem;" onclick="calOpenTentForm(\'\')">+ ' + escHtml(t('calAddTentBtn')) + '</button></div>';
+        h += '<div class="tw-card" style="display:block; cursor:default;"><div style="display:flex; align-items:center; justify-content:space-between; direction:ltr; margin-bottom:8px;">' +
+            '<button class="secondary" style="padding:6px 14px;" onclick="calNav(-1)">◀</button>' +
+            '<div style="text-align:center;"><b>' + escHtml(title) + '</b><div><a href="#" onclick="calToday(); return false;" style="font-size:0.75rem; color:#38bdf8;">' + escHtml(t('calTodayLink')) + '</a></div></div>' +
+            '<button class="secondary" style="padding:6px 14px;" onclick="calNav(1)">▶</button></div>';
+        h += '<div class="cal-grid">' + wd.map(w => '<div class="cal-wd">' + escHtml(w) + '</div>').join('');
+        for (let i = 0; i < lead; i++) h += '<div class="cal-d cal-out"></div>';
+        for (let d = 1; d <= daysIn; d++) {
+            const ds = key + '-' + String(d).padStart(2, '0');
+            const c = map[ds] || { jobs: [], appts: [], tent: [] };
+            const lvl = c.jobs.length >= 3 ? 3 : c.jobs.length;
+            let dots = '';
+            if (c.jobs.length) dots += '<span class="cal-n" style="background:#4f46e5">' + c.jobs.length + '</span>';
+            if (c.appts.length) dots += '<span class="cal-n" style="background:#059669">' + c.appts.length + '</span>';
+            if (c.tent.length) dots += '<span class="cal-n cal-tent">' + c.tent.length + '</span>';
+            h += '<div class="cal-d cal-l' + lvl + (ds === today ? ' cal-today' : '') + (ds < today ? ' cal-past' : '') + '" onclick="calOpenDay(\'' + ds + '\')"><div class="cal-num">' + d + '</div><div class="cal-dots">' + dots + '</div></div>';
+        }
+        h += '</div><div class="cal-legend"><span><i style="background:#4f46e5"></i>' + escHtml(t('calLegJobs')) + '</span><span><i style="background:#059669"></i>' + escHtml(t('calLegAppts')) + '</span><span><i class="cal-tent"></i>' + escHtml(t('calLegTent')) + '</span></div>';
+        h += '<div class="cal-hint">' + escHtml(t('calBusyHint')) + '</div></div>';
+        return h;
+    }
+    function calEnsureModal() {
+        let el = document.getElementById('calDayModal');
+        if (!el) {
+            el = document.createElement('div'); el.id = 'calDayModal';
+            el.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:10001; justify-content:center; align-items:center;';
+            el.innerHTML = '<div id="calDayBox" style="background:var(--card-dark,#1e2433); color:var(--text-main,#fff); border:1px solid var(--border-color,#334); border-radius:14px; width:92%; max-width:420px; max-height:86vh; overflow-y:auto; padding:18px;"></div>';
+            document.body.appendChild(el);
+        }
+        return el;
+    }
+    function calCloseModal() { const el = document.getElementById('calDayModal'); if (el) el.style.display = 'none'; calOpenDayStr = ''; }
+    function calOpenDay(ds) {
+        calEnsureModal();
+        calOpenDayStr = ds;
+        const c = calCollect()[ds] || { jobs: [], appts: [], tent: [] };
+        const locale = currentLang === 'ar' ? 'ar-EG' : (currentLang === 'es' ? 'es' : 'en-US');
+        const heading = new Date(ds + 'T12:00:00').toLocaleDateString(locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const row = (bg, title, sub, onclick, extra) => '<div style="border-inline-start:4px solid ' + bg + '; background:rgba(127,127,127,0.10); border-radius:8px; padding:8px 10px; margin-bottom:6px;"><div ' + (onclick ? 'onclick="' + onclick + '" style="cursor:pointer;"' : '') + '><b>' + escHtml(title) + '</b><div style="font-size:0.78rem; opacity:0.8;">' + sub + '</div></div>' + (extra || '') + '</div>';
+        let h = '<div style="font-weight:800; margin-bottom:10px;">' + escHtml(heading) + '</div>';
+        if (!c.jobs.length && !c.appts.length && !c.tent.length) h += '<div style="opacity:0.7; margin-bottom:10px;">' + escHtml(t('calDayFree')) + '</div>';
+        c.jobs.forEach(x => {
+            const team = (x.entry.team || []).filter(Boolean);
+            h += row('#4f46e5', x.job.clientName || '—', escHtml((x.entry.time ? x.entry.time + ' · ' : '') + (x.job.clientAddress || '')) + '<br>' + (team.length ? '👷 ' + escHtml(team.join(', ')) : '<span style="color:#f59e0b;">' + escHtml(t('calNoTeam')) + '</span>'), "calCloseModal(); openJobOverlay('" + jsArg(String(x.job.id)) + "')");
+        });
+        c.appts.forEach(a => { h += row('#059669', a.clientName || '—', escHtml('📅 ' + t('calApptWord') + (a.requestedTime ? ' · ' + a.requestedTime : '') + ' · ' + jobFullAddr(a)), "calCloseModal(); editAppointment('" + jsArg(String(a.id)) + "'); switchScreen('appointments')"); });
+        c.tent.forEach(f => {
+            const span = f.endDate && f.endDate > f.date ? ' (' + f.date + ' → ' + f.endDate + ')' : '';
+            h += row('#f59e0b', f.clientName || '—', escHtml('⏳ ' + t('calTentWord') + span + (f.phone ? ' · ' + f.phone : '') + (f.address ? ' · ' + f.address : '') + (f.note ? ' · ' + f.note : '')), '',
+                '<div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;"><button class="success" style="padding:5px 10px; font-size:0.78rem;" onclick="calConfirmTent(\'' + jsArg(String(f.id)) + '\')">✔ ' + escHtml(t('calConfirmBtn')) + '</button>' +
+                '<button class="secondary" style="padding:5px 10px; font-size:0.78rem;" onclick="calOpenTentForm(\'' + jsArg(String(f.id)) + '\')">✏️</button>' +
+                '<button class="danger" style="padding:5px 10px; font-size:0.78rem;" onclick="calDeleteTent(\'' + jsArg(String(f.id)) + '\')">🗑</button></div>');
+        });
+        h += '<div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;"><button class="secondary" style="flex:1;" onclick="calCloseModal(); calOpenTentFormForDay(\'' + ds + '\')">+ ' + escHtml(t('calAddTentBtn')) + '</button>' +
+            '<button class="secondary" style="flex:1;" onclick="calCloseModal(); openQuickScheduleModal(\'' + ds + '\')">+ ' + escHtml(t('calAddJobBtn')) + '</button></div>' +
+            '<button class="danger" style="width:100%; margin-top:8px; padding:8px;" onclick="calCloseModal()">' + escHtml(t('guideCloseBtn')) + '</button>';
+        document.getElementById('calDayBox').innerHTML = h;
+        calEnsureModal().style.display = 'flex';
+    }
+    function calOpenTentFormForDay(ds) { calOpenTentForm(''); const el = document.getElementById('calTDate'); if (el) el.value = ds; }
+    function calOpenTentForm(id) {
+        calEnsureModal();
+        calEditTentId = id || '';
+        const f = id ? futureJobs.find(x => String(x.id) === String(id)) : null;
+        const inp = 'style="width:100%; margin-bottom:8px;"';
+        document.getElementById('calDayBox').innerHTML = '<div style="font-weight:800; margin-bottom:10px;">⏳ ' + escHtml(t(f ? 'calEditTentTitle' : 'calAddTentBtn')) + '</div>' +
+            '<input type="text" id="calTName" ' + inp + ' placeholder="' + escHtml(t('calFName')) + '" value="' + escHtml(f ? f.clientName || '' : '') + '">' +
+            '<input type="text" id="calTPhone" ' + inp + ' placeholder="' + escHtml(t('calFPhone')) + '" value="' + escHtml(f ? f.phone || '' : '') + '">' +
+            '<input type="text" id="calTAddr" ' + inp + ' placeholder="' + escHtml(t('calFAddr')) + '" value="' + escHtml(f ? f.address || '' : '') + '">' +
+            '<label style="font-size:0.8rem; opacity:0.8;">' + escHtml(t('calFStart')) + '</label><input type="date" id="calTDate" ' + inp + ' value="' + escHtml(f ? f.date || '' : isoDate(new Date())) + '">' +
+            '<label style="font-size:0.8rem; opacity:0.8;">' + escHtml(t('calFEnd')) + '</label><input type="date" id="calTEnd" ' + inp + ' value="' + escHtml(f ? f.endDate || '' : '') + '">' +
+            '<input type="text" id="calTNote" ' + inp + ' placeholder="' + escHtml(t('calFNote')) + '" value="' + escHtml(f ? f.note || '' : '') + '">' +
+            '<button class="success" style="width:100%; padding:11px; margin-bottom:8px;" onclick="calSaveTent()">' + escHtml(t('techBonusSaveBtn')) + '</button>' +
+            '<button class="danger" style="width:100%; padding:8px;" onclick="calCloseModal()">' + escHtml(t('cancelBtn')) + '</button>';
+        calEnsureModal().style.display = 'flex';
+    }
+    async function calSaveTent() {
+        const name = document.getElementById('calTName').value.trim();
+        const date = document.getElementById('calTDate').value;
+        const endDate = document.getElementById('calTEnd').value;
+        if (!name) { alert(t('alertClientNameRequired')); return; }
+        if (!date) { alert(t('calNeedDate')); return; }
+        if (endDate && endDate < date) { alert(t('calEndBeforeStart')); return; }
+        const fields = { clientName: name, phone: document.getElementById('calTPhone').value.trim(), address: document.getElementById('calTAddr').value.trim(), date, endDate: endDate || '', note: document.getElementById('calTNote').value.trim() };
+        const prev = futureJobs;
+        try {
+            if (calEditTentId) futureJobs = futureJobs.map(x => String(x.id) === String(calEditTentId) ? { ...x, ...fields } : x);
+            else futureJobs = [{ id: Date.now().toString() + Math.random().toString(36).substr(2, 5), ...fields, by: currentUserEmail || '?', at: new Date().toISOString() }, ...futureJobs];
+            await FUTURE_DOC.set({ entries: futureJobs });
+        } catch (err) { futureJobs = prev; alertSaveError(err); return; }
+        calMonthKey = date.slice(0, 7);
+        showToast('✅ ' + t('toastSavedGeneric'));
+        safeCall(() => window.renderHome());
+        calOpenDay(date);
+    }
+    async function calDeleteTent(id) {
+        if (!confirm(t('calConfirmDelete'))) return;
+        const prev = futureJobs, day = calOpenDayStr;
+        futureJobs = futureJobs.filter(x => String(x.id) !== String(id));
+        try { await FUTURE_DOC.set({ entries: futureJobs }); } catch (err) { futureJobs = prev; alertSaveError(err); return; }
+        safeCall(() => window.renderHome());
+        if (day) calOpenDay(day); else calCloseModal();
+    }
+    // Confirm = the work is real now: it becomes a normal job (scheduled on the same day(s)) and opens in the job form to fill in.
+    async function calConfirmTent(id) {
+        const f = futureJobs.find(x => String(x.id) === String(id));
+        if (!f) return;
+        if (!confirm(t('calConfirmAsk'))) return;
+        const days = calRange(f.date, f.endDate);
+        const newJob = {
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+            clientName: f.clientName || '', clientPhone: f.phone || '', clientEmail: '',
+            ccContactName: '', ccContactPhone: '', ccContactEmail: '',
+            jobStatus: 'شغال', clientAddress: f.address || '', unitNo: '',
+            clientDescription: f.note || '',
+            startDate: f.date, endDate: days[days.length - 1] || f.date,
+            dailySchedule: days.map((d, i) => ({ date: d, time: '', team: [], dayOrder: 0 })),
+            totalRevenue: 0, amountReceived: 0, amountRemaining: 0, followUpDate: '', materialCost: 0, extraExpenses: 0,
+            expenseItems: [], technicians: [], photos: [],
+            createdBy: currentUserEmail, lastEditedBy: currentUserEmail
+        };
+        const { slimJob } = splitJobAttachments(newJob);
+        savedJobs.unshift(slimJob);
+        try { await saveSavedJobsData(); logActivity('add', newJob.clientName); }
+        catch (e) { savedJobs = savedJobs.filter(j => j !== slimJob); alert(t('alertJobSaveFailed')); return; }
+        // only after the job is safely saved does the placeholder go away
+        const prev = futureJobs;
+        futureJobs = futureJobs.filter(x => String(x.id) !== String(id));
+        try { await FUTURE_DOC.set({ entries: futureJobs }); } catch (e) { futureJobs = prev; }
+        calCloseModal();
+        editJob(newJob.id);
+        switchScreen('entry');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     function effectiveScheduleDate(job) { return job.scheduledDate || job.startDate || ''; }
 
     // A job can now span several days, with a different team on each — e.g. Nathan works
@@ -15797,7 +16023,7 @@ ${closeBtnHtml}
         right += '<div class="tw-card" onclick="exportBackupJSON()"><div style="color:' + (days === null || days > 7 ? '#e11d48' : '#059669') + '">' + ic('cloud') + '</div><div class="tx"><h4>' + escHtml(tw('backupNow')) + '</h4><p>' +
             (days === null ? escHtml(tw('noBackup')) : escHtml(tw('backupLbl')) + ' ' + (days === 0 ? escHtml(tw('todayWord')) : days + ' ' + escHtml(tw('daysAgo')))) + '</p></div></div>';
         right += '<div class="tw-card" onclick="openAgendaModal()"><div style="color:#4f46e5">' + ic('check') + '</div><div class="tx"><h4>' + escHtml(tw('checkToday')) + '</h4></div></div>';
-        return h + '<div id="twHomeCols"><div>' + left + '</div><div>' + right + '</div></div>';
+        return h + '<div id="twHomeCols"><div>' + left + '</div><div>' + right + '</div></div>' + '<div style="margin-top:18px;">' + calendarHtml() + '</div>';
     }
     window.renderHome = function renderHome() { try { setHtml('screenHome', homeHtml()); } catch (e) { console.error('home', e); } };
 
