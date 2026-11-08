@@ -15996,7 +15996,6 @@ ${closeBtnHtml}
             kpi('wallet', tw('kRemain'), money(remain), '#d97706', 'rgba(217,119,6,.16)', 'twShowDebt()') +
             kpi('pulse', tw('kOpen'), open, '#0ea5e9', 'rgba(14,165,233,.16)', "switchScreen('log')") +
             kpi('cal', tw('kAppts'), todayAppts.length, '#059669', 'rgba(5,150,105,.16)', "switchScreen('appointments')") + '</div>';
-        h += '<button class="tw-big" onclick="switchScreen(\'entry\')">' + ic('plus') + escHtml(tw('newJob')) + '</button>';
         var left = '<div class="tw-sec">' + escHtml(tw('todaySec')) + '</div>';
         if (!todayJobs.length && !todayAppts.length) left += '<div class="tw-empty">' + escHtml(tw('noToday')) + '</div>';
         todayJobs.forEach(function (j) {
