@@ -2796,6 +2796,36 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         calFNote: { ar: "ملاحظة (اختياري)", en: "Note (optional)" },
         calNeedDate: { ar: "اختار تاريخ البداية", en: "Pick a start date" },
         calEndBeforeStart: { ar: "تاريخ النهاية قبل البداية", en: "End date is before the start date" },
+        invoiceTypeContract: { ar: 'عقد (Contract)', en: 'Contract' },
+        ctTitle: { ar: 'بيانات العقد', en: 'Contract details' },
+        ctItemsSummary: { ar: 'بنود الشغلانة والمبالغ (من الـ Estimate)', en: 'Work items & amounts (from the estimate)' },
+        ctOwners: { ar: 'اسم المالك/المالكين (سطر لكل واحد)', en: 'Owner name(s) (one per line)' },
+        ctProperty: { ar: 'عنوان المشروع', en: 'Project property address' },
+        ctStart: { ar: 'تاريخ البداية', en: 'Start date' },
+        ctEnd: { ar: 'تاريخ التسليم المتوقع', en: 'Estimated completion date' },
+        ctMaterials: { ar: 'نوع العقد', en: 'Contract type' },
+        ctLabor: { ar: 'عمالة فقط (المالك بيجيب الخامات)', en: 'Labor only (owner supplies materials)' },
+        ctLaborMat: { ar: 'عمالة + خامات', en: 'Labor + materials' },
+        ctWarranty: { ar: 'سنين الضمان', en: 'Warranty (years)' },
+        ctOwnerMat: { ar: 'الخامات اللي المالك هيجيبها', en: 'Owner-supplied materials' },
+        ctScopeTitle: { ar: 'تفاصيل كل بند (السكوب)', en: 'Scope of each item' },
+        ctAiBtn: { ar: '✨ اكتب السكوب بالذكاء الاصطناعي', en: '✨ Write scopes with AI' },
+        ctAiBusy: { ar: 'جاري الكتابة…', en: 'Writing…' },
+        ctNeedItems: { ar: 'اكتب وصف البنود الأول', en: 'Write the item descriptions first' },
+        ctPmNote: { ar: 'البند ده هيظهر كقسم Project Management جاهز.', en: 'This item appears as the standard Project Management section.' },
+        ctSecTitle: { ar: 'عنوان القسم', en: 'Section title' },
+        ctScope: { ar: 'اللي هيتعمل (سطر لكل نقطة)', en: 'Scope includes (one line per bullet)' },
+        ctExcl: { ar: 'مش مشمول (سطر لكل نقطة)', en: 'Exclusions (one line per bullet)' },
+        ctPayTitle: { ar: 'جدول الدفعات', en: 'Payment schedule' },
+        ctPlanLarge: { ar: 'كبيرة: 30% / 25% / 40% / 5%', en: 'Large: 30% / 25% / 40% / 5%' },
+        ctPlanMedium: { ar: 'متوسطة: 30% / 40% / 30%', en: 'Medium: 30% / 40% / 30%' },
+        ctPlanSmall: { ar: 'صغيرة: 50% / 50%', en: 'Small: 50% / 50%' },
+        ctPlanCustom: { ar: 'مخصص (أعدّل بنفسي)', en: 'Custom (edit myself)' },
+        ctReceivedNote: { ar: 'العربون ده مستلم فعلاً (من الشغلانة).', en: 'This deposit is already received (from the job).' },
+        ctAddPay: { ar: '+ دفعة', en: '+ Payment' },
+        ctRecalc: { ar: 'إعادة حساب الدفعات', en: 'Recalculate payments' },
+        ctPaySumOk: { ar: 'مجموع الدفعات = إجمالي العقد', en: 'Payments add up to the contract total' },
+        ctPaySumBad: { ar: 'مجموع الدفعات {sum} غير إجمالي العقد {total}', en: 'Payments total {sum} but contract total is {total}' },
         toastJobSaved: { ar: 'اتحفظت الشغلانة', en: 'Job saved' },
         unsavedTitle: { ar: 'فيه تعديلات لسه ما اتحفظتش', en: 'You have changes that are not saved' },
         unsavedMsg: { ar: 'غيّرت الوقت أو الفريق أو اليوم في النافذة دي ومحفظتهمش. تحفظهم الأول قبل ما تفتح تفاصيل الشغلانة؟', en: 'You changed the day, time or team in this window and did not save. Save them before opening the full job details?' },
@@ -8666,7 +8696,18 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 invoiceState.receiptIds = [latest.id];
             }
             recomputeReceiptSnap();
-        } else if (v !== 'RECEIPT' && wasReceipt && invoiceState.prevInvoiceNo) {
+        }
+        const wasContract = invoiceState._wasContract;
+        if (v === 'CONTRACT' && !wasContract) {
+            invoiceState._wasContract = true; invoiceState.prevCtNo = invoiceState.invoiceNo;
+            if (!/-CT$/.test(String(invoiceState.invoiceNo || ''))) invoiceState.invoiceNo = String(invoiceState.invoiceNo || '') + '-CT';
+            contractInit();
+        } else if (v !== 'CONTRACT' && wasContract) {
+            invoiceState._wasContract = false;
+            if (invoiceState.prevCtNo !== undefined && !(v === 'RECEIPT')) invoiceState.invoiceNo = invoiceState.prevCtNo;
+        }
+        if (v === 'RECEIPT' && !wasReceipt) { /* handled above */ }
+        else if (v !== 'RECEIPT' && wasReceipt && invoiceState.prevInvoiceNo) {
             invoiceState.invoiceNo = invoiceState.prevInvoiceNo;
             if (invoiceState.prevNote !== undefined) invoiceState.note = invoiceState.prevNote;
         }
@@ -8797,7 +8838,372 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         // own items/credits happen to add up to while you're still editing them.
     }
 
+    // ===================== CONTRACT (a document type of the Generate Invoice screen) =====================
+    // The wording up to the scope and everything after the payments is standard text (adapted from the company's own signed
+    // contract); the scope sections come from the estimate items; only the payment schedule and a few numbers are edited.
+    // It builds a real multi-page text PDF (not one long screenshot), and an HTML view for "View".
+    const CONTRACT_PLANS = {
+        LARGE: { ratios: [0.30, 0.25, 0.40, 0.05], labels: ['Initial Deposit', 'Progress Payment No. 1', 'Progress Payment No. 2 (Substantial Completion)', 'Final Payment'],
+            due: ['Received upon execution of this Agreement and commencement of the project.', 'Due immediately upon completion of the first major phase of work (describe the milestone here).', 'Due immediately upon substantial completion of the main scope of work (describe the milestone here).', 'Due upon completion of all remaining work and the final punch list.'] },
+        MEDIUM: { ratios: [0.30, 0.40, 0.30], labels: ['Initial Deposit', 'Progress Payment', 'Final Payment'],
+            due: ['Received upon execution of this Agreement and commencement of the project.', 'Due immediately upon completion of the main phase of work (describe the milestone here).', 'Due upon completion of all work and the final punch list.'] },
+        SMALL: { ratios: [0.50, 0.50], labels: ['Initial Deposit', 'Final Payment'],
+            due: ['Received upon execution of this Agreement and commencement of the project.', 'Due upon completion of all work.'] }
+    };
+    function contractIsPM(it) { return /project management|construction supervision|supervision/i.test(String((it && (it.cTitle || it.desc)) || '')); }
+    function contractItemTitle(it) {
+        const first = String(it.cTitle || it.desc || '').split(/\r?\n/).map(s => s.trim()).find(Boolean) || 'Work';
+        return first.length > 70 ? first.slice(0, 70).replace(/\s+\S*$/, '') + '...' : first;
+    }
+    function contractLines(txt) { return String(txt || '').split(/\r?\n/).map(s => s.replace(/^[\s•\-*]+/, '').trim()).filter(Boolean); }
+    function contractScopeLines(it) { const own = contractLines(it.cScope); return own.length ? own : contractLines(it.desc); }
+    function contractLongDate(iso) { if (!iso) return ''; const d = new Date(iso + 'T12:00:00'); return isNaN(d) ? String(iso) : d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); }
+    function contractInit() {
+        const st = invoiceState; if (!st || st.contract) return;
+        const job = savedJobs.find(j => String(j.id) === String(st.jobId)); if (!job) return;
+        const sched = (typeof getScheduleEntries === 'function' ? getScheduleEntries(job) : []).map(e => e.date).filter(Boolean).sort();
+        st.contract = {
+            owners: job.clientName || '', property: [job.clientAddress, job.unitNo].filter(Boolean).join(' — '),
+            start: sched[0] || job.startDate || '', end: sched.length > 1 ? sched[sched.length - 1] : '',
+            materials: 'LABOR', ownerMaterials: 'finish materials, fixtures, tile, paint products, hardware, and related products',
+            warranty: 1, plan: '', payments: []
+        };
+        const total = round2(invoiceSubtotal());
+        contractApplyPlan(total > 15000 ? 'LARGE' : (total > 5000 ? 'MEDIUM' : 'SMALL'));
+    }
+    function contractApplyPlan(key) {
+        const st = invoiceState; if (!st || !st.contract) return;
+        const c = st.contract, P = CONTRACT_PLANS[key];
+        c.plan = key;
+        if (!P) return;   // CUSTOM keeps the rows as they are
+        const job = savedJobs.find(j => String(j.id) === String(st.jobId));
+        const total = round2(invoiceSubtotal());
+        const received = job ? round2(Math.min(parseVal(job.amountReceived), total)) : 0;
+        const deposit = received > 0.005 ? received : round2(total * P.ratios[0]);
+        const remaining = round2(total - deposit);
+        const restSum = P.ratios.slice(1).reduce((a, b) => a + b, 0);
+        let allocated = 0;
+        c.payments = P.ratios.map((r, i) => {
+            let amt;
+            if (i === 0) amt = deposit;
+            else if (i === P.ratios.length - 1) amt = round2(remaining - allocated);
+            else { amt = round2(remaining * r / restSum); allocated = round2(allocated + amt); }
+            return { label: P.labels[i], amount: amt, due: P.due[i], received: i === 0 && received > 0.005 };
+        });
+    }
+    function setContractField(f, v, rerender) { if (!invoiceState || !invoiceState.contract) return; invoiceState.contract[f] = v; if (rerender) renderInvoiceModalContent(); }
+    function setContractItemField(i, f, v) { if (!invoiceState || !invoiceState.items[i]) return; invoiceState.items[i][f] = v; }
+    function setContractPlan(key) { contractApplyPlan(key); renderInvoiceModalContent(); }
+    function setContractPayment(i, f, v) {
+        const c = invoiceState && invoiceState.contract; if (!c || !c.payments[i]) return;
+        c.payments[i][f] = f === 'amount' ? v : v; c.plan = 'CUSTOM';
+        const el = document.getElementById('ctPaySum'); if (el) el.innerHTML = contractPaySumHtml();
+    }
+    function addContractPayment() { const c = invoiceState.contract; c.payments.push({ label: 'Progress Payment', amount: 0, due: '' }); c.plan = 'CUSTOM'; renderInvoiceModalContent(); }
+    function removeContractPayment(i) { const c = invoiceState.contract; c.payments.splice(i, 1); c.plan = 'CUSTOM'; renderInvoiceModalContent(); }
+    function contractPaySumHtml() {
+        const c = invoiceState.contract, total = round2(invoiceSubtotal());
+        const sum = round2((c.payments || []).reduce((s, p) => s + parseVal(p.amount), 0));
+        const ok = Math.abs(sum - total) < 0.005;
+        return `<span style="color:${ok ? '#22c55e' : '#f59e0b'}; font-weight:700;">${ok ? '✔ ' + t('ctPaySumOk') : '⚠️ ' + t('ctPaySumBad').replace('{sum}', fmtUsd(sum)).replace('{total}', fmtUsd(total))}</span>`;
+    }
+    async function contractAiScopes() {
+        const st = invoiceState; if (!st) return;
+        const job = savedJobs.find(j => String(j.id) === String(st.jobId));
+        const list = st.items.map((it, i) => ({ i, it })).filter(x => !contractIsPM(x.it) && (String(x.it.desc || '').trim()));
+        if (!list.length) { alert(t('ctNeedItems')); return; }
+        const key = getGeminiApiKey(); if (!key) return;
+        const btn = document.getElementById('ctAiBtn'); const prev = btn ? btn.textContent : '';
+        if (btn) { btn.disabled = true; btn.textContent = t('ctAiBusy'); }
+        const prompt = 'You are helping a US handyman/renovation contractor write the SCOPE OF WORK for a residential renovation agreement. ' +
+            'For each work item below, write a clear professional scope in plain US English: "scope" = 6 to 12 short bullet sentences describing what the contractor will do (protection, demolition, preparation, installation, finishing, cleanup as relevant), and "exclusions" = 3 to 6 short bullet sentences of related things NOT included unless approved by a written Change Order. ' +
+            'Use only work that is reasonable for the item; do not invent prices, quantities or materials brands. Also give a short professional "title" (max 8 words). ' +
+            'Job description from the client file: ' + String((job && job.clientDescription) || '').slice(0, 600) + '\n' +
+            'Items:\n' + list.map(x => (x.i) + ': ' + String(x.it.desc).slice(0, 400)).join('\n') + '\n' +
+            'Return ONLY JSON: an array like [{"i":0,"title":"...","scope":["..."],"exclusions":["..."]}] using the same i numbers.';
+        try {
+            const txt = await aiGenerate(key, prompt);
+            const m = String(txt).replace(/```(?:json)?/g, '').match(/\[[\s\S]*\]/);
+            const arr = m ? JSON.parse(m[0]) : [];
+            arr.forEach(o => {
+                const it = st.items[Number(o.i)]; if (!it) return;
+                if (o.title && !it.cTitle) it.cTitle = String(o.title).slice(0, 80);
+                if (Array.isArray(o.scope) && o.scope.length) it.cScope = o.scope.map(s => String(s).trim()).filter(Boolean).join('\n');
+                if (Array.isArray(o.exclusions) && o.exclusions.length) it.cExcl = o.exclusions.map(s => String(s).trim()).filter(Boolean).join('\n');
+            });
+        } catch (e) { console.error('contractAiScopes', e); alert(t('alertShareNotSupported') + ' (' + ((e && e.message) || e) + ')'); }
+        finally { renderInvoiceModalContent(); }
+    }
+    function contractEditorHtml(job) {
+        const c = invoiceState.contract; if (!c) return '';
+        const inp = 'background:#11141d; color:#fff; border:1px solid var(--border-color); padding:8px 10px; border-radius:8px; width:100%; box-sizing:border-box;';
+        const lbl = 'font-size:0.75rem; color:var(--text-muted); margin:8px 0 4px; display:block;';
+        const h3 = 'color:#38bdf8; font-size:0.95rem; margin:18px 0 8px;';
+        const items = invoiceState.items;
+        let h = `<h3 style="${h3}">📄 ${t('ctTitle')}</h3>
+          <label style="${lbl}">${t('ctOwners')}</label><textarea rows="2" style="${inp}" oninput="setContractField('owners', this.value)">${escHtml(c.owners || '')}</textarea>
+          <label style="${lbl}">${t('ctProperty')}</label><input type="text" style="${inp}" value="${escHtml(c.property || '')}" oninput="setContractField('property', this.value)">
+          <div class="grid-2"><div><label style="${lbl}">${t('ctStart')}</label><input type="date" style="${inp}" value="${escHtml(c.start || '')}" onchange="setContractField('start', this.value)"></div>
+          <div><label style="${lbl}">${t('ctEnd')}</label><input type="date" style="${inp}" value="${escHtml(c.end || '')}" onchange="setContractField('end', this.value)"></div></div>
+          <div class="grid-2"><div><label style="${lbl}">${t('ctMaterials')}</label><select style="${inp}" onchange="setContractField('materials', this.value, true)"><option value="LABOR" ${c.materials !== 'MATERIALS' ? 'selected' : ''}>${t('ctLabor')}</option><option value="MATERIALS" ${c.materials === 'MATERIALS' ? 'selected' : ''}>${t('ctLaborMat')}</option></select></div>
+          <div><label style="${lbl}">${t('ctWarranty')}</label><input type="text" inputmode="decimal" style="${inp}" value="${escHtml(String(c.warranty))}" oninput="setContractField('warranty', this.value)"></div></div>
+          ${c.materials !== 'MATERIALS' ? `<label style="${lbl}">${t('ctOwnerMat')}</label><textarea rows="2" style="${inp}" oninput="setContractField('ownerMaterials', this.value)">${escHtml(c.ownerMaterials || '')}</textarea>` : ''}
+          <h3 style="${h3}">🧱 ${t('ctScopeTitle')}</h3>
+          <button type="button" id="ctAiBtn" class="secondary" onclick="contractAiScopes()" style="padding:7px 14px; font-size:0.8rem; margin-bottom:8px;">${t('ctAiBtn')}</button>`;
+        items.forEach((it, i) => {
+            if (!String(it.desc || '').trim() && !parseVal(it.amount)) return;
+            const pm = contractIsPM(it);
+            h += `<div class="tech-card" style="margin-bottom:8px;"><div style="font-weight:700; font-size:0.85rem; margin-bottom:4px;">${i + 1}. ${escHtml(contractItemTitle(it))} — ${fmtUsd(parseVal(it.amount))}</div>`;
+            if (pm) h += `<div style="font-size:0.75rem; color:var(--text-muted);">${t('ctPmNote')}</div>`;
+            else h += `<label style="${lbl}">${t('ctSecTitle')}</label><input type="text" style="${inp}" value="${escHtml(it.cTitle || '')}" placeholder="${escHtml(contractItemTitle({ desc: it.desc }))}" oninput="setContractItemField(${i}, 'cTitle', this.value)">
+              <label style="${lbl}">${t('ctScope')}</label><textarea rows="4" style="${inp}" oninput="setContractItemField(${i}, 'cScope', this.value)">${escHtml(it.cScope || '')}</textarea>
+              <label style="${lbl}">${t('ctExcl')}</label><textarea rows="2" style="${inp}" oninput="setContractItemField(${i}, 'cExcl', this.value)">${escHtml(it.cExcl || '')}</textarea>`;
+            h += `</div>`;
+        });
+        h += `<h3 style="${h3}">💵 ${t('ctPayTitle')}</h3>
+          <select style="${inp}" onchange="setContractPlan(this.value)">
+            <option value="LARGE" ${c.plan === 'LARGE' ? 'selected' : ''}>${t('ctPlanLarge')}</option>
+            <option value="MEDIUM" ${c.plan === 'MEDIUM' ? 'selected' : ''}>${t('ctPlanMedium')}</option>
+            <option value="SMALL" ${c.plan === 'SMALL' ? 'selected' : ''}>${t('ctPlanSmall')}</option>
+            <option value="CUSTOM" ${c.plan === 'CUSTOM' || !c.plan ? 'selected' : ''}>${t('ctPlanCustom')}</option></select>`;
+        (c.payments || []).forEach((p, i) => {
+            h += `<div class="tech-card" style="margin-top:8px;">
+              <div style="display:flex; gap:6px; align-items:center;"><input type="text" style="${inp}" value="${escHtml(p.label || '')}" oninput="setContractPayment(${i}, 'label', this.value)">
+              <input type="text" inputmode="decimal" style="${inp} width:110px;" value="${escHtml(String(p.amount))}" oninput="setContractPayment(${i}, 'amount', this.value)">
+              <button type="button" onclick="removeContractPayment(${i})" style="background:rgba(225,29,72,0.15); color:#e11d48; border:none; border-radius:8px; padding:8px 10px;">🗑</button></div>
+              <textarea rows="2" style="${inp} margin-top:6px;" oninput="setContractPayment(${i}, 'due', this.value)">${escHtml(p.due || '')}</textarea>
+              ${p.received ? `<div style="font-size:0.72rem; color:#22c55e; margin-top:4px;">${t('ctReceivedNote')}</div>` : ''}</div>`;
+        });
+        h += `<div style="display:flex; gap:8px; margin:8px 0; flex-wrap:wrap;"><button type="button" class="secondary" onclick="addContractPayment()" style="padding:6px 14px; font-size:0.8rem;">${t('ctAddPay')}</button>
+              <button type="button" class="secondary" onclick="setContractPlan(invoiceState.contract.plan && invoiceState.contract.plan !== 'CUSTOM' ? invoiceState.contract.plan : 'MEDIUM')" style="padding:6px 14px; font-size:0.8rem;">${t('ctRecalc')}</button></div>
+              <div id="ctPaySum" style="font-size:0.82rem; margin-bottom:12px;">${contractPaySumHtml()}</div>`;
+        return h;
+    }
+
+    // ---- the contract text, as simple blocks that both the PDF and the HTML view draw ----
+    function contractBlocks(job, st) {
+        const c = st.contract || {}, co = companyDisplayName();
+        const total = round2(st.items.reduce((s, it) => s + parseVal(it.amount), 0));
+        const mat = c.materials === 'MATERIALS';
+        const LAB = mat ? 'labor and materials' : 'labor';
+        const owners = String(c.owners || job.clientName || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+        const ownersTxt = owners.join(' and ') || '—';
+        const date = contractLongDate(st.invoiceDate);
+        const items = st.items.filter(it => String(it.desc || '').trim() || parseVal(it.amount) > 0);
+        const pmItems = items.filter(contractIsPM), workItems = items.filter(it => !contractIsPM(it));
+        const letter = i => String.fromCharCode(66 + i);   // B, C, D ... (Section A is the standard jobsite section)
+        const B = [];
+        const P = (text) => B.push({ t: 'p', text }), H1 = (text) => B.push({ t: 'h1', text }), H2 = (text) => B.push({ t: 'h2', text });
+        const BUL = (arr) => { if (arr.length) B.push({ t: 'bul', items: arr }); };
+        B.push({ t: 'title', text: 'RENOVATION & IMPROVEMENT AGREEMENT' });
+        P('This Renovation & Improvement Agreement (“Agreement”) is entered into between the following parties for the renovation and improvement of the property identified below.');
+        H1('1. PARTIES TO THIS AGREEMENT');
+        B.push({ t: 'kv', rows: [['CONTRACTOR', co], ['OWNER(S)', owners.join('\n') || '—'], ['PROJECT PROPERTY', c.property || job.clientAddress || ''], ['CONTRACT DATE', date], ['TOTAL CONTRACT PRICE', fmtUsd(total) + (mat ? '' : ' Labor Only')]] });
+        B.push({ t: 'pb', text: 'PROJECT DESCRIPTION' });
+        P(`This Agreement covers the ${LAB} necessary to complete the renovation and improvement of the above referenced property, including ${workItems.length ? workItems.map(contractItemTitle).join('; ') : 'the work'} and all additional approved work specifically described in this Agreement.`);
+        P('This Agreement supersedes and replaces all previous estimates, proposals, drafts, negotiations, change orders, emails, text messages, and prior versions relating to this project. Upon execution by both parties, this Agreement shall constitute the entire agreement between Owner and Contractor.');
+        if (c.end) P(`Estimated Substantial Completion: ${contractLongDate(c.end)}${mat ? '.' : ', provided that all Owner-supplied materials required for the work are delivered on schedule.'}`);
+        H1('2. PURPOSE OF THIS AGREEMENT');
+        P(`The purpose of this Agreement is to establish the complete scope of ${LAB}, responsibilities, payment terms, schedule, and conditions for the renovation and improvement of the Project Property.`);
+        P(`This Agreement includes all ${LAB} specifically described herein and supersedes all previous proposals, estimates, drafts, text messages, emails, and prior discussions relating to this project.`);
+        H1('3. DEFINITIONS');
+        B.push({ t: 'kv', rows: [
+            ['Contractor', `${co}, including its employees, subcontractors, and authorized representatives.`],
+            ['Owner', `${ownersTxt}, including any person authorized by them to make decisions regarding this project.`],
+            ['Project', 'The complete renovation and improvement work described in this Agreement.'],
+            ...(mat ? [] : [['Owner-Supplied Materials', `Materials purchased or furnished by the Owner, including but not limited to: ${String(c.ownerMaterials || '').trim() || 'finish materials, fixtures, and related products'}.`]]),
+            ['Labor', 'All labor, supervision, coordination, installation, demolition, preparation, cleanup, and project management specifically included within this Agreement.'],
+            ['Change Order', 'A written document signed by both Owner and Contractor authorizing additional work not specifically included in this Agreement.']] });
+        H1('4. PROJECT SCOPE OF WORK');
+        P(`The Contractor shall furnish all labor, supervision, project management, equipment, standard installation tools, and workmanship necessary to complete the following work in a professional manner.${mat ? ' Materials needed for the work described below are included in the Contract Price unless stated otherwise.' : ' Unless specifically stated otherwise, all finish materials shall be supplied by the Owner.'}`);
+        H2('SECTION A – JOBSITE PREPARATION & PROTECTION');
+        P('The Contractor shall provide all reasonable protection necessary to minimize dust, debris, and damage to existing portions of the residence during construction. The scope includes:');
+        BUL(['Protection of existing floors, walls, cabinetry, countertops, windows, doors, fixtures, and adjacent finished surfaces.', 'Dust containment using plastic barriers and temporary protection where required.', 'Protection of HVAC supply and return openings during demolition, sanding, and finishing operations.', 'Daily removal of construction debris from active work areas.', 'Loading debris into the designated dumpster (provided by the Owner unless otherwise agreed in writing).', 'General housekeeping and jobsite organization throughout construction.', 'Final construction cleanup upon completion of the contracted work.', 'Coordination of material deliveries and staging of materials.']);
+        P('The Contractor shall exercise reasonable care to protect the property during construction. Minor dust migration commonly associated with residential renovation may occur despite reasonable containment measures and shall not constitute defective workmanship.');
+        workItems.forEach((it, i) => {
+            H2(`SECTION ${letter(i)} – ${contractItemTitle(it).toUpperCase()}`);
+            P(`The Contractor shall furnish all ${LAB} necessary to complete the following work in a professional manner.`);
+            B.push({ t: 'pb', text: 'Scope Includes' });
+            BUL(contractScopeLines(it));
+            const ex = contractLines(it.cExcl);
+            if (ex.length) { B.push({ t: 'pb', text: 'Exclusions' }); BUL(ex); }
+            B.push({ t: 'val', text: `Included ${mat ? 'Price' : 'Labor Value'}: ${fmtUsd(parseVal(it.amount))}` });
+        });
+        pmItems.forEach(it => {
+            H2('PROJECT MANAGEMENT, COORDINATION & CONSTRUCTION SUPERVISION');
+            P('The Contractor shall provide overall project management, construction supervision, scheduling, coordination of subcontractors and trades, coordination of material deliveries, quality control inspections, sequencing of work, daily jobsite management, and final project coordination throughout the duration of the Project.');
+            BUL(['Daily jobsite supervision.', 'Coordination of subcontractors and deliveries.', 'Material pickup as required.', 'Daily quality control inspections.', 'Daily cleanup and final project coordination.']);
+            B.push({ t: 'val', text: `Included ${mat ? 'Price' : 'Labor Value'}: ${fmtUsd(parseVal(it.amount))}` });
+        });
+        H1('5. CONTRACT PRICE');
+        P(`The Owner agrees to pay the Contractor the following ${mat ? 'compensation' : 'labor compensation'} for the work described in this Agreement.`);
+        const rows = [['Section A – Jobsite Preparation, Protection & Cleanup', 'Included']];
+        workItems.forEach((it, i) => rows.push([`Section ${letter(i)} – ${contractItemTitle(it)}`, fmtUsd(parseVal(it.amount))]));
+        pmItems.forEach(it => rows.push(['Project Management, Coordination & Construction Supervision', fmtUsd(parseVal(it.amount))]));
+        rows.push(['TOTAL CONTRACT PRICE' + (mat ? '' : ' (Labor Only)'), fmtUsd(total)]);
+        B.push({ t: 'table', head: ['Scope of Work', mat ? 'Price' : 'Labor Value'], rows, boldLast: true });
+        P(mat ? 'The Total Contract Price includes the labor and materials associated with the Scope of Work described in this Agreement and shall remain fixed unless modified by a written Change Order executed by both the Owner and the Contractor.'
+            : 'This Agreement is for labor only unless specifically stated otherwise. Unless expressly included herein, all finish materials, fixtures, and related products shall be supplied by the Owner. The Total Contract Price includes all labor associated with the Scope of Work described in this Agreement and shall remain fixed unless modified by a written Change Order executed by both the Owner and the Contractor.');
+        H1('6. PAYMENT TERMS');
+        P('The Owner agrees to make payments to the Contractor according to the following schedule. All payments shall be made immediately upon completion of the corresponding milestone.');
+        (c.payments || []).forEach(p => {
+            B.push({ t: 'pb', text: `${p.label || 'Payment'}${p.received ? ' (Received)' : ''}` });
+            B.push({ t: 'val', text: `${p.received ? 'Amount Paid: ' : ''}${fmtUsd(parseVal(p.amount))}` });
+            if (String(p.due || '').trim()) P(String(p.due).trim());
+        });
+        B.push({ t: 'pb', text: 'Late Payments' });
+        P('If any payment is not received when due, the Contractor may suspend all work until payment has been received. Any suspension of work resulting from non-payment shall automatically extend the project completion schedule by the number of days work is suspended. The Owner shall remain responsible for all reasonable collection costs, attorney’s fees, court costs, interest, and all remedies available under the laws of the State of Florida.');
+        H1('7. PROJECT SCHEDULE & TIME OF PERFORMANCE');
+        if (c.start) P(`Anticipated start date: ${contractLongDate(c.start)}.`);
+        P(`The Contractor shall use commercially reasonable efforts to achieve Substantial Completion of the work${c.end ? ' on or before ' + contractLongDate(c.end) : ' within a reasonable time'}${mat ? '' : ', provided that Owner-supplied materials required for the work are delivered as scheduled'}. Substantial Completion means the work has been completed to the extent that the Owner may reasonably occupy and use the property for its intended purpose.`);
+        P('Delays caused by weather, Owner changes, Owner-selected materials, unforeseen conditions, inspections, or other causes beyond the Contractor’s control shall automatically extend the schedule as reasonably necessary. Owner occupancy before final completion shall not constitute Contractor delay.');
+        let n = 8;
+        if (!mat) {
+            H1(`${n++}. OWNER-SUPPLIED MATERIALS`);
+            P(`The Owner shall furnish all finish materials unless otherwise stated. Owner-supplied materials include, but are not limited to, ${String(c.ownerMaterials || '').trim() || 'finish materials, fixtures, and related products'}.`);
+            P('The Contractor shall not be responsible for manufacturer defects, incorrect quantities, shipping damage, backorders, supplier delays, warranty claims, or incorrect products purchased by the Owner. Delays caused by Owner-supplied materials shall automatically extend the project schedule without penalty to the Contractor. Contractor shall not be responsible for color, shade, or dye lot variation, or natural characteristics of Owner-supplied materials.');
+        }
+        H1(`${n++}. UNFORESEEN CONDITIONS`);
+        P('This Agreement is based upon visible conditions only. Hidden conditions including, but not limited to, rot, mold, termite damage, structural deficiencies, framing defects, plumbing defects, electrical deficiencies, moisture intrusion, uneven substrates, concrete defects, or code violations discovered after demolition are excluded and shall require a written Change Order before corrective work proceeds.');
+        H1(`${n++}. INSURANCE & PERMITS`);
+        P('Contractor shall maintain applicable General Liability Insurance throughout the project and provide proof of coverage upon request. Any required permits or inspections not specifically included remain the Owner’s responsibility unless otherwise agreed in writing.');
+        H1(`${n++}. CHANGE ORDERS`);
+        P('No work outside the scope of this Agreement shall be performed without a written Change Order signed by both Owner and Contractor. Each Change Order shall identify the additional work, price adjustment, and any extension of time.');
+        const wy = parseVal(c.warranty) || 1;
+        H1(`${n++}. WORKMANSHIP WARRANTY`);
+        P(`Contractor warrants labor and workmanship for ${wy === 1 ? 'one (1) year' : wy + ' years'} from the date of Substantial Completion. This warranty excludes normal wear, abuse, structural movement, water intrusion occurring after completion, manufacturer defects, and ${mat ? 'materials not furnished by the Contractor' : 'Owner-supplied materials'}. This warranty covers workmanship only and does not extend to manufacturer warranties.`);
+        H1(`${n++}. FLORIDA CONSTRUCTION LIEN RIGHTS`);
+        P('Owner acknowledges that Contractor retains all rights and remedies available under the Florida Construction Lien Law for unpaid labor, approved Change Orders, attorney’s fees, interest, court costs, and collection expenses, where permitted by law.');
+        H1(`${n++}. DEFAULT, SUSPENSION & TERMINATION`);
+        P('Failure to make any payment when due constitutes a material breach. Contractor may suspend work until payment is received, and the completion schedule shall automatically extend by the period of suspension. Either party may terminate this Agreement after seven (7) days written notice if the breach is not cured. Contractor shall be paid for all work completed through the termination date.');
+        H1(`${n++}. ENTIRE AGREEMENT`);
+        P('This Agreement represents the complete understanding between the parties and supersedes all prior estimates, proposals, emails, text messages, negotiations, and draft agreements relating to this project. Any amendment must be in writing and signed by both parties.');
+        H1(`${n++}. SIGNATURES`);
+        B.push({ t: 'sig', owners, company: co });
+        return B;
+    }
+    function contractAscii(s) { return String(s == null ? '' : s).replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, '-').replace(/[^\x09\x0A\x20-\x7E -ÿ]/g, ''); }
+    function contractBuildPdfDoc(job, st) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: 'letter' });
+        const W = 215.9, H = 279.4, M = 20, CW = W - 2 * M;
+        let y = M;
+        const co = companyDisplayName();
+        const dark = [36, 31, 26], grey = [107, 98, 87], green = [44, 107, 69];
+        const newPage = () => { doc.addPage(); y = M; };
+        const need = h => { if (y + h > H - M - 4) newPage(); };
+        const setF = (bold, size, color, italic) => { doc.setFont('helvetica', bold ? (italic ? 'bolditalic' : 'bold') : (italic ? 'italic' : 'normal')); doc.setFontSize(size); doc.setTextColor(...(color || dark)); };
+        const para = (s, o = {}) => {
+            const size = o.size || 10; setF(o.bold, size, o.color, o.italic);
+            const lh = size * 0.3528 * 1.4, indent = o.indent || 0;
+            const lines = doc.splitTextToSize(contractAscii(s), CW - indent);
+            lines.forEach(l => { need(lh); doc.text(l, o.center ? W / 2 : M + indent, y, o.center ? { align: 'center' } : undefined); y += lh; });
+            y += (o.gap === undefined ? 1.8 : o.gap);
+        };
+        // header: logo + company
+        let logoOk = false;
+        try {
+            const lg = companyProfile.logo || '', mt = /^data:image\/(png|jpe?g)/i.exec(lg);
+            if (mt) { doc.addImage(lg, mt[1].toUpperCase() === 'PNG' ? 'PNG' : 'JPEG', M, y - 2, 16, 16); logoOk = true; }
+        } catch (e) { logoOk = false; }
+        setF(true, 13, dark); doc.text(contractAscii(co).toUpperCase(), M + (logoOk ? 20 : 0), y + 5);
+        const contact = [...(companyProfile.phones || []), companyProfile.email, companyProfile.website].filter(Boolean).join('   |   ');
+        setF(false, 8.5, grey); if (contact) doc.text(contractAscii(contact), M + (logoOk ? 20 : 0), y + 10.5);
+        y += 19;
+        doc.setDrawColor(...green); doc.setLineWidth(0.6); doc.line(M, y, W - M, y); y += 7;
+        contractBlocks(job, st).forEach(b => {
+            if (b.t === 'title') { para(b.text, { size: 15, bold: true, center: true, gap: 4 }); }
+            else if (b.t === 'h1') { need(16); y += 3; para(b.text, { size: 11.5, bold: true, color: green, gap: 1.2 }); }
+            else if (b.t === 'h2') { need(16); y += 2; para(b.text, { size: 10.5, bold: true, gap: 1.2 }); }
+            else if (b.t === 'pb') { need(12); para(b.text, { bold: true, gap: 0.8 }); }
+            else if (b.t === 'val') { para(b.text, { bold: true, gap: 2.4 }); }
+            else if (b.t === 'p') { para(b.text); }
+            else if (b.t === 'bul') {
+                b.items.forEach(it => {
+                    setF(false, 10, dark); const lh = 10 * 0.3528 * 1.4, lines = doc.splitTextToSize(contractAscii(it), CW - 9);
+                    lines.forEach((l, k) => { need(lh); if (k === 0) doc.text('•', M + 3, y); doc.text(l, M + 8, y); y += lh; });
+                    y += 0.6;
+                });
+                y += 1.4;
+            }
+            else if (b.t === 'kv') {
+                b.rows.forEach(r => {
+                    setF(true, 9.5, grey); const vl = doc.splitTextToSize(contractAscii(r[1]), CW - 46);
+                    const h = Math.max(1, vl.length) * 9.5 * 0.3528 * 1.4; need(h + 1.5);
+                    doc.text(contractAscii(r[0]).toUpperCase(), M, y);
+                    setF(false, 10, dark); vl.forEach((l, k) => doc.text(l, M + 46, y + k * 9.5 * 0.3528 * 1.4));
+                    y += h + 1.6;
+                });
+                y += 1;
+            }
+            else if (b.t === 'table') {
+                if (typeof doc.autoTable === 'function') {
+                    doc.autoTable({ startY: y, head: [b.head.map(contractAscii)], body: b.rows.map(r => r.map(contractAscii)), theme: 'grid', margin: { left: M, right: M },
+                        styles: { fontSize: 9.5, cellPadding: 2.2, textColor: dark }, headStyles: { fillColor: green, textColor: 255 },
+                        columnStyles: { 1: { halign: 'right', cellWidth: 38 } },
+                        didParseCell: d => { if (b.boldLast && d.section === 'body' && d.row.index === b.rows.length - 1) d.cell.styles.fontStyle = 'bold'; } });
+                    y = doc.lastAutoTable.finalY + 4;
+                } else {
+                    b.rows.forEach((r, i) => { para(r[0] + '   ' + r[1], { bold: !!(b.boldLast && i === b.rows.length - 1), gap: 0.6 }); });
+                }
+            }
+            else if (b.t === 'sig') {
+                need(70);
+                para('OWNER(S)', { bold: true, gap: 6 });
+                (b.owners.length ? b.owners : ['']).forEach(o => {
+                    need(16); doc.setDrawColor(...dark); doc.setLineWidth(0.3);
+                    doc.line(M, y + 8, M + 95, y + 8); doc.line(M + 110, y + 8, M + 150, y + 8);
+                    setF(false, 9, grey); doc.text(contractAscii(o), M, y + 12.5); doc.text('Date', M + 110, y + 12.5);
+                    y += 18;
+                });
+                need(40); y += 4;
+                para('CONTRACTOR', { bold: true, gap: 3 });
+                para(b.company, { gap: 2 });
+                try {
+                    const sg = companyProfile.signature || '', ms = /^data:image\/(png|jpe?g)/i.exec(sg);
+                    if (ms) doc.addImage(sg, ms[1].toUpperCase() === 'PNG' ? 'PNG' : 'JPEG', M, y - 2, 40, 14);
+                } catch (e) { /* signature image optional */ }
+                doc.setDrawColor(...dark); doc.setLineWidth(0.3);
+                doc.line(M, y + 12, M + 95, y + 12); doc.line(M + 110, y + 12, M + 150, y + 12);
+                setF(false, 9, grey); doc.text('Authorized Signature', M, y + 16.5); doc.text('Date', M + 110, y + 16.5);
+                y += 22;
+            }
+        });
+        const pages = doc.getNumberOfPages();
+        for (let i = 1; i <= pages; i++) {
+            doc.setPage(i); setF(false, 8, grey);
+            doc.text(contractAscii(co) + ' - Renovation & Improvement Agreement', M, H - 10);
+            doc.text('Page ' + i + ' of ' + pages, W - M, H - 10, { align: 'right' });
+            doc.text('Owner initials: ______', W / 2, H - 10, { align: 'center' });
+        }
+        const nameSlug = (job.clientName || 'client').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'client';
+        return { doc, filename: `${companyFileSlug()}_Contract_${nameSlug}.pdf` };
+    }
+    function contractBuildHtmlDoc(job, st, withPrint) {
+        const e = escHtml, B = contractBlocks(job, st);
+        const body = B.map(b => {
+            if (b.t === 'title') return `<h1 style="text-align:center; font-size:20px; margin:8px 0 14px;">${e(b.text)}</h1>`;
+            if (b.t === 'h1') return `<h2 style="font-size:15px; color:#2C6B45; margin:20px 0 6px;">${e(b.text)}</h2>`;
+            if (b.t === 'h2') return `<h3 style="font-size:13.5px; margin:16px 0 6px;">${e(b.text)}</h3>`;
+            if (b.t === 'pb') return `<p style="font-weight:700; margin:8px 0 3px;">${e(b.text)}</p>`;
+            if (b.t === 'val') return `<p style="font-weight:700; margin:6px 0 10px;">${e(b.text)}</p>`;
+            if (b.t === 'p') return `<p style="margin:5px 0;">${e(b.text)}</p>`;
+            if (b.t === 'bul') return `<ul style="margin:4px 0 8px; padding-left:22px;">${b.items.map(i => `<li>${e(i)}</li>`).join('')}</ul>`;
+            if (b.t === 'kv') return `<table style="border-collapse:collapse; width:100%; margin:6px 0;">${b.rows.map(r => `<tr><td style="vertical-align:top; width:160px; padding:4px 8px 4px 0; font-weight:700; color:#6B6257; font-size:12px;">${e(r[0]).toUpperCase()}</td><td style="padding:4px 0; white-space:pre-line;">${e(r[1])}</td></tr>`).join('')}</table>`;
+            if (b.t === 'table') return `<table style="border-collapse:collapse; width:100%; margin:8px 0;"><tr>${b.head.map((h, i) => `<th style="background:#2C6B45; color:#fff; padding:7px 10px; text-align:${i ? 'right' : 'left'};">${e(h)}</th>`).join('')}</tr>${b.rows.map((r, ri) => `<tr>${r.map((c, i) => `<td style="border:1px solid #D9D2C3; padding:6px 10px; text-align:${i ? 'right' : 'left'}; ${b.boldLast && ri === b.rows.length - 1 ? 'font-weight:700;' : ''}">${e(c)}</td>`).join('')}</tr>`).join('')}</table>`;
+            if (b.t === 'sig') return `<p style="font-weight:700; margin-top:14px;">OWNER(S)</p>${(b.owners.length ? b.owners : ['']).map(o => `<div style="display:flex; gap:20px; margin:26px 0 4px;"><div style="flex:1; border-bottom:1px solid #241F1A; height:22px;"></div><div style="width:150px; border-bottom:1px solid #241F1A;"></div></div><div style="display:flex; gap:20px; font-size:12px; color:#6B6257;"><div style="flex:1;">${e(o)}</div><div style="width:150px;">Date</div></div>`).join('')}<p style="font-weight:700; margin-top:26px;">CONTRACTOR</p><p>${e(b.company)}</p><div style="display:flex; gap:20px; margin:26px 0 4px;"><div style="flex:1; border-bottom:1px solid #241F1A; height:22px;"></div><div style="width:150px; border-bottom:1px solid #241F1A;"></div></div><div style="display:flex; gap:20px; font-size:12px; color:#6B6257;"><div style="flex:1;">Authorized Signature</div><div style="width:150px;">Date</div></div>`;
+            return '';
+        }).join('');
+        const logo = companyProfile.logo ? `<img src="${companyProfile.logo}" style="width:60px; height:60px; object-fit:contain;">` : '';
+        return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Tallywork</title>
+<style>body{margin:0; font-family: Arial, Helvetica, sans-serif; background:#FDFBF6; color:#241F1A; font-size:13.5px; line-height:1.5;} .page{max-width:800px; margin:0 auto; padding:28px 36px 60px;} @media print { .no-print{display:none !important;} .page{padding:0;} } @page { size: letter; margin: 18mm; }</style></head><body>
+<div class="page"><button class="no-print" onclick="window.print()" style="float:right; padding:8px 14px; border:none; border-radius:8px; background:#2C6B45; color:#fff;">Print</button>
+<div style="display:flex; gap:12px; align-items:center; border-bottom:2px solid #2C6B45; padding-bottom:10px; margin-bottom:10px;">${logo}<div><div style="font-weight:700; font-size:16px;">${e(companyDisplayName()).toUpperCase()}</div><div style="font-size:12px; color:#6B6257;">${e([...(companyProfile.phones || []), companyProfile.email, companyProfile.website].filter(Boolean).join('  |  '))}</div></div></div>
+${body}</div></body></html>`;
+    }
+
     function invoiceDocTypeDisplay(docType) {
+        if (docType === 'CONTRACT') return t('invoiceTypeContract');
         if (docType === 'ESTIMATE') return t('invoiceTypeEstimate');
         if (docType === 'PROPOSAL') return t('invoiceTypeProposal');
         if (docType === 'ADDITIONAL_WORK') return t('invoiceAdditionalWorkTitle');
@@ -9028,6 +9434,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                         <option value="PROPOSAL" ${invoiceState.docType === 'PROPOSAL' ? 'selected' : ''}>${t('invoiceTypeProposal')}</option>
                         <option value="ADDITIONAL_WORK" ${invoiceState.docType === 'ADDITIONAL_WORK' ? 'selected' : ''}>${t('invoiceTypeAdditionalWork')}</option>
                         <option value="RECEIPT" ${invoiceState.docType === 'RECEIPT' ? 'selected' : ''}>${t('invoiceTypeReceipt')}</option>
+                        <option value="CONTRACT" ${invoiceState.docType === 'CONTRACT' ? 'selected' : ''}>${t('invoiceTypeContract')}</option>
                     </select>
                 </div>
                 <div>
@@ -9046,9 +9453,9 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 <div><b>${t('invoicePhoneLabel')}:</b> ${escHtml(job.clientPhone || '')}</div>
             </div>
 
-            ${isReceipt ? receiptEditorHtml : normalMiddle}
+            ${isReceipt ? receiptEditorHtml : (invoiceState.docType === 'CONTRACT' ? ('<details style="margin-bottom:10px;"><summary style="cursor:pointer; color:#38bdf8; font-weight:700; margin-bottom:8px;">' + t('ctItemsSummary') + '</summary>' + normalMiddle + '</details>' + contractEditorHtml(job)) : normalMiddle)}
 
-            <div style="margin-bottom:18px;">
+            <div style="margin-bottom:18px; ${invoiceState.docType === 'CONTRACT' ? 'display:none;' : ''}">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                     <label style="font-size:0.75rem; color:var(--text-muted); display:block;">${t('invoiceNoteLabel')}</label>
                     <button type="button" class="secondary" onclick="useJobDescriptionForInvoice()" style="padding:4px 10px; font-size:0.7rem;">${t('useJobScopeBtn')}</button>
@@ -9088,6 +9495,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     function buildInvoiceHtmlDoc(withPrintScript) {
         const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
         if (!job) return null;
+        if (invoiceState.docType === 'CONTRACT') { contractInit(); return contractBuildHtmlDoc(job, invoiceState, withPrintScript); }
 
         const isAdditionalWork = invoiceState.docType === 'ADDITIONAL_WORK';
         const isReceipt = invoiceState.docType === 'RECEIPT';
@@ -9392,6 +9800,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     async function buildInvoicePdfDoc() {
         const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
         if (!job) return null;
+        if (invoiceState.docType === 'CONTRACT') { contractInit(); return contractBuildPdfDoc(job, invoiceState); }
         const html = buildInvoiceHtmlDoc(false);
         const iframe = document.createElement('iframe');
         iframe.style.cssText = 'position:fixed; left:-10000px; top:0; width:900px; height:1200px; border:0; visibility:hidden;';
@@ -9690,7 +10099,10 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             const nameSlug = (c.job.clientName || 'client').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'client';
             let file = null;
             if (c.fromInvoice) {
-                file = await buildLinkedPdfFile(buildInvoiceHtmlDoc(false), '.invoice-page', `${companyFileSlug()}_Invoice_${nameSlug}`, '#FDFBF6');
+                if (invoiceState && invoiceState.docType === 'CONTRACT' && typeof window.jspdf !== 'undefined') {
+                    const cb = contractBuildPdfDoc(c.job, invoiceState);
+                    file = new File([cb.doc.output('blob')], cb.filename, { type: 'application/pdf' });
+                } else file = await buildLinkedPdfFile(buildInvoiceHtmlDoc(false), '.invoice-page', `${companyFileSlug()}_Invoice_${nameSlug}`, '#FDFBF6');
             } else {
                 const appt = appointments.find(a => a.id === c.apptId);
                 if (appt) file = await buildLinkedPdfFile(buildAppointmentQuoteHtmlDoc(appt), '.quote-page', `${companyFileSlug()}_Estimate_${nameSlug}`, '#FDFBF6');
