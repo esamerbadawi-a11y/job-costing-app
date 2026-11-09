@@ -2827,8 +2827,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         ctRecalc: { ar: 'إعادة حساب الدفعات', en: 'Recalculate payments' },
         ctPaySumOk: { ar: 'مجموع الدفعات = إجمالي العقد', en: 'Payments add up to the contract total' },
         ctPaySumBad: { ar: 'مجموع الدفعات {sum} غير إجمالي العقد {total}', en: 'Payments total {sum} but contract total is {total}' },
-        leadFabLabel: { ar: 'عميل جديد', en: 'New client' },
-        leadFormTitle: { ar: 'عميل جديد', en: 'New client' },
+        leadFabLabel: { ar: 'عميل جديد', en: 'New customer' },
+        leadFormTitle: { ar: 'عميل جديد', en: 'New customer' },
         leadFormHint: { ar: 'عميل اتصل وعايز سعر من غير موعد. بعد الحفظ بتفتح شاشة الفاتورة/العرض/العقد.', en: 'A customer called and wants a price, no appointment. After saving, the invoice / estimate / contract screen opens.' },
         leadName: { ar: 'اسم العميل', en: 'Customer name' },
         leadPhone: { ar: 'التليفون', en: 'Phone' },
@@ -2855,6 +2855,20 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         leadApproveConfirm: { ar: 'تحوّل عرض {name} بقيمة {total} لشغلانة عادية؟ المستندات المحفوظة هتتنقل معاها.', en: 'Turn {name}\'s quote of {total} into a normal job? Saved documents will move with it.' },
         leadApprovedToast: { ar: 'اتحوّلت لشغلانة', en: 'Turned into a job' },
         leadApprovedMarkFail: { ar: 'الشغلانة اتعملت، بس تعليم العرض كـ Approved ما اتحفظش. ما تعملش تحويل تاني للعرض ده.', en: 'The job was created, but marking the quote as Approved did not save. Do not convert this quote again.' },
+        leadZip: { ar: 'ZIP', en: 'ZIP' },
+        leadSaveBtn: { ar: 'حفظ', en: 'Save' },
+        leadNeedNamePhone: { ar: 'اكتب الاسم والتليفون', en: 'Enter the name and phone' },
+        custDupOpen: { ar: '{name} موجود قبل كده. تفتحه؟', en: '{name} already exists. Open that customer?' },
+        custBack: { ar: 'رجوع', en: 'Back' },
+        custEdit: { ar: 'تعديل بيانات العميل', en: 'Edit customer details' },
+        custBtnAppt: { ar: 'ميعاد', en: 'Appointment' },
+        custBtnJob: { ar: 'شغلانة', en: 'Job' },
+        custSecDocs: { ar: 'المستندات', en: 'Documents' },
+        custSecJobs: { ar: 'الشغلانات', en: 'Jobs' },
+        custSecAppts: { ar: 'المواعيد', en: 'Appointments' },
+        custRecent: { ar: 'آخر العملاء', en: 'Recent customers' },
+        custReceiptNoJob: { ar: 'الإيصال بيتعمل من دفعات مسجلة في شغلانة. العميل ده لسه ماعندوش شغلانة. اعمل الشغلانة (✓ وافق) وسجّل الدفعة الأول.', en: 'A receipt is made from payments recorded in a job. This customer has no job yet. Approve the quote into a job and record the payment first.' },
+        custReceiptPickJob: { ar: 'العميل عنده أكتر من شغلانة. دوس زرار 💵 جوه الشغلانة اللي عايزها في القايمة تحت.', en: 'This customer has more than one job. Tap the 💵 button inside the job you want in the list below.' },
         toastJobSaved: { ar: 'اتحفظت الشغلانة', en: 'Job saved' },
         unsavedTitle: { ar: 'فيه تعديلات لسه ما اتحفظتش', en: 'You have changes that are not saved' },
         unsavedMsg: { ar: 'غيّرت الوقت أو الفريق أو اليوم في النافذة دي ومحفظتهمش. تحفظهم الأول قبل ما تفتح تفاصيل الشغلانة؟', en: 'You changed the day, time or team in this window and did not save. Save them before opening the full job details?' },
@@ -4030,6 +4044,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         CONTACTS_DOC.onSnapshot(doc => {
             contacts = (doc.exists && doc.data().entries) ? doc.data().entries : [];
             if (document.getElementById('screenContacts').style.display !== 'none') safeCall(renderContacts);
+            safeCall(refreshCustomerHub);
+            if (typeof currentScreen !== 'undefined' && currentScreen === 'home') safeCall(() => window.renderHome());
         }, err => console.error('Firestore contacts sync error:', err));
 
         TECH_PAYMENTS_DOC.onSnapshot(doc => {
@@ -4533,7 +4549,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         if (cons.length > 0) {
             html += `<div class="ag-section-title">${t('gsContacts')} (${cons.length})</div>`;
             cons.forEach(c => {
-                html += `<div class="ag-item" style="cursor:pointer;" onclick="closeGlobalSearch(); switchScreen('contacts'); openContactsListModal(); document.getElementById('contactsSearchInput').value='${jsArg(c.name || '')}'; renderContacts();">
+                html += `<div class="ag-item" style="cursor:pointer;" onclick="closeGlobalSearch(); openCustomerHub('${jsArg(String(c.id))}');">
                     <div class="ag-line"><strong>${escHtml(c.name || '')}</strong></div>
                     <div class="ag-meta">${escHtml(c.phone || '')}</div>
                 </div>`;
@@ -8371,6 +8387,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         document.getElementById('invoiceModal').style.display = 'none';
         invoiceState = null;
         invoiceStateSnapshot = null;
+        safeCall(refreshCustomerHub);
     }
 
     // What the Close button (and anything else meaning to leave the invoice screen) actually
@@ -8910,6 +8927,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         return round2(sub - cr);
     }
     function renderLeadsBox() {
+        safeCall(refreshCustomerHub);
         const box = document.getElementById('quoteLeadsBox'); if (!box) return;
         const open = quoteLeads.filter(l => leadStatusOf(l) === 'open'), lost = quoteLeads.filter(l => leadStatusOf(l) === 'lost');
         if (!open.length && !lost.length) { box.innerHTML = ''; return; }
@@ -8917,7 +8935,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             const d = leadLatestDoc(l);
             const sub = d ? `${escHtml(invoiceDocTypeDisplay(d.docType))} ${escHtml(d.invoiceNo || '')} — ${fmtUsd(leadDocTotal(d))}` : t('leadNoDocYet');
             return `<div class="tech-card" style="margin-bottom:8px; border-color:#f59e0b66;">
-                <div style="display:flex; justify-content:space-between; gap:8px;"><b>${escHtml(l.clientName || '')}</b><span style="color:#f59e0b; font-size:0.72rem;">${isLost ? t('leadLostTag') : (d ? t('leadQuoteReady') : t('leadDraft'))}</span></div>
+                <div style="display:flex; justify-content:space-between; gap:8px;"><b style="cursor:pointer; text-decoration:underline dotted;" onclick="openCustomerHubForLead('${l.id}')">${escHtml(l.clientName || '')}</b><span style="color:#f59e0b; font-size:0.72rem;">${isLost ? t('leadLostTag') : (d ? t('leadQuoteReady') : t('leadDraft'))}</span></div>
                 <div style="font-size:0.78rem; color:var(--text-muted); margin:3px 0 6px;">${sub}${l.clientPhone ? ' · ' + escHtml(l.clientPhone) : ''}</div>
                 <div style="display:flex; gap:6px; flex-wrap:wrap;">
                     ${isLost ? `<button type="button" class="secondary" onclick="reopenLead('${l.id}')" style="padding:6px 12px; font-size:0.75rem;">${t('leadReopenBtn')}</button><button type="button" class="secondary" onclick="openInvoiceModal('${l.id}')" style="padding:6px 12px; font-size:0.75rem;">${t('leadOpenBtn')}</button>`
@@ -8936,46 +8954,179 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         m.innerHTML = '<div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; padding:18px; width:100%; max-width:480px;" id="leadBox"></div>';
         document.body.appendChild(m); return m;
     }
-    function openQuickQuote() {
+    function closeQuickQuote() { const m = document.getElementById('leadModal'); if (m) m.style.display = 'none'; }
+    function openQuickQuote() {   // the "New customer" form (name kept because the + menu calls it)
         const m = leadEnsureModal();
-        const inp = 'background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; box-sizing:border-box;';
+        const inp = 'background:#11141d; color:#fff; border:1px solid var(--border-color); padding:11px 12px; border-radius:10px; width:100%; box-sizing:border-box;';
         const lbl = 'font-size:0.75rem; color:var(--text-muted); margin:10px 0 4px; display:block;';
-        document.getElementById('leadBox').innerHTML = `<h3 style="margin:0 0 4px; color:#38bdf8;">📞 ${t('leadFormTitle')}</h3><div style="font-size:0.78rem; color:var(--text-muted);">${t('leadFormHint')}</div>
-            <label style="${lbl}">${t('leadName')} *</label><input id="leadName" type="text" style="${inp}">
-            <label style="${lbl}">${t('leadPhone')}</label><input id="leadPhone" type="tel" style="${inp}">
+        document.getElementById('leadBox').innerHTML = `<h3 style="margin:0 0 12px; color:#38bdf8;">${t('leadFormTitle')}</h3>
+            <label style="${lbl}">${t('leadName')} *</label><input id="leadName" type="text" oninput="leadFormCheck()" style="${inp}">
+            <label style="${lbl}">${t('leadPhone')} *</label><input id="leadPhone" type="tel" oninput="leadFormCheck()" style="${inp}">
             <label style="${lbl}">${t('leadEmail')}</label><input id="leadEmail" type="email" style="${inp}">
             <label style="${lbl}">${t('leadAddress')}</label><input id="leadAddress" type="text" style="${inp}">
-            <label style="${lbl}">${t('leadUnit')}</label><input id="leadUnit" type="text" style="${inp}">
-            <label style="${lbl}">${t('leadDesc')}</label><textarea id="leadDesc" rows="3" style="${inp}"></textarea>
-            <div style="display:flex; gap:8px; margin-top:16px;"><button type="button" id="leadSaveBtn" onclick="saveQuickQuote()" style="flex:1; padding:11px; background:#38bdf8; color:#0a0e17; border:none; border-radius:8px; font-weight:700;">${t('leadContinueBtn')}</button>
-            <button type="button" class="secondary" onclick="closeQuickQuote()" style="padding:11px 16px;">${t('leadCancelBtn')}</button></div>`;
+            <div style="display:flex; gap:8px;"><div style="flex:1;"><label style="${lbl}">${t('leadUnit')}</label><input id="leadUnit" type="text" style="${inp}"></div>
+            <div style="flex:1;"><label style="${lbl}">${t('leadZip')}</label><input id="leadZip" type="text" inputmode="numeric" style="${inp}"></div></div>
+            <label style="${lbl}">${t('leadDesc')}</label><textarea id="leadDesc" rows="2" style="${inp}"></textarea>
+            <div style="display:flex; gap:8px; margin-top:16px;"><button type="button" id="leadSaveBtn" disabled onclick="saveNewCustomer()" style="flex:1; padding:12px; background:#38bdf8; color:#0a0e17; border:none; border-radius:10px; font-weight:700; opacity:0.4;">${t('leadSaveBtn')}</button>
+            <button type="button" class="secondary" onclick="closeQuickQuote()" style="padding:12px 16px;">${t('leadCancelBtn')}</button></div>`;
         m.style.display = 'flex'; setTimeout(() => { const e = document.getElementById('leadName'); if (e) e.focus(); }, 50);
     }
-    function closeQuickQuote() { const m = document.getElementById('leadModal'); if (m) m.style.display = 'none'; }
-    async function saveQuickQuote() {
+    function leadFormCheck() {
         const g = id => (document.getElementById(id) ? document.getElementById(id).value.trim() : '');
-        const name = g('leadName'); if (!name) { alert(t('leadNeedName')); return; }
-        const btn = document.getElementById('leadSaveBtn'); if (btn) btn.disabled = true;
-        const lead = {
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 5), isLead: true, leadStatus: 'open',
-            clientName: name, clientPhone: g('leadPhone'), clientEmail: g('leadEmail'), clientAddress: g('leadAddress'), unitNo: g('leadUnit'), clientDescription: g('leadDesc'),
+        const ok = !!g('leadName') && !!g('leadPhone'), b = document.getElementById('leadSaveBtn');
+        if (b) { b.disabled = !ok; b.style.opacity = ok ? '1' : '0.4'; }
+    }
+    async function saveNewCustomer() {
+        const g = id => (document.getElementById(id) ? document.getElementById(id).value.trim() : '');
+        const name = g('leadName'), phone = g('leadPhone');
+        if (!name || !phone) { alert(t('leadNeedNamePhone')); return; }
+        const dup = findDuplicateContact(name, phone, null);
+        if (dup) { if (confirm(t('custDupOpen').replace('{name}', dup.name || ''))) { closeQuickQuote(); openCustomerHub(dup.id); } return; }
+        const zip = g('leadZip'), unit = g('leadUnit');
+        let addr = g('leadAddress'); if (zip && addr.indexOf(zip) === -1) addr = addr ? addr + ' ' + zip : zip;
+        const c = { id: Date.now().toString() + Math.random().toString(36).substr(2, 5), name, phone, email: g('leadEmail'), address: addr, unit, company: '', note: g('leadDesc'), by: currentUserEmail || '?' };
+        const prev = contacts, btn = document.getElementById('leadSaveBtn'); if (btn) btn.disabled = true;
+        contacts = [c].concat(contacts);
+        try { await CONTACTS_DOC.set({ entries: contacts }); } catch (err) { contacts = prev; if (btn) btn.disabled = false; alertSaveError(err); return; }
+        closeQuickQuote();
+        showToast('✅ ' + t('toastContactSaved'));
+        safeCall(() => window.renderHome());
+        openCustomerHub(c.id);
+    }
+
+    // ===================== CUSTOMER SCREEN (hub) =====================
+    // One page per customer: details, the buttons that start a document / appointment / job already filled in, and what
+    // already exists for this customer (quotes, jobs, appointments). Jobs and appointments are matched by phone or name and
+    // are only READ here — nothing about them is changed or moved.
+    let custHubId = null, custHubLeadId = null;
+    function custDigits(p) { return String(p || '').replace(/\D/g, '').slice(-10); }
+    function custSame(name, phone, c) {
+        const a = custDigits(phone), b = custDigits(c.phone);
+        if (a.length >= 7 && b.length >= 7 && a === b) return true;
+        const n = String(name || '').trim().toLowerCase();
+        return !!n && n === String(c.name || '').trim().toLowerCase();
+    }
+    function custResolve() {
+        const c = contacts.find(x => String(x.id) === String(custHubId));
+        if (c) return c;
+        const l = quoteLeads.find(x => String(x.id) === String(custHubLeadId));
+        return l ? { id: null, name: l.clientName, phone: l.clientPhone, email: l.clientEmail, address: l.clientAddress, note: l.clientDescription || '' } : null;
+    }
+    function custContactIdForLead(leadId) {
+        const l = quoteLeads.find(x => String(x.id) === String(leadId)); if (!l) return null;
+        const c = contacts.find(x => custSame(l.clientName, l.clientPhone, x)); return c ? c.id : null;
+    }
+    function openCustomerHubForLead(leadId) { openCustomerHub(custContactIdForLead(leadId), leadId); }
+    function custHubEnsure() {
+        let m = document.getElementById('custHub'); if (m) return m;
+        m = document.createElement('div'); m.id = 'custHub';
+        m.style.cssText = 'display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg-dark, #0a0e17); color:var(--text-main, #fff); z-index:5000; overflow-y:auto; -webkit-overflow-scrolling:touch;';
+        document.body.appendChild(m); return m;
+    }
+    function openCustomerHub(contactId, leadId) {
+        custHubId = contactId || null; custHubLeadId = leadId || null;
+        const m = custHubEnsure(); m.style.display = 'block';
+        try { closeGlobalSearch(); } catch (e) {}
+        renderCustomerHub(); m.scrollTop = 0;
+    }
+    function closeCustomerHub() { const m = document.getElementById('custHub'); if (m) m.style.display = 'none'; }
+    function refreshCustomerHub() { const m = document.getElementById('custHub'); if (m && m.style.display !== 'none') renderCustomerHub(); }
+    function renderCustomerHub() {
+        const m = document.getElementById('custHub'); if (!m) return;
+        const c = custResolve();
+        if (!c) { m.innerHTML = `<div style="padding:20px;"><button type="button" class="secondary" onclick="closeCustomerHub()">‹ ${t('custBack')}</button></div>`; return; }
+        const same = (n, p) => custSame(n, p, c);
+        const leads = quoteLeads.filter(l => leadStatusOf(l) !== 'approved' && same(l.clientName, l.clientPhone));
+        const jobs = savedJobs.filter(j => same(j.clientName, j.clientPhone));
+        const appts = (appointments || []).filter(a => same(a.clientName, a.clientPhone));
+        const ph = String(c.phone || '').replace(/'/g, "\\'");
+        const sec = txt => `<div style="margin:18px 0 8px; color:var(--text-muted); font-size:0.8rem; font-weight:700;">${txt}</div>`;
+        const row = (inner, click) => `<div ${click ? `onclick="${click}"` : ''} style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:12px; padding:11px 13px; margin-bottom:8px; ${click ? 'cursor:pointer;' : ''}">${inner}</div>`;
+        const big = (ic, label, fn) => `<button type="button" onclick="${fn}" style="background:var(--card-dark); border:1px solid var(--primary, #4f46e5); color:var(--text-main, #fff); border-radius:12px; padding:10px 2px; font-weight:700; font-size:0.7rem; line-height:1.3; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; min-width:0;"><div style="font-size:1.25rem;">${ic}</div>${label}</button>`;
+        let h = `<div style="max-width:560px; margin:0 auto; padding:16px 16px 90px;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;"><button type="button" onclick="closeCustomerHub()" style="background:none; border:none; color:var(--text-muted); font-size:1.7rem; padding:0 6px;">‹</button><h2 style="margin:0; border:none; padding:0; font-size:1.25rem;">${escHtml(c.name || '')}</h2></div>
+            <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; padding:13px 14px; line-height:1.7; font-size:0.88rem;">
+                ${c.phone ? `<div>📞 <a href="#" onclick="event.preventDefault(); showPhoneChoice('${ph}');" style="color:#38bdf8; text-decoration:none;">${escHtml(c.phone)}</a></div>` : ''}
+                ${c.email ? `<div>✉️ ${escHtml(c.email)}</div>` : ''}
+                ${c.address ? `<div>📍 ${escHtml(c.address)}</div>` : ''}
+                ${c.note ? `<div style="color:var(--text-muted);">${escHtml(c.note)}</div>` : ''}
+                ${c.id ? `<div style="margin-top:6px;"><a href="#" onclick="event.preventDefault(); closeCustomerHub(); switchScreen('contacts'); editContact('${c.id}');" style="color:var(--text-muted); font-size:0.78rem;">✏️ ${t('custEdit')}</a></div>` : ''}
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:14px;">
+                ${big('📋', t('invoiceTypeEstimate'), "custDoc('ESTIMATE')")}${big('📑', t('invoiceTypeProposal'), "custDoc('PROPOSAL')")}${big('🧾', t('invoiceTitle'), "custDoc('INVOICE')")}${big('📄', t('invoiceTypeContract'), "custDoc('CONTRACT')")}
+                ${big('💵', t('invoiceTypeReceipt'), 'custReceipt()')}${big('➕', t('invoiceTypeAdditionalWork'), "custDoc('ADDITIONAL_WORK')")}${big('📅', t('custBtnAppt'), 'custAppt()')}${big('🔧', t('custBtnJob'), 'custJob()')}
+            </div>`;
+        if (leads.length) {
+            h += sec('📄 ' + t('custSecDocs'));
+            leads.forEach(l => {
+                const d = leadLatestDoc(l), lost = leadStatusOf(l) === 'lost';
+                h += row(`<div style="display:flex; justify-content:space-between; gap:8px;"><b style="font-size:0.88rem;">${d ? escHtml(invoiceDocTypeDisplay(d.docType)) + ' ' + escHtml(d.invoiceNo || '') + ' — ' + fmtUsd(leadDocTotal(d)) : t('leadNoDocYet')}</b><span style="color:#f59e0b; font-size:0.72rem;">${lost ? t('leadLostTag') : (d ? t('leadQuoteReady') : t('leadDraft'))}</span></div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:7px;">
+                    <button type="button" onclick="openInvoiceModal('${l.id}')" style="padding:6px 12px; font-size:0.75rem; background:#0284c7; color:#fff; border:none; border-radius:8px;">${t('leadOpenBtn')}</button>
+                    ${lost ? `<button type="button" class="secondary" onclick="reopenLead('${l.id}')" style="padding:6px 12px; font-size:0.75rem;">${t('leadReopenBtn')}</button>` : `<button type="button" onclick="approveLead('${l.id}')" style="padding:6px 12px; font-size:0.75rem; background:#16a34a; color:#fff; border:none; border-radius:8px;">${t('leadApproveBtn')}</button><button type="button" class="secondary" onclick="markLeadLost('${l.id}')" style="padding:6px 12px; font-size:0.75rem;">${t('leadLostBtn')}</button>`}</div>`);
+            });
+        }
+        if (jobs.length) {
+            h += sec('🔧 ' + t('custSecJobs'));
+            jobs.forEach(j => { h += row(`<div style="display:flex; justify-content:space-between; gap:8px;"><b style="font-size:0.86rem;">${escHtml(j.clientAddress || j.clientName || '')}</b><span style="font-size:0.8rem;">${fmtUsd(parseVal(j.totalRevenue))}</span></div><div style="font-size:0.74rem; color:var(--text-muted);">${escHtml(j.jobStatus || '')}${j.startDate ? ' · ' + escHtml(j.startDate) : ''}</div><button type="button" class="secondary" onclick="event.stopPropagation(); custReceiptFor('${jsArg(String(j.id))}')" style="margin-top:6px; padding:5px 11px; font-size:0.72rem;">💵 ${t('invoiceTypeReceipt')}</button>`, `closeCustomerHub(); openJobOverlay('${jsArg(String(j.id))}')`); });
+        }
+        if (appts.length) {
+            h += sec('📅 ' + t('custSecAppts'));
+            appts.forEach(a => { h += row(`<b style="font-size:0.86rem;">${escHtml(a.requestedDate || '')} ${escHtml(a.requestedTime || '')}</b><div style="font-size:0.74rem; color:var(--text-muted);">${escHtml(a.clientAddress || '')}</div>`, `closeCustomerHub(); editAppointment('${jsArg(String(a.id))}')`); });
+        }
+        m.innerHTML = h + '</div>';
+    }
+    function custNewLeadFor(c) {
+        return {
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 5), isLead: true, leadStatus: 'open', contactId: c.id || '',
+            clientName: c.name || '', clientPhone: c.phone || '', clientEmail: c.email || '', clientAddress: c.address || '', unitNo: c.unit || '', clientDescription: c.note || '',
             totalRevenue: 0, amountReceived: 0, amountRemaining: 0, expenseItems: [], technicians: [], savedInvoices: [],
             createdAt: new Date().toISOString(), createdBy: currentUserEmail || '', lastEditedBy: currentUserEmail || ''
         };
-        const prev = quoteLeads;
-        quoteLeads = [lead].concat(quoteLeads);
-        try { await saveLeadsData(); } catch (err) { quoteLeads = prev; if (btn) btn.disabled = false; alertSaveError(err); return; }
-        // the customer also goes into Customers (only added, never changed, if not already there)
-        try {
-            if (!findDuplicateContact(lead.clientName, lead.clientPhone, null)) {
-                contacts.unshift({ id: Date.now().toString() + Math.random().toString(36).substr(2, 5) + 'q', name: lead.clientName, phone: lead.clientPhone, email: lead.clientEmail, address: lead.clientAddress, company: '', note: '', by: currentUserEmail || '?' });
-                await CONTACTS_DOC.set({ entries: contacts });
-            }
-        } catch (e) { console.error('quick quote contact', e); }
-        closeQuickQuote();
-        showToast('✅ ' + t('toastSavedGeneric'));
+    }
+    async function custDoc(type) {
+        const c = custResolve(); if (!c) return;
+        let lead = quoteLeads.find(l => leadStatusOf(l) === 'open' && custSame(l.clientName, l.clientPhone, c));
+        if (!lead) {
+            lead = custNewLeadFor(c);
+            const prev = quoteLeads; quoteLeads = [lead].concat(quoteLeads);
+            try { await saveLeadsData(); } catch (err) { quoteLeads = prev; alertSaveError(err); return; }
+        }
+        await openInvoiceModal(lead.id);
+        if (invoiceState && String(invoiceState.jobId) === String(lead.id) && invoiceState.docType !== type) setInvoiceDocType(type);
         safeCall(renderLeadsBox);
-        openInvoiceModal(lead.id);
+    }
+    // A receipt is made from the payments recorded on a real JOB, so it opens the customer's job (never a quote).
+    async function custReceiptFor(jobId) {
+        if (!savedJobs.some(j => String(j.id) === String(jobId))) return;
+        await openInvoiceModal(jobId);
+        if (invoiceState && String(invoiceState.jobId) === String(jobId)) setInvoiceDocType('RECEIPT');
+    }
+    function custReceipt() {
+        const c = custResolve(); if (!c) return;
+        const jobs = savedJobs.filter(j => custSame(j.clientName, j.clientPhone, c));
+        if (!jobs.length) { alert(t('custReceiptNoJob')); return; }
+        if (jobs.length > 1) { alert(t('custReceiptPickJob')); return; }
+        return custReceiptFor(jobs[0].id);
+    }
+    function custFill(map) {
+        Object.keys(map).forEach(id => { const el = document.getElementById(id); if (el && map[id]) { el.value = map[id]; el.dispatchEvent(new Event('input', { bubbles: true })); } });
+    }
+    function custAppt() {
+        const c = custResolve(); if (!c) return;
+        closeCustomerHub(); switchScreen('appointments');
+        setTimeout(() => custFill({ apptClientName: c.name, apptClientPhone: c.phone, apptClientEmail: c.email, apptClientAddress: c.address }), 80);
+    }
+    function custJob() {
+        const c = custResolve(); if (!c) return;
+        closeCustomerHub(); switchScreen('entry');
+        setTimeout(() => custFill({ clientName: c.name, clientPhone: c.phone, clientEmail: c.email, clientAddress: c.address, clientDescription: c.note }), 80);
+    }
+    function recentCustomersHtml() {
+        const rec = contacts.slice().sort((a, b) => (parseInt(String(b.id), 10) || 0) - (parseInt(String(a.id), 10) || 0)).slice(0, 6);
+        if (!rec.length) return '';
+        return '<div class="tw-sec">' + escHtml(t('custRecent')) + '</div><div style="display:flex; gap:8px; overflow-x:auto; padding:2px 4px 6px;">' +
+            rec.map(c => `<button type="button" onclick="openCustomerHub('${jsArg(String(c.id))}')" style="flex:0 0 auto; background:var(--card-dark); color:var(--text-main); border:1px solid var(--border-color); border-radius:20px; padding:8px 14px; font-weight:700; font-size:0.82rem; white-space:nowrap;">${escHtml(c.name || '')}</button>`).join('') + '</div>';
     }
     async function markLeadLost(id) {
         const l = quoteLeads.find(x => String(x.id) === String(id)); if (!l) return;
@@ -9020,6 +9171,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         logActivity('add', newJob.clientName);
         showToast('✅ ' + t('leadApprovedToast'));
         safeCall(renderLeadsBox);
+        closeCustomerHub();
         editJob(newJob.id);
         switchScreen('entry');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -10283,6 +10435,11 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         btn.disabled = true;
         btn.textContent = t('aiSharing');
         try {
+            // Sending a document from the Invoice screen also saves it to "Saved Invoices" (same as Share / Print / Attach).
+            if (c.fromInvoice && invoiceState) {
+                const savedOk = await saveCurrentInvoice();
+                if (!savedOk) { btn.disabled = false; btn.textContent = prevLabel; return; }   // save failed: nothing is sent, nothing is lost
+            }
             const nameSlug = (c.job.clientName || 'client').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'client';
             let file = null;
             if (c.fromInvoice) {
@@ -12988,7 +13145,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             html += `<div style="display:flex; align-items:center; gap:14px; background:var(--card-dark); border:1px solid var(--border-color); border-radius:16px; padding:14px 16px;">
                 <div style="flex-shrink:0; width:48px; height:48px; border-radius:50%; background:${avatarColorFor(c.name)}; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.1rem;">${initial}</div>
                 <div style="flex:1; min-width:0;">
-                    <div style="font-weight:700; font-size:0.95rem;">${c.name}${c.company ? ` <span style="color:var(--text-muted); font-weight:400; font-size:0.78rem;">— ${c.company}</span>` : ''}</div>
+                    <div onclick="closeContactsListModal(); openCustomerHub('${c.id}')" style="font-weight:700; font-size:0.95rem; cursor:pointer;">${c.name}${c.company ? ` <span style="color:var(--text-muted); font-weight:400; font-size:0.78rem;">— ${c.company}</span>` : ''}</div>
                     <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:4px; font-size:0.78rem;">
                         ${c.phone ? `<a href="#" onclick="event.preventDefault(); showPhoneChoice('${c.phone.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📞 ${c.phone}</a>` : ''}
                         ${c.email ? `<a href="mailto:${c.email}" style="color:#38bdf8; text-decoration:none;">✉️ ${c.email}</a>` : ''}
@@ -16621,7 +16778,7 @@ ${closeBtnHtml}
         right += '<div class="tw-card" onclick="exportBackupJSON()"><div style="color:' + (days === null || days > 7 ? '#e11d48' : '#059669') + '">' + ic('cloud') + '</div><div class="tx"><h4>' + escHtml(tw('backupNow')) + '</h4><p>' +
             (days === null ? escHtml(tw('noBackup')) : escHtml(tw('backupLbl')) + ' ' + (days === 0 ? escHtml(tw('todayWord')) : days + ' ' + escHtml(tw('daysAgo')))) + '</p></div></div>';
         right += '<div class="tw-card" onclick="openAgendaModal()"><div style="color:#4f46e5">' + ic('check') + '</div><div class="tx"><h4>' + escHtml(tw('checkToday')) + '</h4></div></div>';
-        return h + '<div id="twHomeCols"><div>' + left + '</div><div>' + right + '</div></div>' + '<div style="margin-top:18px;">' + calendarHtml() + '</div>';
+        return h + recentCustomersHtml() + '<div id="twHomeCols"><div>' + left + '</div><div>' + right + '</div></div>' + '<div style="margin-top:18px;">' + calendarHtml() + '</div>';
     }
     window.renderHome = function renderHome() { try { setHtml('screenHome', homeHtml()); } catch (e) { console.error('home', e); } };
 
