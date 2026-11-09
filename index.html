@@ -745,6 +745,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                         <span data-i18n="deleteSelectedBtn"></span>
                     </button>
                 </div>
+                <div id="quoteLeadsBox" class="no-print"></div>
                 <div id="stateSummaryBox" class="no-print"></div>
                 <div class="table-responsive">
                     <table>
@@ -2826,6 +2827,34 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         ctRecalc: { ar: 'إعادة حساب الدفعات', en: 'Recalculate payments' },
         ctPaySumOk: { ar: 'مجموع الدفعات = إجمالي العقد', en: 'Payments add up to the contract total' },
         ctPaySumBad: { ar: 'مجموع الدفعات {sum} غير إجمالي العقد {total}', en: 'Payments total {sum} but contract total is {total}' },
+        leadFabLabel: { ar: 'عميل جديد', en: 'New client' },
+        leadFormTitle: { ar: 'عميل جديد', en: 'New client' },
+        leadFormHint: { ar: 'عميل اتصل وعايز سعر من غير موعد. بعد الحفظ بتفتح شاشة الفاتورة/العرض/العقد.', en: 'A customer called and wants a price, no appointment. After saving, the invoice / estimate / contract screen opens.' },
+        leadName: { ar: 'اسم العميل', en: 'Customer name' },
+        leadPhone: { ar: 'التليفون', en: 'Phone' },
+        leadEmail: { ar: 'الإيميل', en: 'Email' },
+        leadAddress: { ar: 'العنوان', en: 'Address' },
+        leadUnit: { ar: 'الوحدة / الشقة', en: 'Unit / apt' },
+        leadDesc: { ar: 'وصف الشغل', en: 'Work description' },
+        leadContinueBtn: { ar: 'حفظ والمتابعة للمستند ◀', en: 'Save & continue to document ▶' },
+        leadCancelBtn: { ar: 'إلغاء', en: 'Cancel' },
+        leadNeedName: { ar: 'اكتب اسم العميل', en: 'Enter the customer name' },
+        leadBoxTitle: { ar: 'عروض أسعار مستنية', en: 'Quotes waiting' },
+        leadLostBox: { ar: 'عروض ضايعة (Lost)', en: 'Lost quotes' },
+        leadNoneOpen: { ar: 'مفيش عروض مستنية', en: 'No quotes waiting' },
+        leadNoDocYet: { ar: 'لسه ما اتحفظش مستند', en: 'No document saved yet' },
+        leadLostTag: { ar: 'Lost', en: 'Lost' },
+        leadQuoteReady: { ar: 'عرض جاهز', en: 'Quote ready' },
+        leadDraft: { ar: 'مسودة', en: 'Draft' },
+        leadOpenBtn: { ar: 'فتح', en: 'Open' },
+        leadApproveBtn: { ar: '✓ العميل وافق ← شغلانة', en: '✓ Approved → Job' },
+        leadLostBtn: { ar: 'Lost', en: 'Lost' },
+        leadReopenBtn: { ar: 'رجّعه', en: 'Reopen' },
+        leadLostConfirm: { ar: 'تقفل العرض ده كـ Lost؟ هيفضل محفوظ وتقدر ترجّعه.', en: 'Mark this quote as Lost? It stays saved and you can reopen it.' },
+        leadNeedDoc: { ar: 'احفظ عرض السعر (Estimate/Proposal/Invoice) الأول بزرار Save.', en: 'Save a quote document (Estimate / Proposal / Invoice) first with Save.' },
+        leadApproveConfirm: { ar: 'تحوّل عرض {name} بقيمة {total} لشغلانة عادية؟ المستندات المحفوظة هتتنقل معاها.', en: 'Turn {name}\'s quote of {total} into a normal job? Saved documents will move with it.' },
+        leadApprovedToast: { ar: 'اتحوّلت لشغلانة', en: 'Turned into a job' },
+        leadApprovedMarkFail: { ar: 'الشغلانة اتعملت، بس تعليم العرض كـ Approved ما اتحفظش. ما تعملش تحويل تاني للعرض ده.', en: 'The job was created, but marking the quote as Approved did not save. Do not convert this quote again.' },
         toastJobSaved: { ar: 'اتحفظت الشغلانة', en: 'Job saved' },
         unsavedTitle: { ar: 'فيه تعديلات لسه ما اتحفظتش', en: 'You have changes that are not saved' },
         unsavedMsg: { ar: 'غيّرت الوقت أو الفريق أو اليوم في النافذة دي ومحفظتهمش. تحفظهم الأول قبل ما تفتح تفاصيل الشغلانة؟', en: 'You changed the day, time or team in this window and did not save. Save them before opening the full job details?' },
@@ -3359,6 +3388,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     const TECH_PAYMENTS_DOC = db.collection('jobCostingApp').doc('techPayments');
     const TECH_BONUSES_DOC = db.collection('jobCostingApp').doc('techBonuses');
     const FUTURE_DOC = db.collection('jobCostingApp').doc('futureJobs');
+    const LEADS_DOC = db.collection('jobCostingApp').doc('quoteLeads');
+    let quoteLeads = [];   // quick-quote customers (separate from savedJobs on purpose)
     const COMPANY_PROFILE_DOC = db.collection('jobCostingApp').doc('companyProfile');
     // Field-worker feature (worker.html). These live in their OWN collections, completely separate from
     // 'jobCostingApp' above, so nothing here can ever touch or overwrite the existing job/payment data.
@@ -4016,6 +4047,11 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             if (typeof currentScreen !== 'undefined' && currentScreen === 'home') safeCall(() => window.renderHome());
             if (calOpenDayStr) safeCall(() => calOpenDay(calOpenDayStr));
         }, err => console.error('Firestore future jobs sync error:', err));
+
+        LEADS_DOC.onSnapshot(doc => {
+            quoteLeads = (doc.exists && doc.data().entries) ? doc.data().entries : [];
+            safeCall(renderLeadsBox);
+        }, err => console.error('Firestore quote leads sync error:', err));
 
         COMPANY_PROFILE_DOC.onSnapshot(doc => {
             // The bug this guards against: the very first time the app opens, this snapshot
@@ -5829,7 +5865,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     // ---------- AI calls: never hang silently ----------
     const GEMINI_MODEL = 'gemini-3.6-flash';
     // Load the AI library quietly in the background a few seconds after the app opens, so the first AI request doesn't wait for it.
-    setTimeout(function () { try { var k = getGeminiApiKey(); if (k) getGenAIClient(k).catch(function () {}); } catch (e) {} }, 4000);
+    setTimeout(function () { try { var k = null; try { k = localStorage.getItem('geminiApiKey'); } catch (e2) {} if (k) getGenAIClient(k).catch(function () {}); } catch (e) {} }, 4000);
     let AI_TIMEOUT_MS = 45000;
 
     function withTimeout(promise, ms, stageKey) {
@@ -6101,7 +6137,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     // currently open in the Invoice modal — same AI-reminder modal/infra, different tone + an Email option.
     async function sendInvoiceClientMessage() {
         if (!invoiceState) return;
-        const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
+        const job = invJob();
         if (!job) return;
         // Same job-level "paid in full" fact used by the invoice's PAID badge/stamp — based on
         // what's actually been received on the job (jobRemaining), not just this one invoice's
@@ -7210,7 +7246,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     }
 
     function renderJobsTable() {
-        safeCall(renderStateBar); safeCall(renderStateSummary);
+        safeCall(renderStateBar); safeCall(renderStateSummary); safeCall(renderLeadsBox);
         const tbody = document.getElementById('jobsTableBody');
         tbody.innerHTML = '';
         if (savedJobs.length === 0) {
@@ -7942,7 +7978,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     }
 
     function exportBackupJSON() {
-        const backup = { savedJobs, technicianPhones, futureJobs, exportDate: new Date().toISOString(), version: 1 };
+        const backup = { savedJobs, technicianPhones, futureJobs, quoteLeads, exportDate: new Date().toISOString(), version: 1 };
         const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -8292,7 +8328,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             }
         } catch (e) { /* offline or unreachable — fall back to whatever's already in memory */ }
 
-        const job = savedJobs.find(j => String(j.id) === jobId);
+        const job = invJob(jobId);
         if (!job) { if (container) container.innerHTML = ''; return; }
         const seq = jobId.replace(/\D/g, '').slice(-4).padStart(4, '0') || '0001';
         invoiceState = {
@@ -8314,7 +8350,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             // Defaults to whatever the job's actual recorded payments say, but it's just a
             // starting point — you can tick/untick the "PAID IN FULL" mark yourself on the
             // invoice screen, and that choice is what actually shows and gets saved/printed.
-            paidMark: jobRemaining(job) <= 0.005,
+            paidMark: !job.isLead && jobRemaining(job) <= 0.005,
             receiptIds: [],   // RECEIPT type only: ids of the job's recorded client payments shown on the receipt
             receiptSnap: null,
             receiptReason: '',
@@ -8360,14 +8396,16 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         if (!invoiceState) return false;
         if (invoiceState.docType === 'RECEIPT' && !invoiceState.receiptSnap) { alert(t('receiptPickOne')); return false; }
         const jobId = invoiceState.jobId;
+        const leadMode = !savedJobs.some(j => String(j.id) === String(jobId)) && quoteLeads.some(j => String(j.id) === String(jobId));
+        const REF = leadMode ? LEADS_DOC : JOBS_DOC, KEY = leadMode ? 'entries' : 'jobs';
         const snapshot = JSON.parse(JSON.stringify(invoiceState));
         delete snapshot.jobId; delete snapshot.savedId;
         let targetId = invoiceState.savedId;
 
         try {
             await db.runTransaction(async (tx) => {
-                const doc = await tx.get(JOBS_DOC);
-                const freshJobs = (doc.exists && doc.data().jobs) ? doc.data().jobs : [];
+                const doc = await tx.get(REF);
+                const freshJobs = (doc.exists && doc.data()[KEY]) ? doc.data()[KEY] : [];
                 const idx = freshJobs.findIndex(j => String(j.id) === String(jobId));
                 if (idx === -1) throw new Error('job-not-found');
                 const job = freshJobs[idx];
@@ -8380,7 +8418,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                     job.savedInvoices.push({ ...snapshot, id: targetId, savedAt: new Date().toISOString() });
                 }
                 job.lastEditedBy = currentUserEmail;
-                tx.set(JOBS_DOC, { jobs: freshJobs });
+                tx.set(REF, { [KEY]: freshJobs });
             });
         } catch (err) {
             alertSaveError(err);
@@ -8390,9 +8428,10 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         // Transaction succeeded — mirror the same change onto the local in-memory copy so the
         // screen is in sync immediately (the realtime listener will also confirm this shortly).
         invoiceState.savedId = targetId;
-        const idxLocal = savedJobs.findIndex(j => String(j.id) === String(jobId));
+        const localArr = leadMode ? quoteLeads : savedJobs;
+        const idxLocal = localArr.findIndex(j => String(j.id) === String(jobId));
         if (idxLocal !== -1) {
-            const job = savedJobs[idxLocal];
+            const job = localArr[idxLocal];
             if (!job.savedInvoices) job.savedInvoices = [];
             const existingIdx = job.savedInvoices.findIndex(inv => inv.id === targetId);
             if (existingIdx !== -1) job.savedInvoices[existingIdx] = { ...job.savedInvoices[existingIdx], ...snapshot, savedAt: new Date().toISOString() };
@@ -8406,8 +8445,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         // "saved" toast is only shown once a direct server read confirms the invoice is really
         // there, instead of trusting the local/cached write blindly.
         try {
-            const serverDoc = await JOBS_DOC.get({ source: 'server' });
-            const serverJobs = (serverDoc.exists && serverDoc.data().jobs) ? serverDoc.data().jobs : [];
+            const serverDoc = await REF.get({ source: 'server' });
+            const serverJobs = (serverDoc.exists && serverDoc.data()[KEY]) ? serverDoc.data()[KEY] : [];
             const serverJob = serverJobs.find(j => String(j.id) === String(jobId));
             const confirmed = serverJob && (serverJob.savedInvoices || []).some(inv => inv.id === targetId);
             if (!confirmed) { alert(t('alertInvoiceSaveNotConfirmed')); return false; }
@@ -8429,7 +8468,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
 
     function loadSavedInvoice(savedId) {
         if (!invoiceState) return;
-        const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
+        const job = invJob();
         if (!job) return;
         const saved = (job.savedInvoices || []).find(inv => inv.id === savedId);
         if (!saved) return;
@@ -8438,7 +8477,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         invoiceState.jobId = jobId;
         invoiceState.savedId = saved.id;
         if (!invoiceState.credits) invoiceState.credits = []; // older saved invoices, if any, predate the credits list
-        if (invoiceState.paidMark === undefined) invoiceState.paidMark = jobRemaining(job) <= 0.005; // older saved invoices predate the manual mark — fall back to the job's actual payment status
+        if (invoiceState.paidMark === undefined) invoiceState.paidMark = !job.isLead && jobRemaining(job) <= 0.005; // older saved invoices predate the manual mark — fall back to the job's actual payment status
         invoiceStateSnapshot = JSON.stringify(invoiceState);
         renderInvoiceModalContent();
     }
@@ -8453,7 +8492,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     // an unsaved draft currently being edited is never disturbed.
     function viewSavedInvoice(savedId) {
         if (!invoiceState) return;
-        const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
+        const job = invJob();
         if (!job) return;
         const saved = (job.savedInvoices || []).find(inv => inv.id === savedId);
         if (!saved) return;
@@ -8503,7 +8542,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     // now available here too since the invoice no longer shows that text on its own.
     function useJobDescriptionForInvoice() {
         if (!invoiceState) return;
-        const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
+        const job = invJob();
         if (!job) return;
         if (!job.clientDescription) { alert(t('alertJobHasNoScope')); return; }
         invoiceState.note = job.clientDescription;
@@ -8512,6 +8551,16 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
 
     async function deleteSavedInvoice(savedId) {
         if (!invoiceState) return;
+        const leadIdx = quoteLeads.findIndex(j => String(j.id) === String(invoiceState.jobId));
+        if (leadIdx !== -1 && !savedJobs.some(j => String(j.id) === String(invoiceState.jobId))) {
+            if (!confirm(t('confirmDeleteSavedInvoice'))) return;
+            const lead = quoteLeads[leadIdx], backupL = JSON.parse(JSON.stringify(lead.savedInvoices || []));
+            lead.savedInvoices = (lead.savedInvoices || []).filter(inv => inv.id !== savedId);
+            if (invoiceState.savedId === savedId) invoiceState.savedId = null;
+            try { await saveLeadsData(); } catch (err) { lead.savedInvoices = backupL; alertSaveError(err); return; }
+            renderInvoiceModalContent(); renderLeadsBox();
+            return;
+        }
         const idx = savedJobs.findIndex(j => String(j.id) === String(invoiceState.jobId));
         if (idx === -1) return;
         if (!confirm(t('confirmDeleteSavedInvoice'))) return;
@@ -8655,7 +8704,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         const year = new Date().getFullYear();
         const base = `${companyInvoicePrefix()}-R-${year}-`;
         let max = 0;
-        savedJobs.forEach(j => (j.savedInvoices || []).forEach(inv => {
+        savedJobs.concat(quoteLeads).forEach(j => (j.savedInvoices || []).forEach(inv => {
             if (inv.docType === 'RECEIPT' && String(inv.invoiceNo || '').startsWith(base)) {
                 const n = parseInt(String(inv.invoiceNo).slice(base.length), 10);
                 if (!isNaN(n) && n > max) max = n;
@@ -8665,7 +8714,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     }
     function recomputeReceiptSnap() {
         if (!invoiceState) return;
-        const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
+        const job = invJob();
         if (!job) { invoiceState.receiptSnap = null; return; }
         const all = job.receipts || [];
         const ids = invoiceState.receiptIds || [];
@@ -8690,7 +8739,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             invoiceState.invoiceNo = nextReceiptNumber();
             invoiceState.prevNote = invoiceState.note || '';   // a receipt carries no scope/quote note unless you type one
             invoiceState.note = '';
-            const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
+            const job = invJob();
             if (!(invoiceState.receiptIds || []).length && job && (job.receipts || []).length) {
                 const latest = job.receipts.slice().sort((a, b) => String(a.date).localeCompare(String(b.date))).pop();
                 invoiceState.receiptIds = [latest.id];
@@ -8716,7 +8765,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     // ---- "Payments received" block on an Invoice / Additional Work document (reads job.receipts, never changes them) ----
     function recomputePaidSnap() {
         if (!invoiceState) return;
-        const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
+        const job = invJob();
         if (!job) { invoiceState.paidSnap = null; return; }
         const all = job.receipts || [];
         const ids = Array.isArray(invoiceState.paidIds) ? invoiceState.paidIds : all.map(r => r.id);
@@ -8742,7 +8791,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     }
     function toggleInvoicePaidPayment(id, checked) {
         if (!invoiceState) return;
-        const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
+        const job = invJob();
         let ids = Array.isArray(invoiceState.paidIds) ? invoiceState.paidIds.slice() : ((job && job.receipts) || []).map(r => r.id);
         ids = ids.filter(x => x !== id);
         if (checked) ids.push(id);
@@ -8838,6 +8887,144 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         // own items/credits happen to add up to while you're still editing them.
     }
 
+    function invJob(id) {
+        const k = String(id === undefined ? (invoiceState && invoiceState.jobId) : id);
+        return savedJobs.find(j => String(j.id) === k) || quoteLeads.find(j => String(j.id) === k);
+    }
+    // ===================== QUICK QUOTES (leads) =====================
+    // A phone-call customer who wants a price but has no appointment. Kept in their OWN document (quoteLeads), completely
+    // outside savedJobs, so they can never appear in profit, reports, totals, the board or the jobs table. They still use
+    // the normal Generate Invoice screen (invJob() finds them), and "Approved" copies them into a normal job.
+    // Nothing is ever deleted: Lost / Approved just change the lead's status.
+    function leadStatusOf(l) { return l.leadStatus || 'open'; }
+    async function saveLeadsData() { await LEADS_DOC.set({ entries: quoteLeads }); }
+    function leadLatestDoc(l) {
+        const ok = ['ESTIMATE', 'PROPOSAL', 'INVOICE', 'ADDITIONAL_WORK', 'CONTRACT'];
+        const docs = (l.savedInvoices || []).filter(d => ok.indexOf(d.docType) !== -1).sort((a, b) => String(a.savedAt || '').localeCompare(String(b.savedAt || '')));
+        return docs.length ? docs[docs.length - 1] : null;
+    }
+    function leadDocTotal(d) {
+        if (!d) return 0;
+        const sub = (d.items || []).reduce((s, it) => s + parseVal(it.amount), 0);
+        const cr = d.docType === 'INVOICE' ? (d.credits || []).reduce((s, c) => s + parseVal(c.amount), 0) : 0;
+        return round2(sub - cr);
+    }
+    function renderLeadsBox() {
+        const box = document.getElementById('quoteLeadsBox'); if (!box) return;
+        const open = quoteLeads.filter(l => leadStatusOf(l) === 'open'), lost = quoteLeads.filter(l => leadStatusOf(l) === 'lost');
+        if (!open.length && !lost.length) { box.innerHTML = ''; return; }
+        const card = (l, isLost) => {
+            const d = leadLatestDoc(l);
+            const sub = d ? `${escHtml(invoiceDocTypeDisplay(d.docType))} ${escHtml(d.invoiceNo || '')} — ${fmtUsd(leadDocTotal(d))}` : t('leadNoDocYet');
+            return `<div class="tech-card" style="margin-bottom:8px; border-color:#f59e0b66;">
+                <div style="display:flex; justify-content:space-between; gap:8px;"><b>${escHtml(l.clientName || '')}</b><span style="color:#f59e0b; font-size:0.72rem;">${isLost ? t('leadLostTag') : (d ? t('leadQuoteReady') : t('leadDraft'))}</span></div>
+                <div style="font-size:0.78rem; color:var(--text-muted); margin:3px 0 6px;">${sub}${l.clientPhone ? ' · ' + escHtml(l.clientPhone) : ''}</div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    ${isLost ? `<button type="button" class="secondary" onclick="reopenLead('${l.id}')" style="padding:6px 12px; font-size:0.75rem;">${t('leadReopenBtn')}</button><button type="button" class="secondary" onclick="openInvoiceModal('${l.id}')" style="padding:6px 12px; font-size:0.75rem;">${t('leadOpenBtn')}</button>`
+                    : `<button type="button" onclick="openInvoiceModal('${l.id}')" style="padding:6px 12px; font-size:0.75rem; background:#0284c7; color:#fff; border:none; border-radius:8px;">${t('leadOpenBtn')}</button>
+                       <button type="button" onclick="approveLead('${l.id}')" style="padding:6px 12px; font-size:0.75rem; background:#16a34a; color:#fff; border:none; border-radius:8px;">${t('leadApproveBtn')}</button>
+                       <button type="button" class="secondary" onclick="markLeadLost('${l.id}')" style="padding:6px 12px; font-size:0.75rem;">${t('leadLostBtn')}</button>`}
+                </div></div>`;
+        };
+        box.innerHTML = `<details open style="margin-bottom:14px;"><summary style="cursor:pointer; color:#f59e0b; font-weight:700; margin-bottom:8px;">📞 ${t('leadBoxTitle')} (${open.length})</summary>${open.map(l => card(l, false)).join('') || `<div style="color:var(--text-muted); font-size:0.8rem;">${t('leadNoneOpen')}</div>`}</details>
+            ${lost.length ? `<details style="margin-bottom:14px;"><summary style="cursor:pointer; color:var(--text-muted); font-weight:700; margin-bottom:8px;">${t('leadLostBox')} (${lost.length})</summary>${lost.map(l => card(l, true)).join('')}</details>` : ''}`;
+    }
+    function leadEnsureModal() {
+        let m = document.getElementById('leadModal'); if (m) return m;
+        m = document.createElement('div'); m.id = 'leadModal';
+        m.style.cssText = 'display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:2000; align-items:flex-start; justify-content:center; overflow:auto; padding:20px 12px; box-sizing:border-box;';
+        m.innerHTML = '<div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; padding:18px; width:100%; max-width:480px;" id="leadBox"></div>';
+        document.body.appendChild(m); return m;
+    }
+    function openQuickQuote() {
+        const m = leadEnsureModal();
+        const inp = 'background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; box-sizing:border-box;';
+        const lbl = 'font-size:0.75rem; color:var(--text-muted); margin:10px 0 4px; display:block;';
+        document.getElementById('leadBox').innerHTML = `<h3 style="margin:0 0 4px; color:#38bdf8;">📞 ${t('leadFormTitle')}</h3><div style="font-size:0.78rem; color:var(--text-muted);">${t('leadFormHint')}</div>
+            <label style="${lbl}">${t('leadName')} *</label><input id="leadName" type="text" style="${inp}">
+            <label style="${lbl}">${t('leadPhone')}</label><input id="leadPhone" type="tel" style="${inp}">
+            <label style="${lbl}">${t('leadEmail')}</label><input id="leadEmail" type="email" style="${inp}">
+            <label style="${lbl}">${t('leadAddress')}</label><input id="leadAddress" type="text" style="${inp}">
+            <label style="${lbl}">${t('leadUnit')}</label><input id="leadUnit" type="text" style="${inp}">
+            <label style="${lbl}">${t('leadDesc')}</label><textarea id="leadDesc" rows="3" style="${inp}"></textarea>
+            <div style="display:flex; gap:8px; margin-top:16px;"><button type="button" id="leadSaveBtn" onclick="saveQuickQuote()" style="flex:1; padding:11px; background:#38bdf8; color:#0a0e17; border:none; border-radius:8px; font-weight:700;">${t('leadContinueBtn')}</button>
+            <button type="button" class="secondary" onclick="closeQuickQuote()" style="padding:11px 16px;">${t('leadCancelBtn')}</button></div>`;
+        m.style.display = 'flex'; setTimeout(() => { const e = document.getElementById('leadName'); if (e) e.focus(); }, 50);
+    }
+    function closeQuickQuote() { const m = document.getElementById('leadModal'); if (m) m.style.display = 'none'; }
+    async function saveQuickQuote() {
+        const g = id => (document.getElementById(id) ? document.getElementById(id).value.trim() : '');
+        const name = g('leadName'); if (!name) { alert(t('leadNeedName')); return; }
+        const btn = document.getElementById('leadSaveBtn'); if (btn) btn.disabled = true;
+        const lead = {
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 5), isLead: true, leadStatus: 'open',
+            clientName: name, clientPhone: g('leadPhone'), clientEmail: g('leadEmail'), clientAddress: g('leadAddress'), unitNo: g('leadUnit'), clientDescription: g('leadDesc'),
+            totalRevenue: 0, amountReceived: 0, amountRemaining: 0, expenseItems: [], technicians: [], savedInvoices: [],
+            createdAt: new Date().toISOString(), createdBy: currentUserEmail || '', lastEditedBy: currentUserEmail || ''
+        };
+        const prev = quoteLeads;
+        quoteLeads = [lead].concat(quoteLeads);
+        try { await saveLeadsData(); } catch (err) { quoteLeads = prev; if (btn) btn.disabled = false; alertSaveError(err); return; }
+        // the customer also goes into Customers (only added, never changed, if not already there)
+        try {
+            if (!findDuplicateContact(lead.clientName, lead.clientPhone, null)) {
+                contacts.unshift({ id: Date.now().toString() + Math.random().toString(36).substr(2, 5) + 'q', name: lead.clientName, phone: lead.clientPhone, email: lead.clientEmail, address: lead.clientAddress, company: '', note: '', by: currentUserEmail || '?' });
+                await CONTACTS_DOC.set({ entries: contacts });
+            }
+        } catch (e) { console.error('quick quote contact', e); }
+        closeQuickQuote();
+        showToast('✅ ' + t('toastSavedGeneric'));
+        safeCall(renderLeadsBox);
+        openInvoiceModal(lead.id);
+    }
+    async function markLeadLost(id) {
+        const l = quoteLeads.find(x => String(x.id) === String(id)); if (!l) return;
+        if (!confirm(t('leadLostConfirm'))) return;
+        const prev = l.leadStatus; l.leadStatus = 'lost'; l.lostAt = new Date().toISOString();
+        try { await saveLeadsData(); } catch (err) { l.leadStatus = prev; alertSaveError(err); return; }
+        renderLeadsBox();
+    }
+    async function reopenLead(id) {
+        const l = quoteLeads.find(x => String(x.id) === String(id)); if (!l) return;
+        const prev = l.leadStatus; l.leadStatus = 'open';
+        try { await saveLeadsData(); } catch (err) { l.leadStatus = prev; alertSaveError(err); return; }
+        renderLeadsBox();
+    }
+    // Approved: copy the lead into a normal job (with all its saved documents), then mark the lead approved (kept, hidden).
+    async function approveLead(id) {
+        const l = quoteLeads.find(x => String(x.id) === String(id)); if (!l) return;
+        const d = leadLatestDoc(l);
+        if (!d) { alert(t('leadNeedDoc')); return; }
+        const total = leadDocTotal(d);
+        if (!confirm(t('leadApproveConfirm').replace('{name}', l.clientName || '').replace('{total}', fmtUsd(total)))) return;
+        const newJob = {
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+            clientName: l.clientName || '', clientPhone: l.clientPhone || '', clientEmail: l.clientEmail || '',
+            ccContactName: '', ccContactPhone: '', ccContactEmail: '',
+            jobStatus: 'شغال', clientAddress: l.clientAddress || '', unitNo: l.unitNo || '', clientDescription: l.clientDescription || '',
+            startDate: '', endDate: '', dailySchedule: [],
+            totalRevenue: total, amountReceived: 0, amountRemaining: 0, followUpDate: '', materialCost: 0, extraExpenses: 0,
+            expenseItems: [], technicians: [], photos: [],
+            savedInvoices: JSON.parse(JSON.stringify(l.savedInvoices || [])),
+            quoteSeed: { items: (d.items || []).map(it => ({ desc: it.desc || '', qty: String(it.qty || '1'), amount: parseVal(it.amount) })), note: d.note || '', showPaymentMethod: !!d.showPaymentMethod, paymentMethodText: d.paymentMethodText || '', showFollowUp: !!d.showFollowUp, followUpText: d.followUpText || '', showValidity: !!d.showValidity, validityText: d.validityText || '' },
+            fromLeadId: l.id, createdBy: currentUserEmail || '', lastEditedBy: currentUserEmail || ''
+        };
+        const { slimJob, attachments, hasAttachments } = splitJobAttachments(newJob);
+        savedJobs.unshift(slimJob);
+        try {
+            await saveSavedJobsData();
+            if (hasAttachments) await saveJobAttachments(slimJob.id, attachments);
+        } catch (e) { savedJobs = savedJobs.filter(j => j !== slimJob); alert(t('alertJobSaveFailed')); return; }
+        l.leadStatus = 'approved'; l.approvedJobId = newJob.id; l.approvedAt = new Date().toISOString();
+        try { await saveLeadsData(); } catch (e) { console.error('lead mark approved', e); alert(t('leadApprovedMarkFail')); }
+        logActivity('add', newJob.clientName);
+        showToast('✅ ' + t('leadApprovedToast'));
+        safeCall(renderLeadsBox);
+        editJob(newJob.id);
+        switchScreen('entry');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     // ===================== CONTRACT (a document type of the Generate Invoice screen) =====================
     // The wording up to the scope and everything after the payments is standard text (adapted from the company's own signed
     // contract); the scope sections come from the estimate items; only the payment schedule and a few numbers are edited.
@@ -8860,7 +9047,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     function contractLongDate(iso) { if (!iso) return ''; const d = new Date(iso + 'T12:00:00'); return isNaN(d) ? String(iso) : d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); }
     function contractInit() {
         const st = invoiceState; if (!st || st.contract) return;
-        const job = savedJobs.find(j => String(j.id) === String(st.jobId)); if (!job) return;
+        const job = invJob(st.jobId); if (!job) return;
         const sched = (typeof getScheduleEntries === 'function' ? getScheduleEntries(job) : []).map(e => e.date).filter(Boolean).sort();
         st.contract = {
             owners: job.clientName || '', property: [job.clientAddress, job.unitNo].filter(Boolean).join(' — '),
@@ -8876,7 +9063,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         const c = st.contract, P = CONTRACT_PLANS[key];
         c.plan = key;
         if (!P) return;   // CUSTOM keeps the rows as they are
-        const job = savedJobs.find(j => String(j.id) === String(st.jobId));
+        const job = invJob(st.jobId);
         const total = round2(invoiceSubtotal());
         const received = job ? round2(Math.min(parseVal(job.amountReceived), total)) : 0;
         const deposit = received > 0.005 ? received : round2(total * P.ratios[0]);
@@ -8909,7 +9096,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     }
     async function contractAiScopes() {
         const st = invoiceState; if (!st) return;
-        const job = savedJobs.find(j => String(j.id) === String(st.jobId));
+        const job = invJob(st.jobId);
         const list = st.items.map((it, i) => ({ i, it })).filter(x => !contractIsPM(x.it) && (String(x.it.desc || '').trim()));
         if (!list.length) { alert(t('ctNeedItems')); return; }
         const key = getGeminiApiKey(); if (!key) return;
@@ -9214,7 +9401,7 @@ ${body}</div></body></html>`;
     function renderInvoiceModalContent() {
         const container = document.getElementById('invoiceModalContent');
         if (!container || !invoiceState) return;
-        const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
+        const job = invJob();
         if (!job) { container.innerHTML = ''; return; }
 
         // "Additional Work" documents list discrete tasks, not quantities — matches the printed
@@ -9267,7 +9454,7 @@ ${body}</div></body></html>`;
         // "PAID IN FULL" starts out set automatically from the job's actual recorded payments
         // (jobRemaining), but it's a manual mark from here on — you tick/untick it yourself on
         // this screen, and that choice (invoiceState.paidMark) is what actually shows and prints.
-        if (invoiceState.paidMark === undefined) invoiceState.paidMark = jobRemaining(job) <= 0.005;
+        if (invoiceState.paidMark === undefined) invoiceState.paidMark = !job.isLead && jobRemaining(job) <= 0.005;
         const isJobPaid = !!invoiceState.paidMark;
 
         const savedInvoices = job.savedInvoices || [];
@@ -9493,7 +9680,7 @@ ${body}</div></body></html>`;
     // rasterize it into a shareable image (shareInvoiceImageWithText). withPrintScript=true adds
     // the auto-print script, which only belongs in the real print popup, never in an offscreen render.
     function buildInvoiceHtmlDoc(withPrintScript) {
-        const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
+        const job = invJob();
         if (!job) return null;
         if (invoiceState.docType === 'CONTRACT') { contractInit(); return contractBuildHtmlDoc(job, invoiceState, withPrintScript); }
 
@@ -9798,7 +9985,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     // just returns {doc, filename} — shared by the three buttons below (print / attach / share) so
     // all three produce the exact same file instead of three copies of this logic drifting apart.
     async function buildInvoicePdfDoc() {
-        const job = savedJobs.find(j => String(j.id) === String(invoiceState.jobId));
+        const job = invJob();
         if (!job) return null;
         if (invoiceState.docType === 'CONTRACT') { contractInit(); return contractBuildPdfDoc(job, invoiceState); }
         const html = buildInvoiceHtmlDoc(false);
@@ -16358,7 +16545,7 @@ ${closeBtnHtml}
     window.twFabToggle = function () {
         var m = $('twFabMenu'), f = $('twFab'); if (!m) return;
         if (m.classList.contains('show')) { twFabClose(); return; }
-        m.innerHTML = '<button onclick="twFabGo(\'entry\')">' + ic('plus') + '<span>' + escHtml(tw('sEntry')) + '</span></button><button onclick="twFabGo(\'appointments\')">' + ic('edit') + '<span>' + escHtml(tw('sApptNew')) + '</span></button>';
+        m.innerHTML = '<button onclick="twFabClose(); openQuickQuote()">' + ic('plus') + '<span>' + escHtml(t('leadFabLabel')) + '</span></button><button onclick="twFabGo(\'entry\')">' + ic('plus') + '<span>' + escHtml(tw('sEntry')) + '</span></button><button onclick="twFabGo(\'appointments\')">' + ic('edit') + '<span>' + escHtml(tw('sApptNew')) + '</span></button>';
         m.classList.add('show'); f.classList.add('open');
     }
     window.twFabGo = function (scr) { twFabClose(); switchScreen(scr); window.scrollTo({ top: 0, behavior: 'auto' }); }
