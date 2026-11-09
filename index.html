@@ -611,8 +611,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     <div id="screenContacts" class="no-print" style="display:none; max-width:800px; margin:0 auto;">
         <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px;">
-                <h2 style="margin:0; border:none; padding:0;" data-i18n="contactsTitle"></h2>
-                <button class="secondary" onclick="openContactsListModal()" style="padding:8px 14px; font-size:0.85rem; background:#0284c7;">📇 <span data-i18n="viewContactsListBtn"></span><span id="contactsListCountBadge"></span></button>
+                <h2 style="margin:0; border:none; padding:0;"><span data-i18n="contactsTitle"></span><span id="contactsListCountBadge" style="color:var(--text-muted); font-size:0.9rem; font-weight:600;"></span></h2>
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:15px;">
                 <button class="secondary" onclick="importContactsFromJobs()" data-i18n="importContactsBtn"></button>
@@ -639,16 +638,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                     <button class="secondary" onclick="toggleContactForm(true)" data-i18n="cancelBtn"></button>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <div id="contactsListModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
-        <div class="tg-modal-box">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
-                <h2 style="color:#38bdf8; margin:0; font-size:1.2rem;">📇 <span data-i18n="contactsTitle"></span></h2>
-                <button class="danger" onclick="closeContactsListModal()" style="padding:6px 12px; font-size:0.8rem;" data-i18n="guideCloseBtn"></button>
-            </div>
-            <input type="text" id="contactsSearchInput" data-i18n-ph="contactsSearchPh" oninput="renderContacts()" style="margin-bottom:16px; font-size:0.95rem; padding:12px 16px; border-radius:12px;">
+            <input type="text" id="contactsSearchInput" data-i18n-ph="contactsSearchPh" oninput="renderContacts()" style="margin-bottom:14px; font-size:0.95rem; padding:12px 16px; border-radius:12px;">
             <div id="contactsListContent"></div>
         </div>
     </div>
@@ -2843,12 +2833,12 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         leadLostBox: { ar: 'عروض ضايعة (Lost)', en: 'Lost quotes' },
         leadNoneOpen: { ar: 'مفيش عروض مستنية', en: 'No quotes waiting' },
         leadNoDocYet: { ar: 'لسه ما اتحفظش مستند', en: 'No document saved yet' },
-        leadLostTag: { ar: 'Lost', en: 'Lost' },
+        leadLostTag: { ar: 'ضايع', en: 'Lost' },
         leadQuoteReady: { ar: 'عرض جاهز', en: 'Quote ready' },
         leadDraft: { ar: 'مسودة', en: 'Draft' },
         leadOpenBtn: { ar: 'فتح', en: 'Open' },
         leadApproveBtn: { ar: '✓ العميل وافق ← شغلانة', en: '✓ Approved → Job' },
-        leadLostBtn: { ar: 'Lost', en: 'Lost' },
+        leadLostBtn: { ar: 'ضايع (العميل رفض)', en: 'Lost' },
         leadReopenBtn: { ar: 'رجّعه', en: 'Reopen' },
         leadLostConfirm: { ar: 'تقفل العرض ده كـ Lost؟ هيفضل محفوظ وتقدر ترجّعه.', en: 'Mark this quote as Lost? It stays saved and you can reopen it.' },
         leadNeedDoc: { ar: 'احفظ عرض السعر (Estimate/Proposal/Invoice) الأول بزرار Save.', en: 'Save a quote document (Estimate / Proposal / Invoice) first with Save.' },
@@ -2869,6 +2859,11 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         custRecent: { ar: 'آخر العملاء', en: 'Recent customers' },
         custReceiptNoJob: { ar: 'الإيصال بيتعمل من دفعات مسجلة في شغلانة. العميل ده لسه ماعندوش شغلانة. اعمل الشغلانة (✓ وافق) وسجّل الدفعة الأول.', en: 'A receipt is made from payments recorded in a job. This customer has no job yet. Approve the quote into a job and record the payment first.' },
         custReceiptPickJob: { ar: 'العميل عنده أكتر من شغلانة. دوس زرار 💵 جوه الشغلانة اللي عايزها في القايمة تحت.', en: 'This customer has more than one job. Tap the 💵 button inside the job you want in the list below.' },
+        leadDeleteBtn: { ar: 'مسح', en: 'Delete' },
+        leadDeleteConfirm: { ar: 'تمسح عرض {name} نهائياً؟ هيتمسح معاه {n} مستند محفوظ. بيانات العميل في Customers مش هتتمسح. مش هتقدر ترجّعه.', en: 'Permanently delete the quote for {name}? Its {n} saved document(s) will be deleted too. The customer in Customers is kept. This cannot be undone.' },
+        leadDeletedToast: { ar: 'اتمسح', en: 'Deleted' },
+        contactsShowAll: { ar: 'عرض كل العملاء ({n})', en: 'Show all customers ({n})' },
+        contactsShowRecent: { ar: 'عرض آخر 10 بس', en: 'Show latest 10 only' },
         toastJobSaved: { ar: 'اتحفظت الشغلانة', en: 'Job saved' },
         unsavedTitle: { ar: 'فيه تعديلات لسه ما اتحفظتش', en: 'You have changes that are not saved' },
         unsavedMsg: { ar: 'غيّرت الوقت أو الفريق أو اليوم في النافذة دي ومحفظتهمش. تحفظهم الأول قبل ما تفتح تفاصيل الشغلانة؟', en: 'You changed the day, time or team in this window and did not save. Save them before opening the full job details?' },
@@ -8938,7 +8933,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 <div style="display:flex; justify-content:space-between; gap:8px;"><b style="cursor:pointer; text-decoration:underline dotted;" onclick="openCustomerHubForLead('${l.id}')">${escHtml(l.clientName || '')}</b><span style="color:#f59e0b; font-size:0.72rem;">${isLost ? t('leadLostTag') : (d ? t('leadQuoteReady') : t('leadDraft'))}</span></div>
                 <div style="font-size:0.78rem; color:var(--text-muted); margin:3px 0 6px;">${sub}${l.clientPhone ? ' · ' + escHtml(l.clientPhone) : ''}</div>
                 <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                    ${isLost ? `<button type="button" class="secondary" onclick="reopenLead('${l.id}')" style="padding:6px 12px; font-size:0.75rem;">${t('leadReopenBtn')}</button><button type="button" class="secondary" onclick="openInvoiceModal('${l.id}')" style="padding:6px 12px; font-size:0.75rem;">${t('leadOpenBtn')}</button>`
+                    ${isLost ? `<button type="button" class="secondary" onclick="reopenLead('${l.id}')" style="padding:6px 12px; font-size:0.75rem;">${t('leadReopenBtn')}</button><button type="button" class="secondary" onclick="openInvoiceModal('${l.id}')" style="padding:6px 12px; font-size:0.75rem;">${t('leadOpenBtn')}</button><button type="button" onclick="deleteLead('${l.id}')" style="padding:6px 12px; font-size:0.75rem; background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid #e11d48; border-radius:8px;">${t('leadDeleteBtn')}</button>`
                     : `<button type="button" onclick="openInvoiceModal('${l.id}')" style="padding:6px 12px; font-size:0.75rem; background:#0284c7; color:#fff; border:none; border-radius:8px;">${t('leadOpenBtn')}</button>
                        <button type="button" onclick="approveLead('${l.id}')" style="padding:6px 12px; font-size:0.75rem; background:#16a34a; color:#fff; border:none; border-radius:8px;">${t('leadApproveBtn')}</button>
                        <button type="button" class="secondary" onclick="markLeadLost('${l.id}')" style="padding:6px 12px; font-size:0.75rem;">${t('leadLostBtn')}</button>`}
@@ -9063,7 +9058,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 h += row(`<div style="display:flex; justify-content:space-between; gap:8px;"><b style="font-size:0.88rem;">${d ? escHtml(invoiceDocTypeDisplay(d.docType)) + ' ' + escHtml(d.invoiceNo || '') + ' — ' + fmtUsd(leadDocTotal(d)) : t('leadNoDocYet')}</b><span style="color:#f59e0b; font-size:0.72rem;">${lost ? t('leadLostTag') : (d ? t('leadQuoteReady') : t('leadDraft'))}</span></div>
                     <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:7px;">
                     <button type="button" onclick="openInvoiceModal('${l.id}')" style="padding:6px 12px; font-size:0.75rem; background:#0284c7; color:#fff; border:none; border-radius:8px;">${t('leadOpenBtn')}</button>
-                    ${lost ? `<button type="button" class="secondary" onclick="reopenLead('${l.id}')" style="padding:6px 12px; font-size:0.75rem;">${t('leadReopenBtn')}</button>` : `<button type="button" onclick="approveLead('${l.id}')" style="padding:6px 12px; font-size:0.75rem; background:#16a34a; color:#fff; border:none; border-radius:8px;">${t('leadApproveBtn')}</button><button type="button" class="secondary" onclick="markLeadLost('${l.id}')" style="padding:6px 12px; font-size:0.75rem;">${t('leadLostBtn')}</button>`}</div>`);
+                    ${lost ? `<button type="button" class="secondary" onclick="reopenLead('${l.id}')" style="padding:6px 12px; font-size:0.75rem;">${t('leadReopenBtn')}</button><button type="button" onclick="deleteLead('${l.id}')" style="padding:6px 12px; font-size:0.75rem; background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid #e11d48; border-radius:8px;">${t('leadDeleteBtn')}</button>` : `<button type="button" onclick="approveLead('${l.id}')" style="padding:6px 12px; font-size:0.75rem; background:#16a34a; color:#fff; border:none; border-radius:8px;">${t('leadApproveBtn')}</button><button type="button" class="secondary" onclick="markLeadLost('${l.id}')" style="padding:6px 12px; font-size:0.75rem;">${t('leadLostBtn')}</button>`}</div>`);
             });
         }
         if (jobs.length) {
@@ -9133,6 +9128,18 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         if (!confirm(t('leadLostConfirm'))) return;
         const prev = l.leadStatus; l.leadStatus = 'lost'; l.lostAt = new Date().toISOString();
         try { await saveLeadsData(); } catch (err) { l.leadStatus = prev; alertSaveError(err); return; }
+        renderLeadsBox();
+    }
+    // Only a LOST quote can be deleted, and only after a confirmation that says how many saved documents go with it.
+    async function deleteLead(id) {
+        const l = quoteLeads.find(x => String(x.id) === String(id)); if (!l) return;
+        if (leadStatusOf(l) !== 'lost') return;
+        const n = (l.savedInvoices || []).length;
+        if (!confirm(t('leadDeleteConfirm').replace('{name}', l.clientName || '').replace('{n}', String(n)))) return;
+        const prev = quoteLeads;
+        quoteLeads = quoteLeads.filter(x => x !== l);
+        try { await saveLeadsData(); } catch (err) { quoteLeads = prev; alertSaveError(err); return; }
+        showToast('✅ ' + t('leadDeletedToast'));
         renderLeadsBox();
     }
     async function reopenLead(id) {
@@ -13114,12 +13121,9 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     // Opens the contacts list (with its search box) as its own full-screen window, so the
     // Contacts screen itself stays short — just the title and the Import/Add Contact buttons —
     // instead of the whole (potentially long) list sitting underneath them on the same page.
-    function openContactsListModal() {
-        closeOtherTopModals('contactsListModal');
-        document.getElementById('contactsListModal').style.display = 'flex';
-        safeCall(renderContacts);
-    }
-    function closeContactsListModal() { document.getElementById('contactsListModal').style.display = 'none'; }
+    // The customer list now lives directly on the Customers screen (no popup); these keep older call sites working.
+    function openContactsListModal() { safeCall(renderContacts); }
+    function closeContactsListModal() { }
 
     function updateContactsListBadge() {
         const badge = document.getElementById('contactsListCountBadge');
@@ -13138,9 +13142,19 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         if (contacts.length === 0) { container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:30px;">${t('noContactsYet')}</p>`; return; }
         if (filtered.length === 0) { container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:30px;">${t('noContactsMatchSearch')}</p>`; return; }
 
-        const sorted = [...filtered].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        // No search: show only the 10 newest (short list). "Show all" (or any search) lists A-Z with a letter divider.
+        const grouped = !!query || contactsShowAll;
+        const sorted = grouped
+            ? [...filtered].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+            : [...filtered].sort((a, b) => (parseInt(String(b.id), 10) || 0) - (parseInt(String(a.id), 10) || 0)).slice(0, 10);
         let html = '<div style="display:flex; flex-direction:column; gap:10px;">';
+        let lastLetter = '';
         sorted.forEach(c => {
+            if (grouped) {
+                const ch = String(c.name || '').trim().charAt(0).toUpperCase();
+                const letter = /[A-Z\u0600-\u06FF]/.test(ch) ? ch : '#';
+                if (letter !== lastLetter) { lastLetter = letter; html += `<div style="margin:8px 4px 0; color:#38bdf8; font-weight:800; font-size:0.95rem; border-bottom:1px solid var(--border-color); padding-bottom:3px;">${letter}</div>`; }
+            }
             const initial = (c.name || '?').trim().charAt(0).toUpperCase();
             html += `<div style="display:flex; align-items:center; gap:14px; background:var(--card-dark); border:1px solid var(--border-color); border-radius:16px; padding:14px 16px;">
                 <div style="flex-shrink:0; width:48px; height:48px; border-radius:50%; background:${avatarColorFor(c.name)}; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.1rem;">${initial}</div>
@@ -13160,8 +13174,13 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             </div>`;
         });
         html += '</div>';
+        if (!query && contacts.length > 10) {
+            html += `<div style="text-align:center; margin-top:14px;"><button type="button" class="secondary" onclick="toggleContactsShowAll()" style="padding:10px 22px;">${contactsShowAll ? t('contactsShowRecent') : t('contactsShowAll').replace('{n}', String(contacts.length))}</button></div>`;
+        }
         container.innerHTML = html;
     }
+    let contactsShowAll = false;
+    function toggleContactsShowAll() { contactsShowAll = !contactsShowAll; renderContacts(); }
 
     /* ---------------- Quick Schedule (Weekly Board) ---------------- */
     let quickScheduleDay = '';
