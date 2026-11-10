@@ -159,6 +159,8 @@
         .badge.cancelled { background: rgba(220, 38, 38, 0.2); color: #f87171; border: 1px solid rgba(220, 38, 38, 0.4); }
         tr.job-cancelled-row { opacity: 0.6; }
         .icon-svg { width: 16px; height: 16px; fill: currentColor; display: inline-block; vertical-align: middle; }
+        .ct-link { color:#38bdf8; cursor:pointer; }
+        span.ct-link { text-decoration: underline dotted; }
         .autocomplete-items { position: absolute; border: 1px solid var(--border-color); border-top: none; z-index: 99; top: 100%; left: 0; right: 0; background: #11141d; border-radius: 0 0 8px 8px; max-height: 180px; overflow-y: auto; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
         .autocomplete-items div { padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-main); }
         .autocomplete-items div:hover { background: var(--card-hover); color: #38bdf8; }
@@ -891,6 +893,15 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                     <div class="form-group"><label data-i18n="lblTotalRevenue"></label><input type="text" id="totalRevenue" value="0" onfocus="this.select()" oninput="calculateRemaining(); calculate();"></div>
                     <div class="form-group"><label data-i18n="lblAmountReceived"></label><input type="text" id="amountReceived" value="0" onfocus="this.select()" oninput="calculateRemaining(); calculate(); renderLedger('receipt'); updateSplitRatioTotal();"></div>
                     <div class="form-group"><label data-i18n="lblAmountRemaining"></label><input type="text" id="amountRemaining" value="0" readonly style="background: #1e293b; color: #f87171; font-weight: 700;"></div>
+                </div>
+                <div id="changeOrderBox" style="margin-bottom:14px;">
+                    <div id="coSummary"></div>
+                    <button type="button" class="secondary" onclick="coToggleForm()" style="padding:7px 12px; font-size:0.82rem;" data-i18n="coAddBtn"></button>
+                    <div id="coForm" style="display:none; margin-top:8px; padding:10px; border:1px solid var(--border-color); border-radius:10px;">
+                        <input type="text" id="coDesc" data-i18n-ph="coDescPh" style="margin-bottom:8px;">
+                        <div class="grid-2"><input type="text" inputmode="decimal" id="coAmount" data-i18n-ph="coAmountPh" onfocus="this.select()"><input type="date" id="coDate"></div>
+                        <button type="button" class="success" onclick="coAdd()" style="margin-top:8px; width:100%; padding:9px;" data-i18n="coSaveBtn"></button>
+                    </div>
                 </div>
                 <div id="jobMarginEstimateBox" class="no-print" style="display:none; border-radius:8px; padding:10px 12px; margin-bottom:14px;"></div>
                 <div class="form-group" id="receiptAddBox">
@@ -2900,6 +2911,15 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         defaultSplitHint: { ar: 'بتتطبق على الشغلانات الجديدة بس. الشغلانات القديمة بتفضل بنسبتها.', en: 'Applies to new jobs only. Existing jobs keep their own ratio.' },
         defaultSplitMust100: { ar: 'النسب الافتراضية لازم مجموعها 100%.', en: 'The default split must add up to 100%.' },
         askAddTechToBoard: { ar: 'تضيف {names} على Weekly Board يوم {date}؟', en: 'Add {names} to the Weekly Board on {date}?' },
+        coAddBtn: { ar: '➕ شغل إضافي', en: '➕ Additional work' },
+        coDescPh: { ar: 'وصف الشغل الإضافي (مثلاً كهرباء)', en: 'What is the additional work (e.g. electrical)' },
+        coAmountPh: { ar: 'المبلغ $', en: 'Amount $' },
+        coSaveBtn: { ar: 'إضافة على الإجمالي', en: 'Add to the total' },
+        coOriginal: { ar: 'السعر الأصلي', en: 'Original price' },
+        coAddedShort: { ar: 'شغل إضافي', en: 'Additional work' },
+        coTotalLine: { ar: 'الإجمالي بعد الإضافي', en: 'Total with additional work' },
+        coNeedDescAmount: { ar: 'اكتب وصف الشغل والمبلغ.', en: 'Enter a description and an amount.' },
+        coRemoveConfirm: { ar: 'تشيل البند الإضافي ده؟ الإجمالي هينقص بقيمته.', en: 'Remove this additional item? The total will go down by its amount.' },
         toastJobSaved: { ar: 'اتحفظت الشغلانة', en: 'Job saved' },
         unsavedTitle: { ar: 'فيه تعديلات لسه ما اتحفظتش', en: 'You have changes that are not saved' },
         unsavedMsg: { ar: 'غيّرت الوقت أو الفريق أو اليوم في النافذة دي ومحفظتهمش. تحفظهم الأول قبل ما تفتح تفاصيل الشغلانة؟', en: 'You changed the day, time or team in this window and did not save. Save them before opening the full job details?' },
@@ -3308,6 +3328,30 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         applyLanguage();
     }
 
+    // ===== Tap-anywhere customer details: name -> customer page, phone -> call, address -> maps =====
+    const ctReg = {};
+    function ctName(name, phone, email, address) {
+        const n = String(name || '').trim(); if (!n) return escHtml(name || '');
+        const key = n + '|' + custDigits(phone); ctReg[key] = { name: n, phone: phone || '', email: email || '', address: address || '' };
+        return `<span class="ct-link" onclick="event.stopPropagation(); ctOpen('${jsArg(key)}')">${escHtml(n)}</span>`;
+    }
+    function ctOpen(key) {
+        const r = ctReg[key]; if (!r) return;
+        const c = contacts.find(x => custSame(r.name, r.phone, x));
+        if (c) { openCustomerHub(c.id); return; }
+        const l = quoteLeads.find(x => custSame(r.name, r.phone, { name: x.clientName, phone: x.clientPhone }));
+        if (l) { openCustomerHub(null, l.id); return; }
+        custHubTemp = { id: null, name: r.name, phone: r.phone, email: r.email, address: r.address, note: '' };   // not saved anywhere, only shown
+        openCustomerHub(null, null);
+    }
+    function ctPhone(phone) {
+        const ph = String(phone || '').trim(); if (!ph) return '';
+        return `<a href="tel:${ph.replace(/[^+\d]/g, '')}" class="ct-link" style="text-decoration:none;" onclick="event.stopPropagation();">📞 ${escHtml(ph)}</a>`;
+    }
+    function ctAddr(addr) {
+        const a = String(addr || '').trim(); if (!a) return '';
+        return `<a href="#" class="ct-link" style="text-decoration:none;" onclick="event.stopPropagation(); event.preventDefault(); showMapChoice('${jsArg(a)}');">📍 ${escHtml(a)}</a>`;
+    }
     function showMapChoice(address) {
         const q = encodeURIComponent(address);
         document.getElementById('mapChoiceGoogleBtn').onclick = () => { window.open(`https://maps.google.com/?q=${q}`, '_blank'); closeMapChoice(); };
@@ -4467,7 +4511,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         const postponed = (entry && entry.postponedFrom) ? `<span class="ag-badge">⏭ ${t('postponedFromLabel')} ${escHtml(entry.postponedFrom)}</span>` : '';
         const when = entry ? `<span class="ag-time">${entry.time ? escHtml(entry.time) : t('agendaNoTime')}</span>` : `<span class="ag-time">${ltrRange(job.startDate, job.endDate || job.startDate)}</span>`;
         return `<div class="ag-item">
-            <div class="ag-line">${when}<strong>${escHtml(job.clientName || '')}</strong>${postponed}</div>
+            <div class="ag-line">${when}<strong>${ctName(job.clientName, job.clientPhone, job.clientEmail, job.clientAddress)}</strong>${postponed}</div>
             ${(addr || phone || coAddr) ? `<div class="ag-meta">${[addr, coAddr, phone].filter(Boolean).join(' &nbsp; ')}</div>` : ''}
             ${entry ? `<div class="ag-meta" style="color:#38bdf8;">${t('weeklyTechsLabel')} ${team ? escHtml(team) : t('agendaNoTeam')}</div>` : ''}
             ${entry && entry.note ? `<div class="ag-meta">🔧 ${escHtml(entry.note)}</div>` : ''}
@@ -4559,7 +4603,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             html += `<div class="ag-section-title">${t('gsJobs')} (${jobs.length})</div>`;
             jobs.forEach(j => {
                 html += `<div class="ag-item" style="cursor:pointer;" onclick="closeGlobalSearch(); openJobOverlay('${jsArg(j.id)}');">
-                    <div class="ag-line"><strong>${escHtml(j.clientName || '')}</strong></div>
+                    <div class="ag-line"><strong>${ctName(j.clientName, j.clientPhone, j.clientEmail, j.clientAddress)}</strong></div>
                     <div class="ag-meta">${escHtml(j.clientPhone || '')}${j.clientPhone && j.clientAddress ? ' — ' : ''}${escHtml(j.clientAddress || '')}</div>
                 </div>`;
             });
@@ -4763,7 +4807,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             const teamNames = (entry.team || []).join(', ');
             html += `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 0; border-top:1px solid rgba(217,119,6,0.25); flex-wrap:wrap;">
                 <div>
-                    ${entry.time ? `<strong style="color:${isPast ? '#f87171' : '#fbbf24'};">${entry.time}${isPast ? ' ⚠️' : ''}</strong> — ` : ''}<strong>${job.clientName || ''}</strong>
+                    ${entry.time ? `<strong style="color:${isPast ? '#f87171' : '#fbbf24'};">${entry.time}${isPast ? ' ⚠️' : ''}</strong> — ` : ''}<strong>${ctName(job.clientName, job.clientPhone, job.clientEmail, job.clientAddress)}</strong>
                     ${job.clientAddress ? `<span style="color:var(--text-muted); font-size:0.8rem;"> — ${job.clientAddress}</span>` : ''}
                     ${teamNames ? `<div style="font-size:0.78rem; color:#38bdf8;">${t('weeklyTechsLabel')} ${teamNames}</div>` : ''}
                 </div>
@@ -4930,9 +4974,9 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                         listDiv.style.display = 'none';
                         // an apartment / unit typed or pasted inside the address goes to its own field (or, if the screen has none, stays at the end of the address)
                         if (parsedQ.unit) {
-                            const UM = { clientAddress: ['unitNo', 'unitRow'], apptClientAddress: ['apptUnitNo', 'apptUnitRow'], qsClientAddress: ['qsUnitNo', 'qsUnitRow'] }[inputId];
+                            const UM = { clientAddress: ['unitNo', 'unitRow'], apptClientAddress: ['apptUnitNo', 'apptUnitRow'], qsClientAddress: ['qsUnitNo', 'qsUnitRow'], leadAddress: ['leadUnit', 'leadUnitRowNone'] }[inputId];
                             const ue = UM && document.getElementById(UM[0]);
-                            if (ue) { if (!ue.value.trim()) ue.value = parsedQ.unit; document.getElementById(UM[1]).style.display = ''; }
+                            if (ue) { if (!ue.value.trim()) ue.value = parsedQ.unit; const ur = document.getElementById(UM[1]); if (ur) ur.style.display = ''; }
                             else document.getElementById(inputId).value = label + ', ' + parsedQ.unit;
                         }
                         try { renderSiteChips(); } catch (e) {}
@@ -4950,6 +4994,58 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         }, 350);
     }
 
+    // ===== Additional work / change orders on a job =====
+    // The job keeps its ORIGINAL price (baseRevenue) and a list of additional-work items; totalRevenue (what every profit,
+    // split and balance calculation reads) always equals original + additional, so nothing else in the app changes.
+    let coList = [], coBase = null;
+    function coTotal() { return round2(coList.reduce((s, c) => s + parseVal(c.amount), 0)); }
+    function coApply() {
+        const tot = document.getElementById('totalRevenue'); if (!tot) return;
+        if (coList.length) { tot.value = round2((coBase || 0) + coTotal()); tot.readOnly = true; }
+        else { tot.readOnly = false; if (coBase != null) tot.value = coBase; coBase = null; }
+        calculateRemaining(); try { calculate(); } catch (e) {}
+    }
+    function coRender() {
+        const el = document.getElementById('coSummary'); if (!el) return;
+        if (!coList.length) { el.innerHTML = ''; return; }
+        const open = (el.querySelector('details') || {}).open ? ' open' : '';
+        el.innerHTML = `<details${open} style="font-size:0.86rem; margin-bottom:8px; border:1px solid var(--border-color); border-radius:10px; padding:8px 10px;">
+            <summary style="cursor:pointer; display:flex; justify-content:space-between; gap:8px; list-style:none;"><span>➕ ${t('coAddedShort')} (${coList.length})</span><b>+$${coTotal().toFixed(2)} ▾</b></summary>
+            <div style="margin-top:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><span>${t('coOriginal')}</span><input type="text" inputmode="decimal" value="${coBase}" onfocus="this.select()" oninput="coSetBase(this.value)" style="max-width:110px; text-align:end; padding:6px 8px;"></div>
+            ${coList.map(c => `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:6px;"><span>➕ ${escHtml(c.desc || '')} <span style="color:var(--text-muted); font-size:0.72rem;">${escHtml(c.date || '')}</span></span><span><b>+$${parseVal(c.amount).toFixed(2)}</b> <button type="button" class="danger" onclick="coRemove('${jsArg(c.id)}')" style="padding:2px 8px; font-size:0.7rem;">✕</button></span></div>`).join('')}
+            <div style="display:flex; justify-content:space-between; margin-top:8px; padding-top:8px; border-top:1px solid var(--border-color); font-weight:700;"><span>${t('coTotalLine')}</span><span id="coGrand">$${round2((coBase || 0) + coTotal()).toFixed(2)}</span></div></div></details>`;
+    }
+    function coToggleForm() {
+        const f = document.getElementById('coForm'); if (!f) return;
+        f.style.display = f.style.display === 'none' ? 'block' : 'none';
+        if (f.style.display === 'block') { document.getElementById('coDate').value = isoDate(new Date()); setTimeout(() => document.getElementById('coDesc').focus(), 30); }
+    }
+    function coAdd() {
+        const desc = document.getElementById('coDesc').value.trim(), amt = parseVal(document.getElementById('coAmount').value), date = document.getElementById('coDate').value || isoDate(new Date());
+        if (!desc || !(amt > 0)) { alert(t('coNeedDescAmount')); return; }
+        if (!coList.length) coBase = parseVal(document.getElementById('totalRevenue').value);
+        coList.push({ id: newLedgerId(), date, desc, amount: amt });
+        document.getElementById('coDesc').value = ''; document.getElementById('coAmount').value = '';
+        document.getElementById('coForm').style.display = 'none';
+        coApply(); coRender();
+    }
+    function coRemove(id) {
+        if (!confirm(t('coRemoveConfirm'))) return;
+        coList = coList.filter(c => String(c.id) !== String(id)); coApply(); coRender();
+    }
+    function coSetBase(v) {
+        coBase = parseVal(v); const tot = document.getElementById('totalRevenue'); tot.value = round2(coBase + coTotal());
+        const g = document.getElementById('coGrand'); if (g) g.textContent = '$' + parseVal(tot.value).toFixed(2);
+        calculateRemaining(); try { calculate(); } catch (e) {}
+    }
+    function coLoad(job) {
+        coList = Array.isArray(job && job.changeOrders) ? JSON.parse(JSON.stringify(job.changeOrders)) : [];
+        coBase = coList.length ? (job.baseRevenue != null ? parseVal(job.baseRevenue) : round2(parseVal(job.totalRevenue) - coTotal())) : null;
+        const tot = document.getElementById('totalRevenue'); if (tot) tot.readOnly = coList.length > 0;
+        const f = document.getElementById('coForm'); if (f) f.style.display = 'none';
+        coRender();
+    }
     function calculateRemaining() {
         const total = parseVal(document.getElementById('totalRevenue').value);
         const received = parseVal(document.getElementById('amountReceived').value);
@@ -5009,6 +5105,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         if (!e.target.closest('#apptClientAddress') && !e.target.closest('#apptAddressAutocompleteList')) {
             document.getElementById('apptAddressAutocompleteList').style.display = 'none';
         }
+        if (!e.target.closest('#leadAddress') && !e.target.closest('#leadAddressList')) { const ll = document.getElementById('leadAddressList'); if (ll) ll.style.display = 'none'; }
         if (!e.target.closest('#qsClientAddress') && !e.target.closest('#qsAddressAutocompleteList')) {
             document.getElementById('qsAddressAutocompleteList').style.display = 'none';
         }
@@ -6867,6 +6964,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             lastEditedBy: currentUserEmail
         };
 
+        if (coList.length) { jobData.baseRevenue = coBase || 0; jobData.changeOrders = JSON.parse(JSON.stringify(coList)); }
         const validationErrors = validateJobBeforeSave(jobData, technicians, expenseItems);
         if (validationErrors.length > 0) {
             alert(t('validationErrorsTitle') + '\n\n' + validationErrors.map(e => '• ' + e).join('\n'));
@@ -7069,6 +7167,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         document.getElementById('endDate').value = isoDate(new Date());
         document.getElementById('scheduledTime').value = '';
         document.getElementById('totalRevenue').value = 0;
+        coLoad(null);
         document.getElementById('amountReceived').value = 0;
         document.getElementById('amountRemaining').value = 0;
         document.getElementById('followUpDate').value = '';
@@ -7405,7 +7504,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             const statusBadgeClass = job.jobStatus === 'خلص' ? 'completed' : (job.jobStatus === 'ملغي' ? 'cancelled' : 'active');
             tr.innerHTML = `
                 <td data-label="" style="text-align: center;"><input type="checkbox" class="job-checkbox" value="${job.id}" ${selectedJobIds.has(String(job.id)) ? 'checked' : ''} onchange="toggleJobSelection('${job.id}', this)"></td>
-                <td data-label="${t('thClient')}"><strong>${job.clientName}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.clientPhone ? `<a href="tel:${job.clientPhone.replace(/[^+\d]/g, '')}" style="color:#38bdf8; text-decoration:none;" onclick="event.stopPropagation();">📞 ${job.clientPhone}</a>` : ''}${job.clientPhone && job.clientAddress ? ' - ' : ''}${job.clientAddress ? `<a href="#" onclick="event.stopPropagation(); event.preventDefault(); showMapChoice('${job.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${escHtml(jobFullAddr(job))}</a>` : ''}${job.companyAddress ? `<br><a href="#" onclick="event.stopPropagation(); event.preventDefault(); showMapChoice('${job.companyAddress.replace(/'/g, "\\'")}');" style="color:#94a3b8; text-decoration:none;">🏢 ${escHtml(job.companyAddress)}</a>` : ''}</span>${hasDebt ? '<br><span class="debt-alert-badge">' + t('debtBadgePrefix') + ' $' + rem.toFixed(2) + '</span> <button onclick="event.stopPropagation(); sendAiPaymentReminder(\'' + job.id + '\');" style="background:linear-gradient(135deg,#7c3aed,#38bdf8); color:#fff; border:none; border-radius:6px; padding:2px 8px; font-size:0.68rem; font-weight:700; cursor:pointer;">✨ ' + t('aiReminderBtn') + '</button>' : ''}${isOverdue ? '<br><span class="debt-alert-badge" style="background:rgba(217,119,6,0.2); color:#fbbf24; border-color:rgba(217,119,6,0.4);">🔔 ' + t('reminderOverdueSuffix') + '</span>' : ''}</td>
+                <td data-label="${t('thClient')}"><strong>${ctName(job.clientName, job.clientPhone, job.clientEmail, job.clientAddress)}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.clientPhone ? `<a href="tel:${job.clientPhone.replace(/[^+\d]/g, '')}" style="color:#38bdf8; text-decoration:none;" onclick="event.stopPropagation();">📞 ${job.clientPhone}</a>` : ''}${job.clientPhone && job.clientAddress ? ' - ' : ''}${job.clientAddress ? `<a href="#" onclick="event.stopPropagation(); event.preventDefault(); showMapChoice('${job.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${escHtml(jobFullAddr(job))}</a>` : ''}${job.companyAddress ? `<br><a href="#" onclick="event.stopPropagation(); event.preventDefault(); showMapChoice('${job.companyAddress.replace(/'/g, "\\'")}');" style="color:#94a3b8; text-decoration:none;">🏢 ${escHtml(job.companyAddress)}</a>` : ''}</span>${hasDebt ? '<br><span class="debt-alert-badge">' + t('debtBadgePrefix') + ' $' + rem.toFixed(2) + '</span> <button onclick="event.stopPropagation(); sendAiPaymentReminder(\'' + job.id + '\');" style="background:linear-gradient(135deg,#7c3aed,#38bdf8); color:#fff; border:none; border-radius:6px; padding:2px 8px; font-size:0.68rem; font-weight:700; cursor:pointer;">✨ ' + t('aiReminderBtn') + '</button>' : ''}${isOverdue ? '<br><span class="debt-alert-badge" style="background:rgba(217,119,6,0.2); color:#fbbf24; border-color:rgba(217,119,6,0.4);">🔔 ' + t('reminderOverdueSuffix') + '</span>' : ''}</td>
                 <td data-label="${t('thDateStatus')}"><span class="badge ${statusBadgeClass}">${statusLabel(job.jobStatus)}</span><br><span style="font-size:0.75rem; color:var(--text-muted);">${job.startDate || ''}</span></td>
                 <td data-label="${t('thAmounts')}" style="font-size: 0.82rem;">$${rev.toFixed(2)} / <span style="color:#34d399;">$${rec.toFixed(2)}</span> / <span style="color:#f87171; font-weight:700;">$${rem.toFixed(2)}</span></td>
                 <td data-label="${t('thMaterials')}" style="color:#f87171;">$${parseVal(job.materialCost).toFixed(2)}</td>
@@ -7608,6 +7707,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         document.getElementById('endDate').value = job.endDate || '';
         document.getElementById('scheduledTime').value = job.scheduledTime || '';
         document.getElementById('totalRevenue').value = job.totalRevenue || 0;
+        coLoad(job);
         document.getElementById('amountReceived').value = job.amountReceived || 0;
         document.getElementById('amountRemaining').value = job.amountRemaining || 0;
         document.getElementById('followUpDate').value = job.followUpDate || '';
@@ -9067,13 +9167,13 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     function closeQuickQuote() { const m = document.getElementById('leadModal'); if (m) m.style.display = 'none'; }
     function openQuickQuote() {   // the "New customer" form (name kept because the + menu calls it)
         const m = leadEnsureModal();
-        const inp = 'background:#11141d; color:#fff; border:1px solid var(--border-color); padding:11px 12px; border-radius:10px; width:100%; box-sizing:border-box;';
+        const inp = 'padding:11px 12px; border-radius:10px; width:100%; box-sizing:border-box;';   // colors come from the app theme (no hard-coded black)
         const lbl = 'font-size:0.75rem; color:var(--text-muted); margin:10px 0 4px; display:block;';
         document.getElementById('leadBox').innerHTML = `<h3 style="margin:0 0 12px; color:#38bdf8;">${t('leadFormTitle')}</h3>
             <label style="${lbl}">${t('leadName')} *</label><input id="leadName" type="text" oninput="leadFormCheck()" style="${inp}">
             <label style="${lbl}">${t('leadPhone')} *</label><input id="leadPhone" type="tel" oninput="leadFormCheck()" style="${inp}">
             <label style="${lbl}">${t('leadEmail')}</label><input id="leadEmail" type="email" style="${inp}">
-            <label style="${lbl}">${t('leadAddress')}</label><input id="leadAddress" type="text" style="${inp}">
+            <div style="position:relative;"><label style="${lbl}">${t('leadAddress')}</label><input id="leadAddress" type="text" oninput="onAddressInput('leadAddress','leadAddressList')" autocomplete="off" style="${inp}"><div id="leadAddressList" class="autocomplete-items" style="display:none;"></div></div>
             <div style="display:flex; gap:8px;"><div style="flex:1;"><label style="${lbl}">${t('leadUnit')}</label><input id="leadUnit" type="text" style="${inp}"></div>
             <div style="flex:1;"><label style="${lbl}">${t('leadZip')}</label><input id="leadZip" type="text" inputmode="numeric" style="${inp}"></div></div>
             <label style="${lbl}">${t('leadDesc')}</label><textarea id="leadDesc" rows="2" style="${inp}"></textarea>
@@ -9116,9 +9216,11 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         const n = String(name || '').trim().toLowerCase();
         return !!n && n === String(c.name || '').trim().toLowerCase();
     }
+    let custHubTemp = null;
     function custResolve() {
         const c = contacts.find(x => String(x.id) === String(custHubId));
         if (c) return c;
+        if (!custHubId && !custHubLeadId && custHubTemp) return custHubTemp;
         const l = quoteLeads.find(x => String(x.id) === String(custHubLeadId));
         return l ? { id: null, name: l.clientName, phone: l.clientPhone, email: l.clientEmail, address: l.clientAddress, note: l.clientDescription || '' } : null;
     }
@@ -9135,6 +9237,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     }
     function openCustomerHub(contactId, leadId) {
         custHubId = contactId || null; custHubLeadId = leadId || null;
+        if (contactId || leadId) custHubTemp = null;
         const m = custHubEnsure(); m.style.display = 'block';
         try { closeGlobalSearch(); } catch (e) {}
         renderCustomerHub(); m.scrollTop = 0;
@@ -9232,11 +9335,20 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         closeCustomerHub(); switchScreen('entry');
         setTimeout(() => custFill({ clientName: c.name, clientPhone: c.phone, clientEmail: c.email, clientAddress: c.address, clientDescription: c.note }), 80);
     }
+    // The last 5 customers added, always on Home, each with small icons showing what they have now:
+    // 📅 an appointment, 🔧 an active job, 📄 an open quote waiting.
     function recentCustomersHtml() {
-        const rec = contacts.slice().sort((a, b) => (parseInt(String(b.id), 10) || 0) - (parseInt(String(a.id), 10) || 0)).slice(0, 6);
+        const rec = contacts.slice().sort((a, b) => (parseInt(String(b.id), 10) || 0) - (parseInt(String(a.id), 10) || 0)).slice(0, 5);
         if (!rec.length) return '';
+        const icons = c => {
+            let ic = '';
+            if ((appointments || []).some(a => custSame(a.clientName, a.clientPhone, c))) ic += '📅';
+            if (savedJobs.some(j => j.jobStatus === 'شغال' && custSame(j.clientName, j.clientPhone, c))) ic += '🔧';
+            if (quoteLeads.some(l => leadStatusOf(l) === 'open' && custSame(l.clientName, l.clientPhone, c))) ic += '📄';
+            return ic;
+        };
         return '<div class="tw-sec">' + escHtml(t('custRecent')) + '</div><div style="display:flex; gap:8px; overflow-x:auto; padding:2px 4px 6px;">' +
-            rec.map(c => `<button type="button" onclick="openCustomerHub('${jsArg(String(c.id))}')" style="flex:0 0 auto; background:var(--card-dark); color:var(--text-main); border:1px solid var(--border-color); border-radius:20px; padding:8px 14px; font-weight:700; font-size:0.82rem; white-space:nowrap;">${escHtml(c.name || '')}</button>`).join('') + '</div>';
+            rec.map(c => { const ic = icons(c); return `<button type="button" onclick="openCustomerHub('${jsArg(String(c.id))}')" style="flex:0 0 auto; background:var(--card-dark); color:var(--text-main); border:1px solid var(--border-color); border-radius:20px; padding:8px 14px; font-weight:700; font-size:0.82rem; white-space:nowrap;">${escHtml(c.name || '')}${ic ? ' <span style="font-weight:400;">' + ic + '</span>' : ''}</button>`; }).join('') + '</div>';
     }
     async function markLeadLost(id) {
         const l = quoteLeads.find(x => String(x.id) === String(id)); if (!l) return;
@@ -14833,7 +14945,7 @@ ${closeBtnHtml}
             html += `<div class="tech-card" style="${appt.followUpNeeded ? 'border-color:var(--warning);' : ''}">
                 <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
                     <div>
-                        <strong>${appt.clientName}</strong><br>
+                        <strong>${ctName(appt.clientName, appt.clientPhone, appt.clientEmail, appt.clientAddress)}</strong><br>
                         <span style="font-size:0.78rem; color:var(--text-muted);">${appt.clientPhone ? `<a href="tel:${appt.clientPhone.replace(/[^+\d]/g, '')}" style="color:#38bdf8; text-decoration:none;">📞 ${appt.clientPhone}</a>` : ''}${appt.clientPhone && appt.clientAddress ? ' — ' : ''}${appt.clientAddress ? `<a href="#" onclick="event.preventDefault(); showMapChoice('${appt.clientAddress.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${jobFullAddr(appt)}</a>` : ''}${appt.clientEmail ? ` — <a href="mailto:${appt.clientEmail}" style="color:#38bdf8; text-decoration:none;">✉️ ${appt.clientEmail}</a>` : ''}</span><br>
                         <span style="font-size:0.78rem; color:#38bdf8;">${appt.requestedDate || t('noDateSet')} ${appt.requestedTime || ''}</span>
                         ${serviceTags}
@@ -16901,11 +17013,11 @@ ${closeBtnHtml}
         var left = '<div class="tw-sec">' + escHtml(tw('todaySec')) + '</div>';
         if (!todayJobs.length && !todayAppts.length) left += '<div class="tw-empty">' + escHtml(tw('noToday')) + '</div>';
         todayJobs.forEach(function (j) {
-            left += '<div class="tw-card" onclick="openJobOverlay(\'' + jsArg(String(j.id)) + '\')"><div class="tx"><h4>' + escHtml(j.clientName || '—') + '</h4><p>' + escHtml(j.clientAddress || '') + (j.scheduledTime ? ' · ' + escHtml(j.scheduledTime) : '') + '</p></div>' +
+            left += '<div class="tw-card" onclick="openJobOverlay(\'' + jsArg(String(j.id)) + '\')"><div class="tx"><h4>' + ctName(j.clientName, j.clientPhone, j.clientEmail, j.clientAddress) + '</h4><p>' + (j.clientAddress ? ctAddr(j.clientAddress) : '') + (j.scheduledTime ? ' · ' + escHtml(j.scheduledTime) : '') + (j.clientPhone ? '<br>' + ctPhone(j.clientPhone) : '') + '</p></div>' +
                 (jobRemaining(j) > 0 ? '<span class="tw-tag" style="background:#d97706">' + money(jobRemaining(j)) + '</span>' : '<span class="tw-tag" style="background:#059669">✔</span>') + '</div>';
         });
         todayAppts.forEach(function (a) {
-            left += '<div class="tw-card" onclick="editAppointment(\'' + jsArg(String(a.id)) + '\')"><div class="tx"><h4>' + escHtml(a.clientName || '—') + '</h4><p>' + escHtml(jobFullAddr(a)) + (a.requestedTime ? ' · ' + escHtml(a.requestedTime) : '') + '</p></div><span class="tw-tag" style="background:#4f46e5">' + escHtml(tw('appts')) + '</span></div>';
+            left += '<div class="tw-card" onclick="editAppointment(\'' + jsArg(String(a.id)) + '\')"><div class="tx"><h4>' + ctName(a.clientName, a.clientPhone, a.clientEmail, a.clientAddress) + '</h4><p>' + ctAddr(jobFullAddr(a)) + (a.requestedTime ? ' · ' + escHtml(a.requestedTime) : '') + (a.clientPhone ? '<br>' + ctPhone(a.clientPhone) : '') + '</p></div><span class="tw-tag" style="background:#4f46e5">' + escHtml(tw('appts')) + '</span></div>';
         });
         var att = [], cnt = workerFlagCounts();
         var follow = jobs.filter(function (j) { return j.followUpDate && j.followUpDate <= today && jobRemaining(j) > 0; }).length;
