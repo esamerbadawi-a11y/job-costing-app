@@ -9354,10 +9354,28 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         closeCustomerHub(); switchScreen('entry');
         setTimeout(() => custFill({ clientName: c.name, clientPhone: c.phone, clientEmail: c.email, clientAddress: c.address, clientDescription: c.note }), 80);
     }
-    // The last 5 customers added, always on Home, each with small icons showing what they have now:
-    // 📅 an appointment, 🔧 an active job, 📄 an open quote waiting.
+    // The last 5 customers added to the system, from EVERY place a customer can come from: the Customers list, appointments,
+    // jobs and quotes. Each record's id starts with the time it was created (13 digits), and the same person across several
+    // records counts once, at the EARLIEST time (so importing old jobs into Customers doesn't make old customers look new).
+    function recentCustomerList(n) {
+        const ts = id => { const m = String(id || '').match(/^(\d{13})/); return m ? parseInt(m[1], 10) : 0; };
+        const items = [];
+        contacts.forEach(c => items.push({ name: c.name, phone: c.phone, email: c.email, address: c.address, ts: ts(c.id), contactId: c.id }));
+        (appointments || []).forEach(a => items.push({ name: a.clientName, phone: a.clientPhone, email: a.clientEmail, address: a.clientAddress, ts: ts(a.id) }));
+        savedJobs.forEach(j => items.push({ name: j.clientName, phone: j.clientPhone, email: j.clientEmail, address: j.clientAddress, ts: ts(j.id) }));
+        quoteLeads.forEach(l => items.push({ name: l.clientName, phone: l.clientPhone, email: l.clientEmail, address: l.clientAddress, ts: ts(l.id) }));
+        items.sort((x, y) => x.ts - y.ts);
+        const groups = [];
+        items.forEach(it => {
+            if (!String(it.name || '').trim() || !it.ts) return;
+            const g = groups.find(x => custSame(it.name, it.phone, { name: x.name, phone: x.phone }));
+            if (g) { if (!g.contactId && it.contactId) g.contactId = it.contactId; if (!g.phone && it.phone) g.phone = it.phone; if (!g.email && it.email) g.email = it.email; if (!g.address && it.address) g.address = it.address; }
+            else groups.push({ name: it.name, phone: it.phone || '', email: it.email || '', address: it.address || '', ts: it.ts, contactId: it.contactId || null });
+        });
+        return groups.sort((x, y) => y.ts - x.ts).slice(0, n);
+    }
     function recentCustomersHtml() {
-        const rec = contacts.slice().sort((a, b) => (parseInt(String(b.id), 10) || 0) - (parseInt(String(a.id), 10) || 0)).slice(0, 5);
+        const rec = recentCustomerList(5);
         if (!rec.length) return '';
         const icons = c => {
             let ic = '';
@@ -9367,7 +9385,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             return ic;
         };
         return '<div class="tw-sec">' + escHtml(t('custRecent')) + '</div><div style="display:flex; gap:8px; overflow-x:auto; padding:2px 4px 6px;">' +
-            rec.map(c => { const ic = icons(c); return `<button type="button" onclick="openCustomerHub('${jsArg(String(c.id))}')" style="flex:0 0 auto; background:var(--card-dark); color:var(--text-main); border:1px solid var(--border-color); border-radius:20px; padding:8px 14px; font-weight:700; font-size:0.82rem; white-space:nowrap;">${escHtml(c.name || '')}${ic ? ' <span style="font-weight:400;">' + ic + '</span>' : ''}</button>`; }).join('') + '</div>';
+            rec.map(c => { const ic = icons(c); const key = String(c.name).trim() + '|' + custDigits(c.phone); ctReg[key] = { name: String(c.name).trim(), phone: c.phone, email: c.email, address: c.address };
+                return `<button type="button" onclick="ctOpen('${jsArg(key)}')" style="flex:0 0 auto; background:var(--card-dark); color:var(--text-main); border:1px solid var(--border-color); border-radius:20px; padding:8px 14px; font-weight:700; font-size:0.82rem; white-space:nowrap;">${escHtml(c.name || '')}${ic ? ' <span style="font-weight:400;">' + ic + '</span>' : ''}</button>`; }).join('') + '</div>';
     }
     async function markLeadLost(id) {
         const l = quoteLeads.find(x => String(x.id) === String(id)); if (!l) return;
