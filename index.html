@@ -3979,6 +3979,14 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     // "melissa diaz" -> "Melissa Diaz" (only lifts a lowercase first letter of each word; never touches the rest, so "McDonald" stays).
     function titleCaseName(n) { return String(n || '').replace(/(^|[\s\-'])([a-z])/g, (m, a, b) => a + b.toUpperCase()); }
     // Short, filesystem-safe version of the same name, for downloaded file names (e.g. "AHA_Partner_Report...").
+    function docFileBase(docType, clientName, no) {
+        const T = { ESTIMATE:'Estimate', CONTRACT:'Contract', PROPOSAL:'Proposal', ADDITIONAL_WORK:'Additional_Work', RECEIPT:'Receipt' }[docType] || 'Invoice';
+        const slug = x => String(x || '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+        return [companyFileSlug(), T, slug(clientName) || 'client', slug(no)].filter(Boolean).join('_');
+    }
+    function docTitleText(docType, clientName, no) {
+        return [invoiceDocTypeDisplay(docType), clientName || '', no || ''].filter(Boolean).join(' - ');
+    }
     function companyFileSlug() { return companyDisplayName().replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'Company'; }
     // Short code for invoice numbers (e.g. "AHA-2026-0001") — initials of the saved company name, or "INV" if none is set yet.
     function companyInvoicePrefix() {
@@ -7951,7 +7959,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         document.getElementById('rrClose').onclick = close;
         document.getElementById('rrSave').onclick = () => { try { doc.save(filename); } catch (e) { alert(t('alertShareNotSupported')); } };
         const sh = document.getElementById('rrShare');
-        if (sh) sh.onclick = async () => { try { await navigator.share({ files: [file] }); } catch (e) { if (e && e.name !== 'AbortError') alert(t('alertShareNotSupported')); } };
+        if (sh) sh.onclick = async () => { try { await navigator.share({ files: [file], title: file.name.replace(/\.pdf$/i,'').replace(/_/g,' ') }); } catch (e) { if (e && e.name !== 'AbortError') alert(t('alertShareNotSupported')); } };
     }
     async function printTechnicianReport(techName) {
         // The AI step below can take a few seconds; open the tab now (while the tap still counts) so the phone doesn't block it later.
@@ -9791,8 +9799,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             doc.text('Page ' + i + ' of ' + pages, W - M, H - 10, { align: 'right' });
             doc.text('Owner initials: ______', W / 2, H - 10, { align: 'center' });
         }
-        const nameSlug = (job.clientName || 'client').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'client';
-        return { doc, filename: `${companyFileSlug()}_Contract_${nameSlug}.pdf` };
+        return { doc, filename: docFileBase('CONTRACT', job.clientName, st && st.invoiceNo) + '.pdf' };
     }
     function contractBuildHtmlDoc(job, st, withPrint) {
         const e = escHtml, B = contractBlocks(job, st);
@@ -9810,7 +9817,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             return '';
         }).join('');
         const logo = companyProfile.logo ? `<img src="${companyProfile.logo}" style="width:60px; height:60px; object-fit:contain;">` : '';
-        return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${e(st.invoiceNo || 'Contract')}</title>
+        return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${e(docTitleText('CONTRACT', job && job.clientName, st.invoiceNo || 'Contract'))}</title>
 <style>body{margin:0; font-family: Arial, Helvetica, sans-serif; background:#FDFBF6; color:#241F1A; font-size:13.5px; line-height:1.5;} .page{max-width:800px; margin:0 auto; padding:28px 36px 60px;} @media print { .no-print{display:none !important;} .page{padding:0;} } @page { size: letter; margin: 18mm; }</style></head><body>
 <div class="page"><button class="no-print" onclick="window.print()" style="float:right; padding:8px 14px; border:none; border-radius:8px; background:#2C6B45; color:#fff;">Print</button>
 <div style="display:flex; gap:12px; align-items:center; border-bottom:2px solid #2C6B45; padding-bottom:10px; margin-bottom:10px;">${logo}<div><div style="font-weight:700; font-size:16px;">${e(companyDisplayName()).toUpperCase()}</div><div style="font-size:12px; color:#6B6257;">${e([...(companyProfile.phones || []), companyProfile.email, companyProfile.website].filter(Boolean).join('  |  '))}</div></div></div>
@@ -10295,7 +10302,7 @@ ${body}</div></body></html>`;
         const closeBtnHtml = `<button type="button" class="no-print" onclick="window.close()" title="${closeLabel}" style="position:fixed; top:14px; right:14px; z-index:999; background:#241F1A; color:#fff; border:none; border-radius:50%; width:38px; height:38px; font-size:18px; line-height:1; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.35);">✕</button>`;
 
         const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escHtml(invoiceState.invoiceNo)}</title>
+<title>${escHtml(docTitleText(invoiceState.docType, job.clientName, invoiceState.invoiceNo))}</title>
 <style>
   @page { size: letter; margin: 0; }
   *{ -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
@@ -10464,8 +10471,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                 );
             }
 
-            const nameSlug = (job.clientName || 'client').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'client';
-            const filename = `${companyFileSlug()}_Invoice_${nameSlug}.pdf`;
+            const filename = docFileBase(invoiceState.docType, job.clientName, invoiceState.invoiceNo) + '.pdf';
             return { doc, filename };
         } finally {
             iframe.remove();
@@ -10509,7 +10515,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                 const blob = doc.output('blob');
                 const file = new File([blob], filename, { type: 'application/pdf' });
                 if (navigator.canShare({ files: [file] })) {
-                    await navigator.share({ files: [file] });
+                    await navigator.share({ files: [file], title: file.name.replace(/\.pdf$/i,'').replace(/_/g,' ') });
                 } else {
                     doc.save(filename);
                 }
@@ -10724,7 +10730,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                 if (invoiceState && invoiceState.docType === 'CONTRACT' && typeof window.jspdf !== 'undefined') {
                     const cb = contractBuildPdfDoc(c.job, invoiceState);
                     file = new File([cb.doc.output('blob')], cb.filename, { type: 'application/pdf' });
-                } else file = await buildLinkedPdfFile(buildInvoiceHtmlDoc(false), '.invoice-page', `${companyFileSlug()}_Invoice_${nameSlug}`, '#FDFBF6');
+                } else file = await buildLinkedPdfFile(buildInvoiceHtmlDoc(false), '.invoice-page', docFileBase(invoiceState.docType, c.job.clientName, invoiceState.invoiceNo), '#FDFBF6');
             } else {
                 const appt = appointments.find(a => a.id === c.apptId);
                 if (appt) file = await buildLinkedPdfFile(buildAppointmentQuoteHtmlDoc(appt), '.quote-page', `${companyFileSlug()}_Estimate_${nameSlug}`, '#FDFBF6');
@@ -14704,7 +14710,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                 const blob = doc.output('blob');
                 const file = new File([blob], filename, { type: 'application/pdf' });
                 if (navigator.canShare({ files: [file] })) {
-                    await navigator.share({ files: [file] });
+                    await navigator.share({ files: [file], title: file.name.replace(/\.pdf$/i,'').replace(/_/g,' ') });
                     sent = true;
                 } else {
                     doc.save(filename);
