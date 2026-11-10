@@ -159,6 +159,25 @@
         .badge.cancelled { background: rgba(220, 38, 38, 0.2); color: #f87171; border: 1px solid rgba(220, 38, 38, 0.4); }
         tr.job-cancelled-row { opacity: 0.6; }
         .icon-svg { width: 16px; height: 16px; fill: currentColor; display: inline-block; vertical-align: middle; }
+        /* Light theme: the bright accent colours (cyan/green/amber/red…) are for the dark theme; on white they were hard to read, so use deeper shades of the same colours. */
+        body.light-theme [style*="color:#38bdf8"]:not(#toast):not(#undoToast), body.light-theme [style*="color: #38bdf8"]:not(#toast):not(#undoToast) { color: #0369a1 !important; }
+        body.light-theme [style*="color:#34d399"]:not(#toast):not(#undoToast), body.light-theme [style*="color: #34d399"]:not(#toast):not(#undoToast) { color: #047857 !important; }
+        body.light-theme [style*="color:#fbbf24"]:not(#toast):not(#undoToast), body.light-theme [style*="color: #fbbf24"]:not(#toast):not(#undoToast) { color: #b45309 !important; }
+        body.light-theme [style*="color:#f39c12"]:not(#toast):not(#undoToast), body.light-theme [style*="color: #f39c12"]:not(#toast):not(#undoToast) { color: #b45309 !important; }
+        body.light-theme [style*="color:#f87171"]:not(#toast):not(#undoToast), body.light-theme [style*="color: #f87171"]:not(#toast):not(#undoToast) { color: #dc2626 !important; }
+        body.light-theme [style*="color:#a78bfa"]:not(#toast):not(#undoToast), body.light-theme [style*="color: #a78bfa"]:not(#toast):not(#undoToast) { color: #6d28d9 !important; }
+        body.light-theme [style*="color:#fb923c"]:not(#toast):not(#undoToast), body.light-theme [style*="color: #fb923c"]:not(#toast):not(#undoToast) { color: #c2410c !important; }
+        body.light-theme h1, body.light-theme .card h2, body.light-theme .stat-card.accent strong, body.light-theme .detail-summary, body.light-theme .job-step-tab.active-tab, body.light-theme .ct-link, body.light-theme .ag-section-title, body.light-theme .ag-meta a, body.light-theme #techGuideContent .tg-detail h4 { color: #0369a1; }
+        body.light-theme .job-step-tab.active-tab { border-bottom-color: #0369a1; }
+        body.light-theme .debt-alert-badge { color: #be123c; }
+        body.light-theme [style*="color:#94a3b8"]:not(#toast):not(#undoToast), body.light-theme [style*="color: #94a3b8"]:not(#toast):not(#undoToast) { color: #475569 !important; }
+        body.light-theme [style*="color:#0ea5e9"]:not(button):not(#toast), body.light-theme summary { color: #0369a1; }
+        body.light-theme .badge.active { color: #b45309; }
+        body.light-theme .badge.completed { color: #047857; }
+        body.light-theme .badge.cancelled { color: #dc2626; }
+        body.light-theme .autocomplete-items { background: #ffffff; border-color: #cbd5e1; box-shadow: 0 10px 20px rgba(15,23,42,0.18); }
+        body.light-theme .autocomplete-items div { color: #0f172a; border-bottom-color: #e2e8f0; }
+        body.light-theme .autocomplete-items div:hover { background: #f1f5f9; color: #0284c7; }
         .ct-link { color:#38bdf8; cursor:pointer; }
         span.ct-link { text-decoration: underline dotted; }
         .autocomplete-items { position: absolute; border: 1px solid var(--border-color); border-top: none; z-index: 99; top: 100%; left: 0; right: 0; background: #11141d; border-radius: 0 0 8px 8px; max-height: 180px; overflow-y: auto; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
@@ -678,7 +697,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         <div class="stat-card"><span data-i18n="statActualRemaining"></span><strong id="statActualRemaining" style="color:#fbbf24;">0.0</strong></div>
     </div>
 
-    <div class="card" id="selectedStatsCard" style="background: #0f172a; border: 1px dashed var(--accent); margin-bottom: 20px; display: none;">
+    <div class="card" id="selectedStatsCard" style="background: var(--panel-bg); border: 1px dashed var(--accent); margin-bottom: 20px; display: none;">
         <h2 style="color: #38bdf8; font-size: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 12px;">
             📊 <span data-i18n="selectedTitle"></span> (<span id="selectedCount">0</span> <span data-i18n="selectedTitleSuffix"></span>)
         </h2>
@@ -892,7 +911,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 <div class="grid-3">
                     <div class="form-group"><label data-i18n="lblTotalRevenue"></label><input type="text" id="totalRevenue" value="0" onfocus="this.select()" oninput="calculateRemaining(); calculate();"></div>
                     <div class="form-group"><label data-i18n="lblAmountReceived"></label><input type="text" id="amountReceived" value="0" onfocus="this.select()" oninput="calculateRemaining(); calculate(); renderLedger('receipt'); updateSplitRatioTotal();"></div>
-                    <div class="form-group"><label data-i18n="lblAmountRemaining"></label><input type="text" id="amountRemaining" value="0" readonly style="background: #1e293b; color: #f87171; font-weight: 700;"></div>
+                    <div class="form-group"><label data-i18n="lblAmountRemaining"></label><input type="text" id="amountRemaining" value="0" readonly style="background: var(--panel-bg); color: #e11d48; font-weight: 700;"></div>
                 </div>
                 <div id="changeOrderBox" style="margin-bottom:14px;">
                     <div id="coSummary"></div>
@@ -1645,17 +1664,17 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                 <input type="checkbox" id="quoteShowPayment" onchange="toggleQuoteOptionalField('Payment', this.checked)">
                 <label for="quoteShowPayment" style="font-size:0.85rem; min-width:150px;" data-i18n="invoicePaymentMethodToggle"></label>
-                <input type="text" id="quotePaymentMethodText" style="display:none; background:#11141d; color:#fff; border:1px solid var(--border-color); padding:7px 10px; border-radius:8px; flex-grow:1; min-width:150px;">
+                <input type="text" id="quotePaymentMethodText" style="display:none; border:1px solid var(--border-color); padding:7px 10px; border-radius:8px; flex-grow:1; min-width:150px;">
             </div>
             <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                 <input type="checkbox" id="quoteShowFollowUp" onchange="toggleQuoteOptionalField('FollowUp', this.checked)">
                 <label for="quoteShowFollowUp" style="font-size:0.85rem; min-width:150px;" data-i18n="invoiceFollowUpToggle"></label>
-                <input type="text" id="quoteFollowUpText" style="display:none; background:#11141d; color:#fff; border:1px solid var(--border-color); padding:7px 10px; border-radius:8px; flex-grow:1; min-width:150px;">
+                <input type="text" id="quoteFollowUpText" style="display:none; border:1px solid var(--border-color); padding:7px 10px; border-radius:8px; flex-grow:1; min-width:150px;">
             </div>
             <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                 <input type="checkbox" id="quoteShowValidity" onchange="toggleQuoteOptionalField('Validity', this.checked)">
                 <label for="quoteShowValidity" style="font-size:0.85rem; min-width:150px;" data-i18n="invoiceValidityToggle"></label>
-                <input type="text" id="quoteValidityText" style="display:none; background:#11141d; color:#fff; border:1px solid var(--border-color); padding:7px 10px; border-radius:8px; flex-grow:1; min-width:150px;">
+                <input type="text" id="quoteValidityText" style="display:none; border:1px solid var(--border-color); padding:7px 10px; border-radius:8px; flex-grow:1; min-width:150px;">
             </div>
         </div>
 
@@ -5271,8 +5290,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             <div style="display:flex; align-items:center; gap:6px; font-size:0.78rem; font-weight:700; color:var(--text-muted); margin-bottom:8px;">${t('dailyAllocTitle')} <button type="button" onclick="alert(t('dailyAllocHelp'));" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:0 2px;">❓</button></div>
             ${chipsHtml}
             <div style="display:grid; grid-template-columns: 1fr 1fr 40px; gap:10px; align-items:end;">
-                <div><label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('dailyDateColLabel')}</label><input type="date" id="da-date-${index}" value="${isoDate(new Date())}" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%;"></div>
-                <div><label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('dailyAmountColLabel')}</label><input type="text" inputmode="decimal" id="da-amt-${index}" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); addTechDaily(${index});}" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; text-align: center;"></div>
+                <div><label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('dailyDateColLabel')}</label><input type="date" id="da-date-${index}" value="${isoDate(new Date())}" style="border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%;"></div>
+                <div><label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('dailyAmountColLabel')}</label><input type="text" inputmode="decimal" id="da-amt-${index}" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); addTechDaily(${index});}" style="border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; text-align: center;"></div>
                 <button type="button" class="ledger-plus" onclick="addTechDaily(${index})" style="align-self:end;">+</button>
             </div>
             ${rows ? `<div style="margin-top:8px;">${rows}</div>` : ''}
@@ -5555,16 +5574,16 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 <div class="tg-row1" style="display: grid; grid-template-columns: 2.2fr ${isCustom ? '1.1fr 1.1fr' : '1.6fr'} 1fr 40px; gap: 10px; align-items: center; margin-bottom: 12px;">
                     <div>
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblTechName')}</label>
-                        <select onchange="updateTechData(${index}, 'name', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; min-width: 140px;">${techOptionsHtml}</select>
+                        <select onchange="updateTechData(${index}, 'name', this.value)" style="border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; min-width: 140px;">${techOptionsHtml}</select>
                     </div>
                     <div>
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblPaymentMethod')}</label>
-                        <select onchange="updateTechData(${index}, 'type', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%;">${typeOptionsHtml}</select>
+                        <select onchange="updateTechData(${index}, 'type', this.value)" style="border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%;">${typeOptionsHtml}</select>
                     </div>
                     ${isCustom ? `<div><label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblPercent')}</label><input type="text" placeholder="50" value="${tech.customPercent !== undefined ? tech.customPercent : 50}" onfocus="this.select()" oninput="updateTechData(${index}, 'customPercent', this.value)" style="background: #11141d; color: #38bdf8; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; text-align: center; font-weight:700;"></div>` : ''}
                     <div>
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${isCustom ? t('lblRateOrLimit') : t('lblRatePrice')}</label>
-                        <input type="text" placeholder="0" value="${tech.rate !== undefined ? tech.rate : ''}" onfocus="this.select()" oninput="updateTechData(${index}, 'rate', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; text-align: center;">
+                        <input type="text" placeholder="0" value="${tech.rate !== undefined ? tech.rate : ''}" onfocus="this.select()" oninput="updateTechData(${index}, 'rate', this.value)" style="border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; text-align: center;">
                     </div>
                     <div style="display: flex; align-items: flex-end; height: 100%;">
                         <button type="button" onclick="removeTechnician(${index})" style="background: rgba(225, 29, 72, 0.15); color: #e11d48; border: 1px solid rgba(225, 29, 72, 0.4); padding: 9px 0; border-radius: 8px; width: 100%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px;">
@@ -5575,13 +5594,13 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 10px; align-items: center;">
                     <div><label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblDaysHours')}</label>
                         <div style="display:flex; gap:4px;">
-                            <input type="text" placeholder="1" value="${tech.days !== undefined ? tech.days : 1}" onfocus="this.select()" oninput="updateTechData(${index}, 'days', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; text-align: center;">
+                            <input type="text" placeholder="1" value="${tech.days !== undefined ? tech.days : 1}" onfocus="this.select()" oninput="updateTechData(${index}, 'days', this.value)" style="border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; text-align: center;">
                             ${tech.type === 'باليومية' ? `<button type="button" onclick="calculateDaysFromSchedule(${index})" title="${t('calcDaysFromScheduleBtn')}" style="background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius:8px; padding:0 10px; cursor:pointer; font-size:0.9rem;">📅</button>` : ''}
                         </div>
                     </div>
                     <div>
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('lblDue')}</label>
-                        <div class="tech-dues-display" style="background: #11141d; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; text-align: center; font-size: 0.85rem; color: #38bdf8; font-weight: 700;">
+                        <div class="tech-dues-display" style="background: var(--panel-bg); border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; text-align: center; font-size: 0.85rem; color: #38bdf8; font-weight: 700;">
                             ${techDuesLineHtml(displayWage, periodMs ? periodReimb : techReimbTotal(tech))}
                         </div>
                     </div>
@@ -6861,12 +6880,12 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 <div style="display: grid; grid-template-columns: ${isOther ? '1.4fr 1.4fr' : '2fr'} 1fr 40px; gap: 10px; align-items: center;">
                     <div>
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('expenseCategoryLabel')}</label>
-                        <select onchange="updateExpenseItem(${index}, 'category', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%;">${catOptionsHtml}</select>
+                        <select onchange="updateExpenseItem(${index}, 'category', this.value)" style="border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%;">${catOptionsHtml}</select>
                     </div>
-                    ${isOther ? `<div><label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('expenseNoteLabel')}</label><input type="text" value="${item.note || ''}" oninput="updateExpenseItem(${index}, 'note', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%;"></div>` : ''}
+                    ${isOther ? `<div><label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('expenseNoteLabel')}</label><input type="text" value="${item.note || ''}" oninput="updateExpenseItem(${index}, 'note', this.value)" style="border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%;"></div>` : ''}
                     <div>
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${t('expenseAmountLabel')}</label>
-                        <input type="text" value="${item.amount !== undefined ? item.amount : ''}" onfocus="this.select()" oninput="updateExpenseItem(${index}, 'amount', this.value)" style="background: #11141d; color: #fff; border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; text-align: center;">
+                        <input type="text" value="${item.amount !== undefined ? item.amount : ''}" onfocus="this.select()" oninput="updateExpenseItem(${index}, 'amount', this.value)" style="border: 1px solid var(--border-color); padding: 9px 12px; border-radius: 8px; width: 100%; text-align: center;">
                     </div>
                     <div style="display: flex; align-items: flex-end; height: 100%;">
                         <button type="button" onclick="removeExpenseItem(${index})" style="background: rgba(225, 29, 72, 0.15); color: #e11d48; border: 1px solid rgba(225, 29, 72, 0.4); padding: 9px 0; border-radius: 8px; width: 100%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px;">
@@ -7304,7 +7323,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         const registeredTechs = getUniqueRegisteredTechnicians();
         container.innerHTML = profitPartners.map((p, i) => `
             <div class="ledger-row">
-                <select onchange="pickProfitPartnerName(${i}, this.value); this.selectedIndex = 0;" title="${t('profitPartnerPickTitle')}" style="flex:0 0 38px; width:38px; padding:0 2px; text-align:center; background:#11141d; color:#fff; border:1px solid var(--border-color); border-radius:8px;">
+                <select onchange="pickProfitPartnerName(${i}, this.value); this.selectedIndex = 0;" title="${t('profitPartnerPickTitle')}" style="flex:0 0 38px; width:38px; padding:0 2px; text-align:center; border:1px solid var(--border-color); border-radius:8px;">
                     <option value="">👤</option>
                     ${registeredTechs.map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('')}
                 </select>
@@ -9513,7 +9532,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     }
     function contractEditorHtml(job) {
         const c = invoiceState.contract; if (!c) return '';
-        const inp = 'background:#11141d; color:#fff; border:1px solid var(--border-color); padding:8px 10px; border-radius:8px; width:100%; box-sizing:border-box;';
+        const inp = 'border:1px solid var(--border-color); padding:8px 10px; border-radius:8px; width:100%; box-sizing:border-box;';
         const lbl = 'font-size:0.75rem; color:var(--text-muted); margin:8px 0 4px; display:block;';
         const h3 = 'color:#38bdf8; font-size:0.95rem; margin:18px 0 8px;';
         const items = invoiceState.items;
@@ -9804,16 +9823,16 @@ ${body}</div></body></html>`;
                 <div class="invoice-item-grid" style="display:grid; grid-template-columns: ${itemsGridCols}; gap:10px; align-items:end;">
                     <div class="invoice-item-desc-cell">
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColDesc')}</label>
-                        <textarea rows="1" oninput="updateInvoiceItemField(${index}, 'desc', this.value); autoGrowTextarea(this);" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; resize:vertical; min-height:40px; font-family:inherit; font-size:0.9rem; line-height:1.4;">${escHtml(it.desc)}</textarea>
+                        <textarea rows="1" oninput="updateInvoiceItemField(${index}, 'desc', this.value); autoGrowTextarea(this);" style="border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; resize:vertical; min-height:40px; font-family:inherit; font-size:0.9rem; line-height:1.4;">${escHtml(it.desc)}</textarea>
                     </div>
                     ${hideQty ? '' : `
                     <div>
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColQty')}</label>
-                        <input type="text" value="${escHtml(it.qty)}" onfocus="this.select()" oninput="updateInvoiceItemField(${index}, 'qty', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; text-align:center;">
+                        <input type="text" value="${escHtml(it.qty)}" onfocus="this.select()" oninput="updateInvoiceItemField(${index}, 'qty', this.value)" style="border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; text-align:center;">
                     </div>`}
                     <div>
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColAmount')}</label>
-                        <input type="text" value="${it.amount !== undefined ? it.amount : ''}" onfocus="this.select()" oninput="updateInvoiceItemField(${index}, 'amount', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; text-align:center;">
+                        <input type="text" value="${it.amount !== undefined ? it.amount : ''}" onfocus="this.select()" oninput="updateInvoiceItemField(${index}, 'amount', this.value)" style="border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; text-align:center;">
                     </div>
                     <div style="display:flex; align-items:stretch; height:40px;">
                         <button type="button" onclick="removeInvoiceItemRow(${index})" title="${t('invoiceRemoveItemBtn')}" style="background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid rgba(225,29,72,0.4); padding:9px 0; border-radius:8px; width:100%; cursor:pointer; font-size:14px;">✕</button>
@@ -9826,10 +9845,10 @@ ${body}</div></body></html>`;
             <div class="tech-card" style="margin-bottom:8px;">
                 <div style="display:grid; grid-template-columns: 1fr 110px 40px; gap:10px; align-items:center;">
                     <div>
-                        <input type="text" value="${escHtml(c.label)}" placeholder="${t('invoiceCreditNamePh')}" oninput="updateInvoiceCreditField(${index}, 'label', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
+                        <input type="text" value="${escHtml(c.label)}" placeholder="${t('invoiceCreditNamePh')}" oninput="updateInvoiceCreditField(${index}, 'label', this.value)" style="border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
                     </div>
                     <div>
-                        <input type="text" value="${c.amount !== undefined ? c.amount : ''}" onfocus="this.select()" oninput="updateInvoiceCreditField(${index}, 'amount', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; text-align:center;">
+                        <input type="text" value="${c.amount !== undefined ? c.amount : ''}" onfocus="this.select()" oninput="updateInvoiceCreditField(${index}, 'amount', this.value)" style="border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; text-align:center;">
                     </div>
                     <div>
                         <button type="button" onclick="removeInvoiceCreditRow(${index})" title="${t('invoiceRemoveItemBtn')}" style="background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid rgba(225,29,72,0.4); padding:9px 0; border-radius:8px; width:100%; cursor:pointer; font-size:14px;">✕</button>
@@ -9913,7 +9932,7 @@ ${body}</div></body></html>`;
             <div style="margin-bottom:16px;">
                 <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('quoteAiInstructionsLabel')}</label>
                 <div style="display:flex; gap:8px; align-items:center;">
-                    <input type="text" id="invoiceAiInstructions" dir="auto" value="${escHtml(invoiceState.aiInstructions || '')}" placeholder="${t('quoteAiInstructionsPh')}" oninput="setInvoiceField('aiInstructions', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; flex-grow:1;">
+                    <input type="text" id="invoiceAiInstructions" dir="auto" value="${escHtml(invoiceState.aiInstructions || '')}" placeholder="${t('quoteAiInstructionsPh')}" oninput="setInvoiceField('aiInstructions', this.value)" style="border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; flex-grow:1;">
                     <button type="button" id="invoiceVoiceInstructionsBtn" onclick="startVoiceDictation('invoiceAiInstructions','invoiceVoiceInstructionsBtn', v => setInvoiceField('aiInstructions', v))" style="background:linear-gradient(135deg,#dc2626,#f97316); color:#fff; border:none; border-radius:8px; padding:9px 12px; font-size:0.9rem; font-weight:700; cursor:pointer; white-space:nowrap;">🎤</button>
                 </div>
                 <button type="button" id="invoiceRunInstructionsBtn" class="secondary" onclick="runInvoiceAiInstructionsOnly()" style="width:100%; padding:8px; font-size:0.8rem; margin-top:8px; background:#7c3aed;">${t('invoiceRunInstructionsBtn')}</button>
@@ -9945,17 +9964,17 @@ ${body}</div></body></html>`;
                 <div style="display:flex; align-items:center; gap:10px;">
                     <input type="checkbox" id="invShowPayment" ${invoiceState.showPaymentMethod ? 'checked' : ''} onchange="toggleInvoiceOption('showPaymentMethod', this.checked)">
                     <label for="invShowPayment" style="font-size:0.85rem; min-width:150px;">${t('invoicePaymentMethodToggle')}</label>
-                    ${invoiceState.showPaymentMethod ? `<input type="text" value="${escHtml(invoiceState.paymentMethodText)}" oninput="setInvoiceField('paymentMethodText', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:7px 10px; border-radius:8px; flex-grow:1;">` : ''}
+                    ${invoiceState.showPaymentMethod ? `<input type="text" value="${escHtml(invoiceState.paymentMethodText)}" oninput="setInvoiceField('paymentMethodText', this.value)" style="border:1px solid var(--border-color); padding:7px 10px; border-radius:8px; flex-grow:1;">` : ''}
                 </div>
                 <div style="display:flex; align-items:center; gap:10px;">
                     <input type="checkbox" id="invShowFollowUp" ${invoiceState.showFollowUp ? 'checked' : ''} onchange="toggleInvoiceOption('showFollowUp', this.checked)">
                     <label for="invShowFollowUp" style="font-size:0.85rem; min-width:150px;">${t('invoiceFollowUpToggle')}</label>
-                    ${invoiceState.showFollowUp ? `<input type="text" value="${escHtml(invoiceState.followUpText)}" oninput="setInvoiceField('followUpText', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:7px 10px; border-radius:8px; flex-grow:1;">` : ''}
+                    ${invoiceState.showFollowUp ? `<input type="text" value="${escHtml(invoiceState.followUpText)}" oninput="setInvoiceField('followUpText', this.value)" style="border:1px solid var(--border-color); padding:7px 10px; border-radius:8px; flex-grow:1;">` : ''}
                 </div>
                 <div style="display:flex; align-items:center; gap:10px;">
                     <input type="checkbox" id="invShowValidity" ${invoiceState.showValidity ? 'checked' : ''} onchange="toggleInvoiceOption('showValidity', this.checked)">
                     <label for="invShowValidity" style="font-size:0.85rem; min-width:150px;">${t('invoiceValidityToggle')}</label>
-                    ${invoiceState.showValidity ? `<input type="text" value="${escHtml(invoiceState.validityText)}" oninput="setInvoiceField('validityText', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:7px 10px; border-radius:8px; flex-grow:1;">` : ''}
+                    ${invoiceState.showValidity ? `<input type="text" value="${escHtml(invoiceState.validityText)}" oninput="setInvoiceField('validityText', this.value)" style="border:1px solid var(--border-color); padding:7px 10px; border-radius:8px; flex-grow:1;">` : ''}
                 </div>
             </div>
 
@@ -9969,7 +9988,7 @@ ${body}</div></body></html>`;
                 : rcpts.map(r => `
                     <label class="tech-card" style="display:flex; align-items:center; gap:12px; margin-bottom:8px; cursor:pointer; ${(invoiceState.receiptIds || []).includes(r.id) ? 'border-color:#22c55e;' : ''}">
                         <input type="checkbox" style="width:22px; height:22px; flex-shrink:0;" ${(invoiceState.receiptIds || []).includes(r.id) ? 'checked' : ''} onchange="toggleReceiptPayment('${jsArg(r.id)}', this.checked)">
-                        <div style="flex:1; font-size:0.9rem;"><b>${escHtml(r.date || '')}</b>${(invoiceState.receiptIds || []).includes(r.id) ? `<select onclick="event.stopPropagation()" onchange="setReceiptMethod('${jsArg(r.id)}', this.value)" style="margin-inline-start:8px; padding:3px 6px; font-size:0.8rem; background:#11141d; color:#fff; border:1px solid var(--border-color); border-radius:6px;">${['cash','zelle','venmo','check','card'].map(m => `<option value="${m}" ${(((invoiceState.receiptMethods || {})[r.id]) || r.method || 'cash') === m ? 'selected' : ''}>${receiptMethodLabel(m)}</option>`).join('')}</select>` : (r.method ? ' · ' + escHtml(receiptMethodLabel(r.method)) : '')}${r.note ? `<div style="font-size:0.75rem; color:var(--text-muted);">${escHtml(r.note)}</div>` : ''}</div>
+                        <div style="flex:1; font-size:0.9rem;"><b>${escHtml(r.date || '')}</b>${(invoiceState.receiptIds || []).includes(r.id) ? `<select onclick="event.stopPropagation()" onchange="setReceiptMethod('${jsArg(r.id)}', this.value)" style="margin-inline-start:8px; padding:3px 6px; font-size:0.8rem; border:1px solid var(--border-color); border-radius:6px;">${['cash','zelle','venmo','check','card'].map(m => `<option value="${m}" ${(((invoiceState.receiptMethods || {})[r.id]) || r.method || 'cash') === m ? 'selected' : ''}>${receiptMethodLabel(m)}</option>`).join('')}</select>` : (r.method ? ' · ' + escHtml(receiptMethodLabel(r.method)) : '')}${r.note ? `<div style="font-size:0.75rem; color:var(--text-muted);">${escHtml(r.note)}</div>` : ''}</div>
                         <div style="font-weight:700;">${fmtUsd(parseVal(r.amount))}</div>
                     </label>`).join('');
             receiptEditorHtml = `
@@ -9983,7 +10002,7 @@ ${body}</div></body></html>`;
             </div>` : (rcpts.length ? `<div style="font-size:0.8rem; color:#f59e0b; margin-bottom:12px;">${t('receiptPickOne')}</div>` : '')}
             <div style="margin-bottom:14px;">
                 <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('receiptReasonLbl')}</label>
-                <input type="text" dir="auto" value="${escHtml(invoiceState.receiptReason || '')}" placeholder="${escHtml(t('receiptReasonPh'))}" oninput="setInvoiceField('receiptReason', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
+                <input type="text" dir="auto" value="${escHtml(invoiceState.receiptReason || '')}" placeholder="${escHtml(t('receiptReasonPh'))}" oninput="setInvoiceField('receiptReason', this.value)" style="border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
             </div>
             <label style="display:flex; align-items:center; gap:10px; margin-bottom:16px; font-size:0.85rem; cursor:pointer;">
                 <input type="checkbox" style="width:20px; height:20px;" ${invoiceState.receiptShowTotals !== false ? 'checked' : ''} onchange="toggleInvoiceOption('receiptShowTotals', this.checked)">
@@ -10005,7 +10024,7 @@ ${body}</div></body></html>`;
             <div class="grid-3" style="margin-bottom:14px;">
                 <div>
                     <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceTypeLabel')}</label>
-                    <select onchange="setInvoiceDocType(this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
+                    <select onchange="setInvoiceDocType(this.value)" style="border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
                         <option value="INVOICE" ${invoiceState.docType === 'INVOICE' ? 'selected' : ''}>${t('invoiceTitle')}</option>
                         <option value="ESTIMATE" ${invoiceState.docType === 'ESTIMATE' ? 'selected' : ''}>${t('invoiceTypeEstimate')}</option>
                         <option value="PROPOSAL" ${invoiceState.docType === 'PROPOSAL' ? 'selected' : ''}>${t('invoiceTypeProposal')}</option>
@@ -10016,11 +10035,11 @@ ${body}</div></body></html>`;
                 </div>
                 <div>
                     <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${invoiceState.docType === 'RECEIPT' ? t('receiptNumberLbl') : t('invoiceNumberLbl')}</label>
-                    <input type="text" value="${escHtml(invoiceState.invoiceNo)}" oninput="setInvoiceField('invoiceNo', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
+                    <input type="text" value="${escHtml(invoiceState.invoiceNo)}" oninput="setInvoiceField('invoiceNo', this.value)" style="border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
                 </div>
                 <div>
                     <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceDateLbl')}</label>
-                    <input type="text" value="${escHtml(invoiceState.invoiceDate)}" oninput="setInvoiceField('invoiceDate', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
+                    <input type="text" value="${escHtml(invoiceState.invoiceDate)}" oninput="setInvoiceField('invoiceDate', this.value)" style="border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%;">
                 </div>
             </div>
 
@@ -10037,7 +10056,7 @@ ${body}</div></body></html>`;
                     <label style="font-size:0.75rem; color:var(--text-muted); display:block;">${t('invoiceNoteLabel')}</label>
                     <button type="button" class="secondary" onclick="useJobDescriptionForInvoice()" style="padding:4px 10px; font-size:0.7rem;">${t('useJobScopeBtn')}</button>
                 </div>
-                <textarea rows="2" placeholder="${t('invoiceNotePlaceholder')}" oninput="setInvoiceField('note', this.value)" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; resize:vertical;">${escHtml(invoiceState.note)}</textarea>
+                <textarea rows="2" placeholder="${t('invoiceNotePlaceholder')}" oninput="setInvoiceField('note', this.value)" style="border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; resize:vertical;">${escHtml(invoiceState.note)}</textarea>
             </div>
 
             <label style="display:flex; align-items:center; gap:10px; margin-bottom:12px; font-size:0.85rem; cursor:pointer;">
@@ -14276,15 +14295,15 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                 <div class="invoice-item-grid" style="display:grid; grid-template-columns: 1fr 70px 110px 40px; gap:10px; align-items:end;">
                     <div class="quote-item-desc-cell">
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColDesc')}</label>
-                        <textarea rows="1" oninput="updateQuoteItemField(${index}, 'desc', this.value); autoGrowTextarea(this);" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; resize:vertical; min-height:40px; font-family:inherit; font-size:0.9rem; line-height:1.4;">${escHtml(it.desc)}</textarea>
+                        <textarea rows="1" oninput="updateQuoteItemField(${index}, 'desc', this.value); autoGrowTextarea(this);" style="border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; resize:vertical; min-height:40px; font-family:inherit; font-size:0.9rem; line-height:1.4;">${escHtml(it.desc)}</textarea>
                     </div>
                     <div>
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColQty')}</label>
-                        <input type="text" value="${escHtml(qty)}" onfocus="this.select()" oninput="updateQuoteItemField(${index}, 'qty', this.value); syncQuotePriceFromItems();" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; text-align:center;">
+                        <input type="text" value="${escHtml(qty)}" onfocus="this.select()" oninput="updateQuoteItemField(${index}, 'qty', this.value); syncQuotePriceFromItems();" style="border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; text-align:center;">
                     </div>
                     <div>
                         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">${t('invoiceColAmount')}</label>
-                        <input type="text" value="${it.amount !== undefined ? it.amount : ''}" onfocus="this.select()" oninput="updateQuoteItemField(${index}, 'amount', this.value); syncQuotePriceFromItems();" style="background:#11141d; color:#fff; border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; text-align:center;">
+                        <input type="text" value="${it.amount !== undefined ? it.amount : ''}" onfocus="this.select()" oninput="updateQuoteItemField(${index}, 'amount', this.value); syncQuotePriceFromItems();" style="border:1px solid var(--border-color); padding:9px 12px; border-radius:8px; width:100%; text-align:center;">
                     </div>
                     <div style="display:flex; align-items:stretch; height:40px;">
                         <button type="button" onclick="removeQuoteItemRow(${index})" style="background:rgba(225,29,72,0.15); color:#e11d48; border:1px solid rgba(225,29,72,0.4); padding:9px 0; border-radius:8px; width:100%; cursor:pointer; font-size:14px;">✕</button>
