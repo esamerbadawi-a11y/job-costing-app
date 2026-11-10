@@ -13417,44 +13417,42 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         if (contacts.length === 0) { container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:30px;">${t('noContactsYet')}</p>`; return; }
         if (filtered.length === 0) { container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:30px;">${t('noContactsMatchSearch')}</p>`; return; }
 
-        // No search: show only the 10 newest (short list). "Show all" (or any search) lists A-Z with a letter divider.
-        const grouped = !!query || contactsShowAll;
+        // Always A-Z with a letter divider.
+        const grouped = true;   // always A-Z with a letter divider (the newest customers are on Home)
         const sorted = grouped
             ? [...filtered].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
             : [...filtered].sort((a, b) => (parseInt(String(b.id), 10) || 0) - (parseInt(String(a.id), 10) || 0)).slice(0, 10);
-        let html = '<div style="display:flex; flex-direction:column; gap:10px;">';
+        // Compact rows (name + phone on one line) with an A-Z jump bar, so 50+ customers don't make a long page.
+        // Email / address / note are one tap away on the customer's own page (tap the name).
+        const letterOf = c => { const ch = String(c.name || '').trim().charAt(0).toUpperCase(); return /[A-Z\u0600-\u06FF]/.test(ch) ? ch : '#'; };
+        const letters = []; sorted.forEach(c => { const l = letterOf(c); if (letters[letters.length - 1] !== l) letters.push(l); });
+        let html = '';
+        if (letters.length > 3) html += '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;">' + letters.map(l => `<button type="button" class="secondary" onclick="contactsJumpTo('${l}')" style="padding:4px 9px; font-size:0.78rem; min-width:30px;">${l}</button>`).join('') + '</div>';
+        html += '<div style="display:flex; flex-direction:column; gap:6px;">';
         let lastLetter = '';
         sorted.forEach(c => {
-            if (grouped) {
-                const ch = String(c.name || '').trim().charAt(0).toUpperCase();
-                const letter = /[A-Z\u0600-\u06FF]/.test(ch) ? ch : '#';
-                if (letter !== lastLetter) { lastLetter = letter; html += `<div style="margin:8px 4px 0; color:#38bdf8; font-weight:800; font-size:0.95rem; border-bottom:1px solid var(--border-color); padding-bottom:3px;">${letter}</div>`; }
-            }
+            const letter = letterOf(c);
+            if (letter !== lastLetter) { lastLetter = letter; html += `<div id="ctLetter_${letter.charCodeAt(0)}" style="margin:8px 4px 0; color:#38bdf8; font-weight:800; font-size:0.95rem; border-bottom:1px solid var(--border-color); padding-bottom:3px;">${letter}</div>`; }
             const initial = (c.name || '?').trim().charAt(0).toUpperCase();
-            html += `<div style="display:flex; align-items:center; gap:14px; background:var(--card-dark); border:1px solid var(--border-color); border-radius:16px; padding:14px 16px;">
-                <div style="flex-shrink:0; width:48px; height:48px; border-radius:50%; background:${avatarColorFor(c.name)}; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.1rem;">${initial}</div>
+            html += `<div style="display:flex; align-items:center; gap:10px; background:var(--card-dark); border:1px solid var(--border-color); border-radius:12px; padding:8px 10px;">
+                <div style="flex-shrink:0; width:34px; height:34px; border-radius:50%; background:${avatarColorFor(c.name)}; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.9rem;">${initial}</div>
                 <div style="flex:1; min-width:0;">
-                    <div onclick="closeContactsListModal(); openCustomerHub('${c.id}')" style="font-weight:700; font-size:0.95rem; cursor:pointer;">${c.name}${c.company ? ` <span style="color:var(--text-muted); font-weight:400; font-size:0.78rem;">— ${c.company}</span>` : ''}</div>
-                    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:4px; font-size:0.78rem;">
-                        ${c.phone ? `<a href="#" onclick="event.preventDefault(); showPhoneChoice('${c.phone.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📞 ${c.phone}</a>` : ''}
-                        ${c.email ? `<a href="mailto:${c.email}" style="color:#38bdf8; text-decoration:none;">✉️ ${c.email}</a>` : ''}
-                        ${c.address ? `<a href="#" onclick="event.preventDefault(); showMapChoice('${c.address.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none;">📍 ${c.address}</a>` : ''}
-                    </div>
-                    ${c.note ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">${c.note}</div>` : ''}
+                    <div onclick="closeContactsListModal(); openCustomerHub('${c.id}')" style="font-weight:700; font-size:0.92rem; cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c.name}${c.company ? ` <span style="color:var(--text-muted); font-weight:400; font-size:0.75rem;">— ${c.company}</span>` : ''}</div>
+                    ${c.phone ? `<a href="#" onclick="event.preventDefault(); showPhoneChoice('${c.phone.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none; font-size:0.78rem;">📞 ${c.phone}</a>` : ''}
+                    ${c.address ? `<div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><a href="#" onclick="event.preventDefault(); showMapChoice('${c.address.replace(/'/g, "\\'")}');" style="color:#38bdf8; text-decoration:none; font-size:0.78rem;">📍 ${c.address}</a></div>` : ''}
                 </div>
-                <div style="display:flex; flex-direction:column; gap:4px; flex-shrink:0;">
-                    <button class="secondary" onclick="editContact('${c.id}')" style="padding:4px 10px; font-size:0.72rem;">${t('editBtn')}</button>
-                    <button class="danger" onclick="deleteContact('${c.id}')" style="padding:4px 10px; font-size:0.72rem;">${t('deleteBtn')}</button>
-                </div>
+                <button class="secondary" onclick="editContact('${c.id}')" title="${t('editBtn')}" style="padding:5px 9px; font-size:0.8rem;">✏️</button>
+                <button class="danger" onclick="deleteContact('${c.id}')" title="${t('deleteBtn')}" style="padding:5px 9px; font-size:0.8rem;">🗑</button>
             </div>`;
         });
         html += '</div>';
-        if (!query && contacts.length > 10) {
+        if (false) {   // the "show all" button is no longer needed: the list is always the full A-Z list
             html += `<div style="text-align:center; margin-top:14px;"><button type="button" class="secondary" onclick="toggleContactsShowAll()" style="padding:10px 22px;">${contactsShowAll ? t('contactsShowRecent') : t('contactsShowAll').replace('{n}', String(contacts.length))}</button></div>`;
         }
         container.innerHTML = html;
     }
     let contactsShowAll = false;
+    function contactsJumpTo(l) { const e = document.getElementById('ctLetter_' + l.charCodeAt(0)); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     function toggleContactsShowAll() { contactsShowAll = !contactsShowAll; renderContacts(); }
 
     /* ---------------- Quick Schedule (Weekly Board) ---------------- */
