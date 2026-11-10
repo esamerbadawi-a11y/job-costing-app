@@ -8745,8 +8745,18 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     }
 
     // Shows the document that is currently being edited, exactly as it will print, in a new tab (nothing is saved).
-    function previewInvoiceNow() {
+    async function previewInvoiceNow() {
         if (!invoiceState) return;
+        // On phones, a Safari preview tab can only be shared as "Safari.pdf" / a blob: link. So there we build the real PDF
+        // and show the "ready" card, whose Share button sends the named file (Estimate_Client_No.pdf).
+        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent))) {
+            try {
+                if (typeof window.jspdf !== 'undefined') {
+                    const r = await buildInvoicePdfDoc();
+                    if (r && r.doc) { showReportReady(r.doc, r.filename); return; }
+                }
+            } catch (e) { console.warn('mobile preview fallback', e); }
+        }
         const win = window.open('', '_blank');
         if (!win) { alert(t('alertSelectOneToPrint')); return; }
         const html = buildInvoiceHtmlDoc(false);
