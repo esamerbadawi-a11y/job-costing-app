@@ -3373,10 +3373,12 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     }
     function showMapChoice(address) {
         const q = encodeURIComponent(address);
-        document.getElementById('mapChoiceGoogleBtn').onclick = () => { window.open(`https://maps.google.com/?q=${q}`, '_blank'); closeMapChoice(); };
-        document.getElementById('mapChoiceAppleBtn').onclick = () => { window.open(`https://maps.apple.com/?q=${q}`, '_blank'); closeMapChoice(); };
+        document.getElementById('mapChoiceGoogleBtn').onclick = () => { closeMapChoice(); openMapsLink(`https://www.google.com/maps/search/?api=1&query=${q}`); };
+        document.getElementById('mapChoiceAppleBtn').onclick = () => { closeMapChoice(); openMapsLink(`https://maps.apple.com/?q=${q}`); };
         document.getElementById('mapChoiceModal').style.display = 'flex';
     }
+    // Same-window navigation: on iPhone a map link is handed straight to the Maps app (a "_blank" tab just stays empty).
+    function openMapsLink(url) { window.location.href = url; }
     function closeMapChoice() { document.getElementById('mapChoiceModal').style.display = 'none'; }
 
     function toggleUserMenu() {
@@ -4802,7 +4804,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         if (!digits) { alert(t('clientNoPhone')); return; }
         if (digits.length === 10) digits = '1' + digits;   // US number typed without the country code
         const msg = buildClientVisitMessage(oldDate, newDate, newTime, scheduleMode);
-        document.getElementById('sendMethodWhatsAppBtn').onclick = () => { closeSendMethodModal(); window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, '_blank'); };
+        document.getElementById('sendMethodWhatsAppBtn').onclick = () => { closeSendMethodModal(); openMapsLink(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`); };
         document.getElementById('sendMethodSmsBtn').onclick = () => { closeSendMethodModal(); window.location.href = `sms:${digits}&body=${encodeURIComponent(msg)}`; };
         document.getElementById('sendMethodModal').style.display = 'flex';
     }
@@ -6414,7 +6416,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     }
 
     // The buttons open WhatsApp / Messages directly from the tap, so the phone never blocks them as pop-ups.
-    function openExternal(url, newTab) { if (newTab) window.open(url, '_blank'); else window.location.href = url; }
+    function openExternal(url, newTab) { window.location.href = url; }   // always same-window: on iPhone a new tab for wa.me/maps just stays empty
     function emailSubjectKeyFor(msgKind) {
         if (msgKind === 'thankyou') return 'emailThankYouSubjectPrefix';
         if (msgKind === 'followup') return 'emailFollowUpSubjectPrefix';
@@ -7106,7 +7108,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     }
     function openMapFor(id) {
         const v = (document.getElementById(id).value || '').trim(); if (!v) return;
-        window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(v), '_blank');
+        openMapsLink('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(v));
     }
     function contactAddressFor(name, phone) {
         const n = (name || '').trim().toLowerCase(), p = (phone || '').replace(/\D/g, '');
@@ -9298,7 +9300,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:14px; padding:13px 14px; line-height:1.7; font-size:0.88rem;">
                 ${c.phone ? `<div>📞 <a href="#" onclick="event.preventDefault(); showPhoneChoice('${ph}');" style="color:#38bdf8; text-decoration:none;">${escHtml(c.phone)}</a></div>` : ''}
                 ${c.email ? `<div>✉️ ${escHtml(c.email)}</div>` : ''}
-                ${c.address ? `<div>📍 ${escHtml(c.address)}</div>` : ''}
+                ${c.address ? `<div>📍 <a href="#" onclick="event.preventDefault(); showMapChoice('${jsArg(c.address)}');" style="color:#38bdf8; text-decoration:none;">${escHtml(c.address)}</a></div>` : ''}
                 ${c.note ? `<div style="color:var(--text-muted);">${escHtml(c.note)}</div>` : ''}
                 ${c.id ? `<div style="margin-top:6px;"><a href="#" onclick="event.preventDefault(); closeCustomerHub(); switchScreen('contacts'); editContact('${c.id}');" style="color:var(--text-muted); font-size:0.78rem;">✏️ ${t('custEdit')}</a></div>` : ''}
             </div>
@@ -15565,7 +15567,7 @@ ${closeBtnHtml}
             });
         });
         closeSendScheduleModal();
-        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+        openMapsLink(`https://wa.me/?text=${encodeURIComponent(msg)}`);
     }
 
     // Pressing "Last week" repeatedly steps one more week further back each time (last week,
@@ -16577,7 +16579,7 @@ ${closeBtnHtml}
         const msg = currentLang === 'ar'
             ? `مرحباً بك يا ${name}، إجمالي المستحقات الخاصة بك حتى الآن هو: $${dues.toFixed(2)}${bonusLine}`
             : `Hi ${name}, your total dues so far are: $${dues.toFixed(2)}${bonusLine}`;
-        window.open(`https://wa.me/${normalized}?text=${encodeURIComponent(msg)}`, '_blank');
+        openMapsLink(`https://wa.me/${normalized}?text=${encodeURIComponent(msg)}`);
     }
 
     // Sends ONE person's (or the company's) share on its own, with a line per job showing what
@@ -16608,7 +16610,7 @@ ${closeBtnHtml}
         const totalLabel = currentLang === 'ar' ? 'الإجمالي' : 'Total';
         const parts = [`${currentLang === 'ar' ? 'تقرير حصة ' + partnerLabel : partnerLabel + ' Share Report'}:${periodLine}`, ...lines, `${totalLabel}: $${amount.toFixed(2)}`];
         const msg = parts.join('\n');
-        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+        openMapsLink(`https://wa.me/?text=${encodeURIComponent(msg)}`);
     }
 
     // Draws ONE partner's "Earned vs Withdrawn" section (title, period line, a row per job he
