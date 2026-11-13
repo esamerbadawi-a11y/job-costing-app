@@ -636,6 +636,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:15px;">
                 <button class="secondary" onclick="importContactsFromJobs()" data-i18n="importContactsBtn"></button>
+                <button class="secondary" onclick="mergeDuplicateContacts()" data-i18n="mergeDupBtn"></button>
                 <button class="success" id="contactsToggleFormBtn" onclick="toggleContactForm()" data-i18n="addContactBtn"></button>
             </div>
 
@@ -1585,6 +1586,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             <button id="aiSendEmailBtn" class="secondary" onclick="sendAiReminder('email')" data-i18n="aiSendEmail"></button>
             <button id="aiCallBtn" class="secondary" style="display:none; background:#16a34a;" onclick="callAiReminderClient()" data-i18n="aiCallBtn"></button>
             <button id="aiCopyBtn" class="secondary" onclick="copyAiReminder()" data-i18n="aiCopyBtn"></button>
+            <button id="aiPayLinkBtn" class="secondary" style="background:#635bff; color:#fff;" onclick="addPaymentLinkToAiMessage()" data-i18n="aiPayLinkBtn"></button>
             <button id="aiShareBtn" class="success" style="display:none;" onclick="shareAiReminderWithInvoice()" data-i18n="aiShareBtn"></button>
             <button id="aiTemplateBtn" class="warning" onclick="useTemplateReminder('aiTemplateNote')" data-i18n="aiUseTemplateBtn"></button>
         </div>
@@ -2367,6 +2369,10 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         confirmDeleteContact: { ar: 'متأكد من حذف جهة الاتصال دي؟', en: 'Delete this contact?' },
         noContactsYet: { ar: 'لسه مفيش أي جهات اتصال. ضيف عميل يدويًا أو استورد من الشغلانات القديمة.', en: 'No contacts yet. Add one manually or import from past jobs.' },
         noContactsMatchSearch: { ar: 'مفيش نتايج مطابقة للبحث.', en: 'No contacts match your search.' },
+        mergeDupBtn: { ar: '🔗 دمج المكرر', en: '🔗 Merge duplicates' },
+        mergeDupNone: { ar: 'مفيش عملاء مكررين (بنفس رقم التليفون).', en: 'No duplicate customers found (same phone number).' },
+        mergeDupAsk: { ar: 'نفس العميل مسجل أكتر من مرة. أدمجهم في واحد؟', en: 'The same customer is saved more than once. Merge into one?' },
+        mergeDupDone: { ar: 'تم دمج {n} سجل مكرر.', en: 'Merged {n} duplicate record(s).' },
         noNewContactsToImport: { ar: 'كل عملاء الشغلانات موجودين بالفعل في جهات الاتصال.', en: 'Every job client is already in your contacts.' },
         importedContactsCount: { ar: 'تم استيراد {n} عميل جديد.', en: '{n} new contact(s) imported.' },
         phoneChoiceTitle: { ar: 'إيه اللي عايز تعمله؟', en: 'What would you like to do?' },
@@ -2983,6 +2989,9 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         aiFileDownloaded: { ar: '⬇️ الملف اتنزّل على الجهاز — ارفقه في الإيميل', en: '⬇️ The file was downloaded — attach it to your email' },
         aiSharing: { ar: 'بيجهّز الملف...', en: 'Preparing document...' },
         alertShareNotSupported: { ar: 'المشاركة بالصورة مش متاحة على الجهاز/المتصفح ده. جرّب من الموبايل، أو استخدم أزرار الإرسال التانية.', en: 'Sharing with an image isn\'t supported on this device/browser. Try from a phone, or use the other send buttons.' },
+        aiPayLinkBtn: { ar: '💳 ضيف لينك الدفع', en: '💳 Add payment link' },
+        aiPayLinkMissing: { ar: 'مفيش لينك دفع محفوظ. ضيفه من بيانات الشركة (Company Profile) في خانة Payment Link.', en: 'No payment link saved. Add it in Company Profile, in the Payment Link field.' },
+        aiPayLinkAlready: { ar: 'لينك الدفع موجود في الرسالة بالفعل.', en: 'The payment link is already in the message.' },
         aiUseTemplateBtn: { ar: 'رسالة جاهزة (من غير AI)', en: 'Ready-made message (no AI)' },
         aiRetryBtn: { ar: '🔄 جرّب الـ AI تاني', en: '🔄 Try the AI again' },
         aiNoKeyNote: { ar: 'مفيش مفتاح AI، فدي رسالة جاهزة تقدر تعدّل فيها.', en: 'There is no AI key, so this is a ready-made message you can edit.' },
@@ -6281,9 +6290,19 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         el.textContent = text;
         el.style.borderColor = kind === 'error' ? 'var(--danger)' : (kind === 'ok' ? 'var(--success)' : 'var(--accent)');
     }
+    // Adds the saved Payment Link (Company Profile) to the end of the message being edited — works for any document, estimates included.
+    function addPaymentLinkToAiMessage() {
+        const link = (companyProfile && companyProfile.paymentLink || '').trim();
+        if (!link) { alert(t('aiPayLinkMissing')); return; }
+        const ta = document.getElementById('aiReminderText');
+        if (ta.value.indexOf(link) !== -1) { showToast(t('aiPayLinkAlready')); return; }
+        const lang = (document.getElementById('aiReminderLang') || {}).value === 'ar' ? 'ar' : 'en';
+        ta.value = ta.value.replace(/\s+$/, '') + paymentLinkMessageLine(lang, true);
+        refreshAiReminderButtons(false);
+    }
     function refreshAiReminderButtons(busy) {
         const has = !!document.getElementById('aiReminderText').value.trim();
-        ['aiSendWaBtn', 'aiSendSmsBtn', 'aiSendEmailBtn', 'aiCopyBtn', 'aiShareBtn'].forEach(id => { document.getElementById(id).disabled = busy || !has; });
+        ['aiSendWaBtn', 'aiSendSmsBtn', 'aiSendEmailBtn', 'aiCopyBtn', 'aiShareBtn', 'aiPayLinkBtn'].forEach(id => { document.getElementById(id).disabled = busy || !has; });
         document.getElementById('aiCallBtn').disabled = !!busy;   // doesn't need the written text — just dials
         document.getElementById('aiRetryBtn').disabled = !!busy;
     }
@@ -13008,7 +13027,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
     }
 
     /* ---------------- Contacts ---------------- */
-    function normalizePhoneDigits(p) { return (p || '').replace(/\D/g, ''); }
+    function normalizePhoneDigits(p) { return (p || '').replace(/\D/g, '').slice(-10); }   // last 10 digits, so a leading country code (+1) never makes the same number look different
 
     // A match on phone digits is decisive; if neither has a phone, fall back to an
     // exact (case-insensitive) name match.
@@ -13096,6 +13115,39 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         contacts = contacts.filter(c => c.id !== id);
         try { await CONTACTS_DOC.set({ entries: contacts }); renderContacts(); }
         catch (err) { alert(t('alertJobSaveFailed')); }
+    }
+
+
+    // Finds customers saved twice (same phone number, whatever the formatting) and merges each pair on request.
+    // Nothing is merged without a confirm; the kept record is filled in from the other one, and any lead pointing at the removed one is re-pointed.
+    async function mergeDuplicateContacts() {
+        const groups = {};
+        contacts.forEach(c => { const k = normalizePhoneDigits(c.phone); if (k.length >= 7) (groups[k] = groups[k] || []).push(c); });
+        // Same phone but two DIFFERENT addresses = probably two real locations of one customer, not a duplicate: leave those alone.
+        const addrKey = c => String(c.address || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 14);
+        const dups = Object.values(groups).filter(g => g.length > 1).filter(g => { const a = g.map(addrKey).filter(Boolean); return new Set(a).size <= 1; });
+        if (!dups.length) { alert(t('mergeDupNone')); return; }
+        let merged = 0;
+        for (const g of dups) {
+            const names = g.map(c => `${c.name || ''}  ${c.phone || ''}`).join('\n');
+            if (!confirm(t('mergeDupAsk') + '\n\n' + names)) continue;
+            const score = c => ['name', 'phone', 'email', 'address', 'company', 'note'].filter(f => String(c[f] || '').trim()).length;
+            const keep = g.slice().sort((a, b) => score(b) - score(a))[0];
+            g.forEach(o => {
+                if (o === keep) return;
+                ['email', 'address', 'company', 'note', 'unit'].forEach(f => { if (!String(keep[f] || '').trim() && String(o[f] || '').trim()) keep[f] = o[f]; });
+                (quoteLeads || []).forEach(l => { if (l.contactId === o.id) l.contactId = keep.id; });
+                contacts = contacts.filter(x => x !== o);
+                merged++;
+            });
+        }
+        if (!merged) return;
+        try {
+            await CONTACTS_DOC.set({ entries: contacts });
+            try { await saveLeadsData(); } catch (e) {}
+            renderContacts();
+            alert(t('mergeDupDone').replace('{n}', merged));
+        } catch (err) { alertSaveError(err); }
     }
 
     // Scans every job on record and adds any client not already a contact — matched the
