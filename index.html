@@ -2718,7 +2718,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         dailyAlreadyHasAlert: { ar: 'اليوم ده فيه مبلغ متسجل للفني ده في الشغلانة دي. امسح المبلغ القديم (🗑) الأول لو عايز تغيره.', en: 'This day already has an amount for this technician on this job. Delete the old amount (🗑) first if you want to change it.' },
         reportReadyTitle: { ar: 'التقرير جاهز', en: 'Report is ready' },
         reportShareBtn: { ar: '📤 مشاركة / حفظ', en: '📤 Share / Save' },
-        reportOpenBtn: { ar: '👁 فتح التقرير', en: '👁 Open report' },
+        reportOpenBtn: { ar: '👁 عرض فقط (للإرسال استخدم مشاركة)', en: '👁 View only (to send, use Share)' },
         reportSaveBtn: { ar: '⬇️ تحميل', en: '⬇️ Download' },
         techGasTitle: { ar: '⛽ جاز', en: '⛽ Gas' },
         techGasWho: { ar: 'الفني:', en: 'Technician:' },
@@ -7909,16 +7909,20 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     async function printSelectedJobsRun(kind, jobsOverride) {
         // Opened synchronously, before the async PDF build below, so phones don't treat the
         // eventual window.open() as popup-blocker-worthy (see printInvoice for the same pattern).
-        const pdfWindow = window.open('', '_blank');
+        const onPhone = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+        const pdfWindow = onPhone ? null : window.open('', '_blank');
         const selectedJobs = jobsOverride || savedJobs.filter(j => selectedJobIds.has(String(j.id)));
         const doc = kind === 'owed' ? await buildOwedJobsPdfDoc(selectedJobs) : await buildJobsPdfDoc(selectedJobs);
+        const jobsFile = reportFileName(kind === 'owed' ? 'Owed_Jobs_Report' : 'Jobs_Report', selectedJobs.length === 1 ? selectedJobs[0].clientName : '', '', '');
+        if (onPhone) { showReportReady(doc, jobsFile); return; }
+        try { doc.setProperties({ title: jobsFile.replace(/\.pdf$/i, '').replace(/_/g, ' ') }); } catch (e) {}
         doc.autoPrint();
         const url = doc.output('bloburl');
         if (pdfWindow && !pdfWindow.closed) {
             pdfWindow.location.href = url;
         } else {
             const a = document.createElement('a');
-            a.href = url; a.download = `${companyFileSlug()}_Jobs.pdf`;
+            a.href = url; a.download = jobsFile;
             document.body.appendChild(a); a.click(); a.remove();
         }
     }
@@ -7961,9 +7965,16 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         const first = raw.split(/[.،;؛]/)[0].trim() || raw;
         return first.length > 34 ? first.slice(0, 33).replace(/\s+\S*$/, '') + '...' : first;
     }
+    // Names every report file the same way: Company_ReportType_Who_Period.pdf — so it shows up properly in WhatsApp/Mail.
+    function reportFileName(kind, who, from, to) {
+        const slug = x => String(x || '').replace(/[^\w\u0600-\u06FF]+/g, '_').replace(/^_+|_+$/g, '');
+        const period = from && to ? from + '_to_' + to : from ? 'from_' + from : to ? 'until_' + to : isoDate(new Date());
+        return [companyFileSlug(), kind, slug(who), period].filter(Boolean).join('_') + '.pdf';
+    }
     // Phone-friendly delivery: a card with fresh taps (share/save, open) — works where a blank pre-opened tab does not.
     function showReportReady(doc, filename) {
         const old = document.getElementById('reportReadyCard'); if (old) old.remove();
+        try { doc.setProperties({ title: filename.replace(/\.pdf$/i, '').replace(/_/g, ' ') }); } catch (e) {}
         const blob = doc.output('blob');
         const url = URL.createObjectURL(blob);
         const file = new File([blob], filename, { type: 'application/pdf' });
@@ -8220,7 +8231,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         }
 
         addLogoWatermark(doc);
-        if (isMobileDev) { showReportReady(doc, 'Technician_Report_' + String(techName).replace(/[^\w\u0600-\u06FF-]+/g, '_') + '.pdf'); return; }
+        if (isMobileDev) { showReportReady(doc, reportFileName('Technician_Report', techName, dateFrom, dateTo)); return; }
+        try { doc.setProperties({ title: reportFileName('Technician_Report', techName, dateFrom, dateTo).replace(/\.pdf$/i, '').replace(/_/g, ' ') }); } catch (e) {}
         doc.autoPrint();
         const pdfUrl = doc.output('bloburl');
         if (preWin && !preWin.closed) { try { preWin.location.href = pdfUrl; } catch (e) { window.open(pdfUrl, '_blank'); } }
@@ -16924,6 +16936,7 @@ ${closeBtnHtml}
             { k: 'wMat', ic: 'receipt', go: function () { openWorkerMaterials(); }, cntFn: function () { var n = wmPending().length; return n ? String(n) : ''; } },
             { k: 'wGuide', ic: 'book', go: go('wguide'), scr: 'wguide' },
             { k: 'wPay', ic: 'wallet', go: go('wpay'), scr: 'wpay' },
+            { k: 'wApp', ic: 'key', go: go('wacc'), scr: 'wacc' },
             { k: 'wRep', ic: 'pie', go: function () { openTechPartnerReportModal(); }, scr: 'wrep' },
             { k: 'wFind', ic: 'pin', go: function () { openFindTechModal(); } }] },
         { k: 'more', ic: 'menu', hub: go('more'), scr: ['more'], subs: [
@@ -17018,7 +17031,7 @@ ${closeBtnHtml}
             '<select id="twStateSel" class="tw-sel" onchange="setStateFilter(this.value)" aria-label="state"></select>' +
             '<button class="tw-lang" id="twLangBtn" onclick="toggleLanguage()" aria-label="language"></button>' +
             '<button class="tw-iconbtn" onclick="openGlobalSearch()" aria-label="search">' + ic('search') + '</button></div>' +
-            '<div id="screenHome" class="tw-panel no-print"></div><div id="screenWData" class="tw-panel no-print"></div><div id="screenWPay" class="tw-panel no-print"></div><div id="screenMore" class="tw-panel no-print"></div>';
+            '<div id="screenHome" class="tw-panel no-print"></div><div id="screenWData" class="tw-panel no-print"></div><div id="screenWPay" class="tw-panel no-print"></div><div id="screenWAcc" class="tw-panel no-print"></div><div id="screenMore" class="tw-panel no-print"></div>';
         while (wrap.firstChild) anchor.parentNode.insertBefore(wrap.firstChild, anchor);
         ['techGuideModal', 'techPartnerReportModal'].forEach(function (id) { var m = $(id); if (m) { m.classList.add('tw-pg'); anchor.parentNode.insertBefore(m, anchor); } });
         try { restyleReport(); } catch (e) { console.error('rep', e); }
@@ -17076,7 +17089,7 @@ ${closeBtnHtml}
     function brandKey() { try { return (companyProfile.name || '') + (companyProfile.logo ? companyProfile.logo.length : 0) + userName() + greet(); } catch (e) { return ''; } }
 
     // ---- wrap the screen switcher so our panels are first-class screens ----
-    var PANELS = { home: 'screenHome', more: 'screenMore', wdata: 'screenWData', wpay: 'screenWPay', wguide: 'techGuideModal', wrep: 'techPartnerReportModal' };
+    var PANELS = { home: 'screenHome', more: 'screenMore', wdata: 'screenWData', wpay: 'screenWPay', wacc: 'screenWAcc', wguide: 'techGuideModal', wrep: 'techPartnerReportModal' };
     var FLEXP = { wguide: 1, wrep: 1 }, TICKP = { home: 1, wdata: 1, wpay: 1, more: 1 };
     var _old = switchScreenNow;
     switchScreenNow = function (name) {
@@ -17092,7 +17105,7 @@ ${closeBtnHtml}
         closeSheet(); syncNav(true); try { window.scrollTo(0, 0); } catch (e) {}
     };
     function renderPanel(name) {
-        if (name === 'home') renderHome(); else if (name === 'wdata') renderWData(); else if (name === 'wpay') renderWPay(); else if (name === 'more') renderMore(); else if (name === 'wguide') { try { renderTechGuideContent(); } catch (e) {} } else if (name === 'wrep') { try { renderTechPartnerReportContent(); } catch (e) {} }
+        if (name === 'home') renderHome(); else if (name === 'wdata') renderWData(); else if (name === 'wpay') renderWPay(); else if (name === 'wacc') renderWAcc(); else if (name === 'more') renderMore(); else if (name === 'wguide') { try { renderTechGuideContent(); } catch (e) {} } else if (name === 'wrep') { try { renderTechPartnerReportContent(); } catch (e) {} }
     }
 
     // ---------- data helpers ----------
@@ -17372,6 +17385,75 @@ ${closeBtnHtml}
         try { await WORKER_ACCOUNTS.doc(email).set({ active: !on, updatedAt: Date.now() }, { merge: true }); showToast(tw(on ? 'accStopped' : 'accStarted')); if (currentScreen === 'wdata') renderWData(); }
         catch (e) { alert(tw('accFail') + ' (' + errTxt(e) + ')'); }
     };
+
+    // ---------- Worker-app accounts: one screen to create the logins used by worker.html ----------
+    Object.assign(TW, {
+        wApp: { ar: 'حسابات تطبيق العامل', en: 'Worker app accounts' },
+        waHint: { ar: 'هنا بتعمل اليوزر (الإيميل) والباسورد اللي العامل بيدخل بيهم تطبيق العامل. العامل يغيّر الباسورد من تطبيقه بعد أول دخول.', en: 'Create the email + password a worker uses to log into the worker app. The worker changes the password inside their app after the first login.' },
+        waLink: { ar: 'لينك تطبيق العامل', en: 'Worker app link' }, waCopy: { ar: 'نسخ اللينك', en: 'Copy link' }, waCopied: { ar: 'اتنسخ', en: 'Copied' },
+        waNone: { ar: 'مفيش دخول', en: 'No login' }, waOn: { ar: 'شغال', en: 'Active' }, waOff: { ar: 'موقوف', en: 'Paused' },
+        waCreate: { ar: 'اعمل دخول', en: 'Create login' }, waPause: { ar: 'إيقاف', en: 'Pause' }, waResume: { ar: 'تشغيل', en: 'Resume' }, waResetLink: { ar: 'رابط تغيير الباسورد', en: 'Password reset link' },
+        waFormTitle: { ar: 'دخول جديد للعامل', en: 'New login for' }, waEmail: { ar: 'الإيميل (اليوزر)', en: 'Email (username)' }, waPass: { ar: 'الباسورد (6 حروف أو أكتر)', en: 'Password (6+ characters)' },
+        waSave: { ar: 'إنشاء الحساب', en: 'Create account' }, waCancel: { ar: 'إلغاء', en: 'Cancel' },
+        waBadEmail: { ar: 'اكتب إيميل صحيح.', en: 'Enter a valid email.' }, waShortPw: { ar: 'الباسورد لازم يكون 6 حروف على الأقل.', en: 'Password must be at least 6 characters.' },
+        waExists: { ar: 'الإيميل ده عنده حساب بالفعل. لو العامل نسي الباسورد استخدم "رابط تغيير الباسورد".', en: 'That email already has an account. If the worker forgot the password, use "Password reset link".' },
+        waDone: { ar: 'تم إنشاء الحساب.\nالإيميل: {e}\nالباسورد: {p}\nابعتهم للعامل. هو يغيّر الباسورد من تطبيقه.', en: 'Account created.\nEmail: {e}\nPassword: {p}\nSend them to the worker. They change the password inside the app.' },
+        waNoTech: { ar: 'مفيش فنيين مسجلين. ضيف فني من صفحة بيانات الفنيين الأول.', en: 'No workers registered yet. Add a worker in Worker data first.' },
+        waResetNote: { ar: 'لو العامل نسي الباسورد وإنت عايز تحط واحد جديد بنفسك: امسح حسابه من Firebase (Authentication)، وبعدين اعمله دخول من هنا بباسورد جديد.', en: 'To set a new password yourself for a worker who forgot it: delete their user in Firebase (Authentication), then create the login here again with a new password.' }
+    });
+    var waForm = null;
+    function workerAppUrl() { try { return location.origin + location.pathname.replace(/[^\/]*$/, '') + 'worker.html'; } catch (e) { return 'worker.html'; } }
+    window.renderWAcc = function renderWAcc() {
+        var names = []; try { names = getUniqueRegisteredTechnicians(); } catch (e) {}
+        Object.values(workerAccounts || {}).forEach(function (a) { if (a && a.tech && names.indexOf(a.tech) < 0) names.push(a.tech); });
+        var url = workerAppUrl();
+        var h = '<div class="tw-pagehead"><h2>' + escHtml(tw('wApp')) + '</h2></div><div class="tw-sec">' + escHtml(tw('waHint')) + '</div>' +
+            '<div class="tw-card nc" style="display:block"><div style="font-size:.8rem;color:var(--text-muted)">' + escHtml(tw('waLink')) + '</div><div dir="ltr" style="word-break:break-all;margin:4px 0 8px">' + escHtml(url) + '</div>' +
+            '<button class="tw-sbtn" onclick="waCopyLink()">' + escHtml(tw('waCopy')) + '</button></div>';
+        if (!names.length) h += '<div class="tw-empty">' + escHtml(tw('waNoTech')) + '</div>';
+        if (waForm) {
+            var ex = accFor(waForm.tech);
+            h += '<div class="tw-card nc" style="display:block;border-color:var(--accent)"><h4 style="margin:0 0 8px">' + escHtml(tw('waFormTitle')) + ' ' + escHtml(waForm.tech) + '</h4>' +
+                '<label style="font-size:.8rem;color:var(--text-muted)">' + escHtml(tw('waEmail')) + '</label><input type="email" id="waEmail" dir="ltr" autocomplete="off" autocapitalize="none" value="' + escHtml(waForm.email || (ex && ex.email) || '') + '" style="margin-bottom:8px">' +
+                '<label style="font-size:.8rem;color:var(--text-muted)">' + escHtml(tw('waPass')) + '</label><input type="text" id="waPass" dir="ltr" autocomplete="off" autocapitalize="none" style="margin-bottom:8px">' +
+                '<select id="waLang" style="margin-bottom:10px"><option value="es">🇪🇸 Español</option><option value="en">🇺🇸 English</option><option value="ar">🇪🇬 العربية</option></select>' +
+                '<div class="tw-btns"><button class="tw-sbtn p" onclick="waSubmit()">' + escHtml(tw('waSave')) + '</button><button class="tw-sbtn" onclick="waCancel()">' + escHtml(tw('waCancel')) + '</button></div></div>';
+        }
+        names.forEach(function (n) {
+            var a = accFor(n), st = !a ? tw('waNone') : (a.active === false ? tw('waOff') : tw('waOn'));
+            h += '<div class="tw-card nc"><div class="tw-av">' + escHtml(n.charAt(0).toUpperCase()) + '</div><div class="tx"><h4>' + escHtml(n) + '</h4><p dir="ltr" style="text-align:start;unicode-bidi:isolate">' + escHtml(a ? a.email : '—') + ' · ' + escHtml(st) + '</p>' +
+                '<div class="tw-btns">' + (!a || !a.authCreated ? '<button class="tw-sbtn p" onclick="waOpen(\'' + jsArg(n) + '\')">' + escHtml(tw('waCreate')) + '</button>' : '') +
+                (a ? '<button class="tw-sbtn" onclick="twAccToggle(\'' + jsArg(a.email) + '\')">' + escHtml(a.active === false ? tw('waResume') : tw('waPause')) + '</button>' : '') +
+                (a && a.authCreated ? '<button class="tw-sbtn" onclick="twAccReset(\'' + jsArg(a.email) + '\',\'' + jsArg(a.lang || 'en') + '\')">' + escHtml(tw('waResetLink')) + '</button>' : '') +
+                '</div></div></div>';
+        });
+        h += '<div class="tw-sec" style="margin-top:14px">' + escHtml(tw('waResetNote')) + '</div>';
+        setHtml('screenWAcc', h);
+    };
+    window.waCopyLink = function () { var u = workerAppUrl(); try { navigator.clipboard.writeText(u).then(function () { showToast(tw('waCopied')); }, function () { prompt('', u); }); } catch (e) { prompt('', u); } };
+    window.waOpen = function (tech) { waForm = { tech: tech }; renderWAcc(); try { $('waEmail').focus(); } catch (e) {} };
+    window.waCancel = function () { waForm = null; renderWAcc(); };
+    window.waSubmit = async function () {
+        if (!waForm) return;
+        var email = ($('waEmail').value || '').trim().toLowerCase(), pw = $('waPass').value || '', lang = $('waLang').value || 'es', tech = waForm.tech;
+        if (!/^\S+@\S+\.\S+$/.test(email)) { alert(tw('waBadEmail')); return; }
+        if (pw.length < 6) { alert(tw('waShortPw')); return; }
+        var app = firebase.initializeApp(firebaseConfig, 'tw-sec-' + (++appN) + '-' + Date.now());
+        try {
+            try { await app.auth().createUserWithEmailAndPassword(email, pw); }
+            catch (e) { if (e && e.code === 'auth/email-already-in-use') { alert(tw('waExists')); return; } alert(tw('accFail') + ' (' + errTxt(e) + ')'); return; }
+            var old = workerAccountForTech(tech);
+            if (old && old.email && old.email !== email) await WORKER_ACCOUNTS.doc(old.email).set({ active: false, updatedAt: Date.now() }, { merge: true });
+            var prev = workerAccounts[email] || {};
+            var office = ((companyProfile && companyProfile.phones) || [])[0] || '';
+            await WORKER_ACCOUNTS.doc(email).set({ email: email, tech: tech, region: prev.region || (old && old.region) || '', lang: lang, active: true, officePhone: office, authCreated: true, authCreatedAt: Date.now(), updatedAt: Date.now() }, { merge: true });
+            waForm = null;
+            alert(tw('waDone').replace('{e}', email).replace('{p}', pw));
+            setTimeout(renderWAcc, 400);
+        } catch (e) { alert(tw('accFail') + ' (' + errTxt(e) + ')'); }
+        finally { try { await app.auth().signOut(); } catch (e) {} try { await app.delete(); } catch (e) {} }
+    };
+
     // after saving a worker that has an email but no login yet, offer to create the login
     var _snt2 = saveNewTechnician;
     saveNewTechnician = async function () {
@@ -17381,7 +17463,7 @@ ${closeBtnHtml}
             var fc = $('addTechFormContainer');
             if (email && /^\S+@\S+\.\S+$/.test(email) && fc && fc.style.display === 'none') {
                 var rec = workerAccounts[email];
-                if (!rec || !rec.authCreated) await twAccCreate(email, name, lang);
+                if (!rec || !rec.authCreated) { waForm = { tech: name, email: email }; switchScreen('wacc'); }
             }
         } catch (e) { console.error('acc', e); }
         return r;
