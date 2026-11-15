@@ -7985,7 +7985,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         wrap.innerHTML = `<div style="background:var(--card-dark,#1e2433); color:var(--text-main,#fff); border:1px solid var(--border-color,#334); border-radius:14px; width:86%; max-width:340px; padding:20px; text-align:center;">
             <div style="font-weight:800; margin-bottom:12px;">📄 ${t('reportReadyTitle')}</div>
             ${canShareFile ? `<button id="rrShare" class="success" style="width:100%; padding:11px; margin-bottom:8px;">${t('reportShareBtn')}</button>` : ''}
-            <a id="rrOpen" href="${url}" target="_blank" rel="noopener" style="display:block; padding:11px; margin-bottom:8px; border-radius:8px; background:#0ea5e9; color:#fff; font-weight:700; text-decoration:none;">${t('reportOpenBtn')}</a>
+            ${canShareFile ? '' : `<a id="rrOpen" href="${url}" target="_blank" rel="noopener" style="display:block; padding:11px; margin-bottom:8px; border-radius:8px; background:#0ea5e9; color:#fff; font-weight:700; text-decoration:none;">${t('reportOpenBtn')}</a>`}
             <button id="rrSave" class="secondary" style="width:100%; padding:9px; margin-bottom:8px;">${t('reportSaveBtn')}</button>
             <button id="rrClose" class="danger" style="width:100%; padding:8px; font-size:0.85rem;">${t('guideCloseBtn')}</button></div>`;
         document.body.appendChild(wrap);
