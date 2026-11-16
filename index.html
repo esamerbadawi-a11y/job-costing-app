@@ -9703,9 +9703,9 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         if (!boqLoaded) { alert(t('boqNotLoaded')); return; }
         const m = boqPending.res.model;
         if (m.metaCustId && c.id && m.metaCustId !== c.id && !confirm(boqTf('boqWrongCust', { name: m.metaClient || '?' }))) return;
-        let max = 0; boqProposals.forEach(p => { const mm = /-P(\d+)$/.exec(p.no || ''); if (mm) max = Math.max(max, parseInt(mm[1], 10)); });
+        const boqDay = isoDate(new Date()).replace(/-/g, ''); const boqPre = companyInvoicePrefix() + '-P-' + boqDay + '-'; let max = 0; boqProposals.forEach(p => { if ((p.no || '').indexOf(boqPre) === 0) { const n = parseInt((p.no || '').slice(boqPre.length), 10); if (n > max) max = n; } });
         const p = {
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 5), no: companyInvoicePrefix() + '-P' + String(max + 1).padStart(3, '0'),
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 5), no: boqPre + String(max + 1).padStart(2, '0'),
             createdAt: new Date().toISOString(), createdBy: currentUserEmail || '', sourceFile: boqPending.fileName || '', templateVersion: '2',
             custId: c.id || '', clientName: c.name || '', clientPhone: c.phone || '', fileClient: m.preparedFor,
             company: m.company, subtitle: m.subtitle, preparedBy: m.preparedBy, date: m.date, projectName: m.projectName, address: m.address,
