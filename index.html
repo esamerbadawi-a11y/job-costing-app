@@ -2265,7 +2265,11 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         companyIncomeLabel: { ar: 'دخل الشركة (20% من الأرباح)', en: 'Company Income (20% of Profit)' },
         companyOutgoLabel: { ar: 'مصروفات الشركة (الطلع)', en: 'Company Expenses (Outgo)' },
         companyNetLabel: { ar: 'صافي الشركة', en: 'Company Net' },
-        exportBackupBtn: { ar: '💾 نسخة احتياطية', en: '💾 Backup' },
+        exportBackupBtn: { ar: '💾 نسخة احتياطية كاملة', en: '💾 Full backup' },
+        bkFullStart: { ar: 'بجهّز النسخة الكاملة... استنى.', en: 'Preparing the full backup... please wait.' },
+        bkFullDone: { ar: 'النسخة الكاملة اتحفظت: {n} مستند ({mb} ميجا). احفظ الملف في Files.', en: 'Full backup saved: {n} documents ({mb} MB). Keep the file in Files.' },
+        bkFullPartial: { ar: 'تنبيه: الأجزاء دي ماقدرتش تتقرا وما دخلتش النسخة:', en: 'Warning: these parts could not be read and are NOT in the backup:' },
+        bkFullFail: { ar: 'النسخة الاحتياطية فشلت. مفيش ملف اتعمل، جرّب تاني.', en: 'Backup failed. No file was created, try again.' },
         importBackupBtn: { ar: '📂 استيراد نسخة', en: '📂 Import Backup' },
         alertImportFailed: { ar: 'ملف النسخة الاحتياطية غير صالح أو تالف.', en: 'The backup file is invalid or corrupted.' },
         alertImportSummaryPrefix: { ar: 'تم الاستيراد:', en: 'Import complete:' },
@@ -2719,7 +2723,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         dailyAlreadyHasAlert: { ar: 'اليوم ده فيه مبلغ متسجل للفني ده في الشغلانة دي. امسح المبلغ القديم (🗑) الأول لو عايز تغيره.', en: 'This day already has an amount for this technician on this job. Delete the old amount (🗑) first if you want to change it.' },
         reportReadyTitle: { ar: 'التقرير جاهز', en: 'Report is ready' },
         reportShareBtn: { ar: '📤 مشاركة / حفظ', en: '📤 Share / Save' },
-        reportOpenBtn: { ar: '👁 عرض فقط (للإرسال استخدم مشاركة)', en: '👁 View only (to send, use Share)' },
+        reportOpenBtn: { ar: '👁 مراجعة التقرير (للعرض بس، للإرسال استخدم مشاركة)', en: '👁 Review report (view only, to send use Share)' },
         reportSaveBtn: { ar: '⬇️ تحميل', en: '⬇️ Download' },
         techGasTitle: { ar: '⛽ جاز', en: '⛽ Gas' },
         techGasWho: { ar: 'الفني:', en: 'Technician:' },
@@ -2911,6 +2915,9 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         custBtnJob: { ar: 'شغلانة', en: 'Job' },
         custSecDocs: { ar: 'المستندات', en: 'Documents' },
         jfBtn: { ar: 'ملف الشغلانة', en: 'Job file' },
+        clrBtn: { ar: 'استلام نهائي', en: 'Clearance' },
+        clrNoJobForCust: { ar: 'العميل ده مالوش شغلانة لسه. اعمل شغلانة الأول.', en: 'This customer has no job yet. Create a job first.' },
+        custPickJobTitle: { ar: 'اختار الشغلانة', en: 'Choose the job' },
         jfTitle: { ar: 'ملف الشغلانة', en: 'Job file' },
         jfDocs: { ar: 'المستندات (عرض سعر / عقد / فاتورة / إيصال)', en: 'Documents (estimate / contract / invoice / receipt)' },
         jfProps: { ar: 'عروض BOQ (إكسل)', en: 'BOQ proposals (Excel)' },
@@ -4315,7 +4322,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
 
         CLEAR_DOC.onSnapshot(doc => {
             clrIndex = (doc.exists && doc.data().entries) ? doc.data().entries : []; clrLoaded = true;
-            safeCall(renderJobFile);
+            safeCall(renderJobFile); safeCall(refreshCustomerHub);
         }, err => console.error('Firestore clearances sync error:', err));
 
         TECH_PAYMENTS_DOC.onSnapshot(doc => {
@@ -8140,7 +8147,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         wrap.innerHTML = `<div style="background:var(--card-dark,#1e2433); color:var(--text-main,#fff); border:1px solid var(--border-color,#334); border-radius:14px; width:86%; max-width:340px; padding:20px; text-align:center;">
             <div style="font-weight:800; margin-bottom:12px;">📄 ${t('reportReadyTitle')}</div>
             ${canShareFile ? `<button id="rrShare" class="success" style="width:100%; padding:11px; margin-bottom:8px;">${t('reportShareBtn')}</button>` : ''}
-            ${canShareFile ? '' : `<a id="rrOpen" href="${url}" target="_blank" rel="noopener" style="display:block; padding:11px; margin-bottom:8px; border-radius:8px; background:#0ea5e9; color:#fff; font-weight:700; text-decoration:none;">${t('reportOpenBtn')}</a>`}
+            <a id="rrOpen" href="${url}" target="_blank" rel="noopener" style="display:block; padding:11px; margin-bottom:8px; border-radius:8px; background:#0ea5e9; color:#fff; font-weight:700; text-decoration:none;">${t('reportOpenBtn')}</a>
             <button id="rrSave" class="secondary" style="width:100%; padding:9px; margin-bottom:8px;">${t('reportSaveBtn')}</button>
             <button id="rrClose" class="danger" style="width:100%; padding:8px; font-size:0.85rem;">${t('guideCloseBtn')}</button></div>`;
         document.body.appendChild(wrap);
@@ -8413,14 +8420,37 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         else window.open(pdfUrl, '_blank');
     }
 
-    function exportBackupJSON() {
-        const backup = { savedJobs, technicianPhones, futureJobs, quoteLeads, exportDate: new Date().toISOString(), version: 1 };
-        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = `${companyFileSlug()}_BACKUP_${isoDate(new Date())}.json`;
-        document.body.appendChild(a); a.click(); a.remove();
-        URL.revokeObjectURL(url);
+    // FULL backup: besides the classic fields (kept so the old Import still works), it reads EVERY document in the
+    // main collection (jobs, contacts, appointments, proposals, clearances, photo shards, tech payments, bonuses,
+    // company profile...) plus the worker collections, so nothing that exists in the database is left out.
+    let backupBusy = false;
+    async function exportBackupJSON() {
+        if (backupBusy) return false;
+        backupBusy = true;
+        try {
+            showToast('⏳ ' + t('bkFullStart'));
+            const full = {}, counts = {}, failed = [];
+            for (const col of ['jobCostingApp', 'workerAccounts', 'workerTasks', 'workerPhotos', 'workerMaterials']) {
+                try {
+                    const snap = await db.collection(col).get();
+                    full[col] = {}; counts[col] = 0;
+                    snap.docs.forEach(d => { full[col][d.id] = d.data(); counts[col]++; });
+                } catch (err) { console.error('backup read failed', col, err); failed.push(col + ': ' + ((err && (err.code || err.message)) || 'error')); }
+            }
+            if (!counts.jobCostingApp) { alert(t('bkFullFail') + (failed.length ? '\n' + failed.join('\n') : '')); return false; }
+            const backup = { savedJobs, technicianPhones, futureJobs, quoteLeads, firestore: full, counts, failed, exportDate: new Date().toISOString(), version: 2 };
+            const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `${companyFileSlug()}_FULL_BACKUP_${isoDate(new Date())}.json`;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+            const total = Object.keys(counts).reduce((n, k) => n + counts[k], 0);
+            alert(boqTf('bkFullDone', { n: total, mb: (blob.size / 1048576).toFixed(1) }) + (failed.length ? '\n\n' + t('bkFullPartial') + '\n' + failed.join('\n') : ''));
+            return !failed.length;
+        } catch (err) {
+            console.error(err); alert(t('bkFullFail') + ' (' + ((err && (err.code || err.message)) || '') + ')'); return false;
+        } finally { backupBusy = false; }
     }
 
     async function importBackupJSON(event) {
@@ -8670,7 +8700,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
 
     async function exportPDF() {
         const doc = await buildJobsPdfDoc(savedJobs);
-        doc.save(`${companyFileSlug()}_PM_STATEMENT.pdf`);
+        showReportReady(doc, `${companyFileSlug()}_PM_STATEMENT.pdf`);
     }
 
     // ===== Branded, itemized client invoice (replaces the old plain PDF invoice) =====
@@ -9511,11 +9541,12 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 ${c.note ? `<div style="color:var(--text-muted);">${escHtml(c.note)}</div>` : ''}
                 ${c.id ? `<div style="margin-top:6px;"><a href="#" onclick="event.preventDefault(); closeCustomerHub(); switchScreen('contacts'); editContact('${c.id}');" style="color:var(--text-muted); font-size:0.78rem;">✏️ ${t('custEdit')}</a></div>` : ''}
             </div>
-            <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:14px;">
-                ${big('📋', t('invoiceTypeEstimate'), "custDoc('ESTIMATE')")}${big('📑', t('invoiceTypeProposal'), "custDoc('PROPOSAL')")}${big('🧾', t('invoiceTitle'), "custDoc('INVOICE')")}${big('📄', t('invoiceTypeContract'), "custDoc('CONTRACT')")}
-                ${big('💵', t('invoiceTypeReceipt'), 'custReceipt()')}${big('➕', t('invoiceTypeAdditionalWork'), "custDoc('ADDITIONAL_WORK')")}${big('📅', t('custBtnAppt'), 'custAppt()')}${big('🔧', t('custBtnJob'), 'custJob()')}
+            <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-top:14px;">
+                ${big('📋', t('invoiceTypeEstimate'), "custDoc('ESTIMATE')")}${big('📑', t('invoiceTypeProposal'), "custDoc('PROPOSAL')")}${big('🧾', t('invoiceTitle'), "custDoc('INVOICE')")}${big('📄', t('invoiceTypeContract'), "custDoc('CONTRACT')")}${big('✅', t('clrBtn'), 'custClearance()')}
+                ${big('💵', t('invoiceTypeReceipt'), 'custReceipt()')}${big('➕', t('invoiceTypeAdditionalWork'), "custDoc('ADDITIONAL_WORK')")}${big('📅', t('custBtnAppt'), 'custAppt()')}${big('🔧', t('custBtnJob'), 'custJob()')}${big('📁', t('jfBtn'), 'custJobFile()')}
             </div>`;
         h += boqHubSection(c);
+        h += clrHubSection(c);
         if (leads.length) {
             h += sec('📄 ' + t('custSecDocs'));
             leads.forEach(l => {
@@ -9616,6 +9647,35 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         closeJobFile(); closeCustomerHub();
         await openInvoiceModal(jobId);
         loadSavedInvoice(savedId);
+    }
+
+    // ---------- Customer page: clearance + job file entry points ----------
+    function custJobsOf() { const c = custResolve(); return c ? savedJobs.filter(j => custSame(j.clientName, j.clientPhone, c)) : []; }
+    function custPickJob(cb) {
+        const jobs = custJobsOf();
+        if (!jobs.length) { alert(t('clrNoJobForCust')); return; }
+        if (jobs.length === 1) { cb(String(jobs[0].id)); return; }
+        let m = document.getElementById('custJobPick'); if (m) m.remove();
+        m = document.createElement('div'); m.id = 'custJobPick';
+        m.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:10200; display:flex; justify-content:center; align-items:center;';
+        m.innerHTML = `<div style="background:var(--card-dark,#1e2433); color:var(--text-main,#fff); border:1px solid var(--border-color,#334); border-radius:14px; width:90%; max-width:380px; max-height:80vh; overflow-y:auto; padding:16px;"><div style="font-weight:800; margin-bottom:10px;">${t('custPickJobTitle')}</div>${jobs.map((j, i) => `<button type="button" class="secondary" data-i="${i}" style="width:100%; text-align:start; padding:10px; margin-bottom:6px;"><b>${escHtml(j.clientAddress || j.clientName || '')}</b><div style="font-size:0.74rem; color:var(--text-muted);">${escHtml(j.jobStatus || '')}${j.startDate ? ' · ' + escHtml(j.startDate) : ''} · ${fmtUsd(parseVal(j.totalRevenue))}</div></button>`).join('')}<button type="button" class="danger" id="custJobPickX" style="width:100%; padding:8px; font-size:0.85rem;">${t('guideCloseBtn')}</button></div>`;
+        document.body.appendChild(m);
+        m.querySelectorAll('button[data-i]').forEach(b => { b.onclick = () => { const id = String(jobs[parseInt(b.dataset.i, 10)].id); m.remove(); cb(id); }; });
+        document.getElementById('custJobPickX').onclick = () => m.remove();
+    }
+    function custClearance() { custPickJob(id => clrOpen(id)); }
+    function custJobFile() { custPickJob(id => { closeCustomerHub(); openJobFile(id); }); }
+    function clrHubSection(c) {
+        const mine = clrIndex.filter(x => custSame(x.clientName, x.clientPhone, c)).sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+        if (!mine.length) return '';
+        const sec = txt => `<div style="margin:18px 0 8px; color:var(--text-muted); font-size:0.8rem; font-weight:700;">${txt}</div>`;
+        let h = sec('✅ ' + t('jfClear'));
+        mine.forEach(f => {
+            const st = CLR_STATUS.find(s => s.id === f.accept);
+            h += `<div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:12px; padding:11px 13px; margin-bottom:8px;"><div style="display:flex; justify-content:space-between; gap:8px;"><b style="font-size:0.86rem;">${escHtml(f.no || '')}</b><span style="font-size:0.78rem; color:${f.signed ? '#22c55e' : '#f59e0b'};">${f.signed ? t('jfSigned') : t('jfUnsigned')}</span></div><div style="font-size:0.74rem; color:var(--text-muted);">${escHtml(f.walkDate || '')}${st ? ' · ' + escHtml(clrTx(st)) : ''}</div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:7px;"><button type="button" onclick="clrOpen('${jsArg(String(f.jobId))}','${jsArg(String(f.id))}')" style="padding:6px 12px; font-size:0.75rem; background:#0284c7; color:#fff; border:none; border-radius:8px;">${t('jfOpen')}</button><button type="button" class="secondary" onclick="clrOpenPdf('${jsArg(String(f.id))}')" style="padding:6px 12px; font-size:0.75rem;">${t('jfPdf')}</button><button type="button" class="secondary" onclick="clrDelete('${jsArg(String(f.id))}')" style="padding:6px 12px; font-size:0.75rem;">${t('jfDelete')}</button></div></div>`;
+        });
+        return h;
     }
 
     // ---------- Clearance form ----------
@@ -12546,7 +12606,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         doc.text(`Remaining: $${remaining.toFixed(2)}`, 14, finalY);
 
         addLogoWatermark(doc);
-        doc.save(`${companyFileSlug()}_Partner_Report_${name}.pdf`);
+        showReportReady(doc, `${companyFileSlug()}_Partner_Report_${name}.pdf`);
     }
 
     // Simple PDF-only weekly recap for the Company Account screen — deliberately NOT shown
@@ -12659,7 +12719,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         doc.text(`Net for the Period: $${netForPeriod.toFixed(2)}`, 14, finalY);
 
         addLogoWatermark(doc);
-        doc.save(`${companyFileSlug()}_Company_Weekly_Report_${dateFrom || 'all'}_${dateTo || 'all'}.pdf`);
+        showReportReady(doc, `${companyFileSlug()}_Company_Weekly_Report_${dateFrom || 'all'}_${dateTo || 'all'}.pdf`);
     }
 
     // ---------- Technician & Partner Report: pick ONE person, see every job he worked as a
@@ -12874,7 +12934,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         doc.text(`Remaining: ${money(remaining)}`, 14, nextY + 14);
 
         addLogoWatermark(doc);
-        doc.save(`${companyFileSlug()}_Tech_Partner_Report_${name}.pdf`);
+        showReportReady(doc, `${companyFileSlug()}_Tech_Partner_Report_${name}.pdf`);
     }
 
     function renderExpenseReportContent() {
@@ -18089,7 +18149,7 @@ ${closeBtnHtml}
         try { if ($('twNav')) { lastSig = ''; Object.keys(PANELS).forEach(function (k) { var el = $(PANELS[k]); if (el) el.__twLast = null; }); paintLang(); syncNav(true); paintState(); if (PANELS[currentScreen]) renderPanel(currentScreen); } } catch (e) {}
     };
     var _eb = exportBackupJSON;
-    exportBackupJSON = function () { var r = _eb.apply(this, arguments); try { localStorage.setItem('tw_last_backup', String(Date.now())); } catch (e) {} setTimeout(function () { if (currentScreen === 'home') renderHome(); }, 400); return r; };
+    exportBackupJSON = function () { var r = _eb.apply(this, arguments); Promise.resolve(r).then(function (ok) { if (ok === false) return; try { localStorage.setItem('tw_last_backup', String(Date.now())); } catch (e) {} setTimeout(function () { if (currentScreen === 'home') renderHome(); }, 400); }); return r; };
     var _rsb = renderStateBar;
     renderStateBar = function () { _rsb.apply(this, arguments); try { paintState(); } catch (e) {} };
     var _rav = refreshAllViews;
