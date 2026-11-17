@@ -928,10 +928,11 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 <div class="form-group" id="receiptAddBox">
                     <label data-i18n="lblAddReceived"></label>
                     <div class="ledger-add-row">
-                        <div class="lg-field lg-amt"><span data-i18n="lblAmountShort"></span><input type="text" id="receiptAddAmount" inputmode="decimal" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); addReceipt();}"></div>
+                        <div class="lg-field lg-amt"><span id="receiptAmtLbl" data-i18n="lblAmountShort"></span><input type="text" id="receiptAddAmount" inputmode="decimal" oninput="updateChargeHint()" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); addReceipt();}"></div>
                         <div class="lg-field lg-date"><span data-i18n="lblReceiptDate"></span><input type="date" id="receiptAddDate"></div>
                         <div class="lg-field lg-amt"><span data-i18n="lblPayMethod"></span><select id="receiptAddMethod" onchange="onReceiptMethodChange()"><option value="cash" data-i18n="payMethodCash"></option><option value="zelle" data-i18n="payMethodZelle"></option><option value="venmo" data-i18n="payMethodVenmo"></option><option value="check" data-i18n="payMethodCheck"></option><option value="card" data-i18n="payMethodCard"></option></select></div>
-                        <div class="lg-field lg-amt" id="receiptNetField" style="display:none;"><span data-i18n="lblNetAfterFees"></span><input type="text" id="receiptAddNet" inputmode="decimal" onfocus="this.select()"></div>
+                        <div class="lg-field lg-amt" id="receiptNetField" style="display:none;"><span data-i18n="lblFeeRate"></span><input type="text" id="receiptFeeRate" inputmode="decimal" oninput="updateChargeHint()" onfocus="this.select()"></div>
+                        <div id="receiptChargeHint" style="display:none; width:100%; flex-basis:100%; background:rgba(16,185,129,0.12); border:1px solid #10b981; border-radius:10px; padding:10px 12px; font-size:0.9rem;"></div>
                         <div class="lg-field lg-note"><span data-i18n="lblNoteShort"></span><input type="text" id="receiptAddNote" data-i18n-ph="withdrawalNotePh" onkeydown="if(event.key==='Enter'){event.preventDefault(); addReceipt();}"></div>
                         <button type="button" class="ledger-plus" onclick="addReceipt()">+</button>
                     </div>
@@ -2758,6 +2759,9 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         payMethodCheck: { ar: 'شيك', en: 'Check' },
         payMethodCard: { ar: 'كارت / Stripe', en: 'Card / Stripe' },
         cardNetLabel: { ar: 'الصافي', en: 'Net' },
+        lblFeeRate: { ar: 'نسبة رسوم الكارت (%)', en: 'Card fee (%)' },
+        lblAmountNeeded: { ar: 'المبلغ المطلوب يوصلك ($)', en: 'Amount you need to receive ($)' },
+        chargeHintTxt: { ar: '💳 خد من العميل:', en: '💳 Charge the client:' },
         lblNetAfterFees: { ar: 'الواصل فعلاً بعد الرسوم ($)', en: 'Actually received after fees ($)' },
         cardFeeLabel: { ar: 'رسوم', en: 'fee' },
         alertNetAfterFeesInvalid: { ar: 'الواصل فعلاً لازم يكون أقل من المبلغ اللي العميل دفعه.', en: 'The amount actually received must be less than what the client paid.' },
@@ -4253,6 +4257,16 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         JOBS_DOC.onSnapshot(doc => {
             const jobs = (doc.exists && doc.data().jobs) ? doc.data().jobs : [];
             jobs.forEach(j => { j.id = String(j.id); });
+            // One-time, in memory: 'Amount received' now means NET of card fees. Old jobs stored the gross.
+            jobs.forEach(j => {
+                if (j.receivedNet) return;
+                const fee = round2((j.receipts || []).reduce((s, e) => s + parseVal(e.fee), 0));
+                if (fee > 0.005) {
+                    j.amountReceived = Math.max(0, round2(parseVal(j.amountReceived) - fee));
+                    j.amountRemaining = round2(parseVal(j.totalRevenue) - j.amountReceived);
+                }
+                j.receivedNet = true;
+            });
             savedJobs = jobs;
             refreshAllViews();
             safeCall(checkDebtReminders);
@@ -6833,7 +6847,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     // but it can't be placed in any week until you give it a date.
     function ledgerArr(kind) { return kind === 'receipt' ? currentReceipts : currentMaterialEntries; }
     function round2(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
-    function ledgerSum(arr) { return round2((arr || []).reduce((s, e) => s + parseVal(e.amount), 0)); }
+    function ledgerSum(arr) { return round2((arr || []).reduce((s, e) => s + parseVal(e.amount) - parseVal(e.fee), 0)); }   // fee = card/Stripe cut; received counts the NET
     // total - dated entries. Positive = still undated. Negative = the entries add up to more than the total (a mistake to fix).
     function undatedAmount(total, arr) { return round2(parseVal(total) - ledgerSum(arr)); }
     function newLedgerId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
@@ -6922,20 +6936,19 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             const method = document.getElementById('receiptAddMethod').value;
             entry.method = method;
             if (method === 'card') {
-                const netStr = document.getElementById('receiptAddNet').value;
-                if (String(netStr).trim() !== '') {
-                    const net = round2(parseVal(netStr));
-                    if (net <= 0 || net >= amt) { alert(t('alertNetAfterFeesInvalid')); return; }
-                    entry.fee = round2(amt - net);   // what Stripe/the card took off this payment
+                // The typed amount is what the company must RECEIVE (net); the client is charged more to cover the card fee.
+                const rate = parseVal(document.getElementById('receiptFeeRate').value);
+                if (rate > 0 && rate < 50) {
+                    entry.amount = round2(amt / (1 - rate / 100));
+                    entry.fee = round2(entry.amount - amt);
                 }
             }
-            document.getElementById('receiptAddNet').value = '';
             document.getElementById('receiptAddMethod').value = 'cash';
             onReceiptMethodChange();
         }
         ledgerArr(kind).push(entry);
         const totalEl = document.getElementById(cfg.totalId);
-        totalEl.value = round2(parseVal(totalEl.value) + amt).toFixed(2);
+        totalEl.value = round2(parseVal(totalEl.value) + parseVal(entry.amount) - parseVal(entry.fee)).toFixed(2);
         amtEl.value = ''; noteEl.value = '';
         calculateRemaining(); calculate(); renderLedgers(); updateSplitRatioTotal();
     }
@@ -6943,6 +6956,32 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     function onReceiptMethodChange() {
         const isCard = document.getElementById('receiptAddMethod').value === 'card';
         document.getElementById('receiptNetField').style.display = isCard ? '' : 'none';
+        if (isCard) {
+            const r = document.getElementById('receiptFeeRate');
+            if (!String(r.value).trim()) { const lr = lastCardFeeRate(); if (lr > 0) r.value = lr; }
+        }
+        const lbl = document.getElementById('receiptAmtLbl');
+        if (lbl) lbl.textContent = t(isCard ? 'lblAmountNeeded' : 'lblAmountShort');
+        updateChargeHint();
+    }
+    // Fee % taken from the most recent card payment on any job (fee / amount charged).
+    function lastCardFeeRate() {
+        let best = null;
+        (savedJobs || []).forEach(j => (j.receipts || []).forEach(e => {
+            if (e.method === 'card' && parseVal(e.fee) > 0 && parseVal(e.amount) > 0 && (!best || (e.date || '') >= (best.date || ''))) best = e;
+        }));
+        return best ? round2(parseVal(best.fee) / parseVal(best.amount) * 100) : 0;
+    }
+    function updateChargeHint() {
+        const box = document.getElementById('receiptChargeHint');
+        if (!box) return;
+        const isCard = document.getElementById('receiptAddMethod').value === 'card';
+        const net = round2(parseVal(document.getElementById('receiptAddAmount').value));
+        const rate = parseVal(document.getElementById('receiptFeeRate').value);
+        if (!isCard || net <= 0 || rate <= 0 || rate >= 50) { box.style.display = 'none'; return; }
+        const gross = round2(net / (1 - rate / 100));
+        box.style.display = '';
+        box.innerHTML = `${t('chargeHintTxt')} <b style="color:#16a34a; font-size:1.15rem;">$${gross.toFixed(2)}</b> <span style="color:var(--text-muted);">(${t('cardFeeLabel')} $${round2(gross - net).toFixed(2)})</span>`;
     }
     function addToMaterialCost() { addLedgerEntry('material'); }
 
@@ -6954,7 +6993,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         if (idx === -1) return;
         if (!confirm(t(cfg.delKey))) return;
         const totalEl = document.getElementById(cfg.totalId);
-        totalEl.value = Math.max(0, round2(parseVal(totalEl.value) - parseVal(arr[idx].amount))).toFixed(2);
+        totalEl.value = Math.max(0, round2(parseVal(totalEl.value) - parseVal(arr[idx].amount) + parseVal(arr[idx].fee))).toFixed(2);
         arr.splice(idx, 1);
         calculateRemaining(); calculate(); renderLedgers(); updateSplitRatioTotal();
     }
@@ -7164,6 +7203,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             endDate: document.getElementById('endDate').value,
             scheduledTime: document.getElementById('scheduledTime').value,
             totalRevenue: parseVal(document.getElementById('totalRevenue').value),
+            receivedNet: true,
             amountReceived: parseVal(document.getElementById('amountReceived').value),
             amountRemaining: parseVal(document.getElementById('amountRemaining').value),
             followUpDate: document.getElementById('followUpDate').value,
@@ -16864,6 +16904,7 @@ ${closeBtnHtml}
         const original = id ? savedJobs.find(j => j.id === id) : null;
         return {
             id: id || '__unsaved__',
+            receivedNet: true,
             amountReceived: parseVal(document.getElementById('amountReceived').value),
             materialCost: parseVal(document.getElementById('materialCost').value),
             extraExpenses: parseVal(document.getElementById('extraExpenses').value),
