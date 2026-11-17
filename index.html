@@ -9869,68 +9869,130 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         try { const r = clrBuildPdf(f, true); showReportReady(r.doc, r.filename); } catch (err) { console.error(err); alert(t('clrPdfFail')); }
     }
     function clrBuildPdf(f, blank) {
-        const { jsPDF } = window.jspdf, X = boqPdfTxt, doc = new jsPDF('p', 'mm', 'a4'), M = 14, TW = 182, PH = 282;
-        const grey = [90, 90, 90]; let y = 16;
-        const ensure = h => { if (y + h > PH) { doc.addPage(); y = 16; } };
-        const H = txt => { ensure(12); y += 3; doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(0, 0, 0); doc.text(X(txt), M, y); y += 6; };
-        const para = (txt, size, bold, x0, w0) => { doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(size || 9); doc.setTextColor(0, 0, 0); const ls = doc.splitTextToSize(X(txt), w0 || TW); ensure(ls.length * 4.2 + 1); doc.text(ls, x0 || M, y); y += ls.length * 4.2 + 1; };
-        const box = (checked, x, yy) => { doc.setDrawColor(60, 60, 60); doc.rect(x, yy - 3.2, 3.4, 3.4); if (checked) { doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.text('X', x + 0.65, yy - 0.2); doc.setFont('helvetica', 'normal'); } };
-        const checkLine = (txt, checked) => { doc.setFont('helvetica', 'normal'); doc.setFontSize(9); const ls = doc.splitTextToSize(X(txt), TW - 9); ensure(ls.length * 4.2 + 2); box(checked, M + 2, y); doc.text(ls, M + 8, y); y += ls.length * 4.2 + 1.6; };
-        const line = (label, val, x, yy, w) => { doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(0, 0, 0); doc.text(X(label), x, yy); const off = Math.min(46, label.length * 1.9 + 2); doc.setDrawColor(0, 0, 0); doc.line(x + off, yy + 0.8, w, yy + 0.8); if (val) { doc.setFont('helvetica', 'bold'); const room = Math.max(10, w - x - off - 1); let fs = 9; doc.setFontSize(fs); while (fs > 6.5 && doc.getTextWidth(X(val)) > room) { fs -= 0.5; doc.setFontSize(fs); } const vl = doc.splitTextToSize(X(val), room); doc.text(vl[0] || '', x + off + 1, yy - 0.2); doc.setFontSize(9); } };
-        // title
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(0, 0, 0);
-        doc.text(X((f.company || companyDisplayName()).toUpperCase()), 105, y, { align: 'center' }); y += 7;
-        doc.setFontSize(11); doc.text('FINAL WALKTHROUGH, PUNCH LIST & PROJECT CLEARANCE FORM', 105, y, { align: 'center' }); y += 5;
-        doc.setFont('helvetica', 'italic'); doc.setFontSize(9); doc.setTextColor(grey[0], grey[1], grey[2]); doc.text('Project Completion & Client Sign-Off' + (f.no ? '  |  ' + X(f.no) : ''), 105, y, { align: 'center' }); y += 4;
-        doc.setTextColor(0, 0, 0);
+        // Same look as the Estimate / Invoice: cream page, green accent, logo + company header, striped table,
+        // soft note box, signature lines with small grey captions, contact footer and the faint logo watermark.
+        const { jsPDF } = window.jspdf, X = boqPdfTxt, doc = new jsPDF('p', 'mm', 'letter');
+        const W = 215.9, M = 15, TW = W - 2 * M, PH = 258, TOP = 18;
+        const ACC = [44, 107, 69], INK = [36, 31, 26], GREY = [107, 98, 87], BODY = [58, 51, 43], CREAM = [253, 251, 246], STRIPE = [246, 241, 232], LINE = [231, 225, 214];
+        const company = f.company || companyDisplayName();
+        const job = clrJob(f.jobId) || null;
+        let y = 0;
+        const paint = () => { doc.setFillColor(CREAM[0], CREAM[1], CREAM[2]); doc.rect(0, 0, W, 279.4, 'F'); };
+        const col = c => doc.setTextColor(c[0], c[1], c[2]);
+        const newPage = () => { doc.addPage(); paint(); y = TOP; };
+        const ensure = h => { if (y + h > PH) newPage(); };
+        const font = (st, sz, c) => { doc.setFont('helvetica', st); doc.setFontSize(sz); col(c || BODY); };
+        paint();
+        // ---- letterhead ----
+        let hx = M;
+        if (companyProfile.logo) {
+            try {
+                const mm = /^data:image\/(png|jpe?g)/i.exec(companyProfile.logo);
+                if (mm) { const asp = companyLogoAspect || 1, lw = asp >= 1 ? 20 : 20 * asp, lh = asp >= 1 ? 20 / asp : 20; doc.addImage(companyProfile.logo, mm[1].toLowerCase() === 'png' ? 'PNG' : 'JPEG', M, 11, lw, lh); hx = M + lw + 4; }
+            } catch (e) { /* logo optional */ }
+        }
+        font('bold', 14, INK); doc.text(X(company).toUpperCase(), hx, 19);
+        if (companyProfile.tagline) { font('italic', 8.5, GREY); doc.text(X(companyProfile.tagline), hx, 24); }
+        font('bold', 20, ACC); doc.text('CLEARANCE', W - M, 19, { align: 'right' });
+        if (!blank) {
+            font('normal', 8.5, GREY); doc.text('Form No: ', W - M - doc.getTextWidth(X(f.no || '-')) - 0.5, 25, { align: 'right' }); font('bold', 8.5, INK); doc.text(X(f.no || '-'), W - M, 25, { align: 'right' });
+            font('normal', 8.5, GREY); doc.text('Date: ', W - M - doc.getTextWidth(X(f.walkDate || '-')) - 0.5, 29.5, { align: 'right' }); font('bold', 8.5, INK); doc.text(X(f.walkDate || '-'), W - M, 29.5, { align: 'right' });
+        }
+        doc.setFillColor(ACC[0], ACC[1], ACC[2]); doc.rect(M, 34, TW, 0.7, 'F');
+        font('bold', 11, INK); doc.text('FINAL WALKTHROUGH, PUNCH LIST & PROJECT CLEARANCE FORM', W / 2, 42, { align: 'center' });
+        font('italic', 8.5, GREY); doc.text('Project Completion & Client Sign-Off', W / 2, 46.5, { align: 'center' });
+        y = 50;
+        const H = txt => { ensure(14); y += 4; font('bold', 10.5, ACC); doc.text(X(txt), M, y); y += 2; doc.setDrawColor(LINE[0], LINE[1], LINE[2]); doc.setLineWidth(0.3); doc.line(M, y, M + TW, y); y += 5; };
+        const para = (txt, size, bold, x0, w0, c) => { font(bold ? 'bold' : 'normal', size || 9, c || BODY); const ls = doc.splitTextToSize(X(txt), w0 || TW); ensure(ls.length * 4.3 + 1); doc.text(ls, x0 || M, y); y += ls.length * 4.3 + 1; };
+        const box = (checked, x, yy) => { doc.setDrawColor(ACC[0], ACC[1], ACC[2]); doc.setLineWidth(0.35); doc.rect(x, yy - 3.3, 3.5, 3.5); if (checked) { font('bold', 9, ACC); doc.text('X', x + 0.7, yy - 0.3); } };
+        const checkLine = (txt, checked) => { font('normal', 9, BODY); const ls = doc.splitTextToSize(X(txt), TW - 9); ensure(ls.length * 4.3 + 2); box(checked, M + 2, y); font('normal', 9, BODY); doc.text(ls, M + 8, y); y += ls.length * 4.3 + 1.8; };
+        // label (bold) + value; a thin line is drawn under blank values so the paper copy can be filled by hand
+        const kv = (label, val, x, yy, w) => {
+            font('bold', 9, INK); doc.text(X(label), x, yy);
+            const off = doc.getTextWidth(X(label)) + 2, room = Math.max(10, w - off);
+            if (val) { font('normal', 9, BODY); let fs = 9; doc.setFontSize(fs); while (fs > 6.5 && doc.getTextWidth(X(val)) > room) { fs -= 0.5; doc.setFontSize(fs); } doc.text(doc.splitTextToSize(X(val), room)[0] || '', x + off, yy); }
+            else { doc.setDrawColor(INK[0], INK[1], INK[2]); doc.setLineWidth(0.2); doc.line(x + off, yy + 0.8, x + w, yy + 0.8); }
+        };
         H('1. PROJECT INFORMATION');
-        line('Client Name:', f.clientName, M, y, M + 88); line('Project Address:', f.address, M + 94, y, M + TW); y += 7;
-        line('Project / Job Reference #:', f.jobRef, M, y, M + 88); line('Completion Date:', f.completionDate, M + 94, y, M + TW); y += 7;
-        line('AHA Representative:', f.rep, M, y, M + 88); line('Walkthrough Date:', f.walkDate, M + 94, y, M + TW); y += 4;
+        const half = TW / 2 - 4, rx = M + TW / 2 + 4;
+        kv('Client Name:', f.clientName, M, y, half); kv('Project Address:', f.address, rx, y, half); y += 7.5;
+        kv('Project / Job Reference #:', f.jobRef, M, y, half); kv('Completion Date:', f.completionDate, rx, y, half); y += 7.5;
+        kv('AHA Representative:', f.rep, M, y, half); kv('Walkthrough Date:', f.walkDate, rx, y, half); y += 3;
         H('2. FINAL WALKTHROUGH CHECKLIST');
         CLR_CHECKS.forEach((c, i) => checkLine(c.en, !blank && !!(f.checks || [])[i]));
         H('3. CLIENT\'S FINAL COMMENTS / REMAINING ITEMS');
-        para('List ALL remaining comments, corrections, or touch-ups requested during the final walkthrough.', 9, false);
-        const rows = blank ? 5 : Math.max(5, (f.items || []).filter(it => it.desc || it.loc).length);
-        const cw = [10, 100, 42, 30]; const hx = [M, M + 10, M + 110, M + 152];
-        ensure(12); doc.setFillColor(70, 70, 70); doc.rect(M, y - 4.2, TW, 6, 'F'); doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5);
-        ['#', 'Description of Requested Item', 'Location', 'Status'].forEach((tx, i) => doc.text(tx, hx[i] + 1.5, y)); doc.setTextColor(0, 0, 0); y += 2;
+        para('List ALL remaining comments, corrections, or touch-ups requested during the final walkthrough.', 9, false, M, TW, GREY);
+        y += 1;
         const its = blank ? [] : (f.items || []).filter(it => it.desc || it.loc);
+        const rows = Math.max(5, its.length);
+        const cw = [10, 104, 40, 31.9], hx2 = [M, M + 10, M + 114, M + 154];
+        ensure(14);
+        doc.setFillColor(ACC[0], ACC[1], ACC[2]); doc.roundedRect(M, y - 4.4, TW, 7, 1.2, 1.2, 'F'); font('bold', 8.5, CREAM);
+        ['#', 'DESCRIPTION OF REQUESTED ITEM', 'LOCATION', 'STATUS'].forEach((tx, i) => doc.text(tx, hx2[i] + 2, y)); y += 2.6;
         for (let r = 0; r < rows; r++) {
-            const it = its[r] || null; doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
-            const dl = it ? doc.splitTextToSize(X(it.desc || ''), cw[1] - 3) : [''], ll = it ? doc.splitTextToSize(X(it.loc || ''), cw[2] - 3) : [''];
-            const hh = Math.max(9, Math.max(dl.length, ll.length) * 4 + 3); ensure(hh);
-            doc.setDrawColor(120, 120, 120); doc.rect(M, y, TW, hh); let xx = M; cw.slice(0, 3).forEach(w => { xx += w; doc.line(xx, y, xx, y + hh); });
-            doc.text(String(r + 1), hx[0] + 2, y + 5); if (it) { doc.text(dl, hx[1] + 1.5, y + 5); doc.text(ll, hx[2] + 1.5, y + 5); doc.text(X(it.status === 'Done' ? 'Done' : 'Open'), hx[3] + 1.5, y + 5); }
+            const it = its[r] || null; font('normal', 8.8, BODY);
+            const dl = it ? doc.splitTextToSize(X(it.desc || ''), cw[1] - 4) : [''], ll = it ? doc.splitTextToSize(X(it.loc || ''), cw[2] - 4) : [''];
+            const hh = Math.max(9.5, Math.max(dl.length, ll.length) * 4.2 + 3.5); ensure(hh);
+            if (r % 2 === 1) { doc.setFillColor(STRIPE[0], STRIPE[1], STRIPE[2]); doc.rect(M, y, TW, hh, 'F'); }
+            doc.setDrawColor(LINE[0], LINE[1], LINE[2]); doc.setLineWidth(0.25); doc.line(M, y + hh, M + TW, y + hh);
+            font('normal', 8.8, BODY); doc.text(String(r + 1), hx2[0] + 2, y + 5.6);
+            if (it) { doc.text(dl, hx2[1] + 2, y + 5.6); doc.text(ll, hx2[2] + 2, y + 5.6); doc.text(it.status === 'Done' ? 'Done' : 'Open', hx2[3] + 2, y + 5.6); }
             y += hh;
         }
-        y += 6; para('Additional Comments:', 9, true);
-        if (!blank && f.comments) para(f.comments, 9, false); else { ensure(14); doc.setDrawColor(0, 0, 0); doc.line(M + 2, y + 3, M + TW - 4, y + 3); doc.line(M + 2, y + 10, M + TW - 4, y + 10); y += 12; }
-        H('4. SCOPE & ADDITIONAL WORK CLARIFICATION');
-        CLR_SCOPE.forEach((s, i) => para((i + 1) + '. ' + s.en, 8.8, false, M + 3, TW - 3));
+        y += 6; para('Additional Comments:', 9, true, M, TW, INK);
+        if (!blank && f.comments) para(f.comments, 9, false); else { ensure(16); doc.setDrawColor(INK[0], INK[1], INK[2]); doc.setLineWidth(0.2); doc.line(M, y + 4, M + TW, y + 4); doc.line(M, y + 11, M + TW, y + 11); y += 14; }
+        {   // soft note box, same as the invoice's note box (kept together with its heading)
+            font('normal', 8.8, BODY);
+            const blocks = CLR_SCOPE.map((s, i) => doc.splitTextToSize(X((i + 1) + '. ' + s.en), TW - 10));
+            const hh = blocks.reduce((n, b) => n + b.length * 4.1 + 1.6, 0) + 7;
+            ensure(hh + 16);
+            H('4. SCOPE & ADDITIONAL WORK CLARIFICATION');
+            doc.setFillColor(STRIPE[0], STRIPE[1], STRIPE[2]); doc.roundedRect(M, y, TW, hh, 1.6, 1.6, 'F');
+            doc.setDrawColor(ACC[0], ACC[1], ACC[2]); doc.setLineWidth(0.3); if (doc.setLineDashPattern) doc.setLineDashPattern([1.2, 1.2], 0); doc.roundedRect(M, y, TW, hh, 1.6, 1.6, 'S'); if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+            let yy = y + 6; font('normal', 8.8, BODY); blocks.forEach(b => { doc.text(b, M + 5, yy); yy += b.length * 4.1 + 1.6; });
+            y += hh + 2;
+        }
         H('5. CLIENT ACKNOWLEDGMENT & CLEARANCE');
         para('By signing below, the client acknowledges that:', 9, false);
         CLR_ACK.forEach((c, i) => checkLine(c.en, !blank && !!(f.ack || [])[i]));
-        y += 2; ensure(30); para('Project Acceptance Status:', 9, true);
+        y += 2; ensure(32); para('Project Acceptance Status:', 9, true, M, TW, INK);
         CLR_STATUS.forEach(s => checkLine(s.en, !blank && f.accept === s.id));
-        H('6. SIGNATURES'); ensure(52);
-        const bx = M, bw = 89, bx2 = M + 93, top = y;
-        doc.setFillColor(70, 70, 70); doc.rect(bx, top, bw, 6, 'F'); doc.rect(bx2, top, bw, 6, 'F'); doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5);
-        doc.text('CLIENT / PROPERTY OWNER', bx + 2, top + 4.2); doc.text(X((f.company || companyDisplayName()).toUpperCase()), bx2 + 2, top + 4.2); doc.setTextColor(0, 0, 0);
-        doc.setDrawColor(120, 120, 120); doc.rect(bx, top + 6, bw, 40); doc.rect(bx2, top + 6, bw, 40);
-        line('Printed Name:', blank ? '' : f.printedName, bx + 3, top + 15, bx + bw - 3); line('Signature:', '', bx + 3, top + 28, bx + bw - 3); line('Date:', blank ? '' : f.clientSigDate, bx + 3, top + 40, bx + bw - 3);
-        line('Representative Name:', blank ? '' : f.repName, bx2 + 3, top + 15, bx2 + bw - 3); line('Signature:', '', bx2 + 3, top + 28, bx2 + bw - 3); line('Date:', blank ? '' : f.repSigDate, bx2 + 3, top + 40, bx2 + bw - 3);
-        const sig = (data, x0) => { const mm = /^data:image\/(png|jpe?g)/i.exec(data || ''); if (!mm) return; try { doc.addImage(data, mm[1].toLowerCase() === 'png' ? 'PNG' : 'JPEG', x0 + 22, top + 19, 40, 12); } catch (e) { /* signature image optional */ } };
-        if (!blank) { sig(f.clientSig, bx + 3); sig(f.repSig, bx2 + 3); }
-        y = top + 52;
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.text('THANK YOU FOR CHOOSING ' + X((f.company || companyDisplayName()).toUpperCase()), 105, y, { align: 'center' }); y += 5;
-        doc.setFont('helvetica', 'italic'); doc.setFontSize(7.5); doc.setTextColor(grey[0], grey[1], grey[2]);
-        doc.text('This form records the final walkthrough and the items identified at that time. It does not waive applicable contractual rights, warranties, or obligations.', 105, y, { align: 'center' }); doc.setTextColor(0, 0, 0);
+        ensure(62); H('6. SIGNATURES');
+        const colW = 88, x2 = M + TW - colW, top = y;
+        const sigBlock = (x0, title, nameLabel, name, sig, date) => {
+            font('bold', 9, ACC); doc.text(X(title), x0, top);
+            const ln = (xa, xb, yy) => { doc.setDrawColor(INK[0], INK[1], INK[2]); doc.setLineWidth(0.25); doc.line(xa, yy, xb, yy); };
+            font('normal', 9.5, INK); if (name) doc.text(X(name), x0 + 1, top + 12.5);
+            ln(x0, x0 + colW, top + 14); font('normal', 8, GREY); doc.text(nameLabel, x0, top + 18);
+            const mm = /^data:image\/(png|jpe?g)/i.exec(sig || '');
+            if (mm) { try { doc.addImage(sig, mm[1].toLowerCase() === 'png' ? 'PNG' : 'JPEG', x0 + 2, top + 21, 42, 13); } catch (e) { /* signature image optional */ } }
+            ln(x0, x0 + 58, top + 35); font('normal', 8, GREY); doc.text('Signature', x0, top + 39);
+            font('normal', 9.5, INK); if (date) doc.text(X(date), x0 + 64, top + 33.5);
+            ln(x0 + 62, x0 + colW, top + 35); font('normal', 8, GREY); doc.text('Date', x0 + 62, top + 39);
+        };
+        sigBlock(M, 'CLIENT / PROPERTY OWNER', 'Printed Name', blank ? '' : f.printedName, blank ? '' : f.clientSig, blank ? '' : f.clientSigDate);
+        sigBlock(x2, X(company).toUpperCase(), 'Representative Name', blank ? '' : f.repName, blank ? '' : f.repSig, blank ? '' : f.repSigDate);
+        y = top + 46;
         if (!blank && /^data:image\//i.test(f.scan || '')) {
-            doc.addPage(); doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.text('Signed paper copy', M, 16);
-            let w = 182, h = 240; try { const p = doc.getImageProperties(f.scan); const r = Math.min(182 / p.width, 255 / p.height); w = p.width * r; h = p.height * r; } catch (e) { /* keep the default box */ }
-            try { doc.addImage(f.scan, 'JPEG', M, 22, w, h); } catch (e) { /* scan optional */ }
+            newPage(); font('bold', 10.5, ACC); doc.text('SIGNED PAPER COPY', M, y + 2); y += 8;
+            let w = TW, h = 215; try { const p = doc.getImageProperties(f.scan); const r = Math.min(TW / p.width, 225 / p.height); w = p.width * r; h = p.height * r; } catch (e) { /* keep the default box */ }
+            try { doc.addImage(f.scan, 'JPEG', M, y, w, h); } catch (e) { /* scan optional */ }
         }
+        // ---- footer on every page (contacts, like the invoice) + closing line on the last page ----
+        const licPart = (() => { try { return job ? (((companyProfile.stateSettings || {})[jobState(job)] || {}).license || '').trim() : ''; } catch (e) { return ''; } })();
+        const contacts = [[...(companyProfile.phones || []), companyProfile.email].filter(Boolean).join('  |  '), companyProfile.website || '', licPart ? 'License # ' + licPart : ''].filter(Boolean).join('   -   ');
+        const pages = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pages; i++) {
+            doc.setPage(i);
+            doc.setDrawColor(LINE[0], LINE[1], LINE[2]); doc.setLineWidth(0.3); doc.line(M, 264, M + TW, 264);
+            if (contacts) { font('normal', 8, GREY); doc.text(X(contacts), W / 2, 268.5, { align: 'center' }); }
+            if (i === pages) {
+                font('normal', 10, INK); doc.text('Thank you for choosing ' + X(company) + '.', W / 2, 273.5, { align: 'center' });
+                font('italic', 7, GREY); doc.text('This form records the final walkthrough and the items identified at that time. It does not waive applicable contractual rights, warranties, or obligations.', W / 2, 277, { align: 'center' });
+            }
+            if (i > 1) { font('normal', 7.5, GREY); doc.text(X(company) + '  |  ' + X(f.no || 'Clearance form') + '  |  Page ' + i + ' of ' + pages, W - M, 10, { align: 'right' }); }
+        }
+        addLogoWatermark(doc);
         const slug = x => String(x || '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
         return { doc, filename: [companyFileSlug(), blank ? 'Clearance_Form_BLANK' : 'Clearance', blank ? '' : slug(f.clientName), blank ? '' : slug(f.no)].filter(Boolean).join('_') + '.pdf' };
     }
