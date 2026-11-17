@@ -2915,6 +2915,9 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         custBtnJob: { ar: 'شغلانة', en: 'Job' },
         custSecDocs: { ar: 'المستندات', en: 'Documents' },
         jfBtn: { ar: 'ملف الشغلانة', en: 'Job file' },
+        jobActPay: { ar: 'دفع الفنيين', en: 'Pay techs' },
+        jobActInvoice: { ar: 'فاتورة', en: 'Invoice' },
+        jobActMore: { ar: 'المزيد', en: 'More' },
         clrBtn: { ar: 'استلام نهائي', en: 'Clearance' },
         clrNoJobForCust: { ar: 'العميل ده مالوش شغلانة لسه. اعمل شغلانة الأول.', en: 'This customer has no job yet. Create a job first.' },
         custPickJobTitle: { ar: 'اختار الشغلانة', en: 'Choose the job' },
@@ -7727,14 +7730,13 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 <td data-label="${t('thShareM')}" style="color:#38bdf8;">$${shareM.toFixed(2)} <span style="color:var(--text-muted); font-size:0.72rem;">(${Math.round(rowRatio.m * 100)}%)</span></td>
                 <td data-label="${t('thCompany')}" style="color:#fbbf24;">$${companyNet.toFixed(2)}</td>
                 <td data-label="${t('thActions')}" class="no-print">
-                    <button class="secondary" onclick="showJobQuickDetails('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#7c3aed;" title="${t('jobQuickDetailsBtn')}">ℹ️</button>
-                    <button class="secondary" onclick="openInvoiceModal('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#0ea5e9;" title="${t('invoiceBtn')}">🧾</button>
-                    <button class="secondary" onclick="openJobFile('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#0d9488;" title="${t('jfBtn')}">📁</button>
-                    <button class="secondary" onclick="openJobPayModal('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#16a34a;" title="${t('jobPayBtn')}">💰</button>
-                    <button class="secondary" onclick="openJobOverlay('${job.id}')" style="padding:4px 8px; font-size:0.75rem;">${t('editBtn')}</button>
-                    <button class="secondary" onclick="duplicateJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#0284c7;">${t('duplicateBtn')}</button>
-                    <button class="secondary" onclick="revertJobToAppointment('${job.id}')" style="padding:4px 8px; font-size:0.75rem; background:#f59e0b;" title="${t('revertToAppointmentBtn')}">↩️</button>
-                    <button class="danger" onclick="deleteJob('${job.id}')" style="padding:4px 8px; font-size:0.75rem;">${t('deleteBtn')}</button>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px; min-width:170px; width:100%;">
+                    <button class="secondary" onclick="openJobPayModal('${job.id}')" style="padding:6px 6px; font-size:0.75rem; background:#16a34a;" title="${t('jobPayBtn')}">💰 ${t('jobActPay')}</button>
+                    <button class="secondary" onclick="openInvoiceModal('${job.id}')" style="padding:6px 6px; font-size:0.75rem; background:#0ea5e9;" title="${t('invoiceBtn')}">🧾 ${t('jobActInvoice')}</button>
+                    <button class="secondary" onclick="openJobFile('${job.id}')" style="padding:6px 6px; font-size:0.75rem; background:#0d9488;" title="${t('jfBtn')}">📁 ${t('jfBtn')}</button>
+                    <button class="secondary" onclick="openJobOverlay('${job.id}')" style="padding:6px 6px; font-size:0.75rem;">${t('editBtn')}</button>
+                    <button class="secondary" onclick="jobMoreMenu('${job.id}')" style="grid-column:1 / -1; padding:6px 6px; font-size:0.75rem;">${t('jobActMore')}</button>
+                    </div>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -9647,6 +9649,22 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         closeJobFile(); closeCustomerHub();
         await openInvoiceModal(jobId);
         loadSavedInvoice(savedId);
+    }
+
+    // ---------- "More" actions for a job row (the less-used buttons, with clear labels) ----------
+    function closeJobMore() { const m = document.getElementById('jobMoreSheet'); if (m) m.remove(); }
+    function jobMoreMenu(jobId) {
+        closeJobMore();
+        const j = clrJob(jobId); if (!j) return;
+        const id = jsArg(String(jobId));
+        const b = (label, call, cls) => `<button type="button" class="${cls || 'secondary'}" onclick="closeJobMore(); ${call}" style="width:100%; text-align:start; padding:12px; margin-bottom:7px; font-size:0.9rem;">${label}</button>`;
+        const m = document.createElement('div'); m.id = 'jobMoreSheet';
+        m.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:10200; display:flex; justify-content:center; align-items:center;';
+        m.onclick = e => { if (e.target === m) closeJobMore(); };
+        m.innerHTML = `<div style="background:var(--card-dark,#1e2433); color:var(--text-main,#fff); border:1px solid var(--border-color,#334); border-radius:14px; width:90%; max-width:360px; padding:16px;"><div style="font-weight:800; margin-bottom:2px;">${escHtml(j.clientName || '')}</div><div style="font-size:0.76rem; color:var(--text-muted); margin-bottom:12px;">${escHtml(j.clientAddress || '')}</div>
+            ${b('ℹ️ ' + t('jobQuickDetailsBtn'), `showJobQuickDetails('${id}')`)}${b(t('duplicateBtn'), `duplicateJob('${id}')`)}${b('↩️ ' + t('revertToAppointmentBtn'), `revertJobToAppointment('${id}')`)}${b('🗑 ' + t('deleteBtn'), `deleteJob('${id}')`, 'danger')}
+            <button type="button" class="secondary" onclick="closeJobMore()" style="width:100%; padding:9px; font-size:0.85rem;">${t('guideCloseBtn')}</button></div>`;
+        document.body.appendChild(m);
     }
 
     // ---------- Customer page: clearance + job file entry points ----------
@@ -17734,6 +17752,7 @@ ${closeBtnHtml}
         trash: 'M3 6h18 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6 M10 11v6 M14 11v6',
         copy: 'M9 9h11a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1',
         undo: 'M3 7v6h6 M3 13a9 9 0 1 0 3-7.7L3 8',
+        folder: 'M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
         info: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20 M12 16v-4 M12 8h.01',
         filter: 'M22 3H2l8 9.5V19l4 2v-8.5z',
         mic: 'M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z M19 10v2a7 7 0 0 1-14 0v-2 M12 19v3',
@@ -18351,7 +18370,7 @@ ${closeBtnHtml}
 
     // ---------- one clear icon per action on the older screens (replaces the emoji, text stays) ----------
     var ICON_RULES = [
-        ['showJobQuickDetails(', 'info'], ['openInvoiceModal(', 'receipt'], ['openJobPayModal(', 'wallet'], ['openJobOverlay(', 'edit'], ['duplicateJob(', 'copy'],
+        ['showJobQuickDetails(', 'info'], ['openJobFile(', 'folder'], ['jobMoreMenu(', 'menu'], ['openInvoiceModal(', 'receipt'], ['openJobPayModal(', 'wallet'], ['openJobOverlay(', 'edit'], ['duplicateJob(', 'copy'],
         ['revertJobToAppointment(', 'undo'], ['deleteJob(', 'trash'], ['printSelectedJobs(', 'print'], ['markSelectedAsDone(', 'check'], ['toggleJobsFilterPanel(', 'filter'],
         ['openNewScheduleModal(', 'plus'], ['openSendScheduleModal(', 'send'], ['toggleAllPendingMode(', 'list'],
         ['openFollowUpReasonModal(', 'bell'], ['openAppointmentQuoteModal(', 'receipt'], ['convertAppointmentToJob(', 'check'], ['editAppointment(', 'edit'], ['deleteAppointment(', 'trash'], ['openSendWorkerModal(', 'send'],
