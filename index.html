@@ -9606,16 +9606,27 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     function clrFor(jobId) { return clrIndex.filter(x => String(x.jobId) === String(jobId)).sort((a, b) => String(a.updatedAt || '').localeCompare(String(b.updatedAt || ''))); }
     function clrBlankItem() { return { desc: '', loc: '', status: 'Open' }; }
 
-    // Full-screen windows (customer page, job file, clearance form) scroll on their own, so the page behind must not
-    // scroll too (that is what showed a second scrollbar). The lock follows the windows' own show/hide state.
+    // A full-screen window that scrolls by itself (customer page, job file, clearance form, job edit window, any modal
+    // overlay that fills the screen) must not leave the page behind scrollable too: that is what showed TWO scrollbars.
+    // This looks at what is actually open on screen (so it also covers windows added later) and locks the page scroll.
+    function overlayNeedsLock(el) {
+        const cs = getComputedStyle(el);
+        if (cs.position !== 'fixed' || cs.display === 'none' || cs.visibility === 'hidden') return false;
+        if (cs.overflowY !== 'auto' && cs.overflowY !== 'scroll') return false;
+        const r = el.getBoundingClientRect();
+        return r.width >= window.innerWidth * 0.95 && r.height >= window.innerHeight * 0.95;
+    }
     function syncBodyLock() {
-        const open = ['custHub', 'jobFileModal', 'clrModal'].some(id => { const e = document.getElementById(id); return e && e.style.display !== 'none' && e.style.display !== ''; });
-        document.body.style.overflow = open ? 'hidden' : '';
+        let open = false;
+        document.querySelectorAll('[id$="Modal"], [id$="Overlay"], [id$="Hub"], [style*="fixed"], .job-overlay').forEach(el => { if (!open && overlayNeedsLock(el)) open = true; });
+        const want = open ? 'hidden' : '';
+        if (document.body.style.overflow !== want) document.body.style.overflow = want;
     }
-    function watchOverlay(el) {
-        if (!el || el.dataset.lockWatch) return; el.dataset.lockWatch = '1';
-        new MutationObserver(syncBodyLock).observe(el, { attributes: true, attributeFilter: ['style'] });
-    }
+    let bodyLockTimer = null;
+    function scheduleBodyLock() { if (bodyLockTimer) return; bodyLockTimer = setTimeout(() => { bodyLockTimer = null; try { syncBodyLock(); } catch (e) { console.error(e); } }, 60); }
+    function watchOverlay() { /* kept for the callers below: the page-wide watcher already sees every window */ }
+    new MutationObserver(scheduleBodyLock).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['style', 'class'] });
+
     // ---------- Job file ----------
     function openJobFile(jobId) {
         if (!clrJob(jobId)) return;
