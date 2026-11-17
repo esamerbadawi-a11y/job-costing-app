@@ -9517,7 +9517,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     function openCustomerHub(contactId, leadId) {
         custHubId = contactId || null; custHubLeadId = leadId || null;
         if (contactId || leadId) custHubTemp = null;
-        const m = custHubEnsure(); m.style.display = 'block';
+        const m = custHubEnsure(); watchOverlay(m); m.style.display = 'block'; syncBodyLock();
         try { closeGlobalSearch(); } catch (e) {}
         renderCustomerHub(); m.scrollTop = 0;
     }
@@ -9606,12 +9606,22 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     function clrFor(jobId) { return clrIndex.filter(x => String(x.jobId) === String(jobId)).sort((a, b) => String(a.updatedAt || '').localeCompare(String(b.updatedAt || ''))); }
     function clrBlankItem() { return { desc: '', loc: '', status: 'Open' }; }
 
+    // Full-screen windows (customer page, job file, clearance form) scroll on their own, so the page behind must not
+    // scroll too (that is what showed a second scrollbar). The lock follows the windows' own show/hide state.
+    function syncBodyLock() {
+        const open = ['custHub', 'jobFileModal', 'clrModal'].some(id => { const e = document.getElementById(id); return e && e.style.display !== 'none' && e.style.display !== ''; });
+        document.body.style.overflow = open ? 'hidden' : '';
+    }
+    function watchOverlay(el) {
+        if (!el || el.dataset.lockWatch) return; el.dataset.lockWatch = '1';
+        new MutationObserver(syncBodyLock).observe(el, { attributes: true, attributeFilter: ['style'] });
+    }
     // ---------- Job file ----------
     function openJobFile(jobId) {
         if (!clrJob(jobId)) return;
         let m = document.getElementById('jobFileModal');
         if (!m) { m = document.createElement('div'); m.id = 'jobFileModal'; m.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg-dark, #0a0e17); color:var(--text-main, #fff); z-index:10050; overflow-y:auto; -webkit-overflow-scrolling:touch;'; document.body.appendChild(m); }
-        m.dataset.job = String(jobId); m.style.display = 'block'; renderJobFile(); m.scrollTop = 0;
+        watchOverlay(m); m.dataset.job = String(jobId); m.style.display = 'block'; renderJobFile(); m.scrollTop = 0; syncBodyLock();
     }
     function closeJobFile() { const m = document.getElementById('jobFileModal'); if (m) m.style.display = 'none'; }
     function renderJobFile() {
@@ -9740,7 +9750,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         const f = clrState; if (!f) return;
         let m = document.getElementById('clrModal');
         if (!m) { m = document.createElement('div'); m.id = 'clrModal'; m.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg-dark, #0a0e17); color:var(--text-main, #fff); z-index:10100; overflow-y:auto; -webkit-overflow-scrolling:touch;'; document.body.appendChild(m); }
-        m.style.display = 'block';
+        watchOverlay(m); m.style.display = 'block'; syncBodyLock();
         const sec = txt => `<div style="margin:20px 0 8px; font-weight:800; font-size:0.9rem;">${txt}</div>`;
         const inp = 'width:100%; padding:8px; font-size:0.88rem; box-sizing:border-box;';
         const fld = (label, k, type) => `<div style="margin-bottom:8px;"><label style="font-size:0.74rem; color:var(--text-muted);">${label}</label><input type="${type || 'text'}" value="${escHtml(f[k] || '')}" oninput="clrSet('${k}',this.value)" style="${inp}"></div>`;
