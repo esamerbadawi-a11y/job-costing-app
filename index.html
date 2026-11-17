@@ -7708,6 +7708,10 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         }
 
         let jobsToRender = savedJobs;
+        if (!jobSortField) {
+            // Default: newest first (by start date, then by when it was created).
+            jobsToRender = [...savedJobs].sort((a, b) => String(b.startDate || '').localeCompare(String(a.startDate || '')) || String(b.id).localeCompare(String(a.id), undefined, { numeric: true }));
+        }
         if (jobSortField) {
             jobsToRender = [...savedJobs].sort((a, b) => {
                 const va = getSortValue(a, jobSortField), vb = getSortValue(b, jobSortField);
@@ -7715,9 +7719,10 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 return jobSortDirection === 'asc' ? cmp : -cmp;
             });
         }
-        // A cancelled job keeps all its data in the log, but always sinks to the bottom of the
-        // list — under any sort column — so it never gets in the way of the active/done jobs.
-        jobsToRender = [...jobsToRender].sort((a, b) => (a.jobStatus === 'ملغي' ? 1 : 0) - (b.jobStatus === 'ملغي' ? 1 : 0));
+        // Active jobs always stay on top, then finished, then cancelled (all data kept) — under any
+        // sort column. Inside each group the chosen sort / current order is preserved (stable sort).
+        const statusRank = j => j.jobStatus === 'ملغي' ? 2 : (j.jobStatus === 'خلص' ? 1 : 0);
+        jobsToRender = [...jobsToRender].sort((a, b) => statusRank(a) - statusRank(b));
         jobsToRender = jobsToRender.filter(j => passesStateFilter(jobState(j)));
 
         jobsToRender.forEach(job => {
