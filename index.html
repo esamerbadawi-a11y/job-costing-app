@@ -2757,6 +2757,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         payMethodZelle: { ar: 'زيل', en: 'Zelle' },
         payMethodCheck: { ar: 'شيك', en: 'Check' },
         payMethodCard: { ar: 'كارت / Stripe', en: 'Card / Stripe' },
+        cardNetLabel: { ar: 'الصافي', en: 'Net' },
         lblNetAfterFees: { ar: 'الواصل فعلاً بعد الرسوم ($)', en: 'Actually received after fees ($)' },
         cardFeeLabel: { ar: 'رسوم', en: 'fee' },
         alertNetAfterFeesInvalid: { ar: 'الواصل فعلاً لازم يكون أقل من المبلغ اللي العميل دفعه.', en: 'The amount actually received must be less than what the client paid.' },
@@ -6886,7 +6887,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 html += `<div class="ledger-row">
                     <input type="date" value="${escHtml(e.date)}" onchange="setLedgerEntryDate('${kind}', '${e.id}', this.value)">
                     <strong style="color:${cfg.color};">$${parseVal(e.amount).toFixed(2)}</strong>
-                    <span class="ledger-note">${kind === 'receipt' && e.method && e.method !== 'cash' ? `<b>${t('payMethod' + e.method.charAt(0).toUpperCase() + e.method.slice(1))}</b>${parseVal(e.fee) > 0.005 ? ` · ${t('cardFeeLabel')} $${parseVal(e.fee).toFixed(2)}` : ''} ` : ''}${escHtml(e.note)}</span>
+                    <span class="ledger-note">${kind === 'receipt' && e.method && e.method !== 'cash' ? `<b>${t('payMethod' + e.method.charAt(0).toUpperCase() + e.method.slice(1))}</b>${parseVal(e.fee) > 0.005 ? ` · ${t('cardNetLabel')} <b style="color:#16a34a;">$${round2(parseVal(e.amount) - parseVal(e.fee)).toFixed(2)}</b> (${t('cardFeeLabel')} $${parseVal(e.fee).toFixed(2)})` : ''} ` : ''}${escHtml(e.note)}</span>
                     ${photoHtml}
                     <button type="button" class="ledger-del" onclick="removeLedgerEntry('${kind}', '${e.id}')">🗑</button>
                 </div>`;
