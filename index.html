@@ -12074,7 +12074,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         const jobsInRange = savedJobs.filter(j => j.startDate && j.startDate >= dateFrom && j.startDate <= dateTo && j.jobStatus !== 'ملغي');
         const incomplete = jobsInRange.filter(j => !(j.technicians && j.technicians.length) || parseVal(j.materialCost) === 0 && (j.materialEntries || []).length === 0);
         if (incomplete.length > 0) {
-            const names = incomplete.slice(0, 8).map(j => j.clientName || '?').join('، ');
+            const names = incomplete.slice(0, 8).map(j => j.clientName || '?').join(currentLang === 'ar' ? '، ' : ', ');
             const msg = t('confirmPeriodLockIncomplete').replace('{n}', incomplete.length).replace('{names}', names);
             if (!confirm(msg)) return;
         }
@@ -13819,7 +13819,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                         <div><b>${icon} ${escHtml(x.clientName || '')}</b> <span style="color:var(--text-muted);">${escHtml(workerStamp(workerTaskTs(x), x.address))}</span></div>
                         ${x.address ? `<div style="color:var(--text-muted); font-size:0.78rem;">${escHtml(x.address)}</div>` : ''}
                         <div style="font-size:0.78rem; margin-top:2px;">${t('wkActPhotos')} ${x.cnt_before || 0}/${x.cnt_after || 0}${x.signed ? ' · ' + t('wkActSigned') : ''}</div>
-                        ${miss.length ? `<div style="color:#f59e0b; font-size:0.78rem;">${t('wkActMissing')} ${miss.join('، ')}</div>` : ''}
+                        ${miss.length ? `<div style="color:#f59e0b; font-size:0.78rem;">${t('wkActMissing')} ${miss.join(currentLang === 'ar' ? '، ' : ', ')}</div>` : ''}
                         ${late ? `<div style="color:#ef4444; font-size:0.78rem;">${t('wkActLate')} — ${t('wkActLateFor')} ${late} ${t('wkActHoursAgo')}</div>` : ''}
                         ${x.role && x.role !== 'lead' ? `<div style="font-size:0.75rem; color:var(--text-muted);">${x.role === 'helper' ? '🤝 ' + t('wkRoleHelper') : '🔄 ' + t('wkRoleHanded')}</div>` : ''}
                         ${x.pausedUntil && x.status !== 'done' ? `<div style="font-size:0.78rem; color:#38bdf8;">⏸ ${escHtml(x.pausedUntil)}${x.pauseNote ? ' — ' + escHtml(x.pauseNote) : ''}</div>` : ''}
