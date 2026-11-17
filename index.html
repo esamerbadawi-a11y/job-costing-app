@@ -1501,6 +1501,12 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         </div>
 
         <div class="form-group">
+            <label data-i18n="lblCardFeeDefault"></label>
+            <input type="text" id="companyProfileCardFee" inputmode="decimal" placeholder="5.5">
+            <div class="ag-meta" style="margin-top:4px;" data-i18n="cardFeeDefaultHint"></div>
+        </div>
+
+        <div class="form-group">
             <label data-i18n="lblPaymentLink"></label>
             <input type="text" id="companyProfilePaymentLink" placeholder="https://buy.stripe.com/... or https://squareup.com/...">
             <div class="ag-meta" style="margin-top:4px;" data-i18n="paymentLinkHint"></div>
@@ -2759,6 +2765,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         payMethodCheck: { ar: 'شيك', en: 'Check' },
         payMethodCard: { ar: 'كارت / Stripe', en: 'Card / Stripe' },
         cardNetLabel: { ar: 'الصافي', en: 'Net' },
+        lblCardFeeDefault: { ar: 'نسبة رسوم الكارت الثابتة (%)', en: 'Default card fee (%)' },
+        cardFeeDefaultHint: { ar: 'بتتحط لوحدها لما تختار Card في دفعة العميل، وتقدر تغيرها لكل دفعة. لو سيبتها فاضية بتبقى 5.5%.', en: 'Pre-filled when you pick Card for a client payment; you can still change it per payment. Left empty = 5.5%.' },
         lblFeeRate: { ar: 'نسبة رسوم الكارت (%)', en: 'Card fee (%)' },
         lblAmountNeeded: { ar: 'المبلغ المطلوب يوصلك ($)', en: 'Amount you need to receive ($)' },
         chargeHintTxt: { ar: '💳 خد من العميل:', en: '💳 Charge the client:' },
@@ -6958,13 +6966,14 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         document.getElementById('receiptNetField').style.display = isCard ? '' : 'none';
         if (isCard) {
             const r = document.getElementById('receiptFeeRate');
-            if (!String(r.value).trim()) { const lr = lastCardFeeRate(); if (lr > 0) r.value = lr; }
+            if (!String(r.value).trim()) r.value = defaultCardFeeRate();
         }
         const lbl = document.getElementById('receiptAmtLbl');
         if (lbl) lbl.textContent = t(isCard ? 'lblAmountNeeded' : 'lblAmountShort');
         updateChargeHint();
     }
     // Fee % taken from the most recent card payment on any job (fee / amount charged).
+    function defaultCardFeeRate() { const c = parseVal(companyProfile && companyProfile.cardFeeRate); return (c > 0 && c < 50) ? c : 5.5; }
     function lastCardFeeRate() {
         let best = null;
         (savedJobs || []).forEach(j => (j.receipts || []).forEach(e => {
@@ -11914,6 +11923,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
             ? companyProfile.termsConditions
             : defaultTermsConditionsText(companyProfile.name || 'the Company');
         document.getElementById('companyProfilePaymentLink').value = companyProfile.paymentLink || '';
+        document.getElementById('companyProfileCardFee').value = companyProfile.cardFeeRate || '';
         { const ds = companyDefaultSplit(); document.getElementById('companyDefSplitS').value = ds.s; document.getElementById('companyDefSplitM').value = ds.m; document.getElementById('companyDefSplitC').value = ds.company; }
         document.getElementById('companyProfileMarginThreshold').value = (companyProfile.marginAlertThreshold !== undefined && companyProfile.marginAlertThreshold !== null) ? companyProfile.marginAlertThreshold : '';
         companyProfilePhonesWorking = (companyProfile.phones && companyProfile.phones.length > 0) ? [...companyProfile.phones] : [''];
@@ -12029,6 +12039,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         companyProfile.termsEstimate = document.getElementById('companyProfileTermsEst').value;
         companyProfile.stateSettings = cleanStateSettings(stateSettingsWorking);
         companyProfile.paymentLink = document.getElementById('companyProfilePaymentLink').value.trim();
+        { const cf = parseVal(document.getElementById('companyProfileCardFee').value); companyProfile.cardFeeRate = (cf > 0 && cf < 50) ? cf : 0; }
         const dS = parseVal(document.getElementById('companyDefSplitS').value), dM = parseVal(document.getElementById('companyDefSplitM').value), dC = parseVal(document.getElementById('companyDefSplitC').value);
         if (dS < 0 || dM < 0 || dC < 0 || Math.abs(dS + dM + dC - 100) > 0.01) { alert(t('defaultSplitMust100')); return; }
         companyProfile.defaultSplit = { s: dS, m: dM, company: dC };
