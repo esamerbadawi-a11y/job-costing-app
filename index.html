@@ -2937,6 +2937,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         ctPickBlank: { ar: 'عقد فاضي (من غير عرض)', en: 'Blank contract (no quote)' },
         ctBoqLabel: { ar: 'مقترح BOQ', en: 'BOQ proposal' },
         ctBoqEmpty: { ar: 'المقترح ده مفيهوش بنود بأسعار.', en: 'This proposal has no priced items.' },
+        techRepNotePh: { ar: 'ملاحظة للتقرير (اختياري)', en: 'Report note (optional)' },
+        techRepLangTitle: { ar: 'لغة تقرير الفني', en: 'Technician report language' },
         notesBtn: { ar: 'ملاحظات', en: 'Notes' },
         notesTitle: { ar: 'الملاحظات', en: 'Notes' },
         notesPh: { ar: 'اكتب ملاحظتك هنا...', en: 'Write a note...' },
@@ -8247,6 +8249,28 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         const sh = document.getElementById('rrShare');
         if (sh) sh.onclick = async () => { try { await navigator.share({ files: [file], title: file.name.replace(/\.pdf$/i,'').replace(/_/g,' ') }); } catch (e) { if (e && e.name !== 'AbortError') alert(t('alertShareNotSupported')); } };
     }
+    // ===== Technician report language (English / Arabic / Spanish) =====
+    const TECH_REP_TX = {
+        en: { title: 'Technician Report:', period: 'Period', issued: 'Issued', lastPay: 'Last payment', note: 'Note', beginning: 'beginning', today: 'today', date: 'Date', client: 'Client', work: 'Work', earned: 'Earned', materials: 'Materials', gas: 'Gas', paid: 'Paid',
+            payment: 'Payment', bonus: 'Bonus', partner: 'partner', noPay: 'Day with no pay', summary: 'Summary', wages: 'Wages', materialsBought: 'Materials you bought (reimbursement)', partnerShare: 'Partner share',
+            totalEarned: 'Total earned', paidToYou: 'Paid to you', older: 'Older balance (before {d})', owed: 'THE COMPANY OWES YOU', credit: 'EXTRA PAID - CARRIED TO YOUR NEXT PAYMENT', settled: 'ALL SETTLED - NOTHING OWED',
+            s1: 'You earned {E} this period and were paid {P}.', sOwed: 'The company still owes you {N}.', sOwedPrior: 'With your older balance of {O}, the company still owes you {N}.', sOwedPriorNeg: 'After deducting the {O} you owed the company, the company still owes you {N}.',
+            sExtra: 'You were paid {X} more than you earned; the extra is carried to your next payment.', sSettled: 'Everything is settled.', covers: 'Payments in this period were {X} more than this period\'s earnings; that extra covers your older balance of {O}.' },
+        ar: { title: 'تقرير الفني:', period: 'الفترة', issued: 'صدر في', lastPay: 'آخر دفعة', note: 'ملاحظة', beginning: 'البداية', today: 'النهارده', date: 'التاريخ', client: 'العميل', work: 'الشغل', earned: 'المكسب', materials: 'خامات', gas: 'بنزين', paid: 'المدفوع',
+            payment: 'دفعة', bonus: 'بونص', partner: 'شريك', noPay: 'يوم بدون أجر', summary: 'الملخص', wages: 'الأجور', materialsBought: 'خامات اشتريتها (تعويض)', partnerShare: 'نصيب الشراكة',
+            totalEarned: 'إجمالي اللي كسبته', paidToYou: 'اللي اتدفعلك', older: 'رصيد قديم (قبل {d})', owed: 'الشركة مدينة لك بـ', credit: 'اتدفعلك زيادة - بتتحسب على دفعتك الجاية', settled: 'الحساب خالص - مفيش مستحقات',
+            s1: 'كسبت {E} في الفترة دي واتدفعلك {P}.', sOwed: 'لسه ليك عند الشركة {N}.', sOwedPrior: 'مع رصيدك القديم {O}، لسه ليك عند الشركة {N}.', sOwedPriorNeg: 'بعد خصم {O} اللي كانت عليك للشركة، لسه ليك عند الشركة {N}.',
+            sExtra: 'اتدفعلك {X} أكتر من اللي كسبته، والزيادة بتتحسب على دفعتك الجاية.', sSettled: 'الحساب خالص.', covers: 'المدفوع في الفترة دي أكتر من المكسب بـ {X}، والزيادة دي بتغطي رصيدك القديم {O}.' },
+        es: { title: 'Informe del técnico:', period: 'Periodo', issued: 'Emitido', lastPay: 'Último pago', note: 'Nota', beginning: 'inicio', today: 'hoy', date: 'Fecha', client: 'Cliente', work: 'Trabajo', earned: 'Ganado', materials: 'Materiales', gas: 'Gasolina', paid: 'Pagado',
+            payment: 'Pago', bonus: 'Bono', partner: 'socio', noPay: 'Día sin pago', summary: 'Resumen', wages: 'Salario', materialsBought: 'Materiales que usted compró (reembolso)', partnerShare: 'Participación de socio',
+            totalEarned: 'Total ganado', paidToYou: 'Pagado a usted', older: 'Saldo anterior (antes de {d})', owed: 'LA EMPRESA LE DEBE', credit: 'PAGO DE MÁS - SE APLICA A SU PRÓXIMO PAGO', settled: 'CUENTA SALDADA - NO SE DEBE NADA',
+            s1: 'Usted ganó {E} en este periodo y se le pagó {P}.', sOwed: 'La empresa aún le debe {N}.', sOwedPrior: 'Con su saldo anterior de {O}, la empresa aún le debe {N}.', sOwedPriorNeg: 'Después de descontar los {O} que usted debía a la empresa, la empresa aún le debe {N}.',
+            sExtra: 'Se le pagó {X} más de lo que ganó; el extra se aplica a su próximo pago.', sSettled: 'Todo está saldado.', covers: 'Los pagos de este periodo fueron {X} más que lo ganado; ese extra cubre su saldo anterior de {O}.' }
+    };
+    function getTechRepLang(name) { try { const v = localStorage.getItem('tw_trl_' + name); if (v && TECH_REP_TX[v]) return v; } catch (e) {} return 'en'; }
+    function getTechRepNote(name) { try { return localStorage.getItem('tw_trn_' + name) || ''; } catch (e) { return ''; } }
+    function setTechRepNote(name, v) { try { if (String(v).trim()) localStorage.setItem('tw_trn_' + name, v); else localStorage.removeItem('tw_trn_' + name); } catch (e) {} }
+    function setTechRepLang(name, v) { try { localStorage.setItem('tw_trl_' + name, v); } catch (e) {} }
     async function printTechnicianReport(techName) {
         // The AI step below can take a few seconds; open the tab now (while the tap still counts) so the phone doesn't block it later.
         let preWin = null;
@@ -8256,23 +8280,39 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         try { if (getGeminiApiKey(true) && !isMobileDev) preWin = window.open('', '_blank'); } catch (e) { preWin = null; }
         const closePre = () => { try { if (preWin) preWin.close(); } catch (e) {} };
         if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch(e) {} }
+        const RL = getTechRepLang(techName);               // report language: 'en' | 'ar' | 'es'
+        const D = TECH_REP_TX[RL] || TECH_REP_TX.en;
+        const RTL = RL === 'ar';
         const { jsPDF } = window.jspdf;
         let doc = new jsPDF('p', 'mm', 'a4');
-        doc.setFont("helvetica", "bold"); doc.setFontSize(15);
-        doc.text("Technician Report:", 14, 15);
+        // The PDF's own font has no Arabic, so any Arabic text is drawn as a picture (same trick the app already used for names).
+        // x is the LEFT edge for align 'l' and the RIGHT edge for align 'r'; y is the text baseline. Returns the width used (mm).
+        const putTxt = (txt, x, y, o) => {
+            o = o || {}; const size = o.size || 10, col = o.color || [30, 30, 30], right = o.align === 'r';
+            if (!containsArabic(txt)) {
+                doc.setFont('helvetica', o.bold ? 'bold' : (o.italic ? 'italic' : 'normal')); doc.setFontSize(size); doc.setTextColor(col[0], col[1], col[2]);
+                doc.text(String(txt), x, y, { align: right ? 'right' : 'left' }); return doc.getTextWidth(String(txt));
+            }
+            const im = textToImage(txt), hh = size * 0.3528 * 1.5; let w = hh * im.aspect, h2 = hh;
+            if (w > (o.maxW || 182)) { h2 = h2 * (o.maxW || 182) / w; w = o.maxW || 182; }
+            doc.addImage(im.dataUrl, 'PNG', right ? x - w : x, y - h2 * 0.72, w, h2); return w;
+        };
+        let tw0 = putTxt(D.title, RTL ? 196 : 14, 15, { size: 15, bold: true, align: RTL ? 'r' : 'l', color: [0, 0, 0] });
         const nameImg = textToImage(techName);
         const nameH = 7, nameW = nameH * nameImg.aspect;
-        doc.addImage(nameImg.dataUrl, 'PNG', 62, 10, nameW, nameH);
+        doc.addImage(nameImg.dataUrl, 'PNG', RTL ? 196 - tw0 - 3 - nameW : 14 + tw0 + 3, 10, nameW, nameH);
 
         const dateFrom = document.getElementById('guideDateFrom').value;
         const dateTo = document.getElementById('guideDateTo').value;
         const hasDateFilter = !!(dateFrom || dateTo);
-
-        // Make explicit that each job's Dues figure is calculated from the specific day(s) he
-        // actually worked it (shown in the Date column below) — not the job's own start date.
-        doc.setFont("helvetica", "italic"); doc.setFontSize(8.5); doc.setTextColor(90, 90, 90);
-        doc.text("Dues per job are calculated only from the day(s) actually worked, shown below.", 14, 21);
-        doc.text("Period: " + (dateFrom || 'beginning') + "  to  " + (dateTo || 'today'), 14, 26);
+        {   // report number = issue date + a short code of (technician, period): printing the same report again gives the same number
+            const todayIso = isoDate(new Date()); let hsh = 7; const seed = techName + '|' + dateFrom + '|' + dateTo;
+            for (let i = 0; i < seed.length; i++) hsh = (hsh * 31 + seed.charCodeAt(i)) % 9973;
+            const no = 'TR-' + todayIso.replace(/-/g, '') + '-' + String(hsh).padStart(4, '0');
+            putTxt(no, RTL ? 14 : 196, 12, { size: 8.5, bold: true, align: RTL ? 'l' : 'r', color: [100, 116, 139] });
+            putTxt(D.issued + ': ' + todayIso, RTL ? 14 : 196, 17, { size: 8.5, align: RTL ? 'l' : 'r', color: [100, 116, 139] });
+        }
+        putTxt(D.period + ': ' + (dateFrom || D.beginning) + '  →  ' + (dateTo || D.today), RTL ? 196 : 14, 23, { size: 9, italic: true, color: [90, 90, 90], align: RTL ? 'r' : 'l' });
         doc.setTextColor(0, 0, 0);
 
         const rows = [];
@@ -8367,27 +8407,32 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             rows.forEach(r => { if (r.wjobId && sums[r.wjobId]) r.work = sums[r.wjobId]; });
         } catch (e) { /* keep the plain trimmed description */ }
 
-        const headers = [["Date", "Client", "Work", "Pay Type", "Dues", "Materials", "Gas", "Paid", "Remaining"]];
         const money = v => (v === null || v === undefined) ? '-' : '$' + v.toFixed(2);
-        const data = rows.map(r => [r.date, r.client, (r.work || '') + (r.dues === 0 && r.type !== '-' ? (r.work ? ' | ' : '') + 'Day with no pay' : '') + (r.gasNote ? (r.work ? ' | ' : '') + 'Gas: ' + r.gasNote : ''), r.type, money(r.dues), money(r.materials), money(r.gas), money(r.paid), money(r.remaining)]);
-        const TECH_REPORT_ARABIC_COLS = [1, 2, 3]; // Client, Work, Pay Type
-        // Columns that would be "-" in every row are left out (the first five always stay), and "Dues" reads "Earned".
-        const keepCols = headers[0].map((h, i) => i < 5 || data.some(r => r[i] && r[i] !== '-'));
-        const headersK = [headers[0].filter((h, i) => keepCols[i]).map(h => h === 'Dues' ? 'Earned' : h)];
-        const dataK = data.map(r => r.filter((c, i) => keepCols[i]));
+        const fmtMoney = v => (v < 0 ? '-$' + Math.abs(v).toFixed(2) : '$' + v.toFixed(2));
+        // Labels that were built in English inside the rows are translated here, for the chosen report language.
+        const trClient = c => String(c || '').replace(/^Payment/, D.payment).replace(/^Bonus/, D.bonus).replace(/^Materials \(/, D.materials + ' (').replace(/ \(partner (\d+)%\)$/, ' (' + D.partner + ' $1%)');
+        const data = rows.map(r => [r.date, trClient(r.client), (r.work || '') + (r.dues === 0 && r.type !== '-' ? (r.work ? ' | ' : '') + D.noPay : '') + (r.gasNote ? (r.work ? ' | ' : '') + D.gas + ': ' + r.gasNote : ''), money(r.dues), money(r.materials), money(r.gas), money(r.paid)]);
+        const colKeys = ['date', 'client', 'work', 'earned', 'mat', 'gas', 'paid'];
+        const colHead = [D.date, D.client, D.work, D.earned, D.materials, D.gas, D.paid];
+        // Date / Client / Work / Earned / Paid always stay; Materials and Gas only when something was entered.
+        const keep = colKeys.map((k, i) => i < 4 || i === 6 || data.some(r => r[i] && r[i] !== '-'));
+        let order = colKeys.map((k, i) => i).filter(i => keep[i]);
+        if (RTL) order = order.reverse();                  // Arabic reads right to left, so Date sits on the right
+        const headersK = [order.map(i => colHead[i])];
+        const dataK = data.map(r => order.map(i => r[i]));
+        const keyAt = order.map(i => colKeys[i]);
 
-        // Bonus (🎁) rows are highlighted and bolded throughout the table — same light-amber
-        // background jsPDF-autoTable draws from styles.fillColor, plus a bold font, so a bonus
-        // reads as a reward at a glance instead of blending into the regular job rows.
+        // Bonus rows are highlighted and bolded so a bonus reads as a reward at a glance.
         const BONUS_HIGHLIGHT_RGB = [255, 243, 205];
         const BONUS_TEXT_RGB = [120, 90, 0];
-        const isBonusRow = (rowRaw) => String((rowRaw && rowRaw[1]) ?? '').startsWith('Bonus');
+        const isBonusRow = (rowRaw) => { const v = String((rowRaw && rowRaw[keyAt.indexOf('client')]) ?? ''); return v.startsWith(D.bonus); };
+        const colStyles = {}; keyAt.forEach((k, i) => { if (k === 'date') colStyles[i] = { cellWidth: 23 }; else if (k === 'work') colStyles[i] = { cellWidth: 40 }; else if (k === 'client') colStyles[i] = { cellWidth: 42 }; });
 
         doc.autoTable({
-            head: headersK, body: dataK, startY: 31, theme: 'grid',
-            styles: { fontSize: 8, cellPadding: 1.6, halign: 'center' },
-            columnStyles: { 0: { cellWidth: 21 }, 2: { cellWidth: 36 } },
-            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+            head: headersK, body: dataK, startY: 28, theme: 'grid',
+            styles: { fontSize: 8.5, cellPadding: 1.8, halign: 'center', lineColor: [210, 215, 222] },
+            columnStyles: colStyles,
+            headStyles: { fillColor: [226, 232, 240], textColor: [30, 41, 59], fontStyle: 'bold' },
             didParseCell: function(cellData) {
                 if (cellData.section !== 'body') return;
                 if (!isBonusRow(cellData.row.raw)) return;
@@ -8396,14 +8441,13 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 cellData.cell.styles.textColor = BONUS_TEXT_RGB;
             },
             didDrawCell: function(cellData) {
-                if (cellData.section !== 'body') return;
-                if (!TECH_REPORT_ARABIC_COLS.includes(cellData.column.index)) return;
                 const text = String(cellData.cell.raw ?? '');
-                if (!text || !containsArabic(text)) return;
-                const bonusRow = isBonusRow(cellData.row.raw);
-                doc.setFillColor(...(bonusRow ? BONUS_HIGHLIGHT_RGB : [255, 255, 255]));
+                if (!text || !containsArabic(text)) return;      // client / work / header text in Arabic: drawn as a picture
+                const head = cellData.section === 'head';
+                const bonusRow = !head && isBonusRow(cellData.row.raw);
+                doc.setFillColor(...(head ? [226, 232, 240] : (bonusRow ? BONUS_HIGHLIGHT_RGB : [255, 255, 255])));
                 doc.rect(cellData.cell.x, cellData.cell.y, cellData.cell.width, cellData.cell.height, 'F');
-                doc.setDrawColor(200, 200, 200);
+                doc.setDrawColor(210, 215, 222);
                 doc.rect(cellData.cell.x, cellData.cell.y, cellData.cell.width, cellData.cell.height);
                 const img = textToImage(text);
                 const padding = 1;
@@ -8416,9 +8460,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             }
         });
 
-        // ---- Summary: laid out as a plain step-by-step table so anyone can follow it without
-        // knowing how the app works: what he earned, minus what he was paid, plus any older
-        // balance, ending in ONE clearly-colored bottom line. ----
+        // ---- Totals ----
         const periodEarned = round2(totalDues + totalMaterials + totalBonus + totalGas + totalPartner);
         const periodBalance = round2(periodEarned - totalPaid);
         let priorBalance = 0;
@@ -8432,74 +8474,95 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         }
         const hasPrior = !!dateFrom && Math.abs(priorBalance) > 0.005;
         const netOwed = round2(periodBalance + (hasPrior ? priorBalance : 0));
-        const fmtMoney = v => (v < 0 ? '-$' + Math.abs(v).toFixed(2) : '$' + v.toFixed(2));
-        const sumRows = [];
-        sumRows.push({ label: 'Wages earned', value: fmtMoney(totalDues), kind: 'normal' });
-        if (totalMaterials > 0.005) sumRows.push({ label: '+ Materials he bought (reimbursement)', value: fmtMoney(totalMaterials), kind: 'normal' });
-        if (totalPartner > 0.005) sumRows.push({ label: '+ Partner share (profit from partner jobs)', value: fmtMoney(totalPartner), kind: 'normal' });
-        if (totalBonus > 0.005) sumRows.push({ label: '+ Bonus', value: fmtMoney(totalBonus), kind: 'bonus' });
-        if (totalGas > 0.005) sumRows.push({ label: '+ Gas', value: fmtMoney(totalGas), kind: 'bonus' });
-        sumRows.push({ label: '= Total Earned in this period', value: fmtMoney(periodEarned), kind: 'sub' });
-        sumRows.push({ label: '- Total Paid in this period', value: fmtMoney(totalPaid), kind: 'paid' });
-        if (hasPrior) {
-            sumRows.push({ label: periodBalance < -0.005 ? '= This period: paid more than earned' : '= This period: still remaining', value: fmtMoney(periodBalance), kind: 'sub' });
-            sumRows.push({ label: `+ Older balance (owed before ${dateFrom})`, value: fmtMoney(priorBalance), kind: 'prior' });
-        }
-        sumRows.push({
-            label: netOwed > 0.005 ? 'AMOUNT STILL OWED TO THE TECHNICIAN' : (netOwed < -0.005 ? 'EXTRA PAID - CREDIT CARRIED TO NEXT PAYMENT' : 'FULLY SETTLED - NOTHING OWED'),
-            value: fmtMoney(netOwed), kind: 'final'
-        });
 
-        const finalY = doc.lastAutoTable.finalY + 10;
+        // ---- Closing section: small summary table, one big final box, a short plain-language note ----
+        let y = doc.lastAutoTable.finalY + 9;
+        const need = h => { if (y + h > 282) { doc.addPage(); y = 20; } };
+        need(70);
+        {   // last payment ever made to him (up to the end of the period) — the thing technicians ask about most
+            const pays = techPaymentsInPeriod(techName, '', dateTo).slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+            const lp = pays[pays.length - 1];
+            if (lp) { putTxt(D.lastPay + ': ' + (lp.date || '') + '  ·  $' + parseVal(lp.amount).toFixed(2), RTL ? 196 : 14, y - 2, { size: 9.5, italic: true, align: RTL ? 'r' : 'l', color: [71, 85, 105] }); y += 6; }
+        }
+        putTxt(D.summary, RTL ? 196 : 14, y, { size: 11, bold: true, align: RTL ? 'r' : 'l', color: [71, 85, 105] });
+        const sRows = [];
+        sRows.push([D.wages, fmtMoney(totalDues), 'n']);
+        if (totalMaterials > 0.005) sRows.push([D.materialsBought, fmtMoney(totalMaterials), 'n']);
+        if (totalPartner > 0.005) sRows.push([D.partnerShare, fmtMoney(totalPartner), 'n']);
+        if (totalBonus > 0.005) sRows.push([D.bonus, fmtMoney(totalBonus), 'bonus']);
+        if (totalGas > 0.005) sRows.push([D.gas, fmtMoney(totalGas), 'bonus']);
+        sRows.push([D.totalEarned, fmtMoney(periodEarned), 'sub']);
+        sRows.push([D.paidToYou, '- ' + fmtMoney(totalPaid), 'paid']);
+        if (hasPrior) sRows.push([D.older.replace('{d}', dateFrom), fmtMoney(priorBalance), 'prior']);
+        const sBody = sRows.map(r => RTL ? ['  ', r[1]] : [r[0], r[1]]);
+        if (RTL) sBody.forEach(b => b.reverse());           // value first, label on the right
+        const labelCol = RTL ? 1 : 0, valCol = RTL ? 0 : 1;
         doc.autoTable({
-            startY: finalY,
-            head: [['Summary', 'Amount']],
-            body: sumRows.map(r => [r.label, r.value]),
-            theme: 'grid',
-            styles: { fontSize: 10.5, cellPadding: 2.6 },
-            headStyles: { fillColor: [71, 85, 105], textColor: 255 },
-            columnStyles: { 1: { halign: 'right', fontStyle: 'bold', cellWidth: 40 } },
-            didParseCell: function(cellData) {
-                if (cellData.section !== 'body') return;
-                const kind = sumRows[cellData.row.index].kind;
-                const s = cellData.cell.styles;
-                if (kind === 'sub') { s.fillColor = [241, 245, 249]; s.fontStyle = 'bold'; }
-                else if (kind === 'bonus') { s.fillColor = [255, 243, 205]; s.textColor = [120, 90, 0]; s.fontStyle = 'bold'; }
-                else if (kind === 'paid') { s.textColor = [21, 128, 61]; }
-                else if (kind === 'prior') { s.fillColor = [254, 226, 226]; s.textColor = [185, 28, 28]; s.fontStyle = 'bold'; }
-                else if (kind === 'final') {
-                    s.fontSize = 12.5; s.fontStyle = 'bold';
-                    if (netOwed > 0.005) { s.fillColor = [254, 226, 226]; s.textColor = [185, 28, 28]; }
-                    else { s.fillColor = [220, 252, 231]; s.textColor = [21, 128, 61]; }
-                }
+            startY: y + 3, body: sBody, theme: 'grid',
+            styles: { fontSize: 10.5, cellPadding: 2.4, lineColor: [226, 232, 240] },
+            columnStyles: { [valCol]: { cellWidth: 42, halign: RTL ? 'left' : 'right', fontStyle: 'bold' }, [labelCol]: { halign: RTL ? 'right' : 'left' } },
+            didParseCell: function(cd) {
+                if (cd.section !== 'body') return;
+                const kind = sRows[cd.row.index][2], st = cd.cell.styles;
+                if (kind === 'sub') { st.fillColor = [241, 245, 249]; st.fontStyle = 'bold'; }
+                else if (kind === 'bonus') { st.textColor = [120, 90, 0]; }
+                else if (kind === 'paid') { st.textColor = [21, 128, 61]; }
+                else if (kind === 'prior') { st.fillColor = [254, 226, 226]; st.textColor = [185, 28, 28]; st.fontStyle = 'bold'; }
+            },
+            didDrawCell: function(cd) {
+                if (cd.section !== 'body' || cd.column.index !== labelCol) return;
+                const lab = sRows[cd.row.index][0], kind = sRows[cd.row.index][2];
+                if (!containsArabic(lab)) return;
+                doc.setFillColor(...(kind === 'sub' ? [241, 245, 249] : (kind === 'prior' ? [254, 226, 226] : [255, 255, 255])));
+                doc.rect(cd.cell.x + 0.3, cd.cell.y + 0.3, cd.cell.width - 0.6, cd.cell.height - 0.6, 'F');
+                const col = kind === 'paid' ? [21, 128, 61] : (kind === 'prior' ? [185, 28, 28] : (kind === 'bonus' ? [120, 90, 0] : [30, 30, 30]));
+                putTxt(lab, cd.cell.x + cd.cell.width - 2.5, cd.cell.y + cd.cell.height / 2 + 1.6, { size: 10.5, align: 'r', color: col, bold: kind === 'sub' || kind === 'prior', maxW: cd.cell.width - 5 });
             }
         });
 
-        // One plain-language sentence for the confusing case: over-paid this period while an
-        // older balance is still open — the two simply cancel each other out.
-        let afterY = doc.lastAutoTable.finalY + 7;
-        {
-            if (afterY > 270) { doc.addPage(); afterY = 20; }
-            const sentence = netOwed > 0.005
-                ? `In short: you earned ${fmtMoney(periodEarned)} in this period and were paid ${fmtMoney(totalPaid)}. The company still owes you ${fmtMoney(netOwed)}.`
-                : (netOwed < -0.005
-                    ? `In short: you earned ${fmtMoney(periodEarned)} in this period and were paid ${fmtMoney(totalPaid)}. You were paid ${fmtMoney(Math.abs(netOwed))} more than you earned; that extra amount is carried to your next payment.`
-                    : `In short: you earned ${fmtMoney(periodEarned)} in this period and were paid ${fmtMoney(totalPaid)}. Everything is settled.`);
-            doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor(40, 40, 40);
-            const sl = doc.splitTextToSize(sentence, 182);
-            doc.text(sl, 14, afterY);
-            afterY += sl.length * 5 + 4;
-            doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "normal");
+        y = doc.lastAutoTable.finalY + 7; need(40);
+        const owedPos = netOwed > 0.005, extra = netOwed < -0.005;
+        const finLabel = owedPos ? D.owed : (extra ? D.credit : D.settled);
+        const fc = owedPos ? [185, 28, 28] : [21, 128, 61];
+        doc.setFillColor(...(owedPos ? [254, 226, 226] : [220, 252, 231])); doc.setDrawColor(...(owedPos ? [252, 165, 165] : [134, 239, 172]));
+        doc.roundedRect(14, y, 182, 17, 2, 2, 'FD');
+        putTxt(finLabel, RTL ? 192 : 18, y + 10.5, { size: extra ? 10 : 12, bold: true, align: RTL ? 'r' : 'l', color: fc, maxW: 120 });
+        putTxt(fmtMoney(Math.abs(netOwed)), RTL ? 18 : 192, y + 11.5, { size: 19, bold: true, align: RTL ? 'l' : 'r', color: fc });
+        y += 17 + 7;
+
+        // Plain-language note, written for the technician in his own language (short lines, so Arabic never needs wrapping).
+        const fill = (tpl, m) => tpl.replace('{E}', fmtMoney(periodEarned)).replace('{P}', fmtMoney(totalPaid)).replace('{N}', fmtMoney(Math.abs(netOwed))).replace('{O}', fmtMoney(Math.abs(priorBalance))).replace('{X}', fmtMoney(Math.abs(m !== undefined ? m : netOwed)));
+        const lines = [fill(D.s1)];
+        if (owedPos) lines.push(fill(hasPrior ? (priorBalance < 0 ? D.sOwedPriorNeg : D.sOwedPrior) : D.sOwed));
+        else if (extra) lines.push(fill(D.sExtra));
+        else lines.push(D.sSettled);
+        if (hasPrior && periodBalance < -0.005 && priorBalance > 0.005) lines.push(fill(D.covers, periodBalance));
+        lines.forEach(L => {
+            if (!containsArabic(L)) {
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(40, 40, 40);
+                doc.splitTextToSize(L, 182).forEach(sl => { need(6); doc.text(sl, RTL ? 196 : 14, y, { align: RTL ? 'right' : 'left' }); y += 5.2; });
+            } else { need(7); putTxt(L, RTL ? 196 : 14, y, { size: 10, align: RTL ? 'r' : 'l', color: [40, 40, 40] }); y += 6.4; }
+        });
+        const repNote = getTechRepNote(techName).trim();
+        if (repNote) {
+            y += 3; need(16);
+            putTxt(D.note + ':', RTL ? 196 : 14, y, { size: 10, bold: true, align: RTL ? 'r' : 'l', color: [71, 85, 105] }); y += 5.5;
+            if (!containsArabic(repNote)) {
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(40, 40, 40);
+                doc.splitTextToSize(repNote, 182).forEach(sl => { need(6); doc.text(sl, RTL ? 196 : 14, y, { align: RTL ? 'right' : 'left' }); y += 5.2; });
+            } else { putTxt(repNote, RTL ? 196 : 14, y, { size: 10, align: RTL ? 'r' : 'l', color: [40, 40, 40] }); y += 6.4; }
+            setTechRepNote(techName, '');        // a note is for ONE report — it never leaks into the next one
         }
-        if (hasPrior && periodBalance < -0.005 && priorBalance > 0.005) {
-            let noteY = afterY;
-            if (noteY > 270) { doc.addPage(); noteY = 20; }
-            doc.setFont("helvetica", "italic"); doc.setFontSize(9.5); doc.setTextColor(60, 60, 60);
-            const note = `Note: payments in this period were $${Math.abs(periodBalance).toFixed(2)} MORE than this period's earnings. That extra amount covers the older balance of $${priorBalance.toFixed(2)}, so the final amount owed is $${Math.max(0, netOwed).toFixed(2)}.`;
-            doc.text(doc.splitTextToSize(note, 182), 14, noteY);
-            doc.setTextColor(0, 0, 0);
-            doc.setFont("helvetica", "normal");
-        }
+        doc.setTextColor(0, 0, 0); doc.setFont('helvetica', 'normal');
+        try {   // heads-up for the owner only (never printed): weekdays inside his worked range with no work recorded
+            const worked = new Set(rows.filter(r => r.type && r.type !== '-' && /^\d{4}-\d{2}-\d{2}$/.test(r.date)).map(r => r.date));
+            const ds = [...worked].sort();
+            if (ds.length > 1) {
+                const gaps = []; let d = ds[0];
+                while (d < ds[ds.length - 1]) { d = addDaysISO(d, 1); const wd = new Date(d + 'T12:00:00').getDay(); if (wd >= 1 && wd <= 5 && !worked.has(d)) gaps.push(d.slice(5)); }
+                if (gaps.length) showToast(currentLang === 'ar' ? '⚠️ أيام عمل (إثنين-جمعة) مفيهاش شغل متسجل للفني: ' + gaps.join('، ') : '⚠️ Weekdays with no work recorded for this technician: ' + gaps.join(', '));
+            }
+        } catch (e) { /* the warning must never break the report */ }
 
         addLogoWatermark(doc);
         if (isMobileDev) { showReportReady(doc, reportFileName('Technician_Report', techName, dateFrom, dateTo)); return; }
@@ -17780,6 +17843,8 @@ ${closeBtnHtml}
                     <details class="tg-more"><summary title="${t('moreActionsTitle')}">⋯</summary><div class="tg-actions" style="margin-top:6px;">
                     <button class="secondary" onclick="openTechBonusPrompt('${jsArg(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#fbbf24; color:#1a1a1a;">${t('techBonusBtn')}</button>
                     <button class="secondary" onclick="sendWhatsAppTech('${escJs(name)}', '${escJs(rawPhone)}', ${dues}, ${bonus})" style="padding:4px 8px; font-size:0.75rem; background:#059669;">${t('guideWhatsAppBtn')}</button>
+                    <select onchange="setTechRepLang('${escJs(name)}', this.value)" title="${escHtml(t('techRepLangTitle'))}" style="padding:4px 4px; font-size:0.75rem; width:auto; margin:0;"><option value="en"${getTechRepLang(name) === 'en' ? ' selected' : ''}>English</option><option value="ar"${getTechRepLang(name) === 'ar' ? ' selected' : ''}>عربي</option><option value="es"${getTechRepLang(name) === 'es' ? ' selected' : ''}>Español</option></select>
+                    <input type="text" dir="auto" value="${escHtml(getTechRepNote(name))}" onchange="setTechRepNote('${escJs(name)}', this.value)" placeholder="${escHtml(t('techRepNotePh'))}" style="padding:4px 6px; font-size:0.75rem; width:130px; margin:0;">
                     <button class="secondary" onclick="printTechnicianReport('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem; background:#0ea5e9;">${t('printReportBtn')}</button>
                     <button class="danger" onclick="deleteTechnicianFromDirectory('${escJs(name)}')" style="padding:4px 8px; font-size:0.75rem;">${t('deleteBtn')}</button>
                     </div></details>
@@ -17864,12 +17929,13 @@ ${closeBtnHtml}
         bonus = parseVal(bonus);
         // The basic calculation and the bonus are always shown as two separate lines (never
         // blended into one number) so the technician can tell a reward from his regular pay.
+        const wl = getTechRepLang(name);     // the message goes out in the technician's own report language
         const bonusLine = bonus > 0.005
-            ? (currentLang === 'ar' ? `\n🎁 بونس: $${bonus.toFixed(2)}\nالإجمالي: $${(dues + bonus).toFixed(2)}` : `\n🎁 Bonus: $${bonus.toFixed(2)}\nTotal: $${(dues + bonus).toFixed(2)}`)
+            ? (wl === 'ar' ? `\n🎁 بونس: $${bonus.toFixed(2)}\nالإجمالي: $${(dues + bonus).toFixed(2)}` : (wl === 'es' ? `\n🎁 Bono: $${bonus.toFixed(2)}\nTotal: $${(dues + bonus).toFixed(2)}` : `\n🎁 Bonus: $${bonus.toFixed(2)}\nTotal: $${(dues + bonus).toFixed(2)}`))
             : '';
-        const msg = currentLang === 'ar'
+        const msg = wl === 'ar'
             ? `مرحباً بك يا ${name}، إجمالي المستحقات الخاصة بك حتى الآن هو: $${dues.toFixed(2)}${bonusLine}`
-            : `Hi ${name}, your total dues so far are: $${dues.toFixed(2)}${bonusLine}`;
+            : (wl === 'es' ? `Hola ${name}, su total pendiente hasta ahora es: $${dues.toFixed(2)}${bonusLine}` : `Hi ${name}, your total dues so far are: $${dues.toFixed(2)}${bonusLine}`);
         openMapsLink(`https://wa.me/${normalized}?text=${encodeURIComponent(msg)}`);
     }
 
