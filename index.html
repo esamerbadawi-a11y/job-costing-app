@@ -8524,7 +8524,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         if (totalGas > 0.005) sRows.push([D.gas, fmtMoney(totalGas), 'bonus']);
         sRows.push([D.totalEarned, fmtMoney(periodEarned), 'sub']);
         sRows.push([D.paidToYou, '- ' + fmtMoney(totalPaid), 'paid']);
-        if (hasPrior) sRows.push([D.older.replace('{d}', dateFrom), fmtMoney(priorBalance), 'prior']);
+        // Red only while the company still owes him; once the account is settled (or he is ahead) the row stays neutral.
+        if (hasPrior) sRows.push([D.older.replace('{d}', dateFrom), fmtMoney(priorBalance), netOwed > 0.005 ? 'prior' : 'sub']);
         const sBody = sRows.map(r => RTL ? ['  ', r[1]] : [r[0], r[1]]);
         if (RTL) sBody.forEach(b => b.reverse());           // value first, label on the right
         const labelCol = RTL ? 1 : 0, valCol = RTL ? 0 : 1;
