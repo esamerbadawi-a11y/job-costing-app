@@ -8251,19 +8251,19 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     }
     // ===== Technician report language (English / Arabic / Spanish) =====
     const TECH_REP_TX = {
-        en: { title: 'Technician Report:', period: 'Period', issued: 'Issued', lastPay: 'Last payment', note: 'Note', beginning: 'beginning', today: 'today', date: 'Date', client: 'Client', work: 'Work', earned: 'Earned', materials: 'Materials', gas: 'Gas', paid: 'Paid',
+        en: { title: 'Technician Report:', period: 'Period', to: 'to', issued: 'Issued', lastPay: 'Last payment', note: 'Note', beginning: 'beginning', today: 'today', date: 'Date', client: 'Client', work: 'Work', earned: 'Earned', materials: 'Materials', gas: 'Gas', paid: 'Paid',
             payment: 'Payment', bonus: 'Bonus', partner: 'partner', noPay: 'Day with no pay', summary: 'Summary', wages: 'Wages', materialsBought: 'Materials you bought (reimbursement)', partnerShare: 'Partner share',
-            totalEarned: 'Total earned', paidToYou: 'Paid to you', older: 'Older balance (before {d})', owed: 'THE COMPANY OWES YOU', credit: 'EXTRA PAID - CARRIED TO YOUR NEXT PAYMENT', settled: 'ALL SETTLED - NOTHING OWED',
+            totalEarned: 'Total earned', paidToYou: 'Paid to you', older: 'Older balance (before {d})', owed: 'THE COMPANY OWES YOU', credit: 'EXTRA PAID - CARRIED TO YOUR NEXT PAYMENT', settled: 'ALL SETTLED - NOTHING OWED', bOwed: 'Company owes you', bCredit: 'Extra paid', bSettled: 'All settled',
             s1: 'You earned {E} this period and were paid {P}.', sOwed: 'The company still owes you {N}.', sOwedPrior: 'With your older balance of {O}, the company still owes you {N}.', sOwedPriorNeg: 'After deducting the {O} you owed the company, the company still owes you {N}.',
             sExtra: 'You were paid {X} more than you earned; the extra is carried to your next payment.', sSettled: 'Everything is settled.', covers: 'Payments in this period were {X} more than this period\'s earnings; that extra covers your older balance of {O}.' },
-        ar: { title: 'تقرير الفني:', period: 'الفترة', issued: 'صدر في', lastPay: 'آخر دفعة', note: 'ملاحظة', beginning: 'البداية', today: 'النهارده', date: 'التاريخ', client: 'العميل', work: 'الشغل', earned: 'المكسب', materials: 'خامات', gas: 'بنزين', paid: 'المدفوع',
+        ar: { title: 'تقرير الفني:', period: 'الفترة', to: 'إلى', issued: 'صدر في', lastPay: 'آخر دفعة', note: 'ملاحظة', beginning: 'البداية', today: 'النهارده', date: 'التاريخ', client: 'العميل', work: 'الشغل', earned: 'المكسب', materials: 'خامات', gas: 'بنزين', paid: 'المدفوع',
             payment: 'دفعة', bonus: 'بونص', partner: 'شريك', noPay: 'يوم بدون أجر', summary: 'الملخص', wages: 'الأجور', materialsBought: 'خامات اشتريتها (تعويض)', partnerShare: 'نصيب الشراكة',
-            totalEarned: 'إجمالي اللي كسبته', paidToYou: 'اللي اتدفعلك', older: 'رصيد قديم (قبل {d})', owed: 'الشركة مدينة لك بـ', credit: 'اتدفعلك زيادة - بتتحسب على دفعتك الجاية', settled: 'الحساب خالص - مفيش مستحقات',
+            totalEarned: 'إجمالي اللي كسبته', paidToYou: 'اللي اتدفعلك', older: 'رصيد قديم (قبل {d})', owed: 'الشركة مدينة لك بـ', credit: 'اتدفعلك زيادة - بتتحسب على دفعتك الجاية', settled: 'الحساب خالص - مفيش مستحقات', bOwed: 'الشركة مدينة لك', bCredit: 'اتدفعلك زيادة', bSettled: 'الحساب خالص',
             s1: 'كسبت {E} في الفترة دي واتدفعلك {P}.', sOwed: 'لسه ليك عند الشركة {N}.', sOwedPrior: 'مع رصيدك القديم {O}، لسه ليك عند الشركة {N}.', sOwedPriorNeg: 'بعد خصم {O} اللي كانت عليك للشركة، لسه ليك عند الشركة {N}.',
             sExtra: 'اتدفعلك {X} أكتر من اللي كسبته، والزيادة بتتحسب على دفعتك الجاية.', sSettled: 'الحساب خالص.', covers: 'المدفوع في الفترة دي أكتر من المكسب بـ {X}، والزيادة دي بتغطي رصيدك القديم {O}.' },
-        es: { title: 'Informe del técnico:', period: 'Periodo', issued: 'Emitido', lastPay: 'Último pago', note: 'Nota', beginning: 'inicio', today: 'hoy', date: 'Fecha', client: 'Cliente', work: 'Trabajo', earned: 'Ganado', materials: 'Materiales', gas: 'Gasolina', paid: 'Pagado',
+        es: { title: 'Informe del técnico:', period: 'Periodo', to: 'a', issued: 'Emitido', lastPay: 'Último pago', note: 'Nota', beginning: 'inicio', today: 'hoy', date: 'Fecha', client: 'Cliente', work: 'Trabajo', earned: 'Ganado', materials: 'Materiales', gas: 'Gasolina', paid: 'Pagado',
             payment: 'Pago', bonus: 'Bono', partner: 'socio', noPay: 'Día sin pago', summary: 'Resumen', wages: 'Salario', materialsBought: 'Materiales que usted compró (reembolso)', partnerShare: 'Participación de socio',
-            totalEarned: 'Total ganado', paidToYou: 'Pagado a usted', older: 'Saldo anterior (antes de {d})', owed: 'LA EMPRESA LE DEBE', credit: 'PAGO DE MÁS - SE APLICA A SU PRÓXIMO PAGO', settled: 'CUENTA SALDADA - NO SE DEBE NADA',
+            totalEarned: 'Total ganado', paidToYou: 'Pagado a usted', older: 'Saldo anterior (antes de {d})', owed: 'LA EMPRESA LE DEBE', credit: 'PAGO DE MÁS - SE APLICA A SU PRÓXIMO PAGO', settled: 'CUENTA SALDADA - NO SE DEBE NADA', bOwed: 'La empresa le debe', bCredit: 'Pago de más', bSettled: 'Cuenta saldada',
             s1: 'Usted ganó {E} en este periodo y se le pagó {P}.', sOwed: 'La empresa aún le debe {N}.', sOwedPrior: 'Con su saldo anterior de {O}, la empresa aún le debe {N}.', sOwedPriorNeg: 'Después de descontar los {O} que usted debía a la empresa, la empresa aún le debe {N}.',
             sExtra: 'Se le pagó {X} más de lo que ganó; el extra se aplica a su próximo pago.', sSettled: 'Todo está saldado.', covers: 'Los pagos de este periodo fueron {X} más que lo ganado; ese extra cubre su saldo anterior de {O}.' }
     };
@@ -8312,7 +8312,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             putTxt(no, RTL ? 14 : 196, 12, { size: 8.5, bold: true, align: RTL ? 'l' : 'r', color: [100, 116, 139] });
             putTxt(D.issued + ': ' + todayIso, RTL ? 14 : 196, 17, { size: 8.5, align: RTL ? 'l' : 'r', color: [100, 116, 139] });
         }
-        putTxt(D.period + ': ' + (dateFrom || D.beginning) + '  →  ' + (dateTo || D.today), RTL ? 196 : 14, 23, { size: 9, italic: true, color: [90, 90, 90], align: RTL ? 'r' : 'l' });
+        putTxt(D.period + ': ' + (dateFrom || D.beginning) + '  ' + D.to + '  ' + (dateTo || D.today), RTL ? 196 : 14, 23, { size: 9, italic: true, color: [90, 90, 90], align: RTL ? 'r' : 'l' });
         doc.setTextColor(0, 0, 0);
 
         const rows = [];
@@ -8428,8 +8428,44 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         const isBonusRow = (rowRaw) => { const v = String((rowRaw && rowRaw[keyAt.indexOf('client')]) ?? ''); return v.startsWith(D.bonus); };
         const colStyles = {}; keyAt.forEach((k, i) => { if (k === 'date') colStyles[i] = { cellWidth: 23 }; else if (k === 'work') colStyles[i] = { cellWidth: 40 }; else if (k === 'client') colStyles[i] = { cellWidth: 42 }; });
 
+        // ---- Totals (computed first: the three big boxes at the top of the page need them) ----
+        const periodEarned = round2(totalDues + totalMaterials + totalBonus + totalGas + totalPartner);
+        const periodBalance = round2(periodEarned - totalPaid);
+        let priorBalance = 0;
+        if (dateFrom) {
+            const priorDateTo = addDaysISO(dateFrom, -1);
+            const priorStats = computeTechPeriodStats('', priorDateTo)[techName];
+            const priorDues = (priorStats ? priorStats.dues : 0) + partnerShareInPeriod(techName, '', priorDateTo).total;
+            const priorBonus = techBonusTotalInPeriod(techName, '', priorDateTo);
+            const priorPaid = techPaymentsInPeriod(techName, '', priorDateTo).reduce((sum, p) => sum + parseVal(p.amount), 0);
+            priorBalance = round2(priorDues + priorBonus - priorPaid);
+        }
+        const hasPrior = !!dateFrom && Math.abs(priorBalance) > 0.005;
+        const netOwed = round2(periodBalance + (hasPrior ? priorBalance : 0));
+
+        // ---- Three big boxes at the top: earned / paid / what the company owes ----
+        {
+            const owedP = netOwed > 0.005, extraP = netOwed < -0.005;
+            const boxes = [
+                { label: D.totalEarned, val: fmtMoney(periodEarned), fill: [241, 245, 249], line: [203, 213, 225], col: [30, 41, 59] },
+                { label: D.paidToYou, val: fmtMoney(totalPaid), fill: [240, 253, 244], line: [187, 247, 208], col: [21, 128, 61] },
+                { label: owedP ? D.bOwed : (extraP ? D.bCredit : D.bSettled), val: fmtMoney(Math.abs(netOwed)),
+                  fill: owedP ? [254, 226, 226] : [220, 252, 231], line: owedP ? [252, 165, 165] : [134, 239, 172], col: owedP ? [185, 28, 28] : [21, 128, 61] }
+            ];
+            const ordered = RTL ? boxes.slice().reverse() : boxes;      // Arabic: first box sits on the right
+            const bw = 58, bh = 18, gap = 4, by = 28;
+            ordered.forEach((b, i) => {
+                const bx = 14 + i * (bw + gap);
+                doc.setFillColor(...b.fill); doc.setDrawColor(...b.line);
+                doc.roundedRect(bx, by, bw, bh, 2, 2, 'FD');
+                putTxt(b.label, RTL ? bx + bw - 4 : bx + 4, by + 6.5, { size: 8, bold: true, align: RTL ? 'r' : 'l', color: b.col, maxW: bw - 8 });
+                putTxt(b.val, RTL ? bx + bw - 4 : bx + 4, by + 14.5, { size: 15, bold: true, align: RTL ? 'r' : 'l', color: b.col });
+            });
+            doc.setTextColor(0, 0, 0);
+        }
+
         doc.autoTable({
-            head: headersK, body: dataK, startY: 28, theme: 'grid',
+            head: headersK, body: dataK, startY: 51, theme: 'grid',
             styles: { fontSize: 8.5, cellPadding: 1.8, halign: 'center', lineColor: [210, 215, 222] },
             columnStyles: colStyles,
             headStyles: { fillColor: [226, 232, 240], textColor: [30, 41, 59], fontStyle: 'bold' },
@@ -8459,21 +8495,6 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 doc.addImage(img.dataUrl, 'PNG', x, y, targetW, targetH);
             }
         });
-
-        // ---- Totals ----
-        const periodEarned = round2(totalDues + totalMaterials + totalBonus + totalGas + totalPartner);
-        const periodBalance = round2(periodEarned - totalPaid);
-        let priorBalance = 0;
-        if (dateFrom) {
-            const priorDateTo = addDaysISO(dateFrom, -1);
-            const priorStats = computeTechPeriodStats('', priorDateTo)[techName];
-            const priorDues = (priorStats ? priorStats.dues : 0) + partnerShareInPeriod(techName, '', priorDateTo).total;
-            const priorBonus = techBonusTotalInPeriod(techName, '', priorDateTo);
-            const priorPaid = techPaymentsInPeriod(techName, '', priorDateTo).reduce((sum, p) => sum + parseVal(p.amount), 0);
-            priorBalance = round2(priorDues + priorBonus - priorPaid);
-        }
-        const hasPrior = !!dateFrom && Math.abs(priorBalance) > 0.005;
-        const netOwed = round2(periodBalance + (hasPrior ? priorBalance : 0));
 
         // ---- Closing section: small summary table, one big final box, a short plain-language note ----
         let y = doc.lastAutoTable.finalY + 9;
