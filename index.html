@@ -8287,13 +8287,16 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         let doc = new jsPDF('p', 'mm', 'a4');
         // The PDF's own font has no Arabic, so any Arabic text is drawn as a picture (same trick the app already used for names).
         // x is the LEFT edge for align 'l' and the RIGHT edge for align 'r'; y is the text baseline. Returns the width used (mm).
+        // Inside Arabic text, dates and $ amounts get scrambled ("2026-11-02" -> "02-11-2026", "$50" -> "50$").
+        // An invisible left-to-right mark around each number keeps it in its normal order.
+        const bidiNum = s => String(s).replace(/\$?\d(?:[\d.,:\/-]*\d)?\$?/g, '‎$&‎');
         const putTxt = (txt, x, y, o) => {
             o = o || {}; const size = o.size || 10, col = o.color || [30, 30, 30], right = o.align === 'r';
             if (!containsArabic(txt)) {
                 doc.setFont('helvetica', o.bold ? 'bold' : (o.italic ? 'italic' : 'normal')); doc.setFontSize(size); doc.setTextColor(col[0], col[1], col[2]);
                 doc.text(String(txt), x, y, { align: right ? 'right' : 'left' }); return doc.getTextWidth(String(txt));
             }
-            const im = textToImage(txt), hh = size * 0.3528 * 1.5; let w = hh * im.aspect, h2 = hh;
+            const im = textToImage(bidiNum(txt)), hh = size * 0.3528 * 1.5; let w = hh * im.aspect, h2 = hh;
             if (w > (o.maxW || 182)) { h2 = h2 * (o.maxW || 182) / w; w = o.maxW || 182; }
             doc.addImage(im.dataUrl, 'PNG', right ? x - w : x, y - h2 * 0.72, w, h2); return w;
         };
@@ -8470,11 +8473,14 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             columnStyles: colStyles,
             headStyles: { fillColor: [226, 232, 240], textColor: [30, 41, 59], fontStyle: 'bold' },
             didParseCell: function(cellData) {
-                if (cellData.section !== 'body') return;
-                if (!isBonusRow(cellData.row.raw)) return;
-                cellData.cell.styles.fontStyle = 'bold';
-                cellData.cell.styles.fillColor = BONUS_HIGHLIGHT_RGB;
-                cellData.cell.styles.textColor = BONUS_TEXT_RGB;
+                if (cellData.section === 'body' && isBonusRow(cellData.row.raw)) {
+                    cellData.cell.styles.fontStyle = 'bold';
+                    cellData.cell.styles.fillColor = BONUS_HIGHLIGHT_RGB;
+                    cellData.cell.styles.textColor = BONUS_TEXT_RGB;
+                }
+                // Arabic cells are drawn later as a picture; the PDF font can't draw Arabic, so it must not draw
+                // its own garbled copy (that copy spilled outside the table as stray marks).
+                if (containsArabic(String(cellData.cell.raw ?? ''))) cellData.cell.text = [''];
             },
             didDrawCell: function(cellData) {
                 const text = String(cellData.cell.raw ?? '');
@@ -8485,7 +8491,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 doc.rect(cellData.cell.x, cellData.cell.y, cellData.cell.width, cellData.cell.height, 'F');
                 doc.setDrawColor(210, 215, 222);
                 doc.rect(cellData.cell.x, cellData.cell.y, cellData.cell.width, cellData.cell.height);
-                const img = textToImage(text);
+                const img = textToImage(bidiNum(text));
                 const padding = 1;
                 let targetH = cellData.cell.height - padding * 2;
                 let targetW = targetH * img.aspect;
