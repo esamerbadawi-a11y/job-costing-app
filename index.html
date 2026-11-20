@@ -8513,7 +8513,11 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         }
         putTxt(D.summary, RTL ? 196 : 14, y, { size: 11, bold: true, align: RTL ? 'r' : 'l', color: [71, 85, 105] });
         const sRows = [];
-        sRows.push([D.wages, fmtMoney(totalDues), 'n']);
+        // Wages row also says how many different days he worked (days with pay, each date counted once).
+        const workDays = new Set(rows.filter(r => r.type && r.type !== '-' && r.type !== 'Partner' && /^\d{4}-\d{2}-\d{2}$/.test(r.date) && r.dues > 0.005).map(r => r.date)).size;
+        const daysTxt = workDays <= 0 ? '' : (RL === 'ar' ? (workDays === 1 ? 'يوم عمل واحد' : workDays === 2 ? 'يومين عمل' : workDays + (workDays <= 10 ? ' أيام عمل' : ' يوم عمل'))
+            : RL === 'es' ? workDays + (workDays === 1 ? ' día trabajado' : ' días trabajados') : workDays + (workDays === 1 ? ' work day' : ' work days'));
+        sRows.push([daysTxt ? D.wages + ' (' + daysTxt + ')' : D.wages, fmtMoney(totalDues), 'n']);
         if (totalMaterials > 0.005) sRows.push([D.materialsBought, fmtMoney(totalMaterials), 'n']);
         if (totalPartner > 0.005) sRows.push([D.partnerShare, fmtMoney(totalPartner), 'n']);
         if (totalBonus > 0.005) sRows.push([D.bonus, fmtMoney(totalBonus), 'bonus']);
