@@ -478,6 +478,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 </div>
             </div>
 
+            <button class="secondary" onclick="openNotes()" style="align-self:center;">📝 <span data-i18n="notesBtn" style="font-size:0.78rem;"></span></button>
             <button class="secondary" onclick="openGlobalSearch()" style="align-self:center;" data-i18n-title="globalSearchBtnTitle">🔍 <span data-i18n="globalSearchBtnLabel" style="font-size:0.78rem;"></span></button>
 
             <div style="position:relative; align-self:center;">
@@ -2931,6 +2932,28 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         jobActPay: { ar: 'دفع الفنيين', en: 'Pay techs' },
         jobActInvoice: { ar: 'فاتورة', en: 'Invoice' },
         jobActMore: { ar: 'المزيد', en: 'More' },
+        ctPickTitle: { ar: 'اعمل العقد من أنهي عرض؟', en: 'Make the contract from which quote?' },
+        ctPickHint: { ar: 'اختار عرض السعر اللي العميل وافق عليه. البنود والأسعار والدفعات هتتنقل للعقد، وإنت تراجع قبل الحفظ.', en: 'Pick the quote the client approved. Items, prices and payments carry into the contract; you review before saving.' },
+        ctPickBlank: { ar: 'عقد فاضي (من غير عرض)', en: 'Blank contract (no quote)' },
+        ctBoqLabel: { ar: 'مقترح BOQ', en: 'BOQ proposal' },
+        ctBoqEmpty: { ar: 'المقترح ده مفيهوش بنود بأسعار.', en: 'This proposal has no priced items.' },
+        notesBtn: { ar: 'ملاحظات', en: 'Notes' },
+        notesTitle: { ar: 'الملاحظات', en: 'Notes' },
+        notesPh: { ar: 'اكتب ملاحظتك هنا...', en: 'Write a note...' },
+        notesAdd: { ar: 'إضافة ملاحظة', en: 'Add note' },
+        notesSearchPh: { ar: 'دوّر في الملاحظات', en: 'Search notes' },
+        notesEmpty: { ar: 'مفيش ملاحظات لسه. اكتب أول ملاحظة فوق.', en: 'No notes yet. Write your first one above.' },
+        notesNoMatch: { ar: 'مفيش ملاحظة بالكلمة دي.', en: 'No note matches that.' },
+        notesPin: { ar: 'تثبيت', en: 'Pin' },
+        notesUnpin: { ar: 'إلغاء التثبيت', en: 'Unpin' },
+        notesEdit: { ar: 'تعديل', en: 'Edit' },
+        notesSave: { ar: 'حفظ', en: 'Save' },
+        notesCancel: { ar: 'إلغاء', en: 'Cancel' },
+        notesDelete: { ar: 'مسح', en: 'Delete' },
+        notesEdited: { ar: 'اتعدلت', en: 'edited' },
+        notesDelConfirm: { ar: 'تمسح الملاحظة دي؟', en: 'Delete this note?' },
+        notesEmptyErr: { ar: 'الملاحظة فاضية.', en: 'The note is empty.' },
+        notesNotLoaded: { ar: 'الملاحظات لسه بتتحمل من النت. استنى ثانية وجرب تاني.', en: 'Notes are still loading. Wait a second and try again.' },
         clrBtn: { ar: 'استلام نهائي', en: 'Clearance' },
         clrNoJobForCust: { ar: 'العميل ده مالوش شغلانة لسه. اعمل شغلانة الأول.', en: 'This customer has no job yet. Create a job first.' },
         custPickJobTitle: { ar: 'اختار الشغلانة', en: 'Choose the job' },
@@ -3633,6 +3656,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     let boqProposals = [], boqLoaded = false;
     const CLEAR_DOC = db.collection('jobCostingApp').doc('clearances');
     let clrIndex = [], clrLoaded = false;
+    const NOTES_DOC = db.collection('jobCostingApp').doc('notes');
+    let notesList = [], notesLoaded = false;
     const TECH_PAYMENTS_DOC = db.collection('jobCostingApp').doc('techPayments');
     const TECH_BONUSES_DOC = db.collection('jobCostingApp').doc('techBonuses');
     const FUTURE_DOC = db.collection('jobCostingApp').doc('futureJobs');
@@ -4350,6 +4375,14 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             clrIndex = (doc.exists && doc.data().entries) ? doc.data().entries : []; clrLoaded = true;
             safeCall(renderJobFile); safeCall(refreshCustomerHub);
         }, err => console.error('Firestore clearances sync error:', err));
+
+        NOTES_DOC.onSnapshot(doc => {
+            // Never trust the offline cache as 'loaded' (an empty cache must not be saved over the real notes).
+            notesList = (doc.exists && Array.isArray(doc.data().entries)) ? doc.data().entries : [];
+            if (!doc.metadata.fromCache) notesLoaded = true;
+            const nm = document.getElementById('notesModal');
+            if (nm && nm.style.display !== 'none' && !nm.dataset.edit && document.activeElement && !['noteNewText', 'noteSearch'].includes(document.activeElement.id)) safeCall(renderNotes);
+        }, err => console.error('Firestore notes sync error:', err));
 
         TECH_PAYMENTS_DOC.onSnapshot(doc => {
             techPayments = (doc.exists && doc.data().entries) ? doc.data().entries : [];
@@ -9599,7 +9632,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
                 ${c.id ? `<div style="margin-top:6px;"><a href="#" onclick="event.preventDefault(); closeCustomerHub(); switchScreen('contacts'); editContact('${c.id}');" style="color:var(--text-muted); font-size:0.78rem;">✏️ ${t('custEdit')}</a></div>` : ''}
             </div>
             <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-top:14px;">
-                ${big('📋', t('invoiceTypeEstimate'), "custDoc('ESTIMATE')")}${big('📑', t('invoiceTypeProposal'), "custDoc('PROPOSAL')")}${big('🧾', t('invoiceTitle'), "custDoc('INVOICE')")}${big('📄', t('invoiceTypeContract'), "custDoc('CONTRACT')")}${big('✅', t('clrBtn'), 'custClearance()')}
+                ${big('📋', t('invoiceTypeEstimate'), "custDoc('ESTIMATE')")}${big('📑', t('invoiceTypeProposal'), "custDoc('PROPOSAL')")}${big('🧾', t('invoiceTitle'), "custDoc('INVOICE')")}${big('📄', t('invoiceTypeContract'), "custContractPick()")}${big('✅', t('clrBtn'), 'custClearance()')}
                 ${big('💵', t('invoiceTypeReceipt'), 'custReceipt()')}${big('➕', t('invoiceTypeAdditionalWork'), "custDoc('ADDITIONAL_WORK')")}${big('📅', t('custBtnAppt'), 'custAppt()')}${big('🔧', t('custBtnJob'), 'custJob()')}${big('📁', t('jfBtn'), 'custJobFile()')}
             </div>`;
         h += boqHubSection(c);
@@ -10050,6 +10083,156 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         const slug = x => String(x || '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
         return { doc, filename: [companyFileSlug(), blank ? 'Clearance_Form_BLANK' : 'Clearance', blank ? '' : slug(f.clientName), blank ? '' : slug(f.no)].filter(Boolean).join('_') + '.pdf' };
     }
+    // ===== Notes (home screen) =====
+    function notesTx(k) { return t(k); }
+    function noteWhen(iso) { try { const d = new Date(iso); return d.toLocaleString(currentLang === 'ar' ? 'ar-EG-u-nu-latn' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch (e) { return String(iso || ''); } }
+    function openNotes() {
+        let m = document.getElementById('notesModal');
+        if (!m) { m = document.createElement('div'); m.id = 'notesModal'; m.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg-dark, #0a0e17); color:var(--text-main, #fff); z-index:10060; overflow-y:auto; -webkit-overflow-scrolling:touch;'; document.body.appendChild(m); }
+        m.dataset.edit = ''; m.style.display = 'block'; renderNotes(true); m.scrollTop = 0; syncBodyLock();
+    }
+    function closeNotes() { const m = document.getElementById('notesModal'); if (m) m.style.display = 'none'; syncBodyLock(); }
+    function renderNotes(fresh) {
+        const m = document.getElementById('notesModal'); if (!m || m.style.display === 'none') return;
+        const keepAdd = (document.getElementById('noteNewText') || {}).value || '';
+        const keepQ = (document.getElementById('noteSearch') || {}).value || '';
+        const q = keepQ.trim().toLowerCase();
+        const list = notesList.filter(n => !q || String(n.text || '').toLowerCase().includes(q))
+            .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+        const sbtn = (label, fn, extra) => `<button type="button" class="secondary" onclick="${fn}" style="padding:5px 10px; font-size:0.75rem; ${extra || ''}">${label}</button>`;
+        let h = `<div style="max-width:620px; margin:0 auto; padding:16px 16px 90px;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;"><button type="button" onclick="closeNotes()" style="background:none; border:none; color:var(--text-muted); font-size:1.7rem; padding:0 6px;">‹</button><h2 style="margin:0; font-size:1.15rem;">📝 ${t('notesTitle')}</h2></div>
+            <div style="background:var(--card-dark); border:1px solid var(--border-color); border-radius:12px; padding:11px; margin-bottom:12px;">
+                <textarea id="noteNewText" dir="auto" rows="3" placeholder="${escHtml(t('notesPh'))}" style="width:100%; resize:vertical;">${escHtml(keepAdd)}</textarea>
+                <button type="button" class="success" onclick="noteAdd()" style="width:100%; margin-top:8px; padding:10px;">＋ ${t('notesAdd')}</button>
+            </div>
+            <input type="search" id="noteSearch" value="${escHtml(keepQ)}" oninput="renderNotes()" placeholder="🔍 ${escHtml(t('notesSearchPh'))}" style="width:100%; margin-bottom:12px;">`;
+        if (!list.length) h += `<div style="text-align:center; color:var(--text-muted); padding:30px 10px;">${t(notesList.length ? 'notesNoMatch' : 'notesEmpty')}</div>`;
+        list.forEach(n => {
+            const id = jsArg(String(n.id)), editing = m.dataset.edit === String(n.id);
+            h += `<div style="background:var(--card-dark); border:1px solid ${n.pinned ? '#f59e0b' : 'var(--border-color)'}; border-radius:12px; padding:11px 13px; margin-bottom:9px;">
+                <div style="display:flex; justify-content:space-between; gap:8px; font-size:0.72rem; color:var(--text-muted); margin-bottom:6px;"><span>${n.pinned ? '📌 ' : ''}${escHtml(noteWhen(n.createdAt))}${n.updatedAt && n.updatedAt !== n.createdAt ? ' · ' + t('notesEdited') : ''}</span><span>${escHtml(String(n.by || '').split('@')[0])}</span></div>`;
+            if (editing) h += `<textarea id="noteEditText" dir="auto" rows="4" style="width:100%; resize:vertical;">${escHtml(n.text)}</textarea>
+                <div style="display:flex; gap:6px; margin-top:8px;">${sbtn(t('notesSave'), `noteSaveEdit('${id}')`, 'background:#16a34a; color:#fff; border:none;')}${sbtn(t('notesCancel'), 'noteEditCancel()')}</div>`;
+            else h += `<div dir="auto" style="white-space:pre-wrap; word-break:break-word; font-size:0.92rem; line-height:1.5;">${escHtml(n.text)}</div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:9px;">${sbtn(n.pinned ? '📌 ' + t('notesUnpin') : '📌 ' + t('notesPin'), `notePin('${id}')`)}${sbtn('✏️ ' + t('notesEdit'), `noteEditStart('${id}')`)}${sbtn('🗑 ' + t('notesDelete'), `noteDelete('${id}')`, 'color:#f87171;')}</div>`;
+            h += `</div>`;
+        });
+        h += `</div>`;
+        m.innerHTML = h;
+        const sEl = document.getElementById('noteSearch');
+        if (!fresh && keepQ && sEl && document.activeElement !== sEl) { /* keep typing position only while searching */ }
+    }
+    async function notesSave(next, prev) {
+        if (!notesLoaded) { alert(t('notesNotLoaded')); return false; }
+        notesList = next; renderNotes();
+        try { await NOTES_DOC.set({ entries: next }); return true; }
+        catch (err) { notesList = prev; renderNotes(); alertSaveError(err); return false; }
+    }
+    async function noteAdd() {
+        const el = document.getElementById('noteNewText'); const txt = (el.value || '').trim();
+        if (!txt) return;
+        const now = new Date().toISOString();
+        const ok = await notesSave([{ id: newLedgerId(), text: txt, createdAt: now, updatedAt: now, pinned: false, by: currentUserEmail || '' }, ...notesList], notesList);
+        if (ok) { const e2 = document.getElementById('noteNewText'); if (e2) e2.value = ''; }
+    }
+    function noteEditStart(id) { const m = document.getElementById('notesModal'); m.dataset.edit = String(id); renderNotes(); }
+    function noteEditCancel() { const m = document.getElementById('notesModal'); m.dataset.edit = ''; renderNotes(); }
+    async function noteSaveEdit(id) {
+        const txt = ((document.getElementById('noteEditText') || {}).value || '').trim();
+        if (!txt) { alert(t('notesEmptyErr')); return; }
+        const prev = notesList;
+        document.getElementById('notesModal').dataset.edit = '';
+        await notesSave(prev.map(n => String(n.id) === String(id) ? Object.assign({}, n, { text: txt, updatedAt: new Date().toISOString() }) : n), prev);
+    }
+    async function notePin(id) { const prev = notesList; await notesSave(prev.map(n => String(n.id) === String(id) ? Object.assign({}, n, { pinned: !n.pinned }) : n), prev); }
+    async function noteDelete(id) {
+        if (!confirm(t('notesDelConfirm'))) return;
+        const prev = notesList; await notesSave(prev.filter(n => String(n.id) !== String(id)), prev);
+    }
+
+    // ===== Contract from an approved quote (Estimate / Proposal / BOQ proposal) =====
+    function ctQuoteSources() {
+        const c = custResolve(); if (!c) return [];
+        const out = [];
+        const scan = arr => (arr || []).forEach(j => {
+            if (!custSame(j.clientName, j.clientPhone, c)) return;
+            (j.savedInvoices || []).forEach(d => {
+                if (d.docType !== 'ESTIMATE' && d.docType !== 'PROPOSAL') return;
+                const total = round2((d.items || []).reduce((s, it) => s + parseVal(it.amount), 0) - (d.credits || []).reduce((s, x) => s + parseVal(x.amount), 0));
+                out.push({ kind: 'inv', ownerId: String(j.id), savedId: d.id, type: d.docType, no: d.invoiceNo || '', date: d.invoiceDate || String(d.savedAt || '').slice(0, 10), total, stamp: d.savedAt || '' });
+            });
+        });
+        scan(savedJobs); scan(quoteLeads);
+        boqProposals.filter(p => custSame(p.clientName, p.clientPhone, c)).forEach(p => out.push({ kind: 'boq', id: p.id, type: 'BOQ', no: p.no || '', date: p.date || String(p.createdAt || '').slice(0, 10), total: parseVal(p.total), stamp: p.createdAt || '' }));
+        return out.sort((a, b) => String(b.stamp).localeCompare(String(a.stamp)));
+    }
+    function closeCtPick() { const m = document.getElementById('ctQuotePick'); if (m) m.remove(); }
+    function custContractPick() {
+        const src = ctQuoteSources();
+        if (!src.length) { custDoc('CONTRACT'); return; }
+        closeCtPick();
+        const m = document.createElement('div'); m.id = 'ctQuotePick';
+        m.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:10200; display:flex; justify-content:center; align-items:center;';
+        const lab = s => s.type === 'ESTIMATE' ? t('invoiceTypeEstimate') : (s.type === 'PROPOSAL' ? t('invoiceTypeProposal') : t('ctBoqLabel'));
+        m.innerHTML = `<div style="background:var(--card-dark,#1e2433); color:var(--text-main,#fff); border:1px solid var(--border-color,#334); border-radius:14px; width:92%; max-width:420px; max-height:82vh; overflow-y:auto; padding:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><b>📄 ${t('ctPickTitle')}</b><button type="button" id="ctPickX" style="background:none; border:none; color:var(--text-muted); font-size:1.4rem;">✕</button></div>
+            <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:10px;">${t('ctPickHint')}</div>
+            ${src.map((s, i) => `<button type="button" class="secondary" data-i="${i}" style="width:100%; text-align:start; padding:10px 12px; margin-bottom:7px;"><div style="display:flex; justify-content:space-between; gap:8px;"><b>${escHtml(lab(s))} ${escHtml(s.no)}</b><b style="color:#34d399;">${fmtUsd(s.total)}</b></div><div style="font-size:0.74rem; color:var(--text-muted);">${escHtml(s.date)}</div></button>`).join('')}
+            <button type="button" class="secondary" id="ctPickBlank" style="width:100%; padding:10px; margin-top:4px; font-size:0.82rem;">${t('ctPickBlank')}</button></div>`;
+        document.body.appendChild(m);
+        m.querySelectorAll('button[data-i]').forEach(b => { b.onclick = () => { const s = src[parseInt(b.dataset.i, 10)]; closeCtPick(); if (s.kind === 'boq') custContractFromBoq(s.id); else custContractFromInv(s.ownerId, s.savedId); }; });
+        document.getElementById('ctPickX').onclick = closeCtPick;
+        document.getElementById('ctPickBlank').onclick = () => { closeCtPick(); custDoc('CONTRACT'); };
+    }
+    // An Estimate / Proposal made in the invoice editor: open it, detach it from the saved copy (so saving never overwrites the
+    // estimate) and turn the draft into a contract — items, prices and notes come along.
+    async function custContractFromInv(ownerId, savedId) {
+        await openInvoiceModal(ownerId);
+        if (!invoiceState || String(invoiceState.jobId) !== String(ownerId)) return;
+        loadSavedInvoice(savedId);
+        if (!invoiceState || String(invoiceState.jobId) !== String(ownerId)) return;
+        invoiceState.savedId = null;
+        setInvoiceDocType('CONTRACT');
+    }
+    // A BOQ proposal (Excel): sections become the contract's scope items, the milestones become its payment schedule.
+    async function custContractFromBoq(id) {
+        const p = boqProposals.find(x => x.id === id); if (!p) return;
+        const c = custResolve(); if (!c) return;
+        let lead = quoteLeads.find(l => leadStatusOf(l) === 'open' && custSame(l.clientName, l.clientPhone, c));
+        if (!lead) {
+            lead = custNewLeadFor(c);
+            const prev = quoteLeads; quoteLeads = [lead].concat(quoteLeads);
+            try { await saveLeadsData(); } catch (err) { quoteLeads = prev; alertSaveError(err); return; }
+        }
+        await openInvoiceModal(lead.id);
+        if (!invoiceState || String(invoiceState.jobId) !== String(lead.id)) return;
+        const groups = [], idx = {};
+        (p.items || []).forEach(it => {
+            const k = it.section || '';
+            if (!(k in idx)) { idx[k] = groups.length; groups.push({ title: k, lines: [], amt: 0 }); }
+            const g = groups[idx[k]]; g.amt = round2(g.amt + parseVal(it.amount));
+            g.lines.push(String(it.desc || '') + ((it.type && it.type !== 'Included') ? ' (' + it.type + ')' : ''));
+        });
+        const items = groups.filter(g => g.amt > 0.004).map(g => ({ desc: g.title, qty: '1', amount: g.amt, cTitle: g.title.replace(/^[A-Z]\.\s*/, ''), cScope: g.lines.join('\n') }));
+        if (!items.length) { alert(t('ctBoqEmpty')); return; }
+        const diff = round2(parseVal(p.total) - items.reduce((s, x) => s + x.amount, 0));
+        if (Math.abs(diff) > 0.004 && Math.abs(diff) < 1) items[items.length - 1].amount = round2(items[items.length - 1].amount + diff);
+        setInvoiceDocType('CONTRACT');
+        invoiceState.items = items;
+        const ct = invoiceState.contract; if (!ct) return;
+        if (p.address) ct.property = p.address;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(String(p.startDate || ''))) ct.start = p.startDate;
+        const tot = round2(items.reduce((s, x) => s + x.amount, 0));
+        const pays = (p.payments || []).map(x => ({ label: x.milestone, amount: parseVal(x.amount), due: x.note || '', received: false }));
+        if (pays.length) {
+            const d2 = round2(tot - pays.reduce((s, x) => s + x.amount, 0));
+            if (Math.abs(d2) < 1) pays[pays.length - 1].amount = round2(pays[pays.length - 1].amount + d2);
+            ct.payments = pays; ct.plan = 'CUSTOM';
+        }
+        renderInvoiceModalContent();
+    }
+
     // ===== BOQ Proposal: Excel export / import (v2 template) =====
     const BOQ_UNITS = ['LF', 'SF', 'EA', 'LS', 'HR', 'DAY'];
     const BOQ_TYPES = ['Included', 'Allowance', 'Install only', 'Owner-supplied', 'Excluded', 'Optional'];
@@ -10104,10 +10287,13 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         const S = v => v == null ? '' : String(v).trim();
         const isTok = s => /\{\{[A-Z]+\}\}/.test(s);
         const N = v => { if (typeof v === 'number') return v; const s = S(v).replace(/[$,\s]/g, ''); return s === '' ? NaN : Number(s); };
-        for (const nm of ['Project', 'Items', 'Summary', 'Payments', 'Text', '_meta']) if (!wb[nm]) { E('boqErrSheet', { name: nm }); }
+        for (const nm of ['Project', 'Items', 'Summary', 'Payments', 'Text']) if (!wb[nm]) { E('boqErrSheet', { name: nm }); }
         if (errors.length) return { errors, warnings };
         const g = (sh, r, c) => wb[sh].get(r + ',' + c);
-        const meta = {}; for (let r = 2; r <= 12; r++) { const k = S(g('_meta', r, 1)); if (k) meta[k] = S(g('_meta', r, 2)); }
+        const meta = {}; if (wb._meta) for (let r = 2; r <= 12; r++) { const k = S(g('_meta', r, 1)); if (k) meta[k] = S(g('_meta', r, 2)); }
+        // Excel / Numbers on iPad and Mac drop the hidden "_meta" sheet when they re-save. The headers below still prove it is our
+        // template, so accept the file and work out the last Items row from the data instead.
+        if (!wb._meta) { meta.template = 'AHA_PROPOSAL'; meta.version = '2'; let mx = 83; wb.Items.forEach((v, key) => { const r = parseInt(key, 10); if (r > mx) mx = r; }); meta.items_last_row = String(mx - 1); }
         if (meta.template !== 'AHA_PROPOSAL' || meta.version !== '2') { E('boqErrNotTpl'); return { errors, warnings }; }
         const heads = { Items: BOQ_ITEM_HEAD, Summary: ['Line', 'Label', 'Amount'], Payments: ['#', 'Milestone', 'Percent', 'Amount', 'Trigger / Notes'], Text: ['Group', 'Title', 'Text'], Project: ['Field', 'Value'] };
         Object.keys(heads).forEach(sh => { if (heads[sh].some((h, i) => S(g(sh, 1, i + 1)) !== h)) E('boqErrHeader', { name: sh }); });
@@ -18069,6 +18255,7 @@ ${closeBtnHtml}
             '<div id="twTop" class="no-print"><div class="tw-brand" onclick="openCompanyProfileModal()"></div>' +
             '<select id="twStateSel" class="tw-sel" onchange="setStateFilter(this.value)" aria-label="state"></select>' +
             '<button class="tw-lang" id="twLangBtn" onclick="toggleLanguage()" aria-label="language"></button>' +
+            '<button class="tw-iconbtn" onclick="openNotes()" aria-label="notes" title="Notes">' + ic('edit') + '</button>' +
             '<button class="tw-iconbtn" onclick="openGlobalSearch()" aria-label="search">' + ic('search') + '</button></div>' +
             '<div id="screenHome" class="tw-panel no-print"></div><div id="screenWData" class="tw-panel no-print"></div><div id="screenWPay" class="tw-panel no-print"></div><div id="screenWAcc" class="tw-panel no-print"></div><div id="screenMore" class="tw-panel no-print"></div>';
         while (wrap.firstChild) anchor.parentNode.insertBefore(wrap.firstChild, anchor);
@@ -18292,6 +18479,7 @@ ${closeBtnHtml}
             tile('pdf', tt('exportPdfBtn', 'PDF'), 'exportPDF()', '#e11d48'),
             tile('calc', tt('exportAccountingBtn', 'Accounting'), 'exportAccountingDetailed()', '#0ea5e9')]);
         h += group('settings', tw('mSettings'), [
+            tile('edit', tt('notesBtn', 'Notes'), 'openNotes()', '#f59e0b'),
             tile('building', tt('companyProfileBtn', 'Company profile'), 'openCompanyProfileModal()', '#4f46e5'),
             tile('sparkle', tt('whatsNewBtn', "What's new"), 'checkWhatsNew(true)', '#d97706'),
             tile('key', tt('resetAiKeyBtn', 'AI key'), 'resetGeminiApiKey()', '#7c3aed'),
