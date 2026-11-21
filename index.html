@@ -17797,7 +17797,8 @@ ${closeBtnHtml}
     function renderTechDetailHtml(name, stats, dateFrom, dateTo) {
         const s = stats[name];
         const jobs = s ? s.jobs.slice().sort((a, b) => (a.job.startDate || '').localeCompare(b.job.startDate || '')) : [];
-        const pays = techPaymentsInPeriod(name, dateFrom, dateTo).slice().sort((a, b) => ((a.settleDate || a.date) || '').localeCompare((b.settleDate || b.date) || ''));
+        const pays = techPaymentsInPeriod(name, dateFrom, dateTo).slice().sort((a, b) => ((a.date || a.settleDate) || '').localeCompare((b.date || b.settleDate) || '')
+            || ((a.settleDate || '')).localeCompare((b.settleDate || '')) || String(a.at || '').localeCompare(String(b.at || '')));   // by the date shown on the row, oldest first
         const bonuses = techBonusesInPeriod(name, dateFrom, dateTo).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
         const noDates = !dateFrom && !dateTo;
         const legacyTotal = round2(jobs.reduce((s, j) => s + (j.legacyPaid || 0), 0));
