@@ -8410,6 +8410,25 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
             rows.forEach(r => { if (r.wjobId && sums[r.wjobId]) r.work = sums[r.wjobId]; });
         } catch (e) { /* keep the plain trimmed description */ }
 
+        // One row per day: if he worked on several jobs the same day, they become ONE row ("Job A + Job B"),
+        // with the amounts added. Payments, bonuses and materials keep their own rows. Totals are not affected.
+        {
+            const merged = [], byDate = {};
+            rows.forEach(r => {
+                const isWage = r.type && r.type !== '-' && r.type !== 'Partner' && /^\d{4}-\d{2}-\d{2}$/.test(r.date || '') && r.dues !== null && r.dues !== undefined;
+                if (!isWage) { merged.push(r); return; }
+                const m = byDate[r.date];
+                if (!m) { const c = Object.assign({}, r, { _cl: [r.client], _wk: [r.work] }); byDate[r.date] = c; merged.push(c); return; }
+                m.dues = round2((m.dues || 0) + (r.dues || 0));
+                if (r.gas !== null && r.gas !== undefined) m.gas = round2((m.gas || 0) + r.gas);
+                if (r.gasNote && !m.gasNote) m.gasNote = r.gasNote;
+                if (r.client && !m._cl.includes(r.client)) m._cl.push(r.client);
+                if (r.work && !m._wk.includes(r.work)) m._wk.push(r.work);
+            });
+            merged.forEach(m => { if (m._cl) { m.client = m._cl.filter(Boolean).join(' + '); m.work = m._wk.filter(Boolean).join(' + '); delete m._cl; delete m._wk; } });
+            rows.length = 0; merged.forEach(m => rows.push(m));
+        }
+
         const money = v => (v === null || v === undefined) ? '-' : '$' + v.toFixed(2);
         const fmtMoney = v => (v < 0 ? '-$' + Math.abs(v).toFixed(2) : '$' + v.toFixed(2));
         // Labels that were built in English inside the rows are translated here, for the chosen report language.
