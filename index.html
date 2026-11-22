@@ -18309,7 +18309,7 @@ ${closeBtnHtml}
         wdAdd: { ar: '＋ إضافة فني جديد', en: '+ Add worker' }, wdEmpty: { ar: 'مفيش فنيين لسه. اضغط "إضافة فني جديد".', en: 'No workers yet. Tap "Add worker".' },
         edit: { ar: 'تعديل', en: 'Edit' }, del: { ar: 'حذف', en: 'Delete' }, details: { ar: 'تفاصيل', en: 'Details' }, pay: { ar: 'دفع', en: 'Pay' },
         hasLogin: { ar: 'عنده حساب دخول', en: 'Has app login' }, noPhone: { ar: 'مفيش رقم', en: 'No phone' },
-        wpDue: { ar: 'المستحق', en: 'Due' }, wpPaid: { ar: 'المدفوع', en: 'Paid' }, wpLeft: { ar: 'المتبقي', en: 'Left' },
+        wpDue: { ar: 'المستحق', en: 'Due' }, wpPaid: { ar: 'المدفوع', en: 'Paid' }, wpLeft: { ar: 'المتبقي', en: 'Left' }, wpOlder: { ar: 'رصيد قديم', en: 'Older balance' },
         wpNone: { ar: 'مفيش مستحقات للفنيين في الأسبوع ده', en: 'No worker dues in this week' },
         wpTotal: { ar: 'إجمالي المتبقي الأسبوع ده', en: 'Total left this week' },
         wpThis: { ar: 'الأسبوع ده', en: 'This week' }, wpPrev: { ar: '◀ أسبوع قبل', en: '◀ Previous week' }, wpNext: { ar: 'أسبوع بعد ▶', en: 'Next week ▶' },
@@ -18624,10 +18624,14 @@ ${closeBtnHtml}
         try {
             var stats = computeTechPeriodStats(w.start, w.end);
             var names = new Set(Object.keys(stats).concat(techBonuses.filter(function (b) { return b.date >= w.start && b.date <= w.end; }).map(function (b) { return b.name; }), getExtraPartnerNames()));
+            // Balance carried in from BEFORE this week (positive = company owed him, negative = he was paid ahead). Same maths as the Guide.
+            var priorTo = addDaysISO(w.start, -1), priorStats = computeTechPeriodStats('', priorTo);
             names.forEach(function (name) {
+                var priorBal = round2((priorStats[name] ? priorStats[name].dues : 0) + partnerShareInPeriod(name, '', priorTo).total + techBonusTotalInPeriod(name, '', priorTo)
+                    - techPaymentsInPeriod(name, '', priorTo).reduce(function (s, p) { return s + parseVal(p.amount); }, 0));
                 var due = round2((stats[name] ? stats[name].dues : 0) + partnerShareInPeriod(name, w.start, w.end).total + techBonusTotalInPeriod(name, w.start, w.end));
                 var paid = round2(techPaymentsInPeriod(name, w.start, w.end).reduce(function (s, p) { return s + parseVal(p.amount); }, 0));
-                if (due > 0.005 || paid > 0.005) rows.push({ name: name, due: due, paid: paid, left: round2(due - paid) });
+                if (due > 0.005 || paid > 0.005) rows.push({ name: name, due: due, paid: paid, prior: priorBal, left: round2(due - paid + priorBal) });
             });
         } catch (e) { console.error('weekPay', e); }
         return rows.sort(function (a, b) { return b.left - a.left; });
@@ -18640,7 +18644,7 @@ ${closeBtnHtml}
             '<div class="tw-sec" dir="ltr" style="text-align:start">' + w.start + ' → ' + w.end + '</div>';
         if (!rows.length) h += '<div class="tw-empty">' + escHtml(tw('wpNone')) + '</div>';
         rows.forEach(function (r) {
-            h += '<div class="tw-card nc"><div class="tw-av">' + escHtml(r.name.charAt(0).toUpperCase()) + '</div><div class="tx"><h4>' + escHtml(r.name) + '</h4><p>' + escHtml(tw('wpDue')) + ' ' + money(r.due) + ' · ' + escHtml(tw('wpPaid')) + ' ' + money(r.paid) + '</p></div>' +
+            h += '<div class="tw-card nc"><div class="tw-av">' + escHtml(r.name.charAt(0).toUpperCase()) + '</div><div class="tx"><h4>' + escHtml(r.name) + '</h4><p>' + escHtml(tw('wpDue')) + ' ' + money(r.due) + ' · ' + escHtml(tw('wpPaid')) + ' ' + money(r.paid) + (Math.abs(r.prior) > 0.005 ? ' · ' + escHtml(tw('wpOlder')) + ' ' + (r.prior < 0 ? '−' : '') + money(Math.abs(r.prior)) : '') + '</p></div>' +
                 '<div style="text-align:end"><div class="tw-money ' + (r.left > 0.005 ? 'red' : 'grn') + '">' + (r.left > 0.005 ? money(r.left) : '✔') + '</div><small style="color:var(--text-muted)">' + escHtml(tw('wpLeft')) + '</small></div>' +
                 '<div class="tw-btns">' + (r.left > 0.005 ? '<button class="tw-sbtn g" onclick="twPay(\'' + jsArg(r.name) + '\')">' + escHtml(tw('pay')) + '</button>' : '') + '<button class="tw-sbtn" onclick="twDetails(\'' + jsArg(r.name) + '\',1)">' + escHtml(tw('details')) + '</button></div></div>';
         });
