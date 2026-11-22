@@ -2696,6 +2696,10 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         guideThRemainingInPeriod: { ar: 'الباقي في الفترة دي', en: 'Remaining in Period' },
         guideThPriorBalance: { ar: 'متبقي من قبل', en: 'Prior Balance' },
         guidePriorBalanceNote: { ar: 'متبقي له لحد', en: 'owed through' },
+        guidePriorCredit: { ar: 'اتدفعله زيادة لحد', en: 'paid ahead through' },
+        guideNetOwed: { ar: 'الصافي: الشركة مدينة له {x}', en: 'Net: company owes {x}' },
+        guideNetExtra: { ar: 'الصافي: واخد زيادة {x}', en: 'Net: paid ahead {x}' },
+        guideNetSettled: { ar: 'الصافي: الحساب خالص', en: 'Net: settled' },
         techPaymentTitle: { ar: '💵 تسجيل دفعة لفني', en: '💵 Record Technician Payment' },
         techPaymentJobLabel: { ar: 'الدفعة دي خاصة بإيه؟', en: 'What is this payment for?' },
         techPaymentAllJobsOption: { ar: 'كل الشغلانات اللي هو داخل فيها', en: 'All jobs he is in' },
@@ -2709,6 +2713,8 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         techPayOldAuto: { ar: 'تلقائي (الأقدم الأول)', en: 'Automatic (oldest first)' },
         techPayOldRemaining: { ar: 'متبقي', en: 'owed' },
         techPaymentSettlesNote: { ar: 'بتقفل حساب أسبوع:', en: 'Settles week of:' },
+        techPayPartLine: { ar: '🧩 جزء من دفعة إجمالي {total} اتقسمت: {parts}', en: '🧩 Part of a {total} payment, split into: {parts}' },
+        techPayWhoLine: { ar: '👤 اتسجلت بواسطة: {who}', en: '👤 Recorded by: {who}' },
         techBonusTitle: { ar: '🎁 بونس لفني', en: '🎁 Technician Bonus' },
         techBonusJobLabel: { ar: 'لشغلانة معينة؟ (اختياري)', en: 'For a specific job? (optional)' },
         techBonusJobNone: { ar: '— بدون ربط بشغلانة —', en: '— Not linked to a job —' },
@@ -8253,17 +8259,17 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
     const TECH_REP_TX = {
         en: { title: 'Technician Report:', period: 'Period', to: 'to', issued: 'Issued', lastPay: 'Last payment', note: 'Note', beginning: 'beginning', today: 'today', date: 'Date', client: 'Client', work: 'Work', earned: 'Earned', materials: 'Materials', gas: 'Gas', paid: 'Paid',
             payment: 'Payment', bonus: 'Bonus', partner: 'partner', noPay: 'Day with no pay', summary: 'Summary', wages: 'Wages', materialsBought: 'Materials you bought (reimbursement)', partnerShare: 'Partner share',
-            totalEarned: 'Total earned', paidToYou: 'Paid to you', older: 'Older balance (before {d})', owed: 'THE COMPANY OWES YOU', credit: 'EXTRA PAID - CARRIED TO YOUR NEXT PAYMENT', settled: 'ALL SETTLED - NOTHING OWED', remainP: 'Remaining for this period', bOwed: 'Company owes you', bCredit: 'Extra paid', bSettled: 'All settled',
+            totalEarned: 'Total earned', paidToYou: 'Paid to you', older: 'Older balance (before {d})', owed: 'THE COMPANY OWES YOU', credit: 'EXTRA PAID - CARRIED TO YOUR NEXT PAYMENT', settled: 'ALL SETTLED - NOTHING OWED', remainP: 'Remaining for this period', payPart: 'Part of one {t} payment', payToOld: '{a} went to the older balance', payOldOnly: 'Applied to the older balance, not counted in this period: {a}', bOwed: 'Company owes you', bCredit: 'Extra paid', bSettled: 'All settled',
             s1: 'You earned {E} this period and were paid {P}.', sOwed: 'The company still owes you {N}.', sOwedPrior: 'With your older balance of {O}, the company still owes you {N}.', sOwedPriorNeg: 'After deducting the {O} you owed the company, the company still owes you {N}.',
             sExtra: 'You were paid {X} more than you earned; the extra is carried to your next payment.', sSettled: 'Everything is settled.', covers: 'Payments in this period were {X} more than this period\'s earnings; that extra covers your older balance of {O}.' },
         ar: { title: 'تقرير الفني:', period: 'الفترة', to: 'إلى', issued: 'صدر في', lastPay: 'آخر دفعة', note: 'ملاحظة', beginning: 'البداية', today: 'النهارده', date: 'التاريخ', client: 'العميل', work: 'الشغل', earned: 'المكسب', materials: 'خامات', gas: 'بنزين', paid: 'المدفوع',
             payment: 'دفعة', bonus: 'بونص', partner: 'شريك', noPay: 'يوم بدون أجر', summary: 'الملخص', wages: 'الأجور', materialsBought: 'خامات اشتريتها (تعويض)', partnerShare: 'نصيب الشراكة',
-            totalEarned: 'إجمالي اللي كسبته', paidToYou: 'اللي اتدفعلك', older: 'رصيد قديم (قبل {d})', owed: 'الشركة مدينة لك بـ', credit: 'اتدفعلك زيادة - بتتحسب على دفعتك الجاية', settled: 'الحساب خالص - مفيش مستحقات', remainP: 'المتبقي في الفترة دي', bOwed: 'الشركة مدينة لك', bCredit: 'اتدفعلك زيادة', bSettled: 'الحساب خالص',
+            totalEarned: 'إجمالي اللي كسبته', paidToYou: 'اللي اتدفعلك', older: 'رصيد قديم (قبل {d})', owed: 'الشركة مدينة لك بـ', credit: 'اتدفعلك زيادة - بتتحسب على دفعتك الجاية', settled: 'الحساب خالص - مفيش مستحقات', remainP: 'المتبقي في الفترة دي', payPart: 'جزء من دفعة واحدة إجمالي {t}', payToOld: '{a} راحت للرصيد القديم', payOldOnly: 'اتحسبت على الرصيد القديم ومش داخلة في الفترة دي: {a}', bOwed: 'الشركة مدينة لك', bCredit: 'اتدفعلك زيادة', bSettled: 'الحساب خالص',
             s1: 'كسبت {E} في الفترة دي واتدفعلك {P}.', sOwed: 'لسه ليك عند الشركة {N}.', sOwedPrior: 'مع رصيدك القديم {O}، لسه ليك عند الشركة {N}.', sOwedPriorNeg: 'بعد خصم {O} اللي كانت عليك للشركة، لسه ليك عند الشركة {N}.',
             sExtra: 'اتدفعلك {X} أكتر من اللي كسبته، والزيادة بتتحسب على دفعتك الجاية.', sSettled: 'الحساب خالص.', covers: 'المدفوع في الفترة دي أكتر من المكسب بـ {X}، والزيادة دي بتغطي رصيدك القديم {O}.' },
         es: { title: 'Informe del técnico:', period: 'Periodo', to: 'a', issued: 'Emitido', lastPay: 'Último pago', note: 'Nota', beginning: 'inicio', today: 'hoy', date: 'Fecha', client: 'Cliente', work: 'Trabajo', earned: 'Ganado', materials: 'Materiales', gas: 'Gasolina', paid: 'Pagado',
             payment: 'Pago', bonus: 'Bono', partner: 'socio', noPay: 'Día sin pago', summary: 'Resumen', wages: 'Salario', materialsBought: 'Materiales que usted compró (reembolso)', partnerShare: 'Participación de socio',
-            totalEarned: 'Total ganado', paidToYou: 'Pagado a usted', older: 'Saldo anterior (antes de {d})', owed: 'LA EMPRESA LE DEBE', credit: 'PAGO DE MÁS - SE APLICA A SU PRÓXIMO PAGO', settled: 'CUENTA SALDADA - NO SE DEBE NADA', remainP: 'Pendiente de este periodo', bOwed: 'La empresa le debe', bCredit: 'Pago de más', bSettled: 'Cuenta saldada',
+            totalEarned: 'Total ganado', paidToYou: 'Pagado a usted', older: 'Saldo anterior (antes de {d})', owed: 'LA EMPRESA LE DEBE', credit: 'PAGO DE MÁS - SE APLICA A SU PRÓXIMO PAGO', settled: 'CUENTA SALDADA - NO SE DEBE NADA', remainP: 'Pendiente de este periodo', payPart: 'Parte de un solo pago de {t}', payToOld: '{a} se aplicó al saldo anterior', payOldOnly: 'Aplicado al saldo anterior, no cuenta en este periodo: {a}', bOwed: 'La empresa le debe', bCredit: 'Pago de más', bSettled: 'Cuenta saldada',
             s1: 'Usted ganó {E} en este periodo y se le pagó {P}.', sOwed: 'La empresa aún le debe {N}.', sOwedPrior: 'Con su saldo anterior de {O}, la empresa aún le debe {N}.', sOwedPriorNeg: 'Después de descontar los {O} que usted debía a la empresa, la empresa aún le debe {N}.',
             sExtra: 'Se le pagó {X} más de lo que ganó; el extra se aplica a su próximo pago.', sSettled: 'Todo está saldado.', covers: 'Los pagos de este periodo fueron {X} más que lo ganado; ese extra cubre su saldo anterior de {O}.' }
     };
@@ -8390,13 +8396,39 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         // Payments come only from the 💵 button (same as the Guide), listed as their own rows.
         // Job rows show what was earned; payments are per technician, not per job, so the running
         // balance is given in the totals below the table instead of on each row.
+        // A payment the app split (old balance + this period) is ONE payment for the reader: the row says the
+        // total, the date, and how much of it went to the older balance. Totals below still count only the
+        // part that belongs to this period. A payment that went ENTIRELY to the older balance gets its own
+        // explanatory row (shown with "-" in Paid, since it is not part of this period's account).
+        const money2 = v => '$' + Number(v).toFixed(2);
+        const inPeriodSet = new Set(techPaymentsInPeriod(techName, dateFrom, dateTo));
+        const payNote = (p) => {
+            const grp = techPayGroupOf(p);
+            if (grp.length < 2) return '';
+            const total = grp.reduce((s, q) => s + parseVal(q.amount), 0);
+            const toOld = dateFrom ? grp.filter(q => (q.settleDate || q.date) < dateFrom).reduce((s, q) => s + parseVal(q.amount), 0) : 0;
+            return D.payPart.replace('{t}', money2(total)) + (toOld > 0.005 ? ' · ' + D.payToOld.replace('{a}', money2(toOld)) : '');
+        };
         techPaymentsInPeriod(techName, dateFrom, dateTo)
             .slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''))
             .forEach(p => {
                 const amt = parseVal(p.amount);
                 totalPaid += amt;
-                rows.push({ date: p.date || '', client: 'Payment' + (p.note ? ' - ' + p.note : ''), type: '-', dues: null, materials: null, paid: amt, remaining: null });
+                rows.push({ date: p.date || '', client: 'Payment' + (p.note ? ' - ' + p.note : ''), work: payNote(p), type: '-', dues: null, materials: null, paid: amt, remaining: null });
             });
+        if (dateFrom) {
+            const seenOld = new Set();
+            techPayments.filter(p => p.name === techName && p.date && p.date >= dateFrom && (!dateTo || p.date <= dateTo)
+                && (p.settleDate || p.date) < dateFrom && !inPeriodSet.has(p))
+                .forEach(p => {
+                    if (seenOld.has(p)) return;
+                    const grp = techPayGroupOf(p);
+                    if (grp.some(q => inPeriodSet.has(q))) return;      // already described on the row of its in-period part
+                    grp.forEach(q => seenOld.add(q));
+                    const tot = grp.reduce((s, q) => s + parseVal(q.amount), 0);
+                    rows.push({ date: p.date, client: 'Payment' + (p.note ? ' - ' + p.note : ''), work: D.payOldOnly.replace('{a}', money2(tot)), type: '-', dues: null, materials: null, paid: null, remaining: null });
+                });
+        }
 
         if (rows.length === 0) { closePre(); alert(currentLang === 'ar' ? 'الفني ده لسه مالوش شغلانات مسجلة في الفترة دي.' : 'This technician has no recorded jobs in this period.'); return; }
 
@@ -8528,7 +8560,7 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         {   // last payment ever made to him (up to the end of the period) — the thing technicians ask about most
             const pays = techPaymentsInPeriod(techName, '', dateTo).slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
             const lp = pays[pays.length - 1];
-            if (lp) { putTxt(D.lastPay + ': ' + (lp.date || '') + '  ·  $' + parseVal(lp.amount).toFixed(2), RTL ? 196 : 14, y - 2, { size: 9.5, italic: true, align: RTL ? 'r' : 'l', color: [71, 85, 105] }); y += 6; }
+            if (lp) { putTxt(D.lastPay + ': ' + (lp.date || '') + '  ·  $' + techPayGroupOf(lp).reduce((s, q) => s + parseVal(q.amount), 0).toFixed(2), RTL ? 196 : 14, y - 2, { size: 9.5, italic: true, align: RTL ? 'r' : 'l', color: [71, 85, 105] }); y += 6; }
         }
         putTxt(D.summary, RTL ? 196 : 14, y, { size: 11, bold: true, align: RTL ? 'r' : 'l', color: [71, 85, 105] });
         const sRows = [];
@@ -10408,7 +10440,10 @@ body.tw-on #screenEntry input:not([type=checkbox]):not([type=radio]):not([type=f
         const meta = {}; if (wb._meta) for (let r = 2; r <= 12; r++) { const k = S(g('_meta', r, 1)); if (k) meta[k] = S(g('_meta', r, 2)); }
         // Excel / Numbers on iPad and Mac drop the hidden "_meta" sheet when they re-save. The headers below still prove it is our
         // template, so accept the file and work out the last Items row from the data instead.
-        if (!wb._meta) { meta.template = 'AHA_PROPOSAL'; meta.version = '2'; let mx = 83; wb.Items.forEach((v, key) => { const r = parseInt(key, 10); if (r > mx) mx = r; }); meta.items_last_row = String(mx - 1); }
+        if (!wb._meta) { meta.template = 'AHA_PROPOSAL'; meta.version = '2'; let mx = 83; wb.Items.forEach((v, key) => { const r = parseInt(key, 10); if (r > mx) mx = r; }); meta.items_last_row = String(mx - 1);
+            // Numbers on iPad may also move the TOTAL row up (it was at row 81 in one real file): the items always end on the row just above "TOTAL".
+            let totalRow = 0; wb.Items.forEach((v, key) => { const p = String(key).split(','); if (p[1] === '3' && S(v).toUpperCase() === 'TOTAL' && !totalRow) totalRow = parseInt(p[0], 10); });
+            if (totalRow > 2) meta.items_last_row = String(totalRow - 1); }
         if (meta.template !== 'AHA_PROPOSAL' || meta.version !== '2') { E('boqErrNotTpl'); return { errors, warnings }; }
         const heads = { Items: BOQ_ITEM_HEAD, Summary: ['Line', 'Label', 'Amount'], Payments: ['#', 'Milestone', 'Percent', 'Amount', 'Trigger / Notes'], Text: ['Group', 'Title', 'Text'], Project: ['Field', 'Value'] };
         Object.keys(heads).forEach(sh => { if (heads[sh].some((h, i) => S(g(sh, 1, i + 1)) !== h)) E('boqErrHeader', { name: sh }); });
@@ -14757,6 +14792,7 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         // pot of money — see techPaymentJobId above) or when the Settle Date was picked by hand
         // (an explicit choice always wins).
         const settleTouched = !!document.getElementById('techPaymentSettleDate').dataset.touched;
+        const splitId = 'sp' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);   // shared by the parts of one split payment
         if (!settleTouched) settleDate = clampSettleToGuidePeriod(settleDate);
         const guideDateFrom = document.getElementById('guideDateFrom') ? document.getElementById('guideDateFrom').value : '';
         let splitEntries = null;
@@ -14769,8 +14805,8 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
         if (pickedOldWk && !chosenJobId && settleDate === pickedOldWk.end && amount > pickedOldWk.balance + 0.005) {
             const restAmount = round2(amount - pickedOldWk.balance);
             splitEntries = [
-                { name: techPaymentName, amount: pickedOldWk.balance, date, settleDate: pickedOldWk.end, note, by: currentUserEmail || '?', at: new Date().toISOString() },
-                { name: techPaymentName, amount: restAmount, date, settleDate: clampSettleToGuidePeriod(date), note, by: currentUserEmail || '?', at: new Date().toISOString() + '-b' }
+                { name: techPaymentName, amount: pickedOldWk.balance, date, settleDate: pickedOldWk.end, note, by: currentUserEmail || '?', at: new Date().toISOString(), splitId },
+                { name: techPaymentName, amount: restAmount, date, settleDate: clampSettleToGuidePeriod(date), note, by: currentUserEmail || '?', at: new Date().toISOString() + '-b', splitId }
             ];
             const toastMsg2 = t('techPaymentAutoSplitToast').replace('{cur}', '$' + restAmount.toFixed(2)).replace('{prior}', '$' + pickedOldWk.balance.toFixed(2)).replace('{through}', pickedOldWk.end);
             safeCall(() => showToast(toastMsg2));
@@ -14787,8 +14823,8 @@ ${withPrintScript ? `<script>window.onload = function(){ setTimeout(function(){ 
                 const priorPortion = round2(Math.min(amount, priorBalance));
                 const currentPortion = round2(amount - priorPortion);   // what's left after the old balance is closed (may be an advance if it exceeds the period's remaining)
                 splitEntries = [];
-                splitEntries.push({ name: techPaymentName, amount: priorPortion, date, settleDate: priorDateTo, note, by: currentUserEmail || '?', at: new Date().toISOString() });
-                if (currentPortion > 0.005) splitEntries.push({ name: techPaymentName, amount: currentPortion, date, settleDate, note, by: currentUserEmail || '?', at: new Date().toISOString() + '-b' });
+                splitEntries.push({ name: techPaymentName, amount: priorPortion, date, settleDate: priorDateTo, note, by: currentUserEmail || '?', at: new Date().toISOString(), splitId });
+                if (currentPortion > 0.005) splitEntries.push({ name: techPaymentName, amount: currentPortion, date, settleDate, note, by: currentUserEmail || '?', at: new Date().toISOString() + '-b', splitId });
                 const toastMsg = t('techPaymentAutoSplitToast').replace('{cur}', '$' + currentPortion.toFixed(2)).replace('{prior}', '$' + priorPortion.toFixed(2)).replace('{through}', priorDateTo);
                 safeCall(() => showToast(toastMsg));
             }
@@ -17353,6 +17389,35 @@ ${closeBtnHtml}
     // is tagged with that older week's date, so it no longer bleeds into this week's "Remaining
     // in Period". Old payments recorded before this field existed have no settleDate, so they
     // fall back to their own payment date exactly as before.
+    // A payment that the app split automatically (old balance + current period) is really ONE payment.
+    // New splits carry a shared splitId; older ones are recognised by same technician/date/note and
+    // creation times a moment apart (the second part's id ends with "-b"). A normal payment = group of 1.
+    function techPayGroupOf(p) {
+        const base = s => String(s || '').replace(/-b$/, '');
+        const t0 = Date.parse(base(p.at));
+        const grp = techPayments.filter(q => q === p || (q.name === p.name && q.date === p.date && (q.note || '') === (p.note || '') && (
+            (p.splitId && q.splitId === p.splitId) ||
+            (!p.splitId && !q.splitId && p.at && q.at && (String(p.at).endsWith('-b') || String(q.at).endsWith('-b')) && Math.abs(Date.parse(base(q.at)) - t0) < 3000))));
+        return grp.sort((a, b) => String(a.at || '').localeCompare(String(b.at || '')));
+    }
+    function techPayWho(p) {
+        const e = String(p.by || '');
+        if (!e || e === '?') return '';
+        return e.split('@')[0].toUpperCase();
+    }
+    // Small note lines shown under a payment in the Technicians Guide: which bigger payment it belongs to, and who recorded it.
+    function techPayExtraHtml(p) {
+        let out = '';
+        const grp = techPayGroupOf(p);
+        if (grp.length > 1) {
+            const total = grp.reduce((s, q) => s + parseVal(q.amount), 0);
+            const parts = grp.map(q => '$' + parseVal(q.amount).toFixed(2) + ' → ' + (q.settleDate || q.date || '')).join(' + ');
+            out += `<div class="ag-meta" style="color:#60a5fa;">${escHtml(t('techPayPartLine').replace('{total}', '$' + total.toFixed(2)).replace('{parts}', parts))}</div>`;
+        }
+        const who = techPayWho(p);
+        if (who) out += `<div class="ag-meta">${escHtml(t('techPayWhoLine').replace('{who}', who))}</div>`;
+        return out;
+    }
     function techPaymentsInPeriod(name, dateFrom, dateTo) {
         return techPayments.filter(p => {
             const d = p.settleDate || p.date;
@@ -17827,7 +17892,7 @@ ${closeBtnHtml}
         if (pays.length === 0) h += `<div class="tg-empty">${t('guideNoPaymentsInPeriod')}</div>`;
         pays.forEach(p => {
             const settleDiffers = p.settleDate && p.date && p.settleDate !== p.date;
-            h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(p.date || '')}</span><span class="tg-d-main">${escHtml(p.note || '')}${settleDiffers ? `<div class="ag-meta" style="color:#fbbf24;">📆 ${t('techPaymentSettlesNote')} <span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${escHtml(p.settleDate)}</span></div>` : ''}</span><strong style="color:#34d399;">$${parseVal(p.amount).toFixed(2)}</strong><button class="secondary" onclick="openTechPaymentEdit('${jsArg(p.at || '')}')" style="padding:3px 9px; font-size:0.72rem;">${t('editBtn')}</button><button class="danger" onclick="deleteTechPayment('${escJs(p.at || '')}')" style="padding:3px 9px; font-size:0.72rem;">${t('deleteBtn')}</button></div>`;
+            h += `<div class="tg-detail-row"><span class="tg-d-date">${escHtml(p.date || '')}</span><span class="tg-d-main">${escHtml(p.note || '')}${settleDiffers ? `<div class="ag-meta" style="color:#fbbf24;">📆 ${t('techPaymentSettlesNote')} <span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${escHtml(p.settleDate)}</span></div>` : ''}${techPayExtraHtml(p)}</span><strong style="color:#34d399;">$${parseVal(p.amount).toFixed(2)}</strong><button class="secondary" onclick="openTechPaymentEdit('${jsArg(p.at || '')}')" style="padding:3px 9px; font-size:0.72rem;">${t('editBtn')}</button><button class="danger" onclick="deleteTechPayment('${escJs(p.at || '')}')" style="padding:3px 9px; font-size:0.72rem;">${t('deleteBtn')}</button></div>`;
         });
         return h + '</div>';
     }
@@ -17879,9 +17944,19 @@ ${closeBtnHtml}
                 const priorBonus = techBonusTotalInPeriod(name, '', priorDateTo);
                 const priorPaid = techPaymentsInPeriod(name, '', priorDateTo).reduce((sum, p) => sum + parseVal(p.amount), 0);
                 const priorBalance = round2(priorDues + priorBonus - priorPaid);
+                // The bottom line (older balance + this period). Without it a technician who was paid AHEAD in an earlier
+                // week looked like "still owed" because only this period's remainder was visible.
+                const netAll = round2(remainingInPeriod + priorBalance);
+                const netTxt = Math.abs(netAll) <= 0.005 ? t('guideNetSettled')
+                    : netAll > 0 ? t('guideNetOwed').replace('{x}', '$' + netAll.toFixed(2)) : t('guideNetExtra').replace('{x}', '$' + Math.abs(netAll).toFixed(2));
+                const netCol = Math.abs(netAll) <= 0.005 ? '#94a3b8' : (netAll > 0 ? '#f87171' : '#34d399');
+                const netLine = `<div class="ag-meta" style="font-weight:700; color:${netCol}; margin-top:4px;">${escHtml(netTxt)}</div>`;
+                const dateSpan = `<span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${escHtml(priorDateTo)}</span>`;
                 priorBalanceHtml = priorBalance > 0.005
-                    ? `<td data-label="${t('guideThPriorBalance')}" style="color:#f87171; font-weight:700;">⚠️ $${priorBalance.toFixed(2)}<div class="ag-meta" style="font-weight:400;">${t('guidePriorBalanceNote')} <span dir="ltr" style="unicode-bidi:isolate; display:inline-block;">${escHtml(priorDateTo)}</span></div></td>`
-                    : `<td data-label="${t('guideThPriorBalance')}" style="color:var(--text-muted);">—</td>`;
+                    ? `<td data-label="${t('guideThPriorBalance')}" style="color:#f87171; font-weight:700;">⚠️ $${priorBalance.toFixed(2)}<div class="ag-meta" style="font-weight:400;">${t('guidePriorBalanceNote')} ${dateSpan}</div>${netLine}</td>`
+                    : priorBalance < -0.005
+                    ? `<td data-label="${t('guideThPriorBalance')}" style="color:#34d399; font-weight:700;">✅ −$${Math.abs(priorBalance).toFixed(2)}<div class="ag-meta" style="font-weight:400;">${t('guidePriorCredit')} ${dateSpan}</div>${netLine}</td>`
+                    : `<td data-label="${t('guideThPriorBalance')}" style="color:var(--text-muted);">—${netLine}</td>`;
             }
             html += `<tr><td data-label=""><strong>${name}</strong>${workerAccountForTech(name) ? ` <span title="${t('wkWorkerLoginBadge')}" style="font-size:0.8rem;">📲</span>` : ''}</td><td data-label="${t('guideThPhone')}">${phoneHtml}</td>
                 <td data-label="${t('guideThDuesInPeriod')}" style="color:#fbbf24; font-weight:700;">$${dues.toFixed(2)}${partnerShare > 0.005 ? `<div class="ag-meta" style="font-weight:400; color:#a78bfa;">🤝 ${t('guidePartnerIncl')} $${partnerShare.toFixed(2)}</div>` : ''}</td>
